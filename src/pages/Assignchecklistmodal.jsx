@@ -49,7 +49,7 @@ const PRIMARY = "#144c5c";
 const PRIMARY_L = "#1a6278";
 const BG_LIGHT = "#f0f7f9";
 const BORDER = "#d0e4ea";
-const API_BASE_URL = "http://localhost:9001/api/v1";
+const API_BASE_URL = "https://assset-management-backend-4.onrender.com/api/v1";
 
 const PRIORITIES = [
   { value: "low",      label: "Low",      color: "#4caf50" },
