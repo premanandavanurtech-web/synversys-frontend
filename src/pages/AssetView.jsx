@@ -1,13 +1,3 @@
-// src/pages/AssetView.jsx
-// ─── FIXES ────────────────────────────────────────────────────────────────────
-// 1. LinkAssetDialog: uses fetchRequests (not getRequests) matching the context API
-// 2. Parent list: correct param name `type=parent` (not `type=all` / `status=approved`)
-// 3. Auth: all fetch calls now pull token from localStorage/sessionStorage correctly
-// 4. 401 handling: errors shown inline with retry capability
-// 5. Responsive layout: removed hardcoded px widths, full CSS grid/flex responsiveness
-// 6. Enhanced design: improved spacing, micro-interactions, loading states, empty states
-// ─────────────────────────────────────────────────────────────────────────────
-
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
@@ -424,7 +414,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
         return;
       }
       const API =
-        import.meta.env?.VITE_API_URL || "https://assset-management-backend-4.onrender.com/api/v1";
+        import.meta.env?.VITE_API_URL || "http://localhost:9001/api/v1";
       const res = await fetch(`${API}/assets?limit=200`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1520,7 +1510,7 @@ export default function AssetView() {
 
   const getImageUrl = (name) =>
     name
-      ? `${import.meta.env?.VITE_API_URL?.replace("/api/v1", "") || "https://assset-management-backend-4.onrender.com"}/uploads/assets/${name}`
+      ? `${import.meta.env?.VITE_API_URL?.replace("/api/v1", "") || "http://localhost:9001"}/uploads/assets/${name}`
       : null;
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
