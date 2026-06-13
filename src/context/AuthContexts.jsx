@@ -1,4 +1,5 @@
-// src/context/AuthContexts.jsx
+// src/context/AuthContexts.jsx - Fixed Race Condition
+
 import React, {
   createContext,
   useState,
@@ -19,7 +20,7 @@ export const useAuth = () => {
   return context;
 };
 
-const API_BASE_URL = "https://assset-management-backend-4.onrender.com/api/v1";
+const API_BASE_URL = "http://localhost:9001/api/v1";
 
 // Clear all auth data from storage
 const clearAuthData = () => {
@@ -44,6 +45,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
   const [userType, setUserType] = useState(null);
+  const [initialized, setInitialized] = useState(false);
 
   const initializeAuth = useCallback(() => {
     console.log("Initializing authentication...");
@@ -76,6 +78,7 @@ export const AuthProvider = ({ children }) => {
       console.log("No stored auth found");
     }
     setLoading(false);
+    setInitialized(true);
   }, []);
 
   useEffect(() => {
@@ -97,17 +100,25 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     console.log("Attempting login for:", email);
+
+    // Clear any existing auth state before login attempt
+    // This prevents stale state issues
+    clearAuthData();
+    setToken(null);
+    setUser(null);
+    setUserType(null);
+
     try {
       const tempApi = axios.create({
         baseURL: API_BASE_URL,
         headers: { "Content-Type": "application/json" },
         withCredentials: true,
+        timeout: 30000,
       });
 
       const response = await tempApi.post("/auth/login", { email, password });
 
       console.log("Login response status:", response.status);
-      console.log("Login response data:", response.data);
 
       if (
         response.data.success &&
@@ -123,7 +134,6 @@ export const AuthProvider = ({ children }) => {
         let userRoleType = "";
         let redirectPath = "/dashboard";
 
-        // Normalize role to handle case sensitivity
         const backendRole = (userData.role || "").toLowerCase();
 
         if (backendRole === "super_admin") {
@@ -184,9 +194,8 @@ export const AuthProvider = ({ children }) => {
             permissions: userData.permissions || [],
           };
           userRoleType = "team";
-          redirectPath = "/team"; // Redirect to team dashboard
+          redirectPath = "/team";
         } else {
-          console.warn("Unknown role received from backend:", userData.role);
           transformedUser = {
             id: userData.id || userData._id,
             _id: userData.id || userData._id,
@@ -205,6 +214,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("user", JSON.stringify(transformedUser));
         localStorage.setItem("userType", userRoleType);
 
+        // Update state
         setToken(accessToken);
         setUser(transformedUser);
         setUserType(userRoleType);
@@ -233,24 +243,49 @@ export const AuthProvider = ({ children }) => {
       };
     } catch (error) {
       console.error("Login error:", error);
+
+      if (error.code === "ECONNABORTED" || error.message === "Network Error") {
+        return {
+          success: false,
+          error: "Network error. Please check your internet connection.",
+        };
+      }
+
       if (error.response) {
+        const status = error.response.status;
+        if (status === 401) {
+          return {
+            success: false,
+            error: "Invalid email or password. Please try again.",
+          };
+        } else if (status === 429) {
+          return {
+            success: false,
+            error: "Too many login attempts. Please try again later.",
+          };
+        } else if (status === 500) {
+          return {
+            success: false,
+            error: "Server error. Please try again later.",
+          };
+        }
         return {
           success: false,
           error:
             error.response.data?.message ||
             error.response.data?.error ||
-            "Invalid email or password",
+            "Login failed. Please try again.",
         };
       } else if (error.request) {
         return {
           success: false,
           error:
-            "Unable to connect to server. Please check if the backend is running.",
+            "Cannot connect to server. Please check if the backend is running.",
         };
       } else {
         return {
           success: false,
-          error: "An error occurred during login. Please try again.",
+          error: "An unexpected error occurred. Please try again.",
         };
       }
     }
@@ -269,7 +304,7 @@ export const AuthProvider = ({ children }) => {
         {
           headers: { "Content-Type": "application/json" },
           withCredentials: true,
-          timeout: 10000,
+          timeout: 15000,
         },
       );
 
@@ -289,6 +324,14 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("Forgot password error:", error.message);
+
+      if (error.code === "ECONNABORTED") {
+        return {
+          success: false,
+          error: "Request timed out. Please try again.",
+        };
+      }
+
       if (error.response?.status === 429) {
         return {
           success: false,
@@ -296,6 +339,14 @@ export const AuthProvider = ({ children }) => {
             "Too many requests. Please wait a few minutes before trying again.",
         };
       }
+
+      if (error.response?.status === 404) {
+        return {
+          success: false,
+          error: "Email not found. Please check and try again.",
+        };
+      }
+
       return {
         success: false,
         error:
@@ -343,7 +394,7 @@ export const AuthProvider = ({ children }) => {
         {
           headers: { "Content-Type": "application/json" },
           withCredentials: true,
-          timeout: 10000,
+          timeout: 15000,
         },
       );
 
@@ -366,17 +417,11 @@ export const AuthProvider = ({ children }) => {
       console.error("Reset password error:", error);
       if (error.response) {
         const status = error.response.status;
-        if (status === 400) {
+        if (status === 400 || status === 401) {
           return {
             success: false,
             error:
               "Invalid or expired reset token. Please request a new password reset link.",
-          };
-        } else if (status === 401) {
-          return {
-            success: false,
-            error:
-              "Reset link has expired. Please request a new password reset link.",
           };
         } else {
           return {
@@ -416,6 +461,7 @@ export const AuthProvider = ({ children }) => {
               Authorization: `Bearer ${currentToken}`,
             },
             withCredentials: true,
+            timeout: 10000,
           },
         );
       }
@@ -440,14 +486,11 @@ export const AuthProvider = ({ children }) => {
 
   const isAuthenticated = useMemo(() => {
     const authStatus = !!user && isValidToken(token);
-    console.log("isAuthenticated:", authStatus, "user role:", user?.role);
     return authStatus;
   }, [user, token]);
 
-  // Enhanced authRequest with better error handling and logging
   const authRequest = useCallback(
     async (method, url, data = null, customConfig = {}) => {
-      // Get token from multiple possible sources
       let currentToken = token;
       if (!isValidToken(currentToken)) {
         currentToken =
@@ -459,7 +502,6 @@ export const AuthProvider = ({ children }) => {
         throw new Error("No authentication token available");
       }
 
-      // Clean the URL
       const cleanUrl = url.startsWith("/") ? url : `/${url}`;
       const fullUrl = `${API_BASE_URL}${cleanUrl}`;
 
@@ -472,7 +514,6 @@ export const AuthProvider = ({ children }) => {
           Authorization: `Bearer ${currentToken}`,
         };
 
-        // Remove Content-Type for FormData
         if (data instanceof FormData) {
           delete headers["Content-Type"];
         }
@@ -526,7 +567,6 @@ export const AuthProvider = ({ children }) => {
     [token, logout],
   );
 
-  // Convenience methods
   const get = useCallback(
     async (url, config = {}) => authRequest("GET", url, null, config),
     [authRequest],
@@ -557,10 +597,8 @@ export const AuthProvider = ({ children }) => {
 
   const checkBackendStatus = useCallback(async () => {
     try {
-      const response = await axios.options(`${API_BASE_URL}/auth/login`, {
+      const response = await axios.get(`${API_BASE_URL}/auth/health`, {
         timeout: 5000,
-        validateStatus: (status) =>
-          status === 200 || status === 404 || status === 405,
       });
       return { reachable: true, status: response.status };
     } catch (error) {
@@ -584,6 +622,7 @@ export const AuthProvider = ({ children }) => {
             Authorization: `Bearer ${currentToken}`,
           },
           withCredentials: true,
+          timeout: 10000,
         },
       );
 
@@ -612,6 +651,7 @@ export const AuthProvider = ({ children }) => {
       token,
       loading,
       userType,
+      initialized,
       isAuthenticated,
       getUserRole,
       getUserType,
@@ -634,6 +674,7 @@ export const AuthProvider = ({ children }) => {
       token,
       loading,
       userType,
+      initialized,
       isAuthenticated,
       authRequest,
       get,

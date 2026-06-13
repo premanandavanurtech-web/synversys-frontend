@@ -1,4 +1,19 @@
-// pages/AssetRequests.jsx — Fully redesigned + all APIs integrated (No delete/update)
+// pages/AssetRequests.jsx
+// ─── What's fixed / improved ──────────────────────────────────────────────────
+// • Role-awareness: "New Request" visible to both admin & team; "Child Request",
+//   "Link Asset" action buttons only visible to admin.
+// • API path: createParentRequest → POST /asset-requests/parent (from context)
+// • Child dialog pre-fills parentId when opened from a row action.
+// • Search debounce resets page to 1.
+// • Stat cards always show real totals (from data.stats) on every load.
+// • Mobile: full-width cards with conditional admin action buttons.
+// • Table: actions column only renders admin items when user is admin.
+// • Snack is shown on every API error from dialogs.
+// • Fully responsive down to 320 px.
+// • FIXED: Single asset selection using Autocomplete dropdown - prevents multiple selection
+// • FIXED: Asset ID properly captured and sent to API
+// ─────────────────────────────────────────────────────────────────────────────
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
@@ -36,8 +51,7 @@ import {
   Alert,
   Snackbar,
   Divider,
-  ListItemText,
-  ListItemIcon,
+  Autocomplete,
 } from "@mui/material";
 import {
   Search,
@@ -65,14 +79,14 @@ import { useAsset } from "../context/AssetContext";
 
 // ─── Animations ───────────────────────────────────────────────────────────────
 const fadeSlideIn = keyframes`
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 `;
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
-  teal: "#0c4740",
-  tealDark: "#063f38",
+  teal: "#146478",
+  tealDark: "#08465a",
   tealLight: "#e6f4f2",
   tealMid: "#cce9e6",
   bg: "#f0f4f7",
@@ -87,53 +101,33 @@ const T = {
   greenBg: "#ecfdf5",
   red: "#dc2626",
   redBg: "#fef2f2",
-  blue: "#0e4a43",
+  blue: "#2563eb",
   blueBg: "#eff6ff",
   orange: "#ea580c",
   orangeBg: "#fff7ed",
+  indigo: "#6366f1",
 };
 
 // ─── Styled components ────────────────────────────────────────────────────────
 const PageWrap = styled(Box)(({ theme }) => ({
   minHeight: "100vh",
   padding: "28px 32px 60px",
-  animation: `${fadeSlideIn} 0.3s ease both`,
-  [theme.breakpoints.down("sm")]: { padding: "16px 12px 40px" },
+  animation: `${fadeSlideIn} 0.28s ease both`,
+  [theme.breakpoints.down("md")]: { padding: "18px 16px 48px" },
+  [theme.breakpoints.down("sm")]: { padding: "12px 10px 40px" },
 }));
-
-const PageTitle = styled(Typography)({
-  fontWeight: 800,
-  color: T.text,
-  letterSpacing: "-0.3px",
-});
 
 const StatCard = styled(Card)(({ accent }) => ({
   borderRadius: 14,
   border: `1px solid ${T.border}`,
+  borderTop: `3px solid ${accent || T.teal}`,
   boxShadow: "none",
-  borderTop: accent ? `3px solid ${accent}` : `1px solid ${T.border}`,
+  background: T.surface,
   transition: "transform 0.18s, box-shadow 0.18s",
-  cursor: "default",
   "&:hover": {
     transform: "translateY(-2px)",
     boxShadow: "0 6px 20px rgba(0,0,0,0.07)",
   },
-}));
-
-const ActionBtn = styled(Button)(({ variant: v }) => ({
-  borderRadius: 10,
-  textTransform: "none",
-  fontWeight: 600,
-  fontSize: "0.85rem",
-  padding: "8px 18px",
-  ...(v === "contained" && {
-    background: `linear-gradient(135deg, ${T.teal} 0%, ${T.tealDark} 100%)`,
-    color: "#fff",
-    boxShadow: "0 2px 8px rgba(10,97,87,0.25)",
-    "&:hover": {
-      background: `linear-gradient(135deg, ${T.tealDark} 0%, #042922 100%)`,
-    },
-  }),
 }));
 
 const FilterPaper = styled(Paper)({
@@ -145,37 +139,38 @@ const FilterPaper = styled(Paper)({
   background: T.surface,
 });
 
-const StyledTable = styled(TableContainer)({
+const StyledTableContainer = styled(TableContainer)({
   borderRadius: 12,
   border: `1px solid ${T.border}`,
   boxShadow: "none",
   background: T.surface,
+  overflowX: "auto",
 });
 
-// ─── Status chips ─────────────────────────────────────────────────────────────
+// ─── Status / type chip helpers ───────────────────────────────────────────────
 const STATUS_CONFIG = {
   pending: {
-    bg: T.amberBg,
-    color: T.amber,
-    icon: <HourglassEmpty sx={{ fontSize: 13 }} />,
+    bg: "#fffbeb",
+    color: "#d97706",
+    icon: <HourglassEmpty sx={{ fontSize: 12 }} />,
     label: "Pending",
   },
   approved: {
-    bg: T.greenBg,
-    color: T.green,
-    icon: <CheckCircle sx={{ fontSize: 13 }} />,
+    bg: "#ecfdf5",
+    color: "#059669",
+    icon: <CheckCircle sx={{ fontSize: 12 }} />,
     label: "Approved",
   },
   rejected: {
-    bg: T.redBg,
-    color: T.red,
-    icon: <Cancel sx={{ fontSize: 13 }} />,
+    bg: "#fef2f2",
+    color: "#dc2626",
+    icon: <Cancel sx={{ fontSize: 12 }} />,
     label: "Rejected",
   },
   completed: {
-    bg: T.blueBg,
-    color: T.blue,
-    icon: <DoneAll sx={{ fontSize: 13 }} />,
+    bg: "#eff6ff",
+    color: "#2563eb",
+    icon: <DoneAll sx={{ fontSize: 12 }} />,
     label: "Completed",
   },
 };
@@ -191,33 +186,9 @@ const StatusChip = ({ status }) => {
         bgcolor: c.bg,
         color: c.color,
         fontWeight: 700,
-        fontSize: "0.72rem",
-        height: 26,
-        "& .MuiChip-icon": { color: c.color },
-      }}
-    />
-  );
-};
-
-const URGENCY_CONFIG = {
-  low: { bg: "#f1f5f9", color: "#64748b" },
-  medium: { bg: T.amberBg, color: T.amber },
-  high: { bg: T.orangeBg, color: T.orange },
-  critical: { bg: T.redBg, color: T.red },
-};
-const UrgencyChip = ({ urgency }) => {
-  const c = URGENCY_CONFIG[urgency] || URGENCY_CONFIG.medium;
-  return (
-    <Chip
-      label={urgency || "medium"}
-      size="small"
-      sx={{
-        bgcolor: c.bg,
-        color: c.color,
-        fontWeight: 700,
         fontSize: "0.7rem",
         height: 24,
-        textTransform: "capitalize",
+        "& .MuiChip-icon": { color: c.color },
       }}
     />
   );
@@ -230,6 +201,7 @@ const TYPE_COLORS = {
   checkout: "#10b981",
   other: "#94a3b8",
 };
+
 const RequestTypeChip = ({ type }) => {
   const color = TYPE_COLORS[type] || "#94a3b8";
   return (
@@ -240,8 +212,8 @@ const RequestTypeChip = ({ type }) => {
         bgcolor: `${color}18`,
         color,
         fontWeight: 700,
-        fontSize: "0.7rem",
-        height: 24,
+        fontSize: "0.68rem",
+        height: 22,
         textTransform: "capitalize",
         border: `1px solid ${color}28`,
       }}
@@ -249,20 +221,44 @@ const RequestTypeChip = ({ type }) => {
   );
 };
 
-// ─── Asset Status color helper ─────────────────────────────────────────────────
-const assetStatusColor = (status) => {
-  const map = {
+const URGENCY_COLORS = {
+  low: { bg: "#f1f5f9", color: "#64748b" },
+  medium: { bg: "#fffbeb", color: "#d97706" },
+  high: { bg: "#fff7ed", color: "#ea580c" },
+  critical: { bg: "#fef2f2", color: "#dc2626" },
+};
+
+const UrgencyChip = ({ urgency }) => {
+  const c = URGENCY_COLORS[urgency] || URGENCY_COLORS.medium;
+  return (
+    <Chip
+      label={urgency || "medium"}
+      size="small"
+      sx={{
+        bgcolor: c.bg,
+        color: c.color,
+        fontWeight: 700,
+        fontSize: "0.68rem",
+        height: 22,
+        textTransform: "capitalize",
+      }}
+    />
+  );
+};
+
+const assetStatusColor = (s) =>
+  ({
     Available: T.green,
     "In Use": T.blue,
     "In Maintenance": T.amber,
     Retired: T.red,
     Lost: T.red,
-    Disposed: "#94a3b8",
-  };
-  return map[status] || "#94a3b8";
-};
+    Disposed: T.textMuted,
+  })[s] || T.textMuted;
 
-// ─── Create Parent Request Dialog ─────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
+// MODAL 1: CREATE PARENT REQUEST DIALOG
+// ──────────────────────────────────────────────────────────────────────────────
 function CreateParentDialog({ open, onClose, onSuccess }) {
   const { createParentRequest } = useAssetRequest();
   const { getAllAssets, assets, loading: assetsLoading } = useAsset();
@@ -273,37 +269,53 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
     urgency: "medium",
   });
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [assetSearch, setAssetSearch] = useState("");
+  const [formError, setFormError] = useState("");
+  const [selectedAsset, setSelectedAsset] = useState(null);
 
   useEffect(() => {
     if (open) {
       getAllAssets({ limit: 200 });
-      setAssetSearch("");
-      setError("");
+      setFormError("");
+      setForm({
+        assetId: "",
+        requestType: "transfer",
+        description: "",
+        urgency: "medium",
+      });
+      setSelectedAsset(null);
     }
-  }, [open]);
+  }, [open, getAllAssets]);
 
-  // Filter assets by search term
-  const filteredAssets = assets.filter((a) => {
-    const name = (a.name || a.assetName || "").toLowerCase();
-    const tag = (a.assetTag || a.serialNumber || "").toLowerCase();
-    const q = assetSearch.toLowerCase();
-    return name.includes(q) || tag.includes(q) || a._id?.includes(q);
-  });
-
-  const selectedAsset = assets.find((a) => a._id === form.assetId);
+  const handleAssetChange = (event, newValue) => {
+    if (newValue) {
+      const assetId = newValue._id || newValue.id;
+      setSelectedAsset(newValue);
+      setForm((prev) => ({ ...prev, assetId: assetId }));
+      setFormError("");
+    } else {
+      setSelectedAsset(null);
+      setForm((prev) => ({ ...prev, assetId: "" }));
+    }
+  };
 
   const handleSubmit = async () => {
     if (!form.assetId) {
-      setError("Please select an asset");
+      setFormError("Please select an asset");
       return;
     }
+
     setSubmitting(true);
-    setError("");
+    setFormError("");
     try {
-      await createParentRequest(form);
-      onSuccess("Parent request created successfully");
+      const payload = {
+        assetId: form.assetId,
+        requestType: form.requestType,
+        description: form.description,
+        urgency: form.urgency,
+      };
+
+      await createParentRequest(payload);
+      onSuccess("Request created successfully");
       onClose();
       setForm({
         assetId: "",
@@ -311,11 +323,12 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
         description: "",
         urgency: "medium",
       });
+      setSelectedAsset(null);
     } catch (err) {
-      setError(
+      setFormError(
         err?.response?.data?.message ||
           err?.message ||
-          "Failed to create request"
+          "Failed to create request",
       );
     } finally {
       setSubmitting(false);
@@ -330,33 +343,20 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
       fullWidth
       PaperProps={{ sx: { borderRadius: 3 } }}
     >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: "1.05rem", pb: 1 }}>
+      <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
-          <Box
-            sx={{
-              width: 36,
-              height: 36,
-              borderRadius: 2,
-              bgcolor: T.tealLight,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Add sx={{ color: T.teal, fontSize: 20 }} />
-          </Box>
+          <Add sx={{ color: T.teal }} />
           New Asset Request
         </Stack>
       </DialogTitle>
       <Divider />
       <DialogContent sx={{ pt: 2 }}>
-        {error && (
+        {formError && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
-            {error}
+            {formError}
           </Alert>
         )}
         <Stack spacing={2.5}>
-          {/* Asset selector with search */}
           <Box>
             <Typography
               variant="caption"
@@ -366,151 +366,92 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
             >
               Select Asset *
             </Typography>
-
-            {/* Search box */}
-            <TextField
-              size="small"
-              fullWidth
-              placeholder="Search by name, tag, or ID..."
-              value={assetSearch}
-              onChange={(e) => setAssetSearch(e.target.value)}
-              sx={{
-                mb: 1,
-                "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: T.bg },
+            <Autocomplete
+              value={selectedAsset}
+              onChange={handleAssetChange}
+              options={assets}
+              loading={assetsLoading}
+              getOptionLabel={(option) => {
+                if (!option) return "";
+                const name = option.name || option.assetName || "Unnamed";
+                const tag = option.assetTag || option.serialNumber || "";
+                return tag ? `${name} (${tag})` : name;
               }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search sx={{ fontSize: 17, color: T.textMuted }} />
-                  </InputAdornment>
-                ),
+              isOptionEqualToValue={(option, value) => {
+                if (!option || !value) return false;
+                return (option._id || option.id) === (value._id || value.id);
               }}
-            />
-
-            {/* Asset list */}
-            <Box
-              sx={{
-                border: `1px solid ${T.border}`,
-                borderRadius: 2,
-                maxHeight: 220,
-                overflowY: "auto",
-                bgcolor: T.surface,
-              }}
-            >
-              {assetsLoading ? (
-                <Stack spacing={1} p={1.5}>
-                  {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} height={44} sx={{ borderRadius: 1.5 }} />
-                  ))}
-                </Stack>
-              ) : filteredAssets.length === 0 ? (
-                <Box sx={{ p: 3, textAlign: "center" }}>
-                  <DevicesOther sx={{ fontSize: 32, color: T.textMuted, mb: 0.5 }} />
-                  <Typography variant="body2" color="textSecondary">
-                    {assetSearch ? "No assets match your search" : "No assets found"}
-                  </Typography>
-                </Box>
-              ) : (
-                filteredAssets.map((a) => {
-                  const name = a.name || a.assetName || "Unnamed Asset";
-                  const tag = a.assetTag || a.serialNumber || "";
-                  const statusColor = assetStatusColor(a.status);
-                  const isSelected = form.assetId === a._id;
-
-                  return (
+              renderOption={(props, option) => {
+                const name = option.name || option.assetName || "Unnamed";
+                const tag = option.assetTag || option.serialNumber || "";
+                const sc = assetStatusColor(option.status);
+                return (
+                  <Box component="li" {...props} key={option._id || option.id}>
                     <Box
-                      key={a._id}
-                      onClick={() => setForm((p) => ({ ...p, assetId: a._id }))}
                       sx={{
-                        px: 1.5,
-                        py: 1,
-                        cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
                         gap: 1.5,
-                        borderBottom: `1px solid ${T.border}`,
-                        bgcolor: isSelected ? T.tealLight : "transparent",
-                        borderLeft: isSelected
-                          ? `3px solid ${T.teal}`
-                          : "3px solid transparent",
-                        transition: "all 0.15s",
-                        "&:hover": {
-                          bgcolor: isSelected ? T.tealLight : "#f8fffe",
-                        },
-                        "&:last-child": { borderBottom: "none" },
+                        width: "100%",
                       }}
                     >
                       <Box
                         sx={{
-                          width: 34,
-                          height: 34,
+                          width: 32,
+                          height: 32,
                           borderRadius: 1.5,
-                          bgcolor: isSelected ? T.tealMid : T.bg,
+                          bgcolor: T.bg,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           flexShrink: 0,
                         }}
                       >
-                        <Inventory2
-                          sx={{
-                            fontSize: 16,
-                            color: isSelected ? T.teal : T.textMuted,
-                          }}
-                        />
+                        <Inventory2 sx={{ fontSize: 16, color: T.textMuted }} />
                       </Box>
-                      <Box flex={1} minWidth={0}>
-                        <Typography
-                          variant="body2"
-                          fontWeight={isSelected ? 700 : 600}
-                          color={isSelected ? T.teal : T.text}
-                          noWrap
-                        >
+                      <Box flex={1}>
+                        <Typography variant="body2" fontWeight={600}>
                           {name}
                         </Typography>
                         <Stack direction="row" spacing={1} alignItems="center">
                           {tag && (
-                            <Typography
-                              sx={{
-                                fontSize: 10,
-                                color: T.textMuted,
-                                fontFamily: "monospace",
-                              }}
-                            >
+                            <Typography variant="caption" color="textSecondary">
                               {tag}
                             </Typography>
                           )}
-                          <Typography
+                          <Chip
+                            label={option.status || "Unknown"}
+                            size="small"
                             sx={{
-                              fontSize: 10,
-                              color: T.textMuted,
-                              fontFamily: "monospace",
+                              height: 18,
+                              fontSize: 9,
+                              fontWeight: 700,
+                              color: sc,
+                              bgcolor: `${sc}18`,
+                              border: `1px solid ${sc}28`,
                             }}
-                          >
-                            #{a._id?.slice(-8)}
-                          </Typography>
+                          />
                         </Stack>
                       </Box>
-                      <Chip
-                        label={a.status || "Unknown"}
-                        size="small"
-                        sx={{
-                          height: 20,
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: statusColor,
-                          bgcolor: `${statusColor}18`,
-                          border: `1px solid ${statusColor}28`,
-                          flexShrink: 0,
-                        }}
-                      />
                     </Box>
-                  );
-                })
+                  </Box>
+                );
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  size="small"
+                  placeholder="Search by name, tag, or ID..."
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                      bgcolor: T.bg,
+                    },
+                  }}
+                />
               )}
-            </Box>
-
-            {/* Selected asset summary */}
+              sx={{ width: "100%" }}
+            />
             {selectedAsset && (
               <Box
                 sx={{
@@ -525,27 +466,34 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
                   gap: 1,
                 }}
               >
-                <CheckCircle sx={{ fontSize: 15, color: T.teal }} />
+                <CheckCircle sx={{ fontSize: 14, color: T.teal }} />
                 <Typography variant="caption" fontWeight={600} color={T.teal}>
                   Selected:{" "}
-                  {selectedAsset.name ||
-                    selectedAsset.assetName ||
-                    "Unnamed Asset"}
+                  {selectedAsset.name || selectedAsset.assetName || "Unnamed"}
+                  <span
+                    style={{
+                      fontSize: 10,
+                      marginLeft: 8,
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    (ID: {(selectedAsset._id || selectedAsset.id)?.slice(-8)})
+                  </span>
                 </Typography>
               </Box>
             )}
           </Box>
 
-          <Stack direction="row" spacing={2}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <FormControl fullWidth size="small">
               <InputLabel>Request Type</InputLabel>
               <Select
                 value={form.requestType}
+                label="Request Type"
+                sx={{ borderRadius: 2 }}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, requestType: e.target.value }))
                 }
-                label="Request Type"
-                sx={{ borderRadius: 2 }}
               >
                 {["transfer", "maintenance", "repair", "checkout", "other"].map(
                   (t) => (
@@ -556,7 +504,7 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
                     >
                       {t}
                     </MenuItem>
-                  )
+                  ),
                 )}
               </Select>
             </FormControl>
@@ -564,11 +512,11 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
               <InputLabel>Urgency</InputLabel>
               <Select
                 value={form.urgency}
+                label="Urgency"
+                sx={{ borderRadius: 2 }}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, urgency: e.target.value }))
                 }
-                label="Urgency"
-                sx={{ borderRadius: 2 }}
               >
                 {["low", "medium", "high", "critical"].map((u) => (
                   <MenuItem
@@ -590,11 +538,11 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
             size="small"
             label="Description"
             value={form.description}
+            inputProps={{ maxLength: 1000 }}
             onChange={(e) =>
               setForm((p) => ({ ...p, description: e.target.value }))
             }
-            placeholder="Describe the reason for this request..."
-            inputProps={{ maxLength: 1000 }}
+            placeholder="Describe the reason for this request…"
             sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
           />
         </Stack>
@@ -607,72 +555,74 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
         >
           Cancel
         </Button>
-        <ActionBtn
+        <Button
           variant="contained"
           onClick={handleSubmit}
           disabled={submitting}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 600,
+            background: `linear-gradient(135deg, ${T.teal} 0%, ${T.tealDark} 100%)`,
+          }}
         >
           {submitting ? (
-            <CircularProgress size={18} sx={{ color: "#fff" }} />
+            <CircularProgress size={17} sx={{ color: "#fff" }} />
           ) : (
             "Create Request"
           )}
-        </ActionBtn>
+        </Button>
       </DialogActions>
     </Dialog>
   );
 }
 
-// ─── Create Child Request Dialog ──────────────────────────────────────────────
-function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId }) {
+// ──────────────────────────────────────────────────────────────────────────────
+// MODAL 2: CREATE CHILD REQUEST DIALOG (ADMIN ONLY)
+// ──────────────────────────────────────────────────────────────────────────────
+function CreateChildDialog({ open, onClose, onSuccess, defaultParentId }) {
   const { createChildRequest, fetchRequests } = useAssetRequest();
   const [form, setForm] = useState({
     requestType: "maintenance",
     description: "",
     urgency: "medium",
   });
-  const [selectedParentId, setSelectedParentId] = useState(defaultParentId || "");
+  const [selectedParentId, setSelectedParentId] = useState(
+    defaultParentId || "",
+  );
   const [parentRequests, setParentRequests] = useState([]);
   const [parentLoading, setParentLoading] = useState(false);
   const [parentSearch, setParentSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
 
-  // Fetch parent requests when dialog opens
   useEffect(() => {
     if (open) {
       setSelectedParentId(defaultParentId || "");
       setParentSearch("");
-      setError("");
-      loadParentRequests();
+      setFormError("");
+      loadParents();
     }
   }, [open, defaultParentId]);
 
-  const loadParentRequests = async () => {
+  const loadParents = async () => {
     setParentLoading(true);
     try {
-      const data = await fetchRequests({ type: "parent", limit: 100 });
-      if (data?.success) {
-        setParentRequests(data.requests || []);
-      }
-    } catch (err) {
-      console.error("Failed to load parent requests:", err);
+      const data = await fetchRequests({ limit: 100 });
+      setParentRequests(data?.requests || []);
+    } catch {
       setParentRequests([]);
     } finally {
       setParentLoading(false);
     }
   };
 
-  // Filter parent requests by search
-  const filteredParents = parentRequests.filter((r) => {
+  const filtered = parentRequests.filter((r) => {
     const q = parentSearch.toLowerCase();
-    const desc = (r.description || "").toLowerCase();
-    const type = (r.requestType || "").toLowerCase();
     return (
-      r._id?.toLowerCase().includes(q) ||
-      desc.includes(q) ||
-      type.includes(q) ||
-      r.requestedBy?.email?.toLowerCase().includes(q)
+      r._id?.includes(q) ||
+      (r.description || "").toLowerCase().includes(q) ||
+      (r.requestType || "").toLowerCase().includes(q)
     );
   });
 
@@ -680,11 +630,11 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
 
   const handleSubmit = async () => {
     if (!selectedParentId) {
-      setError("Please select a parent request");
+      setFormError("Please select a parent request");
       return;
     }
     setSubmitting(true);
-    setError("");
+    setFormError("");
     try {
       await createChildRequest(selectedParentId, form);
       onSuccess("Child request created successfully");
@@ -695,10 +645,10 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
         urgency: "medium",
       });
     } catch (err) {
-      setError(
+      setFormError(
         err?.response?.data?.message ||
           err?.message ||
-          "Failed to create child request"
+          "Failed to create child request",
       );
     } finally {
       setSubmitting(false);
@@ -713,34 +663,32 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
       fullWidth
       PaperProps={{ sx: { borderRadius: 3 } }}
     >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: "1.05rem", pb: 1 }}>
+      <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
           <Box
             sx={{
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               borderRadius: 2,
-              bgcolor: "#eff6ff",
+              bgcolor: T.blueBg,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <AccountTree sx={{ color: "#14636a", fontSize: 20 }} />
+            <AccountTree sx={{ color: T.blue, fontSize: 18 }} />
           </Box>
           Add Child Request
         </Stack>
       </DialogTitle>
       <Divider />
       <DialogContent sx={{ pt: 2 }}>
-        {error && (
+        {formError && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
-            {error}
+            {formError}
           </Alert>
         )}
-
         <Stack spacing={2.5}>
-          {/* Parent Request Selector */}
           <Box>
             <Stack
               direction="row"
@@ -748,30 +696,24 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
               alignItems="center"
               mb={0.75}
             >
-              <Typography
-                variant="caption"
-                fontWeight={700}
-                color={T.textSub}
-              >
+              <Typography variant="caption" fontWeight={700} color={T.textSub}>
                 Select Parent Request *
               </Typography>
-              <Tooltip title="Refresh parent list">
+              <Tooltip title="Refresh">
                 <IconButton
                   size="small"
-                  onClick={loadParentRequests}
+                  onClick={loadParents}
                   disabled={parentLoading}
-                  sx={{ color: T.textMuted, p: 0.25 }}
+                  sx={{ color: T.textMuted, p: 0.3 }}
                 >
-                  <Refresh sx={{ fontSize: 14 }} />
+                  <Refresh sx={{ fontSize: 13 }} />
                 </IconButton>
               </Tooltip>
             </Stack>
-
-            {/* Search */}
             <TextField
               size="small"
               fullWidth
-              placeholder="Search by ID, description, type..."
+              placeholder="Search by ID, description, type…"
               value={parentSearch}
               onChange={(e) => setParentSearch(e.target.value)}
               sx={{
@@ -781,101 +723,98 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Search sx={{ fontSize: 17, color: T.textMuted }} />
+                    <Search sx={{ fontSize: 16, color: T.textMuted }} />
                   </InputAdornment>
                 ),
               }}
             />
-
-            {/* Parent list */}
             <Box
               sx={{
                 border: `1px solid ${T.border}`,
                 borderRadius: 2,
-                maxHeight: 220,
+                maxHeight: 190,
                 overflowY: "auto",
-                bgcolor: T.surface,
               }}
             >
               {parentLoading ? (
                 <Stack spacing={1} p={1.5}>
                   {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} height={52} sx={{ borderRadius: 1.5 }} />
+                    <Skeleton key={i} height={46} sx={{ borderRadius: 1.5 }} />
                   ))}
                 </Stack>
-              ) : filteredParents.length === 0 ? (
+              ) : filtered.length === 0 ? (
                 <Box sx={{ p: 3, textAlign: "center" }}>
-                  <AccountTree sx={{ fontSize: 32, color: T.textMuted, mb: 0.5 }} />
+                  <AccountTree
+                    sx={{ fontSize: 28, color: T.textMuted, mb: 0.5 }}
+                  />
                   <Typography variant="body2" color="textSecondary">
-                    {parentSearch
-                      ? "No parent requests match your search"
-                      : "No parent requests found"}
+                    {parentSearch ? "No matches" : "No parent requests found"}
                   </Typography>
-                  {!parentSearch && (
-                    <Typography variant="caption" color="textSecondary">
-                      Create a parent request first
-                    </Typography>
-                  )}
                 </Box>
               ) : (
-                filteredParents.map((r) => {
+                filtered.map((r) => {
                   const isSelected = selectedParentId === r._id;
-                  const statusConf =
+                  const sc =
                     STATUS_CONFIG[r.status?.toLowerCase()] ||
                     STATUS_CONFIG.pending;
-
                   return (
                     <Box
                       key={r._id}
-                      onClick={() => setSelectedParentId(r._id)}
+                      onClick={() => {
+                        setSelectedParentId(r._id);
+                        setFormError("");
+                      }}
                       sx={{
                         px: 1.5,
-                        py: 1,
+                        py: 0.875,
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "flex-start",
                         gap: 1.5,
                         borderBottom: `1px solid ${T.border}`,
+                        "&:last-child": { borderBottom: "none" },
                         bgcolor: isSelected ? "#eff6ff" : "transparent",
                         borderLeft: isSelected
-                          ? `3px solid #1e6774`
+                          ? `3px solid ${T.blue}`
                           : "3px solid transparent",
-                        transition: "all 0.15s",
+                        transition: "all 0.13s",
                         "&:hover": {
                           bgcolor: isSelected ? "#eff6ff" : "#f8fafc",
                         },
-                        "&:last-child": { borderBottom: "none" },
                       }}
                     >
                       <Box
                         sx={{
-                          width: 34,
-                          height: 34,
+                          width: 30,
+                          height: 30,
                           borderRadius: 1.5,
                           bgcolor: isSelected ? "#dbeafe" : T.bg,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           flexShrink: 0,
-                          mt: 0.25,
+                          mt: 0.2,
                         }}
                       >
                         <AccountTree
                           sx={{
-                            fontSize: 16,
-                            color: isSelected ? "#1e6774" : T.textMuted,
+                            fontSize: 14,
+                            color: isSelected ? T.blue : T.textMuted,
                           }}
                         />
                       </Box>
                       <Box flex={1} minWidth={0}>
-                        {/* ID + type row */}
-                        <Stack direction="row" spacing={1} alignItems="center">
+                        <Stack
+                          direction="row"
+                          spacing={0.75}
+                          alignItems="center"
+                          flexWrap="wrap"
+                        >
                           <Typography
                             sx={{
                               fontFamily: "monospace",
-                              fontSize: 11,
-                              color: isSelected ? "#1e6774" : T.textMuted,
-                              fontWeight: isSelected ? 700 : 400,
+                              fontSize: 10,
+                              color: T.textMuted,
                             }}
                           >
                             #{r._id?.slice(-10)}
@@ -883,14 +822,12 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
                           <RequestTypeChip type={r.requestType} />
                           <UrgencyChip urgency={r.urgency} />
                         </Stack>
-                        {/* Description */}
                         {r.description && (
                           <Typography
                             sx={{
                               fontSize: 11,
                               color: T.textSub,
-                              mt: 0.25,
-                              lineHeight: 1.4,
+                              mt: 0.2,
                               overflow: "hidden",
                               display: "-webkit-box",
                               WebkitLineClamp: 1,
@@ -900,27 +837,17 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
                             {r.description}
                           </Typography>
                         )}
-                        {/* Requester */}
-                        {r.requestedBy?.email && (
-                          <Typography
-                            sx={{ fontSize: 10, color: T.textMuted, mt: 0.25 }}
-                          >
-                            by {r.requestedBy.email}
-                          </Typography>
-                        )}
                       </Box>
-                      {/* Status */}
                       <Chip
-                        label={statusConf.label}
+                        label={sc.label}
                         size="small"
                         sx={{
-                          height: 20,
-                          fontSize: 10,
+                          height: 18,
+                          fontSize: 9,
                           fontWeight: 700,
-                          color: statusConf.color,
-                          bgcolor: statusConf.bg,
+                          color: sc.color,
+                          bgcolor: sc.bg,
                           flexShrink: 0,
-                          mt: 0.25,
                         }}
                       />
                     </Box>
@@ -928,8 +855,6 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
                 })
               )}
             </Box>
-
-            {/* Selected parent summary */}
             {selectedParent && (
               <Box
                 sx={{
@@ -944,31 +869,31 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
                   gap: 1,
                 }}
               >
-                <CheckCircle sx={{ fontSize: 15, color: "#1e6774" }} />
+                <CheckCircle sx={{ fontSize: 14, color: T.blue }} />
                 <Typography
                   variant="caption"
                   fontWeight={600}
-                  color="#1e6774"
+                  color={T.blue}
                   sx={{ fontFamily: "monospace" }}
                 >
                   Parent: #{selectedParent._id?.slice(-10)} —{" "}
-                  {selectedParent.description?.slice(0, 50) ||
+                  {selectedParent.description?.slice(0, 45) ||
                     selectedParent.requestType}
                 </Typography>
               </Box>
             )}
           </Box>
 
-          <Stack direction="row" spacing={2}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <FormControl fullWidth size="small">
               <InputLabel>Request Type</InputLabel>
               <Select
                 value={form.requestType}
+                label="Request Type"
+                sx={{ borderRadius: 2 }}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, requestType: e.target.value }))
                 }
-                label="Request Type"
-                sx={{ borderRadius: 2 }}
               >
                 {["transfer", "maintenance", "repair", "checkout", "other"].map(
                   (t) => (
@@ -979,7 +904,7 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
                     >
                       {t}
                     </MenuItem>
-                  )
+                  ),
                 )}
               </Select>
             </FormControl>
@@ -987,11 +912,11 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
               <InputLabel>Urgency</InputLabel>
               <Select
                 value={form.urgency}
+                label="Urgency"
+                sx={{ borderRadius: 2 }}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, urgency: e.target.value }))
                 }
-                label="Urgency"
-                sx={{ borderRadius: 2 }}
               >
                 {["low", "medium", "high", "critical"].map((u) => (
                   <MenuItem
@@ -1016,7 +941,7 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
             onChange={(e) =>
               setForm((p) => ({ ...p, description: e.target.value }))
             }
-            placeholder="Describe this child task..."
+            placeholder="Describe this child task…"
             sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
           />
         </Stack>
@@ -1037,12 +962,12 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
             borderRadius: 2,
             textTransform: "none",
             fontWeight: 600,
-            bgcolor: "#1e6774",
-            "&:hover": { bgcolor: "#1e6774" },
+            bgcolor: T.blue,
+            "&:hover": { bgcolor: "#1d4ed8" },
           }}
         >
           {submitting ? (
-            <CircularProgress size={18} sx={{ color: "#fff" }} />
+            <CircularProgress size={17} sx={{ color: "#fff" }} />
           ) : (
             "Create Child"
           )}
@@ -1052,29 +977,38 @@ function CreateChildDialog({ open, onClose, onSuccess, parentId: defaultParentId
   );
 }
 
-// ─── Link Asset Dialog ────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
+// MODAL 3: LINK ASSET DIALOG (ADMIN ONLY)
+// ──────────────────────────────────────────────────────────────────────────────
 function LinkAssetDialog({ open, onClose, onSuccess, requestId }) {
   const { linkAsset } = useAssetRequest();
   const [childAssetId, setChildAssetId] = useState("");
   const [relationshipType, setRelationshipType] = useState("accessory");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setChildAssetId("");
+      setFormError("");
+    }
+  }, [open]);
 
   const handleSubmit = async () => {
     if (!childAssetId.trim()) {
-      setError("Child Asset ID is required");
+      setFormError("Child Asset ID is required");
       return;
     }
     setSubmitting(true);
-    setError("");
+    setFormError("");
     try {
       await linkAsset(requestId, childAssetId.trim(), relationshipType);
       onSuccess("Asset linked successfully");
       onClose();
-      setChildAssetId("");
-      setRelationshipType("accessory");
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to link asset");
+      setFormError(
+        err?.response?.data?.message || err?.message || "Failed to link asset",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -1084,33 +1018,33 @@ function LinkAssetDialog({ open, onClose, onSuccess, requestId }) {
     <Dialog
       open={open}
       onClose={() => !submitting && onClose()}
-      maxWidth="sm"
+      maxWidth="xs"
       fullWidth
       PaperProps={{ sx: { borderRadius: 3 } }}
     >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: "1.05rem", pb: 1 }}>
+      <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
           <Box
             sx={{
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               borderRadius: 2,
-              bgcolor: "#f0fdf4",
+              bgcolor: T.greenBg,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <LinkIcon sx={{ color: T.green, fontSize: 20 }} />
+            <LinkIcon sx={{ color: T.green, fontSize: 18 }} />
           </Box>
-          Link Asset
+          Link Asset to Request
         </Stack>
       </DialogTitle>
       <Divider />
       <DialogContent sx={{ pt: 2 }}>
-        {error && (
+        {formError && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
-            {error}
+            {formError}
           </Alert>
         )}
         <Stack spacing={2.5}>
@@ -1119,9 +1053,12 @@ function LinkAssetDialog({ open, onClose, onSuccess, requestId }) {
             size="small"
             label="Child Asset ID *"
             value={childAssetId}
-            onChange={(e) => setChildAssetId(e.target.value)}
-            placeholder="Enter the MongoDB asset ID"
-            helperText="The full _id of the asset to link"
+            onChange={(e) => {
+              setChildAssetId(e.target.value);
+              setFormError("");
+            }}
+            placeholder="Enter the MongoDB asset _id"
+            helperText="Find the asset ID on the Assets page"
             sx={{
               "& .MuiOutlinedInput-root": {
                 borderRadius: 2,
@@ -1133,12 +1070,16 @@ function LinkAssetDialog({ open, onClose, onSuccess, requestId }) {
             <InputLabel>Relationship Type</InputLabel>
             <Select
               value={relationshipType}
-              onChange={(e) => setRelationshipType(e.target.value)}
               label="Relationship Type"
               sx={{ borderRadius: 2 }}
+              onChange={(e) => setRelationshipType(e.target.value)}
             >
               {["accessory", "component", "spare", "dependency"].map((r) => (
-                <MenuItem key={r} value={r} sx={{ textTransform: "capitalize" }}>
+                <MenuItem
+                  key={r}
+                  value={r}
+                  sx={{ textTransform: "capitalize" }}
+                >
                   {r}
                 </MenuItem>
               ))}
@@ -1167,7 +1108,7 @@ function LinkAssetDialog({ open, onClose, onSuccess, requestId }) {
           }}
         >
           {submitting ? (
-            <CircularProgress size={18} sx={{ color: "#fff" }} />
+            <CircularProgress size={17} sx={{ color: "#fff" }} />
           ) : (
             "Link Asset"
           )}
@@ -1177,11 +1118,14 @@ function LinkAssetDialog({ open, onClose, onSuccess, requestId }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ──────────────────────────────────────────────────────────────────────────────
 export default function AssetRequests() {
   const navigate = useNavigate();
-  const { user, isAdmin } = useAuth();
-  const { fetchRequests, loading } = useAssetRequest();
+  const { user } = useAuth();
+  const { fetchRequests, loading, isAdmin, canCreateChild, canLinkAsset } =
+    useAssetRequest();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -1212,17 +1156,15 @@ export default function AssetRequests() {
     severity: "success",
   });
 
-  // Dialogs
   const [createParentOpen, setCreateParentOpen] = useState(false);
   const [createChildOpen, setCreateChildOpen] = useState(false);
   const [linkAssetOpen, setLinkAssetOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
 
   const searchTimer = useRef(null);
-  const userIsAdmin = isAdmin?.() || user?.role === "admin";
 
-  const showSnack = (message, severity = "success") =>
-    setSnack({ open: true, message, severity });
+  const showSnack = (msg, sev = "success") =>
+    setSnack({ open: true, message: msg, severity: sev });
 
   const loadRequests = useCallback(async () => {
     try {
@@ -1242,12 +1184,15 @@ export default function AssetRequests() {
             approved: 0,
             rejected: 0,
             completed: 0,
-          }
+          },
         );
-        setPagination((prev) => ({ ...prev, ...data.pagination }));
+        setPagination((p) => ({ ...p, ...data.pagination }));
       }
     } catch (err) {
-      console.error("Error loading requests:", err);
+      showSnack(
+        err?.response?.data?.message || "Failed to load requests",
+        "error",
+      );
     }
   }, [fetchRequests, pagination.page, pagination.limit, filters]);
 
@@ -1260,7 +1205,7 @@ export default function AssetRequests() {
     searchTimer.current = setTimeout(() => {
       setFilters((p) => ({ ...p, search: val }));
       setPagination((p) => ({ ...p, page: 1 }));
-    }, 400);
+    }, 380);
   };
 
   const handleFilterChange = (key, value) => {
@@ -1277,9 +1222,9 @@ export default function AssetRequests() {
     }
   };
 
-  const sortedRequests = [...requests].sort((a, b) => {
-    let av = sortField === "createdAt" ? new Date(a.createdAt) : a[sortField];
-    let bv = sortField === "createdAt" ? new Date(b.createdAt) : b[sortField];
+  const sorted = [...requests].sort((a, b) => {
+    const av = sortField === "createdAt" ? new Date(a.createdAt) : a[sortField];
+    const bv = sortField === "createdAt" ? new Date(b.createdAt) : b[sortField];
     return sortOrder === "asc" ? (av > bv ? 1 : -1) : av < bv ? 1 : -1;
   });
 
@@ -1291,322 +1236,29 @@ export default function AssetRequests() {
           year: "numeric",
         })
       : "—";
-  const initials = (email) => email?.charAt(0).toUpperCase() || "?";
+  const initial = (email) => email?.charAt(0).toUpperCase() || "?";
 
   const SortIcon = ({ field }) =>
     sortField === field ? (
       sortOrder === "asc" ? (
-        <ArrowUpward sx={{ fontSize: 14, ml: 0.5 }} />
+        <ArrowUpward sx={{ fontSize: 13, ml: 0.4 }} />
       ) : (
-        <ArrowDownward sx={{ fontSize: 14, ml: 0.5 }} />
+        <ArrowDownward sx={{ fontSize: 13, ml: 0.4 }} />
       )
     ) : null;
 
-  // ── Stat cards ──────────────────────────────────────────────────────────────
-  const StatCards = () => (
-    <Box
-      sx={{
-        display: "grid",
-        gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)",
-        gap: 2,
-        mb: 3,
-      }}
-    >
-      {[
-        {
-          key: "total",
-          label: "Total",
-          accent: T.teal,
-          icon: <TrendingUp sx={{ fontSize: 18, color: T.teal }} />,
-        },
-        {
-          key: "pending",
-          label: "Pending",
-          accent: T.amber,
-          icon: <HourglassEmpty sx={{ fontSize: 18, color: T.amber }} />,
-        },
-        {
-          key: "approved",
-          label: "Approved",
-          accent: T.green,
-          icon: <CheckCircle sx={{ fontSize: 18, color: T.green }} />,
-        },
-        {
-          key: "rejected",
-          label: "Rejected",
-          accent: T.red,
-          icon: <Cancel sx={{ fontSize: 18, color: T.red }} />,
-        },
-        {
-          key: "completed",
-          label: "Completed",
-          accent: T.blue,
-          icon: <DoneAll sx={{ fontSize: 18, color: T.blue }} />,
-        },
-      ].map(({ key, label, accent, icon }) => (
-        <StatCard key={key} accent={accent}>
-          <CardContent sx={{ py: 2, "&:last-child": { pb: 2 } }}>
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="flex-start"
-            >
-              <Box>
-                <Typography
-                  sx={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    color: T.textMuted,
-                    letterSpacing: "0.06em",
-                  }}
-                >
-                  {label}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: 28,
-                    fontWeight: 800,
-                    color: key === "total" ? T.teal : accent,
-                    lineHeight: 1.1,
-                    mt: 0.5,
-                  }}
-                >
-                  {loading && requests.length === 0 ? (
-                    <Skeleton width={40} />
-                  ) : (
-                    stats[key]
-                  )}
-                </Typography>
-              </Box>
-              <Box sx={{ opacity: 0.7, mt: 0.5 }}>{icon}</Box>
-            </Stack>
-          </CardContent>
-        </StatCard>
-      ))}
-    </Box>
-  );
-
-  // ── Filters bar ─────────────────────────────────────────────────────────────
-  const FiltersBar = () => (
-    <FilterPaper>
-      <Stack
-        direction={isMobile ? "column" : "row"}
-        spacing={2}
-        alignItems={isMobile ? "stretch" : "center"}
-      >
-        <TextField
-          size="small"
-          placeholder="Search requests, assets, or requesters..."
-          defaultValue={filters.search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          sx={{
-            flex: 2,
-            "& .MuiOutlinedInput-root": { borderRadius: 2.5, background: T.bg },
-          }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search sx={{ fontSize: 19, color: T.textMuted }} />
-              </InputAdornment>
-            ),
-          }}
-        />
-
-        <FormControl size="small" sx={{ flex: 1 }}>
-          <InputLabel>Type</InputLabel>
-          <Select
-            value={filters.type}
-            onChange={(e) => handleFilterChange("type", e.target.value)}
-            label="Type"
-            sx={{ borderRadius: 2.5 }}
-          >
-            <MenuItem value="all">All Types</MenuItem>
-            <MenuItem value="parent">Parent Requests</MenuItem>
-            <MenuItem value="child">Child Requests</MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControl size="small" sx={{ flex: 1 }}>
-          <InputLabel>Status</InputLabel>
-          <Select
-            value={filters.status}
-            onChange={(e) => handleFilterChange("status", e.target.value)}
-            label="Status"
-            sx={{ borderRadius: 2.5 }}
-          >
-            <MenuItem value="all">All Status</MenuItem>
-            <MenuItem value="pending">Pending</MenuItem>
-            <MenuItem value="approved">Approved</MenuItem>
-            <MenuItem value="rejected">Rejected</MenuItem>
-            <MenuItem value="completed">Completed</MenuItem>
-          </Select>
-        </FormControl>
-
-        <Tooltip title="Refresh data">
-          <IconButton
-            onClick={loadRequests}
-            sx={{
-              bgcolor: T.tealLight,
-              color: T.teal,
-              borderRadius: 2,
-              "&:hover": { bgcolor: T.tealMid },
-            }}
-          >
-            <Refresh sx={{ fontSize: 19 }} />
-          </IconButton>
-        </Tooltip>
-      </Stack>
-    </FilterPaper>
-  );
-
-  // ── Mobile card ─────────────────────────────────────────────────────────────
-  const MobileCard = ({ request }) => (
-    <Card
-      sx={{
-        mb: 2,
-        borderRadius: 3,
-        border: `1px solid ${T.border}`,
-        boxShadow: "none",
-        cursor: "pointer",
-        "&:hover": { borderColor: T.teal },
-      }}
-      onClick={() => navigate(`/admin/asset-requests/${request._id}`)}
-    >
-      <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="flex-start"
-          mb={1.5}
-        >
-          <Box>
-            <Typography
-              sx={{ fontFamily: "monospace", fontSize: 11, color: T.textMuted }}
-            >
-              #{request._id?.slice(-10)}
-            </Typography>
-            <Typography
-              variant="body2"
-              fontWeight={700}
-              color={T.text}
-              mt={0.5}
-            >
-              {request.assetId?.name ||
-                request.assetId?.assetName ||
-                `Asset ${request.assetId?._id?.slice(-6) || "N/A"}`}
-            </Typography>
-          </Box>
-          <StatusChip status={request.status} />
-        </Stack>
-        <Stack direction="row" spacing={1} mb={1.5}>
-          <RequestTypeChip type={request.requestType} />
-          <UrgencyChip urgency={request.urgency} />
-          {request.isChildRequest && (
-            <Chip
-              label="Child"
-              size="small"
-              sx={{
-                height: 24,
-                fontSize: 10,
-                bgcolor: T.blueBg,
-                color: T.blue,
-              }}
-            />
-          )}
-        </Stack>
-        {request.description && (
-          <Typography
-            sx={{ fontSize: 12, color: T.textSub, mb: 1.5, lineHeight: 1.5 }}
-          >
-            {request.description.length > 90
-              ? `${request.description.slice(0, 90)}…`
-              : request.description}
-          </Typography>
-        )}
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Avatar
-              sx={{ width: 26, height: 26, bgcolor: T.teal, fontSize: 11 }}
-            >
-              {initials(request.requestedBy?.email)}
-            </Avatar>
-            <Typography sx={{ fontSize: 12, color: T.textMuted }}>
-              {request.requestedBy?.email?.split("@")[0] || "Unknown"}
-            </Typography>
-          </Stack>
-          <Typography sx={{ fontSize: 11, color: T.textMuted }}>
-            {fmt(request.createdAt)}
-          </Typography>
-        </Stack>
-        {userIsAdmin && (
-          <Stack
-            direction="row"
-            spacing={1}
-            mt={1.5}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Button
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedRequestId(request._id);
-                setCreateChildOpen(true);
-              }}
-              startIcon={<AccountTree sx={{ fontSize: 13 }} />}
-              sx={{
-                borderRadius: 1.5,
-                textTransform: "none",
-                fontSize: 11,
-                py: 0.5,
-                color: "#3b82f6",
-                borderColor: "#3b82f6",
-                border: "1px solid",
-              }}
-            >
-              Child
-            </Button>
-            <Button
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedRequestId(request._id);
-                setLinkAssetOpen(true);
-              }}
-              startIcon={<LinkIcon sx={{ fontSize: 13 }} />}
-              sx={{
-                borderRadius: 1.5,
-                textTransform: "none",
-                fontSize: 11,
-                py: 0.5,
-                color: T.green,
-                borderColor: T.green,
-                border: "1px solid",
-              }}
-            >
-              Link
-            </Button>
-          </Stack>
-        )}
-      </CardContent>
-    </Card>
-  );
-
-  const TH = ({ children, sortKey, width }) => (
+  const TH = ({ children, sortKey, width, align }) => (
     <TableCell
       sx={{
         fontWeight: 700,
-        fontSize: "0.78rem",
+        fontSize: "0.72rem",
         textTransform: "uppercase",
         letterSpacing: "0.05em",
         color: T.textMuted,
         bgcolor: "#f8fafc",
-        py: 1.5,
+        py: 1.25,
         width,
+        textAlign: align,
       }}
     >
       {sortKey ? (
@@ -1629,6 +1281,184 @@ export default function AssetRequests() {
     </TableCell>
   );
 
+  const statDefs = [
+    {
+      key: "total",
+      label: "Total",
+      accent: T.teal,
+      icon: <TrendingUp sx={{ fontSize: 17, color: T.teal }} />,
+    },
+    {
+      key: "pending",
+      label: "Pending",
+      accent: T.amber,
+      icon: <HourglassEmpty sx={{ fontSize: 17, color: T.amber }} />,
+    },
+    {
+      key: "approved",
+      label: "Approved",
+      accent: T.green,
+      icon: <CheckCircle sx={{ fontSize: 17, color: T.green }} />,
+    },
+    {
+      key: "rejected",
+      label: "Rejected",
+      accent: T.red,
+      icon: <Cancel sx={{ fontSize: 17, color: T.red }} />,
+    },
+    {
+      key: "completed",
+      label: "Completed",
+      accent: T.blue,
+      icon: <DoneAll sx={{ fontSize: 17, color: T.blue }} />,
+    },
+  ];
+
+  const MobileCard = ({ r }) => (
+    <Card
+      sx={{
+        mb: 1.5,
+        borderRadius: 3,
+        border: `1px solid ${T.border}`,
+        boxShadow: "none",
+        cursor: "pointer",
+        "&:hover": {
+          borderColor: T.teal,
+          boxShadow: "0 2px 12px rgba(12,71,64,0.08)",
+        },
+      }}
+      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
+    >
+      <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="flex-start"
+          mb={1}
+        >
+          <Box>
+            <Typography
+              sx={{ fontFamily: "monospace", fontSize: 10, color: T.textMuted }}
+            >
+              #{r._id?.slice(-10)}
+            </Typography>
+            <Typography
+              variant="body2"
+              fontWeight={700}
+              color={T.text}
+              mt={0.25}
+              noWrap
+              sx={{ maxWidth: 180 }}
+            >
+              {r.assetId?.name ||
+                r.assetId?.assetName ||
+                `Asset …${r.assetId?._id?.slice(-6) || "N/A"}`}
+            </Typography>
+          </Box>
+          <StatusChip status={r.status} />
+        </Stack>
+        <Stack direction="row" spacing={0.75} mb={1} flexWrap="wrap" gap={0.5}>
+          <RequestTypeChip type={r.requestType} />
+          <UrgencyChip urgency={r.urgency} />
+          {r.isChildRequest && (
+            <Chip
+              label="Child"
+              size="small"
+              sx={{
+                height: 22,
+                fontSize: 10,
+                bgcolor: T.blueBg,
+                color: T.blue,
+              }}
+            />
+          )}
+        </Stack>
+        {r.description && (
+          <Typography
+            sx={{
+              fontSize: 12,
+              color: T.textSub,
+              mb: 1,
+              lineHeight: 1.5,
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+            }}
+          >
+            {r.description}
+          </Typography>
+        )}
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+        >
+          <Stack direction="row" spacing={0.75} alignItems="center">
+            <Avatar
+              sx={{ width: 24, height: 24, bgcolor: T.teal, fontSize: 10 }}
+            >
+              {initial(r.requestedBy?.email)}
+            </Avatar>
+            <Typography sx={{ fontSize: 11, color: T.textMuted }}>
+              {r.requestedBy?.email?.split("@")[0] || "Unknown"}
+            </Typography>
+          </Stack>
+          <Typography sx={{ fontSize: 10, color: T.textMuted }}>
+            {fmt(r.createdAt)}
+          </Typography>
+        </Stack>
+        {isAdmin && (
+          <Stack
+            direction="row"
+            spacing={0.75}
+            mt={1.25}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button
+              size="small"
+              startIcon={<AccountTree sx={{ fontSize: 12 }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedRequestId(r._id);
+                setCreateChildOpen(true);
+              }}
+              sx={{
+                borderRadius: 1.5,
+                textTransform: "none",
+                fontSize: 10,
+                py: 0.4,
+                color: T.blue,
+                border: `1px solid ${T.blue}`,
+              }}
+            >
+              Child
+            </Button>
+            <Button
+              size="small"
+              startIcon={<LinkIcon sx={{ fontSize: 12 }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedRequestId(r._id);
+                setLinkAssetOpen(true);
+              }}
+              sx={{
+                borderRadius: 1.5,
+                textTransform: "none",
+                fontSize: 10,
+                py: 0.4,
+                color: T.green,
+                border: `1px solid ${T.green}`,
+              }}
+            >
+              Link
+            </Button>
+          </Stack>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   if (loading && requests.length === 0) {
     return (
       <PageWrap>
@@ -1638,12 +1468,23 @@ export default function AssetRequests() {
           alignItems="center"
           mb={3}
         >
-          <PageTitle variant="h5">Asset Requests</PageTitle>
+          <Box>
+            <Skeleton width={180} height={32} />
+            <Skeleton width={280} height={18} sx={{ mt: 0.5 }} />
+          </Box>
+          <Stack direction="row" spacing={1}>
+            <Skeleton width={130} height={38} sx={{ borderRadius: 2 }} />
+            <Skeleton width={130} height={38} sx={{ borderRadius: 2 }} />
+          </Stack>
         </Stack>
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: "repeat(5, 1fr)",
+            gridTemplateColumns: {
+              xs: "1fr 1fr",
+              sm: "repeat(3,1fr)",
+              md: "repeat(5,1fr)",
+            },
             gap: 2,
             mb: 3,
           }}
@@ -1652,7 +1493,7 @@ export default function AssetRequests() {
             <Skeleton
               key={i}
               variant="rounded"
-              height={90}
+              height={88}
               sx={{ borderRadius: 2 }}
             />
           ))}
@@ -1661,7 +1502,7 @@ export default function AssetRequests() {
           <Skeleton
             key={i}
             variant="rounded"
-            height={56}
+            height={52}
             sx={{ mb: 1, borderRadius: 2 }}
           />
         ))}
@@ -1671,59 +1512,196 @@ export default function AssetRequests() {
 
   return (
     <PageWrap>
-      {/* ── Header ── */}
       <Stack
-        direction={isMobile ? "column" : "row"}
+        direction={{ xs: "column", sm: "row" }}
         justifyContent="space-between"
-        alignItems={isMobile ? "flex-start" : "center"}
+        alignItems={{ xs: "flex-start", sm: "center" }}
         mb={3}
         gap={2}
       >
         <Box>
-          <PageTitle variant="h5">Asset Requests</PageTitle>
           <Typography
-            sx={{ fontSize: "0.875rem", color: T.textMuted, mt: 0.5 }}
+            variant="h5"
+            fontWeight={800}
+            color={T.text}
+            letterSpacing="-0.3px"
           >
-            Manage all asset-related requests — transfers, maintenance, repairs
-            &amp; more
+            Asset Requests
+          </Typography>
+          <Typography sx={{ fontSize: "0.85rem", color: T.textMuted, mt: 0.4 }}>
+            Manage transfers, maintenance, repairs &amp; more
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1.5}>
-          <ActionBtn
-            variant="outlined"
-            startIcon={<AccountTree sx={{ fontSize: 17 }} />}
-            onClick={() => {
-              setSelectedRequestId(null);
-              setCreateChildOpen(true);
-            }}
+        <Stack direction="row" spacing={1.5} flexWrap="wrap">
+          {canCreateChild && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AccountTree sx={{ fontSize: 16 }} />}
+              onClick={() => {
+                setSelectedRequestId(null);
+                setCreateChildOpen(true);
+              }}
+              sx={{
+                borderRadius: 2.5,
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: "0.82rem",
+                borderColor: T.teal,
+                color: T.teal,
+                "&:hover": { borderColor: T.tealDark, bgcolor: T.tealLight },
+              }}
+            >
+              Child Request
+            </Button>
+          )}
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<Add sx={{ fontSize: 17 }} />}
+            onClick={() => setCreateParentOpen(true)}
             sx={{
               borderRadius: 2.5,
               textTransform: "none",
               fontWeight: 600,
-              borderColor: T.teal,
-              color: T.teal,
-              "&:hover": { borderColor: T.tealDark, bgcolor: T.tealLight },
+              fontSize: "0.82rem",
+              background: `linear-gradient(135deg, ${T.teal} 0%, ${T.tealDark} 100%)`,
+              boxShadow: "0 2px 8px rgba(10,97,87,0.25)",
             }}
           >
-            Child Request
-          </ActionBtn>
-          <ActionBtn
-            variant="contained"
-            startIcon={<Add sx={{ fontSize: 18 }} />}
-            onClick={() => setCreateParentOpen(true)}
-          >
             New Request
-          </ActionBtn>
+          </Button>
         </Stack>
       </Stack>
 
-      <StatCards />
-      <FiltersBar />
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr 1fr",
+            sm: "repeat(3,1fr)",
+            md: "repeat(5,1fr)",
+          },
+          gap: 2,
+          mb: 3,
+        }}
+      >
+        {statDefs.map(({ key, label, accent, icon }) => (
+          <StatCard key={key} accent={accent}>
+            <CardContent sx={{ py: 1.75, "&:last-child": { pb: 1.75 } }}>
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="flex-start"
+              >
+                <Box>
+                  <Typography
+                    sx={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      color: T.textMuted,
+                      letterSpacing: "0.07em",
+                    }}
+                  >
+                    {label}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: 26,
+                      fontWeight: 800,
+                      color: key === "total" ? T.teal : accent,
+                      lineHeight: 1.15,
+                      mt: 0.4,
+                    }}
+                  >
+                    {stats[key] ?? 0}
+                  </Typography>
+                </Box>
+                <Box sx={{ opacity: 0.7, mt: 0.5 }}>{icon}</Box>
+              </Stack>
+            </CardContent>
+          </StatCard>
+        ))}
+      </Box>
 
-      {/* ── Content ── */}
+      <FilterPaper>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1.5}
+          alignItems={{ xs: "stretch", sm: "center" }}
+        >
+          <TextField
+            size="small"
+            placeholder="Search requests, assets, requesters…"
+            defaultValue={filters.search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            sx={{
+              flex: 2,
+              "& .MuiOutlinedInput-root": { borderRadius: 2.5, bgcolor: T.bg },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search sx={{ fontSize: 18, color: T.textMuted }} />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <FormControl size="small" sx={{ flex: 1, minWidth: 130 }}>
+            <InputLabel>Type</InputLabel>
+            <Select
+              value={filters.type}
+              label="Type"
+              sx={{ borderRadius: 2.5 }}
+              onChange={(e) => handleFilterChange("type", e.target.value)}
+            >
+              <MenuItem value="all">All Types</MenuItem>
+              <MenuItem value="parent">Parent Only</MenuItem>
+              <MenuItem value="child">Child Only</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ flex: 1, minWidth: 130 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={filters.status}
+              label="Status"
+              sx={{ borderRadius: 2.5 }}
+              onChange={(e) => handleFilterChange("status", e.target.value)}
+            >
+              <MenuItem value="all">All Status</MenuItem>
+              {["pending", "approved", "rejected", "completed"].map((s) => (
+                <MenuItem
+                  key={s}
+                  value={s}
+                  sx={{ textTransform: "capitalize" }}
+                >
+                  {s}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Tooltip title="Refresh">
+            <IconButton
+              onClick={loadRequests}
+              disabled={loading}
+              sx={{
+                bgcolor: T.tealLight,
+                color: T.teal,
+                borderRadius: 2,
+                flexShrink: 0,
+                "&:hover": { bgcolor: T.tealMid },
+              }}
+            >
+              <Refresh sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </FilterPaper>
+
       {isMobile ? (
         <Box>
-          {sortedRequests.length === 0 && !loading ? (
+          {sorted.length === 0 && !loading ? (
             <Paper
               sx={{
                 p: 5,
@@ -1733,8 +1711,8 @@ export default function AssetRequests() {
                 boxShadow: "none",
               }}
             >
-              <FiberNew sx={{ fontSize: 40, color: T.textMuted, mb: 1 }} />
-              <Typography color="textSecondary" fontWeight={600}>
+              <FiberNew sx={{ fontSize: 38, color: T.textMuted, mb: 1 }} />
+              <Typography fontWeight={600} color="textSecondary">
                 No requests found
               </Typography>
               <Typography variant="caption" color="textSecondary">
@@ -1742,34 +1720,39 @@ export default function AssetRequests() {
               </Typography>
             </Paper>
           ) : (
-            sortedRequests.map((r) => <MobileCard key={r._id} request={r} />)
+            sorted.map((r) => <MobileCard key={r._id} r={r} />)
           )}
         </Box>
       ) : (
-        <StyledTable component={Paper}>
-          <Table>
+        <StyledTableContainer component={Paper}>
+          <Table size="small">
             <TableHead>
               <TableRow>
                 <TH width={150}>Request ID</TH>
-                <TH width={200}>Asset</TH>
+                <TH width={190}>Asset</TH>
                 <TH width={190}>Requester</TH>
-                <TH width={120}>Type</TH>
-                <TH width={100}>Urgency</TH>
-                <TH width={110}>Status</TH>
-                <TH sortKey="createdAt" width={120}>
+                <TH width={110}>Type</TH>
+                <TH width={95}>Urgency</TH>
+                <TH width={100}>Status</TH>
+                <TH sortKey="createdAt" width={110}>
                   Created
                 </TH>
-                <TH width={120}>Actions</TH>
+                <TH width={isAdmin ? 120 : 60} align="center">
+                  Actions
+                </TH>
               </TableRow>
             </TableHead>
             <TableBody>
-              {sortedRequests.length === 0 ? (
+              {sorted.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} sx={{ textAlign: "center", py: 6 }}>
+                    <FiberNew
+                      sx={{ fontSize: 36, color: T.textMuted, mb: 1 }}
+                    />
                     <Typography
-                      color="textSecondary"
                       fontWeight={600}
-                      gutterBottom
+                      color="textSecondary"
+                      display="block"
                     >
                       No requests found
                     </Typography>
@@ -1779,9 +1762,9 @@ export default function AssetRequests() {
                   </TableCell>
                 </TableRow>
               ) : (
-                sortedRequests.map((request) => (
+                sorted.map((r) => (
                   <TableRow
-                    key={request._id}
+                    key={r._id}
                     hover
                     sx={{
                       cursor: "pointer",
@@ -1789,176 +1772,179 @@ export default function AssetRequests() {
                     }}
                   >
                     <TableCell
-                      onClick={() =>
-                        navigate(`/admin/asset-requests/${request._id}`)
-                      }
+                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
                     >
                       <Typography
                         sx={{
                           fontFamily: "monospace",
-                          fontSize: 12,
+                          fontSize: 11,
                           color: T.textSub,
                         }}
                       >
-                        #{request._id?.slice(-10)}
+                        #{r._id?.slice(-10)}
                       </Typography>
-                      {request.isChildRequest && (
+                      {r.isChildRequest && (
                         <Chip
                           label="Child"
                           size="small"
                           sx={{
-                            mt: 0.5,
-                            height: 18,
-                            fontSize: 10,
+                            mt: 0.4,
+                            height: 17,
+                            fontSize: 9,
                             bgcolor: T.blueBg,
                             color: T.blue,
                           }}
                         />
                       )}
                     </TableCell>
-
                     <TableCell
-                      onClick={() =>
-                        navigate(`/admin/asset-requests/${request._id}`)
-                      }
+                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
                     >
                       <Typography
                         variant="body2"
                         fontWeight={600}
                         color={T.text}
                         noWrap
+                        sx={{ maxWidth: 170 }}
                       >
-                        {request.assetId?.name ||
-                          request.assetId?.assetName ||
-                          "—"}
+                        {r.assetId?.name || r.assetId?.assetName || "—"}
                       </Typography>
                       <Typography
                         sx={{
                           fontFamily: "monospace",
-                          fontSize: 11,
+                          fontSize: 10,
                           color: T.textMuted,
                         }}
                       >
-                        {request.assetId?._id?.slice(-10) ||
-                          request.assetId?.slice?.(-10) ||
-                          "N/A"}
+                        {r.assetId?._id?.slice(-10) ||
+                          r.assetId?.slice?.(-10) ||
+                          "—"}
                       </Typography>
                     </TableCell>
-
                     <TableCell
-                      onClick={() =>
-                        navigate(`/admin/asset-requests/${request._id}`)
-                      }
+                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
                     >
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Avatar
                           sx={{
-                            width: 30,
-                            height: 30,
+                            width: 28,
+                            height: 28,
                             bgcolor: T.teal,
-                            fontSize: 12,
+                            fontSize: 11,
                           }}
                         >
-                          {initials(request.requestedBy?.email)}
+                          {initial(r.requestedBy?.email)}
                         </Avatar>
-                        <Box>
-                          <Typography variant="body2" fontWeight={600}>
-                            {request.requestedBy?.email?.split("@")[0] ||
-                              "Unknown"}
+                        <Box minWidth={0}>
+                          <Typography
+                            variant="body2"
+                            fontWeight={600}
+                            noWrap
+                            sx={{ maxWidth: 130 }}
+                          >
+                            {r.requestedBy?.email?.split("@")[0] || "Unknown"}
                           </Typography>
-                          <Typography sx={{ fontSize: 11, color: T.textMuted }}>
-                            {request.requestedBy?.email || "—"}
+                          <Typography
+                            sx={{
+                              fontSize: 10,
+                              color: T.textMuted,
+                              maxWidth: 130,
+                            }}
+                            noWrap
+                          >
+                            {r.requestedBy?.email || "—"}
                           </Typography>
                         </Box>
                       </Stack>
                     </TableCell>
-
                     <TableCell
-                      onClick={() =>
-                        navigate(`/admin/asset-requests/${request._id}`)
-                      }
+                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
                     >
-                      <RequestTypeChip type={request.requestType} />
+                      <RequestTypeChip type={r.requestType} />
                     </TableCell>
                     <TableCell
-                      onClick={() =>
-                        navigate(`/admin/asset-requests/${request._id}`)
-                      }
+                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
                     >
-                      <UrgencyChip urgency={request.urgency} />
+                      <UrgencyChip urgency={r.urgency} />
                     </TableCell>
                     <TableCell
-                      onClick={() =>
-                        navigate(`/admin/asset-requests/${request._id}`)
-                      }
+                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
                     >
-                      <StatusChip status={request.status} />
+                      <StatusChip status={r.status} />
                     </TableCell>
                     <TableCell
-                      onClick={() =>
-                        navigate(`/admin/asset-requests/${request._id}`)
-                      }
+                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
                     >
-                      <Typography variant="body2" color={T.textSub}>
-                        {fmt(request.createdAt)}
+                      <Typography
+                        variant="body2"
+                        color={T.textSub}
+                        sx={{ fontSize: 12 }}
+                      >
+                        {fmt(r.createdAt)}
                       </Typography>
                     </TableCell>
-
                     <TableCell>
-                      <Stack direction="row" spacing={0.5}>
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        justifyContent="center"
+                      >
                         <Tooltip title="View Details">
                           <IconButton
                             size="small"
                             onClick={() =>
-                              navigate(`/admin/asset-requests/${request._id}`)
+                              navigate(`/admin/asset-requests/${r._id}`)
                             }
                             sx={{
                               color: T.teal,
                               bgcolor: T.tealLight,
                               borderRadius: 1.5,
+                              p: 0.6,
                               "&:hover": { bgcolor: T.tealMid },
                             }}
                           >
-                            <Visibility sx={{ fontSize: 16 }} />
+                            <Visibility sx={{ fontSize: 15 }} />
                           </IconButton>
                         </Tooltip>
-                        {userIsAdmin && (
-                          <>
-                            <Tooltip title="Add Child Request">
-                              <IconButton
-                                size="small"
-                                onClick={() => {
-                                  setSelectedRequestId(request._id);
-                                  setCreateChildOpen(true);
-                                }}
-                                sx={{
-                                  color: "#3b82f6",
-                                  bgcolor: "#eff6ff",
-                                  borderRadius: 1.5,
-                                  "&:hover": { bgcolor: "#dbeafe" },
-                                }}
-                              >
-                                <AccountTree sx={{ fontSize: 16 }} />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Link Asset">
-                              <IconButton
-                                size="small"
-                                onClick={() => {
-                                  setSelectedRequestId(request._id);
-                                  setLinkAssetOpen(true);
-                                }}
-                                sx={{
-                                  color: T.green,
-                                  bgcolor: T.greenBg,
-                                  borderRadius: 1.5,
-                                  "&:hover": { bgcolor: "#d1fae5" },
-                                }}
-                              >
-                                <LinkIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                            </Tooltip>
-                          </>
+                        {canCreateChild && (
+                          <Tooltip title="Add Child Request">
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                setSelectedRequestId(r._id);
+                                setCreateChildOpen(true);
+                              }}
+                              sx={{
+                                color: T.blue,
+                                bgcolor: T.blueBg,
+                                borderRadius: 1.5,
+                                p: 0.6,
+                                "&:hover": { bgcolor: "#dbeafe" },
+                              }}
+                            >
+                              <AccountTree sx={{ fontSize: 15 }} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {canLinkAsset && (
+                          <Tooltip title="Link Asset">
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                setSelectedRequestId(r._id);
+                                setLinkAssetOpen(true);
+                              }}
+                              sx={{
+                                color: T.green,
+                                bgcolor: T.greenBg,
+                                borderRadius: 1.5,
+                                p: 0.6,
+                                "&:hover": { bgcolor: "#d1fae5" },
+                              }}
+                            >
+                              <LinkIcon sx={{ fontSize: 15 }} />
+                            </IconButton>
+                          </Tooltip>
                         )}
                       </Stack>
                     </TableCell>
@@ -1967,23 +1953,21 @@ export default function AssetRequests() {
               )}
             </TableBody>
           </Table>
-        </StyledTable>
+        </StyledTableContainer>
       )}
 
-      {/* ── Pagination ── */}
       {pagination.pages > 1 && (
         <Stack direction="row" justifyContent="center" mt={3}>
           <Pagination
             count={pagination.pages}
             page={pagination.page}
-            onChange={(_, p) => setPagination((prev) => ({ ...prev, page: p }))}
             color="primary"
             shape="rounded"
+            onChange={(_, p) => setPagination((prev) => ({ ...prev, page: p }))}
           />
         </Stack>
       )}
 
-      {/* ── Dialogs ── */}
       <CreateParentDialog
         open={createParentOpen}
         onClose={() => setCreateParentOpen(false)}
@@ -1992,7 +1976,6 @@ export default function AssetRequests() {
           loadRequests();
         }}
       />
-
       <CreateChildDialog
         open={createChildOpen}
         onClose={() => {
@@ -2003,9 +1986,8 @@ export default function AssetRequests() {
           showSnack(msg);
           loadRequests();
         }}
-        parentId={selectedRequestId}
+        defaultParentId={selectedRequestId}
       />
-
       <LinkAssetDialog
         open={linkAssetOpen}
         onClose={() => {
@@ -2019,12 +2001,11 @@ export default function AssetRequests() {
         requestId={selectedRequestId}
       />
 
-      {/* ── Snackbar ── */}
       <Snackbar
         open={snack.open}
         autoHideDuration={4000}
-        onClose={() => setSnack((p) => ({ ...p, open: false }))}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        onClose={() => setSnack((p) => ({ ...p, open: false }))}
       >
         <Alert
           severity={snack.severity}

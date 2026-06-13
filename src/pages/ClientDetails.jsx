@@ -1,4 +1,4 @@
-// pages/ClientDetails.jsx - Complete with Role-Based Access Control
+// ClientDetails.jsx - Fully Fixed with Real Data, No Dummy Data
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -15,7 +15,6 @@ import {
   Divider,
   Stack,
   useMediaQuery,
-  Paper,
   CircularProgress,
   Snackbar,
   Alert,
@@ -52,13 +51,15 @@ import {
   ErrorOutline as ErrorOutlineIcon,
   CalendarToday as CalendarIcon,
   Lock as LockIcon,
+  CheckCircle as CheckCircleIcon,
+  Download as DownloadIcon,
+  OpenInNew as OpenInNewIcon,
 } from "@mui/icons-material";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useClient } from "../context/ClientContext";
 import { useAuth } from "../context/AuthContexts";
 
-// Color palette
-const colors = {
+const C = {
   primary: "#0d4a5c",
   primaryDark: "#0a3a49",
   primaryLight: "#e6f0f3",
@@ -68,140 +69,179 @@ const colors = {
   surface: "#f8fafc",
   card: "#ffffff",
   border: "#e2e8f0",
-  text: {
-    primary: "#0f172a",
-    secondary: "#475569",
-    muted: "#94a3b8",
-  },
+  text: { primary: "#0f172a", secondary: "#475569", muted: "#94a3b8" },
 };
 
-// Plan configurations
-const plans = {
-  free: { label: "Free", color: "#94a3b8", bg: "#f1f5f9", price: "$0/mo" },
+const PLANS = {
+  free: {
+    label: "Free",
+    color: "#64748b",
+    bg: "#f1f5f9",
+    price: "0/mo",
+    features: [],
+  },
   standard: {
     label: "Standard",
-    color: "#0d4a5c",
-    bg: "#e6f0f3",
-    price: "$49/mo",
+    color: C.primary,
+    bg: C.primaryLight,
+    price: "49/mo",
+    features: [
+      "Up to 10 user licenses",
+      "2 GB storage",
+      "Standard support",
+      "Basic analytics",
+    ],
   },
   premium: {
     label: "Premium",
-    color: "#f59e0b",
+    color: "#d97706",
     bg: "#fffbeb",
-    price: "$99/mo",
+    price: "99/mo",
+    features: [
+      "Up to 25 user licenses",
+      "5 GB storage",
+      "Priority support",
+      "Advanced analytics",
+    ],
   },
   enterprise: {
     label: "Enterprise",
-    color: "#8b5cf6",
+    color: "#7c3aed",
     bg: "#f5f3ff",
     price: "$299/mo",
+    features: [
+      "Up to 50 user licenses",
+      "10 GB storage",
+      "Priority support",
+      "Advanced analytics",
+    ],
   },
 };
 
-const formatDate = (date) => {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-};
+const fmtDate = (d) =>
+  !d
+    ? "—"
+    : new Date(d).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
 
-const getInitials = (name) => {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .substring(0, 2)
-    .toUpperCase();
-};
+const fmtErr = (e) =>
+  typeof e === "string"
+    ? e
+    : e?.response?.data?.message || e?.message || "Something went wrong";
 
-const formatError = (err) => {
-  if (typeof err === "string") return err;
-  return err.response?.data?.message || err.message || "Something went wrong";
-};
+const initials = (name) =>
+  !name
+    ? "?"
+    : name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
 
-// Stat Card Component
-const StatCard = ({ icon: Icon, label, value, sub, color, loading }) => {
+// Stat Tile Component
+const StatTile = ({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  color,
+  loading,
+  onClick,
+}) => {
   if (loading) {
     return (
-      <Card sx={{ borderRadius: 2, height: "100%" }}>
-        <CardContent sx={{ p: 2 }}>
-          <Skeleton variant="circular" width={32} height={32} sx={{ mb: 1 }} />
-          <Skeleton variant="text" width="60%" height={14} />
-          <Skeleton variant="text" width="40%" height={24} />
-        </CardContent>
-      </Card>
+      <Box
+        sx={{
+          bgcolor: "white",
+          border: `1px solid ${C.border}`,
+          borderRadius: 2,
+          p: 2,
+          height: "100%",
+        }}
+      >
+        <Skeleton variant="circular" width={28} height={28} sx={{ mb: 1 }} />
+        <Skeleton variant="text" width="50%" height={12} />
+        <Skeleton variant="text" width="60%" height={28} />
+        <Skeleton variant="text" width="70%" height={12} />
+      </Box>
     );
   }
-
   return (
-    <Card
+    <Box
+      onClick={onClick}
       sx={{
+        bgcolor: "white",
+        border: `1px solid ${C.border}`,
         borderRadius: 2,
+        p: { xs: 1.5, sm: 2 },
         height: "100%",
+        cursor: onClick ? "pointer" : "default",
         transition: "all 0.2s",
-        "&:hover": { transform: "translateY(-2px)", boxShadow: 2 },
+        "&:hover": onClick
+          ? {
+              borderColor: C.primary,
+              boxShadow: "0 2px 12px rgba(13,74,92,0.08)",
+            }
+          : {},
       }}
     >
-      <CardContent sx={{ p: 2 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
         <Box
           sx={{
-            width: 32,
-            height: 32,
-            borderRadius: 1.5,
+            width: 28,
+            height: 28,
+            borderRadius: "8px",
             bgcolor: `${color}15`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            mb: 1,
           }}
         >
-          <Icon sx={{ fontSize: 16, color }} />
+          <Icon sx={{ fontSize: 14, color }} />
         </Box>
         <Typography
           sx={{
             fontSize: "0.65rem",
             fontWeight: 500,
-            color: colors.text.muted,
+            color: C.text.muted,
             textTransform: "uppercase",
-            mb: 0.5,
+            letterSpacing: "0.06em",
           }}
         >
           {label}
         </Typography>
-        <Typography
-          sx={{
-            fontSize: "1.1rem",
-            fontWeight: 700,
-            color: colors.text.primary,
-          }}
-        >
-          {value ?? "—"}
+      </Box>
+      <Typography
+        sx={{
+          fontSize: { xs: "1.4rem", sm: "1.6rem" },
+          fontWeight: 700,
+          color: C.text.primary,
+          lineHeight: 1,
+        }}
+      >
+        {value ?? 0}
+      </Typography>
+      {sub && (
+        <Typography sx={{ fontSize: "0.6rem", color: C.text.muted, mt: 0.5 }}>
+          {sub}
         </Typography>
-        {sub && (
-          <Typography
-            sx={{ fontSize: "0.6rem", color: colors.text.muted, mt: 0.25 }}
-          >
-            {sub}
-          </Typography>
-        )}
-      </CardContent>
-    </Card>
+      )}
+      {onClick && (
+        <Typography sx={{ fontSize: "0.65rem", color: C.primary, mt: 0.75 }}>
+          View all forms →
+        </Typography>
+      )}
+    </Box>
   );
 };
 
-// Edit Client Modal
-const EditClientModal = ({ open, client, onClose, onSave, loading }) => {
-  const [form, setForm] = useState({
-    customerName: "",
-    phone: "",
-    website: "",
-    membershipPlan: "standard",
-    licenseLimit: 10,
-    notes: "",
-  });
+// Edit Modal
+const EditModal = ({ open, client, onClose, onSave, loading }) => {
+  const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
@@ -218,30 +258,27 @@ const EditClientModal = ({ open, client, onClose, onSave, loading }) => {
     }
   }, [client, open]);
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((p) => ({ ...p, [name]: value }));
+    if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
+  };
+
   const validate = () => {
-    const newErrors = {};
-    if (!form.customerName?.trim())
-      newErrors.customerName = "Customer name is required";
-    if (!form.phone?.trim()) newErrors.phone = "Phone number is required";
+    const e = {};
+    if (!form.customerName?.trim()) e.customerName = "Required";
+    if (!form.phone?.trim()) e.phone = "Required";
     if (
       form.website &&
       !/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i.test(
         form.website,
       )
-    ) {
-      newErrors.website = "Invalid URL format";
-    }
-    if (form.licenseLimit < 1) newErrors.licenseLimit = "Minimum 1 user";
-    if (form.licenseLimit > 10000)
-      newErrors.licenseLimit = "Maximum 10000 users";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+    )
+      e.website = "Invalid URL";
+    if (form.licenseLimit < 1) e.licenseLimit = "Min 1";
+    if (form.licenseLimit > 10000) e.licenseLimit = "Max 10000";
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSubmit = async () => {
@@ -250,16 +287,27 @@ const EditClientModal = ({ open, client, onClose, onSave, loading }) => {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ bgcolor: colors.primary, color: "white", p: 2 }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: "16px" } }}
+    >
+      <DialogTitle sx={{ p: 0 }}>
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            px: 2.5,
+            py: 1.75,
+            bgcolor: C.primary,
           }}
         >
-          <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
+          <Typography
+            sx={{ fontWeight: 700, fontSize: "0.9rem", color: "white" }}
+          >
             Edit Customer
           </Typography>
           <IconButton size="small" onClick={onClose} sx={{ color: "white" }}>
@@ -272,7 +320,7 @@ const EditClientModal = ({ open, client, onClose, onSave, loading }) => {
           <TextField
             name="customerName"
             label="Customer Name"
-            value={form.customerName}
+            value={form.customerName || ""}
             onChange={handleChange}
             fullWidth
             size="small"
@@ -283,7 +331,7 @@ const EditClientModal = ({ open, client, onClose, onSave, loading }) => {
           <TextField
             name="phone"
             label="Phone Number"
-            value={form.phone}
+            value={form.phone || ""}
             onChange={handleChange}
             fullWidth
             size="small"
@@ -294,7 +342,7 @@ const EditClientModal = ({ open, client, onClose, onSave, loading }) => {
           <TextField
             name="website"
             label="Website"
-            value={form.website}
+            value={form.website || ""}
             onChange={handleChange}
             fullWidth
             size="small"
@@ -303,28 +351,29 @@ const EditClientModal = ({ open, client, onClose, onSave, loading }) => {
             placeholder="https://example.com"
           />
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid item xs={12} sm={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Membership Plan</InputLabel>
                 <Select
                   name="membershipPlan"
-                  value={form.membershipPlan}
+                  value={form.membershipPlan || "standard"}
                   onChange={handleChange}
                   label="Membership Plan"
                 >
-                  <MenuItem value="free">Free</MenuItem>
-                  <MenuItem value="standard">Standard</MenuItem>
-                  <MenuItem value="premium">Premium</MenuItem>
-                  <MenuItem value="enterprise">Enterprise</MenuItem>
+                  {Object.entries(PLANS).map(([k, v]) => (
+                    <MenuItem key={k} value={k}>
+                      {v.label}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 name="licenseLimit"
                 label="License Limit"
                 type="number"
-                value={form.licenseLimit}
+                value={form.licenseLimit || 10}
                 onChange={handleChange}
                 fullWidth
                 size="small"
@@ -339,14 +388,14 @@ const EditClientModal = ({ open, client, onClose, onSave, loading }) => {
             label="Notes"
             multiline
             rows={3}
-            value={form.notes}
+            value={form.notes || ""}
             onChange={handleChange}
             fullWidth
             size="small"
           />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ p: 2, pt: 0, gap: 1 }}>
+      <DialogActions sx={{ p: 2, gap: 1 }}>
         <Button onClick={onClose} size="small" sx={{ textTransform: "none" }}>
           Cancel
         </Button>
@@ -355,9 +404,9 @@ const EditClientModal = ({ open, client, onClose, onSave, loading }) => {
           variant="contained"
           disabled={loading}
           sx={{
-            bgcolor: colors.primary,
+            bgcolor: C.primary,
             textTransform: "none",
-            "&:hover": { bgcolor: colors.primaryDark },
+            "&:hover": { bgcolor: C.primaryDark },
           }}
         >
           {loading ? <CircularProgress size={20} /> : "Save Changes"}
@@ -367,18 +416,24 @@ const EditClientModal = ({ open, client, onClose, onSave, loading }) => {
   );
 };
 
-// Renew Membership Modal
+// Renew Modal
 const RenewModal = ({ open, client, onClose, onRenew, loading }) => {
   const [days, setDays] = useState(30);
 
   const handleSubmit = () => {
-    if (days > 0 && days <= 365) {
+    if (days >= 1 && days <= 365) {
       onRenew(days);
     }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: "16px" } }}
+    >
       <DialogTitle sx={{ p: 2, pb: 0 }}>
         <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
           Renew Membership
@@ -386,7 +441,7 @@ const RenewModal = ({ open, client, onClose, onRenew, loading }) => {
       </DialogTitle>
       <DialogContent sx={{ p: 2 }}>
         <Typography
-          sx={{ fontSize: "0.75rem", color: colors.text.secondary, mb: 2 }}
+          sx={{ fontSize: "0.75rem", color: C.text.secondary, mb: 2 }}
         >
           Extend membership for <strong>{client?.customerName}</strong>
         </Typography>
@@ -400,7 +455,7 @@ const RenewModal = ({ open, client, onClose, onRenew, loading }) => {
           fullWidth
           size="small"
           InputProps={{ inputProps: { min: 1, max: 365 } }}
-          helperText="Enter days to extend (1-365)"
+          helperText="Enter days to extend (1–365)"
         />
       </DialogContent>
       <DialogActions sx={{ p: 2, pt: 0, gap: 1 }}>
@@ -412,7 +467,7 @@ const RenewModal = ({ open, client, onClose, onRenew, loading }) => {
           variant="contained"
           disabled={loading || days < 1 || days > 365}
           sx={{
-            bgcolor: colors.warning,
+            bgcolor: C.warning,
             textTransform: "none",
             "&:hover": { bgcolor: "#ea580c" },
           }}
@@ -424,7 +479,7 @@ const RenewModal = ({ open, client, onClose, onRenew, loading }) => {
   );
 };
 
-// Upgrade Plan Modal
+// Upgrade Modal
 const UpgradeModal = ({
   open,
   client,
@@ -437,34 +492,38 @@ const UpgradeModal = ({
   const [extendDays, setExtendDays] = useState(30);
 
   useEffect(() => {
-    if (open && client) {
+    if (open) {
       setSelectedPlan(currentPlan);
       setExtendDays(30);
     }
-  }, [open, client, currentPlan]);
-
-  const planOptions = [
-    { value: "free", label: "Free", price: "0/mo" },
-    { value: "standard", label: "Standard", price: "49/mo" },
-    { value: "premium", label: "Premium", price: "99/mo" },
-    { value: "enterprise", label: "Enterprise", price: "299/mo" },
-  ];
+  }, [open, currentPlan]);
 
   const handleSubmit = () => {
     onUpgrade(selectedPlan, extendDays);
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ bgcolor: colors.primary, color: "white", p: 2 }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: "16px" } }}
+    >
+      <DialogTitle sx={{ p: 0 }}>
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            px: 2.5,
+            py: 1.75,
+            bgcolor: C.primary,
           }}
         >
-          <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
+          <Typography
+            sx={{ fontWeight: 700, fontSize: "0.9rem", color: "white" }}
+          >
             Upgrade Plan
           </Typography>
           <IconButton size="small" onClick={onClose} sx={{ color: "white" }}>
@@ -474,10 +533,8 @@ const UpgradeModal = ({
       </DialogTitle>
       <DialogContent sx={{ p: 2.5 }}>
         <Stack spacing={2}>
-          <Box sx={{ p: 1.5, bgcolor: colors.primaryLight, borderRadius: 2 }}>
-            <Typography
-              sx={{ fontSize: "0.7rem", color: colors.text.secondary }}
-            >
+          <Box sx={{ p: 1.5, bgcolor: C.primaryLight, borderRadius: 2 }}>
+            <Typography sx={{ fontSize: "0.7rem", color: C.text.secondary }}>
               Current Plan:{" "}
               <strong>
                 {currentPlan?.charAt(0).toUpperCase() + currentPlan?.slice(1)}
@@ -491,8 +548,8 @@ const UpgradeModal = ({
               onChange={(e) => setSelectedPlan(e.target.value)}
               label="Select New Plan"
             >
-              {planOptions.map((plan) => (
-                <MenuItem key={plan.value} value={plan.value}>
+              {Object.entries(PLANS).map(([k, v]) => (
+                <MenuItem key={k} value={k}>
                   <Box
                     sx={{
                       display: "flex",
@@ -500,9 +557,9 @@ const UpgradeModal = ({
                       width: "100%",
                     }}
                   >
-                    <span>{plan.label}</span>
-                    <span style={{ color: colors.primary, fontWeight: 600 }}>
-                      {plan.price}
+                    <span>{v.label}</span>
+                    <span style={{ color: C.primary, fontWeight: 600 }}>
+                      {v.price}
                     </span>
                   </Box>
                 </MenuItem>
@@ -534,7 +591,7 @@ const UpgradeModal = ({
           variant="contained"
           disabled={loading}
           sx={{
-            bgcolor: colors.warning,
+            bgcolor: C.warning,
             textTransform: "none",
             "&:hover": { bgcolor: "#ea580c" },
           }}
@@ -546,19 +603,25 @@ const UpgradeModal = ({
   );
 };
 
-// Deactivate Confirm Dialog
+// Deactivate Dialog
 const DeactivateDialog = ({ open, client, onClose, onConfirm, loading }) => {
   const isActive = client?.status === "active";
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: "16px" } }}
+    >
       <DialogTitle sx={{ p: 2, pb: 0 }}>
         <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
-          {isActive ? "Deactivate Customer" : "Activate Customer"}
+          {isActive ? "Deactivate" : "Activate"} Customer
         </Typography>
       </DialogTitle>
       <DialogContent sx={{ p: 2 }}>
-        <Typography sx={{ fontSize: "0.75rem", color: colors.text.secondary }}>
+        <Typography sx={{ fontSize: "0.75rem", color: C.text.secondary }}>
           Are you sure you want to {isActive ? "deactivate" : "activate"}{" "}
           <strong>{client?.customerName}</strong>?
           {isActive && " They will lose access until reactivated."}
@@ -573,7 +636,7 @@ const DeactivateDialog = ({ open, client, onClose, onConfirm, loading }) => {
           variant="contained"
           disabled={loading}
           sx={{
-            bgcolor: isActive ? colors.error : colors.success,
+            bgcolor: isActive ? C.error : C.success,
             textTransform: "none",
           }}
         >
@@ -592,91 +655,91 @@ const DeactivateDialog = ({ open, client, onClose, onConfirm, loading }) => {
 
 // Loading Skeleton
 const DetailSkeleton = () => (
-  <Box
-    sx={{ p: { xs: 2, sm: 3 }, bgcolor: colors.surface, minHeight: "100vh" }}
-  >
-    <Skeleton variant="rounded" height={200} sx={{ mb: 2, borderRadius: 2 }} />
+  <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: C.surface, minHeight: "100vh" }}>
+    <Skeleton variant="rounded" height={80} sx={{ mb: 2, borderRadius: 2 }} />
     <Grid container spacing={2} sx={{ mb: 2 }}>
-      {[1, 2, 3, 4].map((i) => (
-        <Grid key={i} size={{ xs: 6, sm: 3 }}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Grid key={i} item xs={6} sm={2.4}>
           <Skeleton variant="rounded" height={100} sx={{ borderRadius: 2 }} />
         </Grid>
       ))}
     </Grid>
     <Skeleton variant="rounded" height={48} sx={{ mb: 2, borderRadius: 2 }} />
     <Grid container spacing={2}>
-      <Grid size={{ xs: 12, md: 6 }}>
-        <Skeleton variant="rounded" height={300} sx={{ borderRadius: 2 }} />
+      <Grid item xs={12} md={6}>
+        <Skeleton variant="rounded" height={320} sx={{ borderRadius: 2 }} />
       </Grid>
-      <Grid size={{ xs: 12, md: 6 }}>
-        <Skeleton variant="rounded" height={300} sx={{ borderRadius: 2 }} />
+      <Grid item xs={12} md={6}>
+        <Skeleton variant="rounded" height={320} sx={{ borderRadius: 2 }} />
       </Grid>
     </Grid>
   </Box>
 );
 
-// Access Denied Component
-const AccessDenied = () => (
-  <Box
-    sx={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      minHeight: "60vh",
-      textAlign: "center",
-      p: 3,
-    }}
-  >
+// Access Denied
+const AccessDenied = () => {
+  const nav = useNavigate();
+  return (
     <Box
       sx={{
-        width: 80,
-        height: 80,
-        borderRadius: "50%",
-        bgcolor: `${colors.error}15`,
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        mb: 2,
+        minHeight: "60vh",
+        textAlign: "center",
+        p: 3,
       }}
     >
-      <LockIcon sx={{ fontSize: 40, color: colors.error }} />
+      <Box
+        sx={{
+          width: 80,
+          height: 80,
+          borderRadius: "50%",
+          bgcolor: `${C.error}15`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          mb: 2,
+        }}
+      >
+        <LockIcon sx={{ fontSize: 40, color: C.error }} />
+      </Box>
+      <Typography
+        sx={{
+          fontWeight: 700,
+          fontSize: "1.25rem",
+          color: C.text.primary,
+          mb: 1,
+        }}
+      >
+        Access Denied
+      </Typography>
+      <Typography
+        sx={{
+          fontSize: "0.875rem",
+          color: C.text.secondary,
+          mb: 3,
+          maxWidth: 400,
+        }}
+      >
+        Super Administrators only.
+      </Typography>
+      <Button
+        variant="contained"
+        onClick={() => nav("/admin/clients")}
+        sx={{ bgcolor: C.primary, textTransform: "none" }}
+      >
+        Back to Customers
+      </Button>
     </Box>
-    <Typography
-      sx={{
-        fontWeight: 700,
-        fontSize: "1.25rem",
-        color: colors.text.primary,
-        mb: 1,
-      }}
-    >
-      Access Denied
-    </Typography>
-    <Typography
-      sx={{
-        fontSize: "0.875rem",
-        color: colors.text.secondary,
-        mb: 3,
-        maxWidth: 400,
-      }}
-    >
-      You don't have permission to access this page. This area is restricted to
-      Super Administrators only.
-    </Typography>
-    <Button
-      variant="contained"
-      onClick={() => (window.location.href = "/admin/clients")}
-      sx={{ bgcolor: colors.primary, textTransform: "none" }}
-    >
-      Back to Customers
-    </Button>
-  </Box>
-);
+  );
+};
 
-// Main Component
+// MAIN COMPONENT
 export default function ClientDetails() {
   const theme = useTheme();
-  const navigate = useNavigate();
+  const nav = useNavigate();
   const { id } = useParams();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -692,10 +755,11 @@ export default function ClientDetails() {
     changeClientStatus,
     renewClientMembership,
   } = useClient();
-
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const clientId = id || location.state?.clientId;
+  const isSuperAdmin = user?.role === "super_admin";
+
   const [tab, setTab] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const [renewOpen, setRenewOpen] = useState(false);
@@ -709,27 +773,15 @@ export default function ClientDetails() {
   const [fetchError, setFetchError] = useState(null);
   const [isFetching, setIsFetching] = useState(true);
 
-  // Role-based access control - Check if user is Super Admin
-  const [hasAccess, setHasAccess] = useState(true);
-
-  useEffect(() => {
-    // Check if user has super_admin role
-    if (user && !isSuperAdmin()) {
-      setHasAccess(false);
-    } else {
-      setHasAccess(true);
-    }
-  }, [user, isSuperAdmin]);
-
-  const showToast = useCallback((message, severity = "success") => {
-    setToast({ open: true, message, severity });
+  const showToast = useCallback((msg, sev = "success") => {
+    setToast({ open: true, message: msg, severity: sev });
   }, []);
 
   const closeToast = useCallback(() => {
-    setToast((prev) => ({ ...prev, open: false }));
+    setToast((p) => ({ ...p, open: false }));
   }, []);
 
-  const loadClientData = useCallback(async () => {
+  const loadData = useCallback(async () => {
     if (!clientId) {
       setFetchError("No client ID provided");
       setIsFetching(false);
@@ -739,8 +791,8 @@ export default function ClientDetails() {
     try {
       await getClientById(clientId);
       setFetchError(null);
-    } catch (err) {
-      const msg = formatError(err);
+    } catch (e) {
+      const msg = fmtErr(e);
       setFetchError(msg);
       showToast(msg, "error");
     } finally {
@@ -749,63 +801,43 @@ export default function ClientDetails() {
   }, [clientId, getClientById, showToast]);
 
   useEffect(() => {
-    if (clientId && hasAccess) {
-      loadClientData();
+    if (clientId && isAuthenticated && isSuperAdmin) {
+      loadData();
     } else if (!clientId) {
-      setFetchError("Client ID is missing");
+      setFetchError("Client ID missing");
+      setIsFetching(false);
+    } else if (!isSuperAdmin && isAuthenticated) {
+      setFetchError("Access denied.");
       setIsFetching(false);
     }
-  }, [clientId, loadClientData, hasAccess]);
+  }, [clientId, isAuthenticated, isSuperAdmin, loadData]);
 
-  // Show access denied if not super admin
-  if (!hasAccess) {
-    return <AccessDenied />;
+  if (!isAuthenticated) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <CircularProgress sx={{ color: C.primary }} />
+      </Box>
+    );
   }
 
+  if (!isSuperAdmin) return <AccessDenied />;
+
   const client = selectedClient;
-  const plan = plans[client?.membershipPlan] || plans.free;
+  const plan = PLANS[client?.membershipPlan] || PLANS.free;
   const isActive = client?.status === "active";
   const daysLeft = client?.daysRemaining || 0;
-  const usersUsed = client?.usersUsed || 0;
-  const licenseLimit = client?.licenseLimit || 0;
-  const usagePercentage =
-    licenseLimit > 0
-      ? Math.min(100, Math.round((usersUsed / licenseLimit) * 100))
-      : 0;
-  const isExpiringSoon = daysLeft > 0 && daysLeft <= 7;
-  const assetsCount = client?.stats?.assets || 0;
-  const teamCount = client?.stats?.team?.total || 0;
-
-  const statCards = [
-    {
-      icon: PeopleIcon,
-      label: "Team Members",
-      value: teamCount,
-      sub: `${usersUsed}/${licenseLimit} licenses`,
-      color: colors.primary,
-    },
-    {
-      icon: AssignmentIcon,
-      label: "Checklists",
-      value: client?.activeChecklistCount || 0,
-      sub: "active forms",
-      color: "#8b5cf6",
-    },
-    {
-      icon: InventoryIcon,
-      label: "Assets",
-      value: assetsCount,
-      sub: "total managed",
-      color: colors.warning,
-    },
-    {
-      icon: CalendarIcon,
-      label: "Days Left",
-      value: daysLeft,
-      sub: isExpiringSoon ? "Expiring soon" : "remaining",
-      color: isExpiringSoon ? colors.error : colors.success,
-    },
-  ];
+  const used = client?.usersUsed || 0;
+  const limit = client?.licenseLimit || 0;
+  const usagePct =
+    limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const expiring = daysLeft > 0 && daysLeft <= 7;
 
   const handleEdit = async (formData) => {
     try {
@@ -817,11 +849,11 @@ export default function ClientDetails() {
         website: formData.website,
         notes: formData.notes,
       });
-      showToast("Customer updated successfully");
+      showToast("Customer updated successfully!");
       setEditOpen(false);
-      await loadClientData();
-    } catch (err) {
-      showToast(formatError(err), "error");
+      await loadData();
+    } catch (e) {
+      showToast(fmtErr(e), "error");
     }
   };
 
@@ -830,42 +862,39 @@ export default function ClientDetails() {
       await editClient(clientId, {
         membershipPlan: newPlan,
         extendDays: extendDays,
-        notes: client?.notes
-          ? `${client.notes}\nUpgraded from ${client?.membershipPlan} to ${newPlan} on ${new Date().toLocaleDateString()}`
-          : `Upgraded from ${client?.membershipPlan} to ${newPlan} on ${new Date().toLocaleDateString()}`,
       });
       showToast(
-        `Successfully upgraded to ${newPlan.charAt(0).toUpperCase() + newPlan.slice(1)} plan`,
+        `Upgraded to ${newPlan.charAt(0).toUpperCase() + newPlan.slice(1)} plan!`,
       );
       setUpgradeOpen(false);
-      await loadClientData();
-    } catch (err) {
-      showToast(formatError(err), "error");
+      await loadData();
+    } catch (e) {
+      showToast(fmtErr(e), "error");
     }
   };
 
   const handleRenew = async (days) => {
     try {
       await renewClientMembership(clientId, days);
-      showToast(`Membership renewed for ${days} days`);
+      showToast(`Membership renewed for ${days} days!`);
       setRenewOpen(false);
-      await loadClientData();
-    } catch (err) {
-      showToast(formatError(err), "error");
+      await loadData();
+    } catch (e) {
+      showToast(fmtErr(e), "error");
     }
   };
 
-  const handleStatusToggle = async () => {
+  const handleDeactivate = async () => {
     const newStatus = isActive ? "inactive" : "active";
     try {
       await changeClientStatus(clientId, newStatus);
       showToast(
-        `Customer ${newStatus === "active" ? "activated" : "deactivated"} successfully`,
+        `Customer ${newStatus === "active" ? "activated" : "deactivated"} successfully!`,
       );
       setDeactivateOpen(false);
-      await loadClientData();
-    } catch (err) {
-      showToast(formatError(err), "error");
+      await loadData();
+    } catch (e) {
+      showToast(fmtErr(e), "error");
     }
   };
 
@@ -876,26 +905,26 @@ export default function ClientDetails() {
   if (fetchError || (error && !selectedClient)) {
     return (
       <Box sx={{ textAlign: "center", py: 8, px: 2 }}>
-        <ErrorOutlineIcon sx={{ fontSize: 64, color: colors.error, mb: 2 }} />
+        <ErrorOutlineIcon sx={{ fontSize: 64, color: C.error, mb: 2 }} />
         <Typography
           sx={{
             fontWeight: 700,
             fontSize: "1rem",
-            color: colors.text.primary,
+            color: C.text.primary,
             mb: 1,
           }}
         >
           Failed to Load Customer
         </Typography>
         <Typography
-          sx={{ fontSize: "0.75rem", color: colors.text.secondary, mb: 3 }}
+          sx={{ fontSize: "0.75rem", color: C.text.secondary, mb: 3 }}
         >
           {fetchError || error}
         </Typography>
         <Stack direction="row" spacing={2} justifyContent="center">
           <Button
             variant="outlined"
-            onClick={() => navigate("/admin/clients")}
+            onClick={() => nav("/admin/clients")}
             startIcon={<ArrowBackIcon />}
             sx={{ textTransform: "none" }}
           >
@@ -903,9 +932,9 @@ export default function ClientDetails() {
           </Button>
           <Button
             variant="contained"
-            onClick={loadClientData}
+            onClick={loadData}
             startIcon={<RefreshIcon />}
-            sx={{ bgcolor: colors.primary, textTransform: "none" }}
+            sx={{ bgcolor: C.primary, textTransform: "none" }}
           >
             Retry
           </Button>
@@ -914,124 +943,99 @@ export default function ClientDetails() {
     );
   }
 
-  if (!selectedClient && !loading && !initialLoading && !isFetching) {
+  if (!selectedClient && !loading && !isFetching) {
     return (
       <Box sx={{ textAlign: "center", py: 8, px: 2 }}>
         <Typography sx={{ fontWeight: 700, fontSize: "1rem", mb: 1 }}>
           Customer Not Found
         </Typography>
-        <Typography
-          sx={{ fontSize: "0.75rem", color: colors.text.secondary, mb: 3 }}
-        >
-          Client ID: {clientId || "Not provided"}
-        </Typography>
         <Button
           variant="outlined"
-          onClick={() => navigate("/admin/clients")}
+          onClick={() => nav("/admin/clients")}
           startIcon={<ArrowBackIcon />}
           sx={{ textTransform: "none" }}
         >
-          Back to Customers
+          Back
         </Button>
       </Box>
     );
   }
 
+  const TABS = [
+    { icon: DashboardIcon, label: "Overview" },
+    { icon: SubscriptionIcon, label: "Subscription" },
+    { icon: SettingsIcon, label: "Settings" },
+  ];
+
   return (
-    <Box
-      sx={{ bgcolor: colors.surface, minHeight: "100vh", p: { xs: 2, sm: 3 } }}
-    >
-      {/* Loading indicator */}
+    <Box sx={{ bgcolor: C.surface, minHeight: "100vh" }}>
       {(loading || actionLoading) && !initialLoading && !isFetching && (
-        <LinearProgress sx={{ mb: 2, borderRadius: 2, height: 3 }} />
+        <LinearProgress sx={{ height: 3 }} />
       )}
 
-      {/* Header Card */}
-      <Card sx={{ mb: 2, borderRadius: 2 }}>
-        <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+      {/* Top Header Bar */}
+      <Box
+        sx={{
+          bgcolor: "white",
+          borderBottom: `1px solid ${C.border}`,
+          px: { xs: 2, sm: 3 },
+          py: { xs: 1.5, sm: 2 },
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 2,
+          }}
+        >
+          {/* Left Section */}
           <Box
             sx={{
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
-              mb: 2,
+              gap: { xs: 1.5, sm: 2 },
             }}
           >
             <IconButton
-              onClick={() => navigate("/admin/clients")}
+              onClick={() => nav("/admin/clients")}
               size="small"
-              sx={{ bgcolor: colors.surface }}
+              sx={{
+                bgcolor: C.surface,
+                border: `1px solid ${C.border}`,
+                borderRadius: "8px",
+              }}
             >
               <ArrowBackIcon sx={{ fontSize: "1rem" }} />
             </IconButton>
-            <Box sx={{ display: "flex", gap: 1 }}>
-              <Tooltip title="Edit">
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<EditIcon sx={{ fontSize: "0.8rem" }} />}
-                  onClick={() => setEditOpen(true)}
-                  disabled={actionLoading}
-                  sx={{ textTransform: "none", fontSize: "0.7rem" }}
-                >
-                  Edit
-                </Button>
-              </Tooltip>
-              <Tooltip title={isActive ? "Deactivate" : "Activate"}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<PersonOffIcon sx={{ fontSize: "0.8rem" }} />}
-                  onClick={() => setDeactivateOpen(true)}
-                  disabled={actionLoading}
-                  sx={{
-                    textTransform: "none",
-                    fontSize: "0.7rem",
-                    borderColor: isActive ? colors.error : colors.success,
-                    color: isActive ? colors.error : colors.success,
-                  }}
-                >
-                  {isActive ? "Deactivate" : "Activate"}
-                </Button>
-              </Tooltip>
-            </Box>
-          </Box>
-
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              flexWrap: "wrap",
-            }}
-          >
             <Avatar
               sx={{
-                width: 56,
-                height: 56,
-                borderRadius: 2,
-                bgcolor: colors.primary,
-                fontSize: "1.1rem",
+                width: { xs: 40, sm: 48 },
+                height: { xs: 40, sm: 48 },
+                borderRadius: "10px",
+                bgcolor: C.primary,
+                fontSize: "0.95rem",
                 fontWeight: 700,
               }}
             >
-              {getInitials(client?.customerName)}
+              {initials(client?.customerName)}
             </Avatar>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box>
               <Box
                 sx={{
                   display: "flex",
                   alignItems: "center",
                   gap: 1,
                   flexWrap: "wrap",
-                  mb: 0.5,
                 }}
               >
                 <Typography
                   sx={{
                     fontWeight: 700,
-                    fontSize: { xs: "1rem", sm: "1.1rem" },
-                    color: colors.text.primary,
+                    fontSize: { xs: "0.95rem", sm: "1rem" },
+                    color: C.text.primary,
                   }}
                 >
                   {client?.customerName}
@@ -1040,43 +1044,48 @@ export default function ClientDetails() {
                   label={isActive ? "Active" : "Inactive"}
                   size="small"
                   sx={{
-                    height: 22,
+                    height: 20,
                     fontSize: "0.6rem",
-                    fontWeight: 600,
-                    bgcolor: isActive
-                      ? `${colors.success}15`
-                      : `${colors.error}15`,
-                    color: isActive ? colors.success : colors.error,
+                    fontWeight: 700,
+                    bgcolor: isActive ? `${C.success}15` : `${C.error}15`,
+                    color: isActive ? C.success : C.error,
                   }}
                 />
                 <Chip
                   label={plan.label}
                   size="small"
                   sx={{
-                    height: 22,
+                    height: 20,
                     fontSize: "0.6rem",
-                    fontWeight: 600,
+                    fontWeight: 700,
                     bgcolor: plan.bg,
                     color: plan.color,
                   }}
                 />
               </Box>
-              <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <EmailIcon sx={{ fontSize: 12, color: colors.text.muted }} />
-                  <Typography
-                    sx={{ fontSize: "0.7rem", color: colors.text.secondary }}
-                  >
-                    {client?.email}
-                  </Typography>
-                </Box>
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: { xs: 1, sm: 2 },
+                  mt: 0.5,
+                  flexWrap: "wrap",
+                }}
+              >
+                {client?.email && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <EmailIcon sx={{ fontSize: 11, color: C.text.muted }} />
+                    <Typography
+                      sx={{ fontSize: "0.65rem", color: C.text.secondary }}
+                    >
+                      {client.email}
+                    </Typography>
+                  </Box>
+                )}
                 {client?.phone && (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <PhoneIcon
-                      sx={{ fontSize: 12, color: colors.text.muted }}
-                    />
+                    <PhoneIcon sx={{ fontSize: 11, color: C.text.muted }} />
                     <Typography
-                      sx={{ fontSize: "0.7rem", color: colors.text.secondary }}
+                      sx={{ fontSize: "0.65rem", color: C.text.secondary }}
                     >
                       {client.phone}
                     </Typography>
@@ -1084,11 +1093,9 @@ export default function ClientDetails() {
                 )}
                 {client?.website && (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <LanguageIcon
-                      sx={{ fontSize: 12, color: colors.text.muted }}
-                    />
+                    <LanguageIcon sx={{ fontSize: 11, color: C.text.muted }} />
                     <Typography
-                      sx={{ fontSize: "0.7rem", color: colors.text.secondary }}
+                      sx={{ fontSize: "0.65rem", color: C.text.secondary }}
                     >
                       {client.website}
                     </Typography>
@@ -1097,464 +1104,589 @@ export default function ClientDetails() {
               </Box>
             </Box>
           </Box>
-        </CardContent>
-      </Card>
-
-      {/* Stats Grid */}
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        {statCards.map((stat, i) => (
-          <Grid key={i} size={{ xs: 6, sm: 3 }}>
-            <StatCard {...stat} loading={loading || isFetching} />
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Tabs */}
-      <Paper sx={{ borderRadius: 2, mb: 2, overflow: "hidden" }}>
-        <Box
-          sx={{
-            display: "flex",
-            borderBottom: `1px solid ${colors.border}`,
-            bgcolor: colors.card,
-          }}
-        >
-          {[
-            { icon: DashboardIcon, label: "Overview", value: 0 },
-            { icon: SubscriptionIcon, label: "Subscription", value: 1 },
-            { icon: SettingsIcon, label: "Settings", value: 2 },
-          ].map((item) => (
+          {/* Right Section */}
+          <Box sx={{ display: "flex", gap: 1 }}>
             <Button
-              key={item.value}
-              onClick={() => setTab(item.value)}
+              size="small"
+              variant="contained"
+              startIcon={<EditIcon sx={{ fontSize: "0.8rem" }} />}
+              onClick={() => setEditOpen(true)}
+              disabled={actionLoading}
               sx={{
-                flex: 1,
-                borderRadius: 0,
-                py: 1.5,
                 textTransform: "none",
-                fontWeight: tab === item.value ? 700 : 500,
-                color:
-                  tab === item.value ? colors.primary : colors.text.secondary,
-                borderBottom:
-                  tab === item.value ? `2px solid ${colors.primary}` : "none",
+                fontSize: "0.75rem",
+                bgcolor: C.primary,
+                borderRadius: "8px",
+                "&:hover": { bgcolor: C.primaryDark },
               }}
             >
-              <item.icon sx={{ fontSize: "0.9rem", mr: 0.5 }} />
-              <Typography
-                sx={{
-                  fontSize: "0.7rem",
-                  display: { xs: "none", sm: "block" },
-                }}
-              >
-                {item.label}
+              Edit Customer
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setDeactivateOpen(true)}
+              disabled={actionLoading}
+              sx={{
+                textTransform: "none",
+                fontSize: "0.75rem",
+                borderRadius: "8px",
+                borderColor: C.border,
+                color: C.text.secondary,
+              }}
+            >
+              {isActive ? "Disable" : "Enable"}
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Stat Tiles Row */}
+      <Box
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: { xs: 1.5, sm: 2 },
+          bgcolor: "white",
+          borderBottom: `1px solid ${C.border}`,
+        }}
+      >
+        <Grid container spacing={{ xs: 1, sm: 1.5 }}>
+          <Grid item xs={6} sm={4} md={2.4} sx={{width:"280px"}}>
+            <StatTile
+              icon={PeopleIcon}
+              label="Users"
+              value={used}
+              sub={`of ${limit} licenses`}
+              color={C.primary}
+              loading={isFetching}
+            />
+          </Grid>
+          <Grid item xs={6} sm={4} md={2.4} sx={{width:"280px"}}>
+            <StatTile
+              icon={AssignmentIcon}
+              label="Active Checklist"
+              value={client?.activeChecklistCount || 0}
+              sub="View all forms →"
+              color="#7c3aed"
+              loading={isFetching}
+            />
+          </Grid>
+          <Grid item xs={6} sm={4} md={2.4} sx={{width:"280px"}}>
+            <StatTile
+              icon={InventoryIcon}
+              label="Assets"
+              value={client?.stats?.assets || 0}
+              sub="total managed"
+              color={C.warning}
+              loading={isFetching}
+            />
+          </Grid>
+          <Grid item xs={6} sm={6} md={2.4} sx={{width:"280px"}}>
+            <StatTile
+              icon={TrendingUpIcon}
+              label="Submissions"
+              value={client?.stats?.submissions || 0}
+              sub="all time"
+              color={C.success}
+              loading={isFetching}
+            />
+          </Grid>
+        </Grid>
+      </Box>
+
+      {/* Tab Bar */}
+      <Box sx={{ bgcolor: "white", borderBottom: `1px solid ${C.border}` }}>
+        <Box sx={{ display: "flex", px: { xs: 2, sm: 3 } }}>
+          {TABS.map((t, i) => (
+            <Button
+              key={i}
+              onClick={() => setTab(i)}
+              sx={{
+                borderRadius: 0,
+                py: 1.5,
+                px: { xs: 1.5, sm: 2.5 },
+                textTransform: "none",
+                fontWeight: tab === i ? 700 : 500,
+                color: tab === i ? C.primary : C.text.secondary,
+                borderBottom: "2px solid",
+                borderColor: tab === i ? C.primary : "transparent",
+                minWidth: "auto",
+                gap: 0.75,
+                "&:hover": { bgcolor: "transparent", color: C.primary },
+              }}
+            >
+              <t.icon sx={{ fontSize: "0.9rem" }} />
+              <Typography sx={{ fontSize: { xs: "0.7rem", sm: "0.8rem" } }}>
+                {t.label}
               </Typography>
             </Button>
           ))}
         </Box>
-      </Paper>
+      </Box>
 
-      {/* Tab Content - Overview */}
-      {tab === 0 && (
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ borderRadius: 2, height: "100%" }}>
-              <CardContent sx={{ p: 2 }}>
-                <Typography
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: "0.75rem",
-                    color: colors.text.primary,
-                    mb: 1.5,
-                  }}
-                >
-                  Account Information
-                </Typography>
-                <Stack divider={<Divider sx={{ my: 0.75 }} />}>
-                  {[
-                    {
-                      label: "Customer ID",
-                      value: client?._id?.slice(-8) || "—",
-                    },
-                    { label: "Email", value: client?.email || "—" },
-                    { label: "Phone", value: client?.phone || "—" },
-                    { label: "Website", value: client?.website || "—" },
-                    { label: "Join Date", value: formatDate(client?.joinDate) },
-                    {
-                      label: "Last Active",
-                      value: formatDate(client?.lastActiveAt),
-                    },
-                  ].map((item) => (
+      {/* Tab Content */}
+      <Box sx={{ p: { xs: 2, sm: 3 } }}>
+        {/* Overview Tab */}
+        {tab === 0 && (
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6} sx={{ width:"650px"}}>
+              <Card
+                sx={{ borderRadius: 2, border: `1px solid ${C.border}` }}
+                elevation={0}
+              >
+                <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: "0.8rem",
+                      color: C.text.primary,
+                      mb: 2,
+                    }}
+                  >
+                    Account Information
+                  </Typography>
+                  <Stack divider={<Divider sx={{ my: 1 }} />}>
+                    {[
+                      {
+                        label: "Customer ID",
+                        value: client?._id?.slice(-8) || "—",
+                      },
+                      { label: "Email", value: client?.email || "—" },
+                      { label: "Phone", value: client?.phone || "—" },
+                      { label: "Website", value: client?.website || "—" },
+                      {
+                        label: "Start Date",
+                        value: fmtDate(client?.subscriptionStartDate),
+                      },
+                      {
+                        label: "End Date",
+                        value: fmtDate(client?.subscriptionEndDate),
+                      },
+                      { label: "Days Remaining", value: `${daysLeft} days` },
+                    ].map((row) => (
+                      <Box
+                        key={row.label}
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: 0.5,
+                        }}
+                      >
+                        <Typography
+                          sx={{ fontSize: "0.68rem", color: C.text.muted }}
+                        >
+                          {row.label}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontSize: "0.72rem",
+                            fontWeight: 500,
+                            color: C.text.secondary,
+                            textAlign: "right",
+                          }}
+                        >
+                          {row.value}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={6} sx={{width:"500px"}}>
+              <Card
+                sx={{ borderRadius: 2, border: `1px solid ${C.border}` }}
+                elevation={0}
+              >
+                <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: "0.8rem",
+                      color: C.text.primary,
+                      mb: 2,
+                    }}
+                  >
+                    Usage Overview
+                  </Typography>
+                  <Box sx={{ mb: 2 }}>
                     <Box
-                      key={item.label}
                       sx={{
                         display: "flex",
                         justifyContent: "space-between",
-                        alignItems: "center",
+                        mb: 0.5,
                       }}
                     >
                       <Typography
-                        sx={{ fontSize: "0.65rem", color: colors.text.muted }}
+                        sx={{ fontSize: "0.7rem", color: C.text.secondary }}
                       >
-                        {item.label}
+                        User Licenses
                       </Typography>
                       <Typography
                         sx={{
                           fontSize: "0.7rem",
-                          fontWeight: 500,
-                          color: colors.text.secondary,
+                          fontWeight: 600,
+                          color: usagePct > 85 ? C.error : C.text.primary,
                         }}
                       >
-                        {item.value}
+                        {used} / {limit} ({usagePct}%)
                       </Typography>
                     </Box>
-                  ))}
-                </Stack>
-              </CardContent>
-            </Card>
+                    <LinearProgress
+                      variant="determinate"
+                      value={usagePct}
+                      sx={{
+                        height: 6,
+                        borderRadius: 3,
+                        bgcolor: "#f1f5f9",
+                        "& .MuiLinearProgress-bar": {
+                          bgcolor: usagePct > 85 ? C.error : C.primary,
+                          borderRadius: 3,
+                        },
+                      }}
+                    />
+                  </Box>
+                  {client?.notes && (
+                    <Box sx={{ p: 1.5, bgcolor: C.surface, borderRadius: 2 }}>
+                      <Typography
+                        sx={{
+                          fontSize: "0.6rem",
+                          color: C.text.muted,
+                          mb: 0.5,
+                        }}
+                      >
+                        Notes
+                      </Typography>
+                      <Typography
+                        sx={{ fontSize: "0.7rem", color: C.text.secondary }}
+                      >
+                        {client.notes}
+                      </Typography>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
           </Grid>
+        )}
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ borderRadius: 2, height: "100%" }}>
-              <CardContent sx={{ p: 2 }}>
-                <Typography
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: "0.75rem",
-                    color: colors.text.primary,
-                    mb: 1.5,
-                  }}
-                >
-                  Usage Overview
-                </Typography>
-                <Box sx={{ mb: 2 }}>
+        {/* Subscription Tab */}
+        {tab === 1 && (
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={7} sx={{ width:"650px"}}>
+              <Card
+                sx={{ borderRadius: 2, border: `1px solid ${C.border}`, mb: 2 }}
+                elevation={0}
+              >
+                <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: "0.8rem",
+                      color: C.text.muted,
+                      mb: 1.5,
+                    }}
+                  >
+                    Current Plan
+                  </Typography>
+                  <Box
+                    sx={{
+                      bgcolor: plan.bg,
+                      borderRadius: 2,
+                      p: { xs: 2, sm: 2.5 },
+                      mb: 2,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        mb: 2,
+                        flexWrap: "wrap",
+                        gap: 1,
+                      }}
+                    >
+                      <Box>
+                        <Typography
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: "1.3rem",
+                            color: plan.color,
+                          }}
+                        >
+                          {plan.label}
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: "0.7rem", color: C.text.secondary }}
+                        >
+                          Premium business features
+                        </Typography>
+                      </Box>
+                      <Box sx={{ textAlign: "right" }}>
+                        <Typography
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: "1.4rem",
+                            color: plan.color,
+                          }}
+                        >
+                          {plan.price.split("/")[0]}
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: "0.65rem", color: C.text.secondary }}
+                        >
+                          per month
+                        </Typography>
+                      </Box>
+                    </Box>
+                    {plan.features.map((f) => (
+                      <Box
+                        key={f}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          mb: 0.75,
+                        }}
+                      >
+                        <CheckCircleIcon
+                          sx={{ fontSize: "0.85rem", color: plan.color }}
+                        />
+                        <Typography
+                          sx={{ fontSize: "0.72rem", color: C.text.secondary }}
+                        >
+                          {f}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
                   <Box
                     sx={{
                       display: "flex",
-                      justifyContent: "space-between",
-                      mb: 0.5,
+                      gap: 1.5,
+                      flexDirection: { xs: "column", sm: "row" },
                     }}
                   >
-                    <Typography
-                      sx={{ fontSize: "0.65rem", color: colors.text.muted }}
-                    >
-                      License Usage
-                    </Typography>
-                    <Typography
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      startIcon={
+                        <TrendingUpIcon sx={{ fontSize: "0.85rem" }} />
+                      }
+                      onClick={() => setUpgradeOpen(true)}
+                      disabled={actionLoading}
                       sx={{
-                        fontSize: "0.7rem",
-                        fontWeight: 600,
-                        color:
-                          usagePercentage > 85
-                            ? colors.error
-                            : colors.text.primary,
+                        bgcolor: C.warning,
+                        textTransform: "none",
+                        borderRadius: "8px",
+                        fontSize: "0.8rem",
+                        "&:hover": { bgcolor: "#ea580c" },
                       }}
                     >
-                      {usersUsed}/{licenseLimit} ({usagePercentage}%)
-                    </Typography>
+                      Upgrade Plan
+                    </Button>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      onClick={() => setRenewOpen(true)}
+                      disabled={actionLoading}
+                      sx={{
+                        textTransform: "none",
+                        borderRadius: "8px",
+                        fontSize: "0.8rem",
+                        borderColor: C.border,
+                        color: C.text.secondary,
+                      }}
+                    >
+                      Renew Membership
+                    </Button>
                   </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={usagePercentage}
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={5} sx={{ width:"500px"}}>
+              <Card
+                sx={{ borderRadius: 2, border: `1px solid ${C.border}` }}
+                elevation={0}
+              >
+                <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                  <Typography
                     sx={{
-                      height: 6,
-                      borderRadius: 3,
-                      bgcolor: colors.border,
-                      "& .MuiLinearProgress-bar": {
-                        bgcolor:
-                          usagePercentage > 85 ? colors.error : colors.primary,
-                        borderRadius: 3,
+                      fontWeight: 700,
+                      fontSize: "0.8rem",
+                      color: C.text.muted,
+                      mb: 2,
+                    }}
+                  >
+                    Billing Cycle
+                  </Typography>
+                  <Stack divider={<Divider sx={{ my: 1.25 }} />}>
+                    {[
+                      { label: "Billing Period", value: "Monthly" },
+                      {
+                        label: "Next Bill Date",
+                        value: fmtDate(client?.subscriptionEndDate) || "—",
                       },
+                      { label: "Amount", value: plan.price.split("/")[0] },
+                      {
+                        label: "Payment Method",
+                        value: client?.paymentMethod || "Not set",
+                      },
+                    ].map((row) => (
+                      <Box
+                        key={row.label}
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Typography
+                          sx={{ fontSize: "0.7rem", color: C.text.secondary }}
+                        >
+                          {row.label}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontSize: "0.72rem",
+                            fontWeight: 600,
+                            color: C.text.primary,
+                          }}
+                        >
+                          {row.value}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        )}
+
+        {/* Settings Tab */}
+        {tab === 2 && (
+          <Card
+            sx={{ borderRadius: 2, border: `1px solid ${C.border}` }}
+            elevation={0}
+          >
+            <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  fontSize: "0.8rem",
+                  color: C.text.primary,
+                  mb: 2,
+                }}
+              >
+                Account Settings
+              </Typography>
+
+              {expiring && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 1.25,
+                    bgcolor: `${C.warning}10`,
+                    border: `1px solid ${C.warning}30`,
+                    borderRadius: 2,
+                    p: 1.75,
+                    mb: 2.5,
+                  }}
+                >
+                  <WarningAmberIcon
+                    sx={{
+                      fontSize: "1rem",
+                      color: C.warning,
+                      flexShrink: 0,
+                      mt: 0.1,
                     }}
                   />
-                </Box>
-                {client?.notes && (
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      bgcolor: colors.surface,
-                      borderRadius: 2,
-                      mt: 2,
-                    }}
-                  >
+                  <Box>
                     <Typography
                       sx={{
-                        fontSize: "0.6rem",
-                        color: colors.text.muted,
-                        mb: 0.5,
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        color: C.warning,
                       }}
                     >
-                      Notes
+                      License expiring in {daysLeft} days
                     </Typography>
                     <Typography
-                      sx={{ fontSize: "0.7rem", color: colors.text.secondary }}
+                      sx={{
+                        fontSize: "0.65rem",
+                        color: C.text.secondary,
+                        mt: 0.25,
+                      }}
                     >
-                      {client.notes}
+                      Renew now to{" "}
+                      <span style={{ color: C.warning, fontWeight: 600 }}>
+                        avoid service interruption
+                      </span>
                     </Typography>
                   </Box>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
+                </Box>
+              )}
 
-      {/* Tab Content - Subscription */}
-      {tab === 1 && (
-        <Card sx={{ borderRadius: 2 }}>
-          <CardContent sx={{ p: 2.5 }}>
-            <Typography
-              sx={{
-                fontWeight: 700,
-                fontSize: "0.75rem",
-                color: colors.text.primary,
-                mb: 1.5,
-              }}
-            >
-              Current Plan
-            </Typography>
-            <Box sx={{ bgcolor: plan.bg, borderRadius: 2, p: 2, mb: 2 }}>
               <Box
                 sx={{
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  flexWrap: "wrap",
-                  gap: 1,
-                  mb: 1.5,
-                }}
-              >
-                <Box>
-                  <Typography
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: "1rem",
-                      color: plan.color,
-                    }}
-                  >
-                    {plan.label}
-                  </Typography>
-                  <Typography
-                    sx={{ fontSize: "0.7rem", color: colors.text.secondary }}
-                  >
-                    {plan.price}
-                  </Typography>
-                </Box>
-                <Box sx={{ textAlign: "right" }}>
-                  <Typography
-                    sx={{ fontSize: "0.7rem", color: colors.text.secondary }}
-                  >
-                    {formatDate(client?.subscriptionStartDate)} -{" "}
-                    {formatDate(client?.subscriptionEndDate)}
-                  </Typography>
-                  {isExpiringSoon && (
-                    <Chip
-                      label={`${daysLeft} days remaining`}
-                      size="small"
-                      sx={{
-                        mt: 0.5,
-                        height: 20,
-                        fontSize: "0.6rem",
-                        bgcolor: `${colors.warning}15`,
-                        color: colors.warning,
-                      }}
-                    />
-                  )}
-                </Box>
-              </Box>
-              <Box sx={{ bgcolor: colors.card, borderRadius: 1.5, p: 1.5 }}>
-                <Typography
-                  sx={{
-                    fontSize: "0.7rem",
-                    color: colors.text.secondary,
-                    mb: 0.5,
-                  }}
-                >
-                  <strong>License Limit:</strong> {licenseLimit} users
-                </Typography>
-                <Typography
-                  sx={{ fontSize: "0.7rem", color: colors.text.secondary }}
-                >
-                  <strong>Current Usage:</strong> {usersUsed} users (
-                  {usagePercentage}%)
-                </Typography>
-              </Box>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                gap: 1.5,
-                flexDirection: { xs: "column", sm: "row" },
-              }}
-            >
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<TrendingUpIcon />}
-                onClick={() => setUpgradeOpen(true)}
-                disabled={actionLoading}
-                sx={{
-                  bgcolor: colors.warning,
-                  textTransform: "none",
-                  "&:hover": { bgcolor: "#ea580c" },
-                }}
-              >
-                Upgrade Plan
-              </Button>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => setRenewOpen(true)}
-                disabled={actionLoading}
-                sx={{
-                  textTransform: "none",
-                  borderColor: colors.primary,
-                  color: colors.primary,
-                }}
-              >
-                Renew Membership
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Tab Content - Settings */}
-      {tab === 2 && (
-        <Card sx={{ borderRadius: 2 }}>
-          <CardContent sx={{ p: 2.5 }}>
-            <Typography
-              sx={{
-                fontWeight: 700,
-                fontSize: "0.75rem",
-                color: colors.text.primary,
-                mb: 1.5,
-              }}
-            >
-              Account Settings
-            </Typography>
-
-            {isExpiringSoon && (
-              <Box
-                sx={{
-                  display: "flex",
                   alignItems: "center",
-                  gap: 1,
-                  bgcolor: `${colors.warning}10`,
-                  border: `1px solid ${colors.warning}30`,
-                  borderRadius: 2,
-                  p: 1.5,
-                  mb: 2,
+                  py: 2,
+                  borderBottom: `1px solid ${C.border}`,
                 }}
               >
-                <WarningAmberIcon
-                  sx={{ fontSize: "1rem", color: colors.warning }}
-                />
                 <Box>
                   <Typography
                     sx={{
-                      fontSize: "0.7rem",
+                      fontSize: "0.8rem",
                       fontWeight: 600,
-                      color: colors.warning,
+                      color: C.text.primary,
                     }}
                   >
-                    License expiring in {daysLeft} days
+                    Deactivate Account
                   </Typography>
                   <Typography
-                    sx={{ fontSize: "0.65rem", color: colors.text.secondary }}
+                    sx={{
+                      fontSize: "0.65rem",
+                      color: C.text.secondary,
+                      mt: 0.25,
+                    }}
                   >
-                    Renew now to avoid service interruption
+                    Temporarily disable customer access
                   </Typography>
                 </Box>
-              </Box>
-            )}
-
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                py: 1.5,
-                flexWrap: "wrap",
-                gap: 1,
-              }}
-            >
-              <Box>
-                <Typography
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setDeactivateOpen(true)}
+                  disabled={actionLoading}
                   sx={{
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    color: colors.text.primary,
+                    textTransform: "none",
+                    fontSize: "0.72rem",
+                    borderRadius: "8px",
+                    borderColor: C.border,
+                    color: C.text.secondary,
+                    minWidth: 80,
                   }}
                 >
-                  Account Status
-                </Typography>
-                <Typography
-                  sx={{ fontSize: "0.65rem", color: colors.text.secondary }}
-                >
-                  Currently: <strong>{isActive ? "Active" : "Inactive"}</strong>
-                </Typography>
+                  Deactivate
+                </Button>
               </Box>
-              <Button
-                variant="contained"
-                onClick={() => setDeactivateOpen(true)}
-                disabled={actionLoading}
-                sx={{
-                  bgcolor: isActive ? colors.error : colors.success,
-                  textTransform: "none",
-                  fontSize: "0.7rem",
-                }}
-              >
-                {isActive ? "Deactivate Account" : "Activate Account"}
-              </Button>
-            </Box>
-
-            <Divider sx={{ my: 1.5 }} />
-
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                py: 1.5,
-                flexWrap: "wrap",
-                gap: 1,
-              }}
-            >
-              <Box>
-                <Typography
-                  sx={{
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    color: colors.text.primary,
-                  }}
-                >
-                  Auto-Renewal
-                </Typography>
-                <Typography
-                  sx={{ fontSize: "0.65rem", color: colors.text.secondary }}
-                >
-                  Automatically renew subscription
-                </Typography>
-              </Box>
-              <Chip
-                label={client?.settings?.autoRenewal ? "Enabled" : "Disabled"}
-                size="small"
-                sx={{
-                  bgcolor: client?.settings?.autoRenewal
-                    ? `${colors.success}15`
-                    : `${colors.error}15`,
-                  color: client?.settings?.autoRenewal
-                    ? colors.success
-                    : colors.error,
-                }}
-              />
-            </Box>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        )}
+      </Box>
 
       {/* Modals */}
-      <EditClientModal
+      <EditModal
         open={editOpen}
         client={client}
         onClose={() => setEditOpen(false)}
@@ -1580,11 +1712,10 @@ export default function ClientDetails() {
         open={deactivateOpen}
         client={client}
         onClose={() => setDeactivateOpen(false)}
-        onConfirm={handleStatusToggle}
+        onConfirm={handleDeactivate}
         loading={actionLoading}
       />
 
-      {/* Toast */}
       <Snackbar
         open={toast.open}
         autoHideDuration={5000}

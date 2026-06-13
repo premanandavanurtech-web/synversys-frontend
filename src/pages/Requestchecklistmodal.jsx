@@ -1,7 +1,4 @@
-// RequestChecklistModal.jsx — Redesigned
-// Clean multi-step form with fully responsive layout and consistent field widths.
-// Step 1: Basics  |  Step 2: Details + files
-// API: submitRequest(FormData) from RequestChecklistContext
+// components/RequestChecklistModal.jsx - Fully Updated with Backend Integration
 
 import React, { useState, useCallback, useRef } from "react";
 import {
@@ -25,6 +22,8 @@ import {
   Tooltip,
   alpha,
   InputAdornment,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   Close as CloseIcon,
@@ -38,16 +37,13 @@ import {
   CheckCircle as CheckCircleIcon,
   Description as DescriptionIcon,
   Repeat as RepeatIcon,
-  Speed as SpeedIcon,
   Group as GroupIcon,
   Tag as TagIcon,
 } from "@mui/icons-material";
 import { useRequestChecklist } from "../context/RequestChecklistContext";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const PRIMARY = "#0d4a5c";
 const PRIMARY_DARK = "#092f3a";
-const PRIMARY_LIGHT = "#e3f0f4";
 
 const CATEGORIES = [
   "Safety & Compliance",
@@ -67,28 +63,28 @@ const URGENCY_LEVELS = [
     label: "Low",
     desc: "A few weeks",
     color: "#2e7d32",
-    bg: "#f0faf0",
+    bg: "#e8f5e9",
   },
   {
     value: "medium",
     label: "Medium",
     desc: "Within a week",
-    color: "#c17000",
-    bg: "#fff8ee",
+    color: "#ed6c02",
+    bg: "#fff3e0",
   },
   {
     value: "high",
     label: "High",
     desc: "Within 2 days",
-    color: "#c62828",
-    bg: "#fff0f0",
+    color: "#d32f2f",
+    bg: "#ffebee",
   },
   {
     value: "critical",
     label: "Critical",
     desc: "Immediately",
     color: "#7f1d1d",
-    bg: "#fdf0f0",
+    bg: "#fef2f2",
   },
 ];
 
@@ -123,6 +119,7 @@ const INIT_FORM = {
   numberOfTeamMembers: "",
   additionalNotes: "",
 };
+
 const INIT_ERRORS = {
   checklistName: "",
   category: "",
@@ -139,18 +136,17 @@ const fmtSize = (b) =>
       ? `${(b / 1024).toFixed(1)} KB`
       : `${(b / 1024 / 1024).toFixed(1)} MB`;
 
-// ─── Step dot ─────────────────────────────────────────────────────────────────
 const StepDot = ({ num, active, done }) => (
   <Box
     sx={{
-      width: 26,
-      height: 26,
+      width: { xs: 22, sm: 26 },
+      height: { xs: 22, sm: 26 },
       borderRadius: "50%",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
       fontWeight: 500,
-      fontSize: 12,
+      fontSize: { xs: 10, sm: 12 },
       flexShrink: 0,
       transition: "all 0.2s ease",
       bgcolor: done
@@ -161,25 +157,25 @@ const StepDot = ({ num, active, done }) => (
       color: done ? "#fff" : active ? PRIMARY : "rgba(255,255,255,0.4)",
     }}
   >
-    {done ? <CheckCircleIcon sx={{ fontSize: 14 }} /> : num}
+    {done ? <CheckCircleIcon sx={{ fontSize: { xs: 12, sm: 14 } }} /> : num}
   </Box>
 );
 
-// ─── Urgency card ─────────────────────────────────────────────────────────────
-const UrgencyCard = ({ cfg, selected, onClick }) => (
+const UrgencyCard = ({ cfg, selected, onClick, isMobile }) => (
   <Box
     onClick={onClick}
     sx={{
-      p: "8px 6px",
+      p: { xs: "6px 4px", sm: "8px 6px" },
       borderRadius: "8px",
       border: "0.5px solid",
       borderColor: selected ? cfg.color : "divider",
       bgcolor: selected ? cfg.bg : "grey.50",
       cursor: "pointer",
-      width:"132px",
+      width: "100%",
       textAlign: "center",
       transition: "all 0.15s ease",
       "&:hover": { borderColor: cfg.color },
+      "&:active": isMobile ? { transform: "scale(0.98)" } : {},
     }}
   >
     <Typography
@@ -188,7 +184,7 @@ const UrgencyCard = ({ cfg, selected, onClick }) => (
       fontWeight={600}
       sx={{
         color: selected ? cfg.color : "text.primary",
-        fontSize: 12,
+        fontSize: { xs: 11, sm: 12 },
         mb: 0.25,
       }}
     >
@@ -197,15 +193,20 @@ const UrgencyCard = ({ cfg, selected, onClick }) => (
     <Typography
       variant="caption"
       display="block"
-      sx={{ color: "text.disabled", fontSize: 10.5, lineHeight: 1.3 }}
+      sx={{
+        color: "text.disabled",
+        fontSize: { xs: 9, sm: 10.5 },
+        lineHeight: 1.3,
+      }}
     >
       {cfg.desc}
     </Typography>
   </Box>
 );
 
-// ─── Main component ────────────────────────────────────────────────────────────
 export default function RequestChecklistModal({ open, onClose, onSuccess }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { submitRequest } = useRequestChecklist();
 
   const [step, setStep] = useState(0);
@@ -234,7 +235,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
     onClose();
   }, [submitting, reset, onClose]);
 
-  const set = (field) => (e) => {
+  const setField = (field) => (e) => {
     setForm((p) => ({ ...p, [field]: e.target.value }));
     if (errors[field]) setErrors((p) => ({ ...p, [field]: "" }));
     if (apiError) setApiError("");
@@ -285,18 +286,22 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
 
   const processFiles = (raw) => {
     setFileError("");
-    const acc = [],
-      rej = [];
+    const acc = [];
+    const rej = [];
     Array.from(raw).forEach((f) => {
       const ext = getFileExt(f.name);
-      if (!ALLOWED_EXTENSIONS.includes(ext)) rej.push(`${f.name}: unsupported`);
-      else if (f.size > MAX_FILE_SIZE_BYTES) rej.push(`${f.name}: too large`);
-      else acc.push({ file: f, name: f.name, size: f.size });
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        rej.push(`${f.name}: unsupported`);
+      } else if (f.size > MAX_FILE_SIZE_BYTES) {
+        rej.push(`${f.name}: too large`);
+      } else {
+        acc.push({ file: f, name: f.name, size: f.size });
+      }
     });
     if (rej.length) setFileError(rej.join(" · "));
     setFiles((p) => {
-      const ex = new Set(p.map((x) => x.name));
-      return [...p, ...acc.filter((x) => !ex.has(x.name))];
+      const existingNames = new Set(p.map((x) => x.name));
+      return [...p, ...acc.filter((x) => !existingNames.has(x.name))];
     });
   };
 
@@ -326,12 +331,13 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
       if (result?.success) {
         onSuccess?.(result.data);
         handleClose();
-      } else
+      } else {
         setApiError(
           result?.error ||
             result?.message ||
             "Failed to submit. Please try again.",
         );
+      }
     } catch (err) {
       setApiError(
         err?.response?.data?.message ||
@@ -354,14 +360,18 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
       disableEscapeKeyDown={submitting}
       PaperProps={{
         sx: {
-          borderRadius: "14px",
+          borderRadius: { xs: "12px", sm: "14px" },
           overflow: "hidden",
-          maxHeight: "94vh",
-          m: { xs: 1.5, sm: 3 },
+          maxHeight: "90vh",
+          m: { xs: 1, sm: 1.5, md: 3 },
+          width: {
+            xs: "calc(100% - 16px)",
+            sm: "calc(100% - 24px)",
+            md: "auto",
+          },
         },
       }}
     >
-      {/* ── Progress bar ── */}
       <LinearProgress
         variant="determinate"
         value={submitting ? 100 : progressPct}
@@ -375,14 +385,20 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
         }}
       />
 
-      {/* ── Header ── */}
-      <Box sx={{ bgcolor: PRIMARY, px: 2.75, pt: 2.5, pb: 2 }}>
+      <Box
+        sx={{
+          bgcolor: PRIMARY,
+          px: { xs: 2, sm: 2.75 },
+          pt: { xs: 2, sm: 2.5 },
+          pb: { xs: 1.5, sm: 2 },
+        }}
+      >
         <Box
           sx={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
-            mb: 1.75,
+            mb: { xs: 1.5, sm: 1.75 },
           }}
         >
           <Box>
@@ -390,13 +406,18 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
               variant="subtitle1"
               fontWeight={500}
               color="white"
-              sx={{ lineHeight: 1.3 }}
+              sx={{ lineHeight: 1.3, fontSize: { xs: "0.9rem", sm: "1rem" } }}
             >
               Request a new checklist
             </Typography>
             <Typography
               variant="caption"
-              sx={{ color: alpha("#fff", 0.55), display: "block", mt: 0.25 }}
+              sx={{
+                color: alpha("#fff", 0.55),
+                display: "block",
+                mt: 0.25,
+                fontSize: { xs: 10, sm: 11 },
+              }}
             >
               Sent to Super Admin for review and build
             </Typography>
@@ -411,16 +432,16 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
               mt: 0.25,
               bgcolor: alpha("#fff", 0.1),
               "&:hover": { bgcolor: alpha("#fff", 0.2) },
+              "&:active": isMobile ? { transform: "scale(0.95)" } : {},
             }}
           >
-            <CloseIcon sx={{ fontSize: 16 }} />
+            <CloseIcon sx={{ fontSize: { xs: 14, sm: 16 } }} />
           </IconButton>
         </Box>
 
-        {/* Step indicator */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <StepDot
-            num={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+            num={<CheckCircleIcon sx={{ fontSize: { xs: 12, sm: 14 } }} />}
             active={step === 0}
             done={step > 0}
           />
@@ -428,13 +449,12 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
             variant="caption"
             fontWeight={500}
             sx={{
-              fontSize: 11,
+              fontSize: { xs: 10, sm: 11 },
               color: step === 0 ? "#fff" : alpha("#fff", 0.45),
             }}
           >
             Basics
           </Typography>
-
           <Box
             sx={{
               flex: 1,
@@ -445,13 +465,12 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
               transition: "background 0.3s",
             }}
           />
-
           <StepDot num={2} active={step === 1} done={false} />
           <Typography
             variant="caption"
             fontWeight={500}
             sx={{
-              fontSize: 11,
+              fontSize: { xs: 10, sm: 11 },
               color: step === 1 ? "#fff" : alpha("#fff", 0.45),
             }}
           >
@@ -460,10 +479,9 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
         </Box>
       </Box>
 
-      {/* ── Body ── */}
       <DialogContent
         sx={{
-          p: "20px 22px 10px",
+          p: { xs: "16px 18px 8px", sm: "20px 22px 10px" },
           overflowY: "auto",
           "&::-webkit-scrollbar": { width: 4 },
           "&::-webkit-scrollbar-thumb": { bgcolor: "#dde6ea", borderRadius: 2 },
@@ -473,22 +491,20 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
           <Alert
             severity="error"
             onClose={() => setApiError("")}
-            sx={{ mb: 2, borderRadius: 2, fontSize: 13 }}
+            sx={{ mb: 2, borderRadius: 2, fontSize: { xs: 11, sm: 13 } }}
           >
             {apiError}
           </Alert>
         )}
 
-        {/* ── STEP 0: Basics ── */}
         {step === 0 && (
-          <Stack spacing={1.75}>
-            {/* Checklist name — full width */}
+          <Stack spacing={{ xs: 1.5, sm: 1.75 }}>
             <TextField
               fullWidth
               label="Checklist name *"
               placeholder="e.g. Fire Safety Inspection"
               value={form.checklistName}
-              onChange={set("checklistName")}
+              onChange={setField("checklistName")}
               error={!!errors.checklistName}
               helperText={errors.checklistName}
               disabled={submitting}
@@ -497,33 +513,53 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                 startAdornment: (
                   <InputAdornment position="start">
                     <DescriptionIcon
-                      sx={{ fontSize: 16, color: alpha(PRIMARY, 0.5) }}
+                      sx={{
+                        fontSize: { xs: 14, sm: 16 },
+                        color: alpha(PRIMARY, 0.5),
+                      }}
                     />
                   </InputAdornment>
                 ),
               }}
+              sx={{
+                "& .MuiInputLabel-root": { fontSize: { xs: 12, sm: 14 } },
+                "& .MuiInputBase-input": { fontSize: { xs: 13, sm: 14 } },
+              }}
             />
 
-            {/* Category + Frequency — equal halves */}
-            <Grid container spacing={1.5}>
-              <Grid item xs={12} sm={6} sx={{width:"270px"}}>
-                <FormControl fullWidth error={!!errors.category}>
-                  <InputLabel>Category *</InputLabel>
+            <Grid container spacing={{ xs: 1.5, sm: 1.5 }}>
+              <Grid item xs={12} sm={6}>
+                <FormControl
+                  fullWidth
+                  error={!!errors.category}
+                  size={isMobile ? "small" : "medium"}
+                >
+                  <InputLabel sx={{ fontSize: { xs: 12, sm: 14 } }}>
+                    Category *
+                  </InputLabel>
                   <Select
                     value={form.category}
-                    onChange={set("category")}
+                    onChange={setField("category")}
                     label="Category *"
                     disabled={submitting}
                     startAdornment={
                       <InputAdornment position="start">
                         <TagIcon
-                          sx={{ fontSize: 16, color: alpha(PRIMARY, 0.5) }}
+                          sx={{
+                            fontSize: { xs: 14, sm: 16 },
+                            color: alpha(PRIMARY, 0.5),
+                          }}
                         />
                       </InputAdornment>
                     }
+                    sx={{ fontSize: { xs: 13, sm: 14 } }}
                   >
                     {CATEGORIES.map((c) => (
-                      <MenuItem key={c} value={c}>
+                      <MenuItem
+                        key={c}
+                        value={c}
+                        sx={{ fontSize: { xs: 13, sm: 14 } }}
+                      >
                         {c}
                       </MenuItem>
                     ))}
@@ -532,35 +568,44 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                     <Typography
                       variant="caption"
                       color="error"
-                      sx={{ mt: 0.5, ml: 1.75 }}
+                      sx={{ mt: 0.5, ml: 1.75, fontSize: { xs: 10, sm: 11 } }}
                     >
                       {errors.category}
                     </Typography>
                   )}
                 </FormControl>
               </Grid>
-
-              <Grid item xs={12} sm={6} sx={{width:"270px"}}>
-                <FormControl fullWidth>
-                  <InputLabel>Usage frequency</InputLabel>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                  <InputLabel sx={{ fontSize: { xs: 12, sm: 14 } }}>
+                    Usage frequency
+                  </InputLabel>
                   <Select
                     value={form.expectedUsageFrequency}
-                    onChange={set("expectedUsageFrequency")}
+                    onChange={setField("expectedUsageFrequency")}
                     label="Usage frequency"
                     disabled={submitting}
                     startAdornment={
                       <InputAdornment position="start">
                         <RepeatIcon
-                          sx={{ fontSize: 16, color: alpha(PRIMARY, 0.5) }}
+                          sx={{
+                            fontSize: { xs: 14, sm: 16 },
+                            color: alpha(PRIMARY, 0.5),
+                          }}
                         />
                       </InputAdornment>
                     }
+                    sx={{ fontSize: { xs: 13, sm: 14 } }}
                   >
-                    <MenuItem value="">
+                    <MenuItem value="" sx={{ fontSize: { xs: 13, sm: 14 } }}>
                       <em>Not specified</em>
                     </MenuItem>
                     {USAGE_FREQUENCIES.map(({ value, label }) => (
-                      <MenuItem key={value} value={value}>
+                      <MenuItem
+                        key={value}
+                        value={value}
+                        sx={{ fontSize: { xs: 13, sm: 14 } }}
+                      >
                         {label}
                       </MenuItem>
                     ))}
@@ -569,17 +614,16 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
               </Grid>
             </Grid>
 
-            {/* Urgency cards */}
             <Box>
               <Typography
                 variant="body2"
                 fontWeight={500}
                 color="text.secondary"
-                sx={{ fontSize: 12, mb: 0.75 }}
+                sx={{ fontSize: { xs: 11, sm: 12 }, mb: 0.75 }}
               >
                 Urgency level *
               </Typography>
-              <Grid container spacing={1}>
+              <Grid container spacing={{ xs: 1, sm: 1 }}>
                 {URGENCY_LEVELS.map((u) => (
                   <Grid item xs={6} sm={3} key={u.value}>
                     <UrgencyCard
@@ -590,6 +634,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                         if (errors.urgencyLevel)
                           setErrors((p) => ({ ...p, urgencyLevel: "" }));
                       }}
+                      isMobile={isMobile}
                     />
                   </Grid>
                 ))}
@@ -598,21 +643,24 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                 <Typography
                   variant="caption"
                   color="error"
-                  sx={{ mt: 0.5, display: "block" }}
+                  sx={{
+                    mt: 0.5,
+                    display: "block",
+                    fontSize: { xs: 10, sm: 11 },
+                  }}
                 >
                   {errors.urgencyLevel}
                 </Typography>
               )}
             </Box>
 
-            {/* Team members — full width */}
             <TextField
               fullWidth
               type="number"
               label="Team members using this (optional)"
               placeholder="e.g. 15"
               value={form.numberOfTeamMembers}
-              onChange={set("numberOfTeamMembers")}
+              onChange={setField("numberOfTeamMembers")}
               disabled={submitting}
               inputProps={{ min: 1, max: 10000 }}
               onKeyDown={(e) =>
@@ -622,26 +670,32 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                 startAdornment: (
                   <InputAdornment position="start">
                     <GroupIcon
-                      sx={{ fontSize: 16, color: alpha(PRIMARY, 0.5) }}
+                      sx={{
+                        fontSize: { xs: 14, sm: 16 },
+                        color: alpha(PRIMARY, 0.5),
+                      }}
                     />
                   </InputAdornment>
                 ),
+              }}
+              sx={{
+                "& .MuiInputLabel-root": { fontSize: { xs: 12, sm: 14 } },
+                "& .MuiInputBase-input": { fontSize: { xs: 13, sm: 14 } },
               }}
             />
           </Stack>
         )}
 
-        {/* ── STEP 1: Details ── */}
         {step === 1 && (
-          <Stack spacing={1.75}>
+          <Stack spacing={{ xs: 1.5, sm: 1.75 }}>
             <TextField
               fullWidth
               multiline
-              rows={4}
+              rows={isMobile ? 3 : 4}
               label="Detailed description *"
               placeholder="Describe the fields, sections, and how this checklist will be used…"
               value={form.detailedDescription}
-              onChange={set("detailedDescription")}
+              onChange={setField("detailedDescription")}
               error={!!errors.detailedDescription}
               helperText={
                 errors.detailedDescription ||
@@ -649,16 +703,20 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
               }
               disabled={submitting}
               inputProps={{ maxLength: 2000 }}
+              sx={{
+                "& .MuiInputLabel-root": { fontSize: { xs: 12, sm: 14 } },
+                "& .MuiInputBase-input": { fontSize: { xs: 13, sm: 14 } },
+              }}
             />
 
             <TextField
               fullWidth
               multiline
-              rows={3}
+              rows={isMobile ? 2 : 3}
               label="Business justification *"
               placeholder="Explain why this checklist is needed and how it benefits operations…"
               value={form.businessJustification}
-              onChange={set("businessJustification")}
+              onChange={setField("businessJustification")}
               error={!!errors.businessJustification}
               helperText={
                 errors.businessJustification ||
@@ -666,20 +724,24 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
               }
               disabled={submitting}
               inputProps={{ maxLength: 1000 }}
+              sx={{
+                "& .MuiInputLabel-root": { fontSize: { xs: 12, sm: 14 } },
+                "& .MuiInputBase-input": { fontSize: { xs: 13, sm: 14 } },
+              }}
             />
 
-            {/* File upload */}
             <Box>
               <Stack
                 direction="row"
                 alignItems="center"
                 spacing={0.75}
                 sx={{ mb: 0.75 }}
+                flexWrap="wrap"
               >
                 <Typography
                   variant="body2"
                   fontWeight={500}
-                  sx={{ fontSize: 13 }}
+                  sx={{ fontSize: { xs: 12, sm: 13 } }}
                 >
                   Reference files
                 </Typography>
@@ -688,13 +750,17 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                 >
                   <InfoIcon
                     sx={{
-                      fontSize: 14,
+                      fontSize: { xs: 13, sm: 14 },
                       color: "text.disabled",
                       cursor: "help",
                     }}
                   />
                 </Tooltip>
-                <Typography variant="caption" color="text.disabled">
+                <Typography
+                  variant="caption"
+                  color="text.disabled"
+                  sx={{ fontSize: { xs: 10, sm: 11 } }}
+                >
                   (optional)
                 </Typography>
               </Stack>
@@ -720,7 +786,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                       ? "error.main"
                       : "divider",
                   borderRadius: 2,
-                  p: 2.5,
+                  p: { xs: 2, sm: 2.5 },
                   textAlign: "center",
                   cursor: submitting ? "not-allowed" : "pointer",
                   bgcolor: dragActive ? alpha(PRIMARY, 0.03) : "grey.50",
@@ -728,6 +794,8 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                   "&:hover": !submitting
                     ? { borderColor: PRIMARY, bgcolor: alpha(PRIMARY, 0.02) }
                     : {},
+                  "&:active":
+                    isMobile && !submitting ? { transform: "scale(0.98)" } : {},
                 }}
               >
                 <input
@@ -744,8 +812,8 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                 />
                 <Box
                   sx={{
-                    width: 36,
-                    height: 36,
+                    width: { xs: 32, sm: 36 },
+                    height: { xs: 32, sm: 36 },
                     borderRadius: "50%",
                     bgcolor: alpha(PRIMARY, 0.08),
                     display: "flex",
@@ -755,17 +823,23 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                     mb: 0.75,
                   }}
                 >
-                  <CloudUploadIcon sx={{ color: PRIMARY, fontSize: 18 }} />
+                  <CloudUploadIcon
+                    sx={{ color: PRIMARY, fontSize: { xs: 16, sm: 18 } }}
+                  />
                 </Box>
                 <Typography
                   variant="body2"
                   fontWeight={500}
                   color="text.secondary"
-                  sx={{ fontSize: 13 }}
+                  sx={{ fontSize: { xs: 12, sm: 13 } }}
                 >
                   {dragActive ? "Drop files here" : "Click to upload"}
                 </Typography>
-                <Typography variant="caption" color="text.disabled">
+                <Typography
+                  variant="caption"
+                  color="text.disabled"
+                  sx={{ fontSize: { xs: 10, sm: 11 } }}
+                >
                   PDF, DOC, XLS, images · max {MAX_FILE_SIZE_MB} MB
                 </Typography>
               </Box>
@@ -774,7 +848,11 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                 <Typography
                   variant="caption"
                   color="error"
-                  sx={{ mt: 0.5, display: "block" }}
+                  sx={{
+                    mt: 0.5,
+                    display: "block",
+                    fontSize: { xs: 10, sm: 11 },
+                  }}
                 >
                   {fileError}
                 </Typography>
@@ -789,7 +867,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                         display: "flex",
                         alignItems: "center",
                         gap: 1,
-                        p: "5px 10px",
+                        p: { xs: "4px 8px", sm: "5px 10px" },
                         borderRadius: 1.5,
                         border: "0.5px solid",
                         borderColor: "divider",
@@ -798,7 +876,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                     >
                       <AttachFileIcon
                         sx={{
-                          fontSize: 13,
+                          fontSize: { xs: 12, sm: 13 },
                           color: "text.disabled",
                           flexShrink: 0,
                         }}
@@ -811,6 +889,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
+                          fontSize: { xs: 10, sm: 11 },
                         }}
                       >
                         {name}
@@ -818,7 +897,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                       <Typography
                         variant="caption"
                         color="text.disabled"
-                        sx={{ flexShrink: 0 }}
+                        sx={{ flexShrink: 0, fontSize: { xs: 9, sm: 11 } }}
                       >
                         {fmtSize(size)}
                       </Typography>
@@ -832,9 +911,10 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                           p: 0.25,
                           color: "text.disabled",
                           "&:hover": { color: "error.main" },
+                          "&:active": { transform: "scale(0.95)" },
                         }}
                       >
-                        <DeleteIcon sx={{ fontSize: 13 }} />
+                        <DeleteIcon sx={{ fontSize: { xs: 12, sm: 13 } }} />
                       </IconButton>
                     </Box>
                   ))}
@@ -845,24 +925,27 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
             <TextField
               fullWidth
               multiline
-              rows={2}
+              rows={isMobile ? 1 : 2}
               label="Additional notes (optional)"
               placeholder="Any other context to help the Super Admin understand your requirements…"
               value={form.additionalNotes}
-              onChange={set("additionalNotes")}
+              onChange={setField("additionalNotes")}
               disabled={submitting}
               inputProps={{ maxLength: 500 }}
               helperText={`${form.additionalNotes.length} / 500`}
+              sx={{
+                "& .MuiInputLabel-root": { fontSize: { xs: 12, sm: 14 } },
+                "& .MuiInputBase-input": { fontSize: { xs: 13, sm: 14 } },
+              }}
             />
           </Stack>
         )}
       </DialogContent>
 
-      {/* ── Footer ── */}
       <DialogActions
         sx={{
-          px: 2.75,
-          py: 1.75,
+          px: { xs: 2, sm: 2.75 },
+          py: { xs: 1.5, sm: 1.75 },
           borderTop: "0.5px solid",
           borderColor: "divider",
           bgcolor: "grey.50",
@@ -873,11 +956,20 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
       >
         <Button
           variant="outlined"
-          size="small"
+          size={isMobile ? "small" : "medium"}
           disabled={submitting}
           onClick={step === 0 ? handleClose : () => setStep(0)}
-          startIcon={step > 0 ? <ArrowBackIcon sx={{ fontSize: 13 }} /> : null}
-          sx={{ minWidth: 90, fontSize: 13, borderColor: "divider" }}
+          startIcon={
+            step > 0 ? (
+              <ArrowBackIcon sx={{ fontSize: { xs: 11, sm: 13 } }} />
+            ) : null
+          }
+          sx={{
+            minWidth: { xs: 70, sm: 90 },
+            fontSize: { xs: 11, sm: 13 },
+            borderColor: "divider",
+            "&:active": isMobile ? { transform: "scale(0.97)" } : {},
+          }}
         >
           {step === 0 ? "Cancel" : "Back"}
         </Button>
@@ -885,16 +977,17 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
         {step === 0 ? (
           <Button
             variant="contained"
-            size="small"
+            size={isMobile ? "small" : "medium"}
             onClick={() => {
               if (validateStep0()) setStep(1);
             }}
-            endIcon={<ArrowForwardIcon sx={{ fontSize: 13 }} />}
+            endIcon={<ArrowForwardIcon sx={{ fontSize: { xs: 11, sm: 13 } }} />}
             sx={{
-              minWidth: 130,
-              fontSize: 13,
+              minWidth: { xs: 90, sm: 130 },
+              fontSize: { xs: 11, sm: 13 },
               bgcolor: PRIMARY,
               "&:hover": { bgcolor: PRIMARY_DARK },
+              "&:active": isMobile ? { transform: "scale(0.97)" } : {},
             }}
           >
             Continue
@@ -902,21 +995,22 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
         ) : (
           <Button
             variant="contained"
-            size="small"
+            size={isMobile ? "small" : "medium"}
             onClick={handleSubmit}
             disabled={submitting}
             startIcon={
               submitting ? (
-                <CircularProgress size={13} color="inherit" />
+                <CircularProgress size={isMobile ? 12 : 13} color="inherit" />
               ) : (
-                <SendIcon sx={{ fontSize: 14 }} />
+                <SendIcon sx={{ fontSize: { xs: 12, sm: 14 } }} />
               )
             }
             sx={{
-              minWidth: 155,
-              fontSize: 13,
+              minWidth: { xs: 110, sm: 155 },
+              fontSize: { xs: 11, sm: 13 },
               bgcolor: PRIMARY,
               "&:hover": { bgcolor: PRIMARY_DARK },
+              "&:active": isMobile ? { transform: "scale(0.97)" } : {},
             }}
           >
             {submitting ? "Submitting…" : "Submit request"}

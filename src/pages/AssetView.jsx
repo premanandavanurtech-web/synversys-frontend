@@ -108,7 +108,7 @@ const T = {
   violet: "#6B4E9E",
   violetLight: "#F0EBF8",
   font: "'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-  fontMono: "'JetBrains Mono', 'SF Mono', 'Menlo', monospace",
+  fontMono: "DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   r: { xs: "6px", sm: "10px", md: "14px", lg: "20px", xl: "28px" },
   sh: {
     sm: "0 1px 3px rgba(26,26,24,0.07), 0 1px 2px rgba(26,26,24,0.04)",
@@ -414,7 +414,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
         return;
       }
       const API =
-        import.meta.env?.VITE_API_URL || "https://assset-management-backend-4.onrender.com/api/v1";
+        import.meta.env?.VITE_API_URL || "http://localhost:9001/api/v1";
       const res = await fetch(`${API}/assets?limit=200`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1510,7 +1510,7 @@ export default function AssetView() {
 
   const getImageUrl = (name) =>
     name
-      ? `${import.meta.env?.VITE_API_URL?.replace("/api/v1", "") || "https://assset-management-backend-4.onrender.com"}/uploads/assets/${name}`
+      ? `${import.meta.env?.VITE_API_URL?.replace("/api/v1", "") || "http://localhost:9001"}/uploads/assets/${name}`
       : null;
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
@@ -1553,7 +1553,7 @@ export default function AssetView() {
           sx={{
             px: { xs: 2, sm: 3, md: 4 },
             py: 3,
-            maxWidth: 1400,
+            maxWidth: 1200,
             mx: "auto",
           }}
         >
@@ -1623,7 +1623,10 @@ export default function AssetView() {
           py: { xs: 2, sm: 2.5 },
           position: "sticky",
           top: 0,
+          width:"1120px",
+          marginLeft:"25px",
           zIndex: 100,
+          borderRadius: 2,
           backdropFilter: "blur(8px)",
         }}
       >
@@ -1827,11 +1830,11 @@ export default function AssetView() {
 
       {/* ── Body ── */}
       <Box
-        sx={{ px: { xs: 2, sm: 3, md: 4 }, py: 3, maxWidth: 1400, mx: "auto" }}
+        sx={{ px: { xs: 2, sm: 3, md: 4 }, py: 3, maxWidth: 1200, mx: "auto" }}
       >
         <Grid container spacing={3}>
           {/* LEFT SIDEBAR */}
-          <Grid item xs={12} md={4} lg={3.5}>
+          <Grid item xs={12} md={4} lg={3.5} sx={{ width:"300px"}}>
             <Stack spacing={2.5}>
               {/* Image Panel */}
               <Card
@@ -2051,7 +2054,7 @@ export default function AssetView() {
               {/* Quick Info */}
               <Card
                 elevation={0}
-                sx={{ p: 2.5, animation: `${slideIn} 0.4s 0.15s ease both` }}
+                sx={{ p: 2.5, animation: `${slideIn} 0.4s 0.15s ease both`  }}
               >
                 <SectionTitle icon={<Numbers sx={{ fontSize: 15 }} />}>
                   Quick Info
@@ -2167,7 +2170,7 @@ export default function AssetView() {
           </Grid>
 
           {/* MAIN CONTENT */}
-          <Grid item xs={12} md={8} lg={8.5}>
+          <Grid item xs={12} md={8} lg={8.5} sx={{width:"780px"}}>
             <Stack spacing={2.5}>
               <Box
                 sx={{

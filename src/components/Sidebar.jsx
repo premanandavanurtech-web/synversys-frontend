@@ -1,4 +1,5 @@
-// components/Sidebar.jsx - Complete with Audit Logs & Recycle Bin
+// components/Sidebar.jsx - Complete with Proper Tab Order Management
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -23,6 +24,8 @@ import {
   SwipeableDrawer,
   Backdrop,
   Fade,
+  Zoom,
+  Drawer,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 
@@ -49,14 +52,15 @@ import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined
 import RestoreFromTrashOutlinedIcon from "@mui/icons-material/RestoreFromTrashOutlined";
 import { useAuth } from "../context/AuthContexts";
 
-// Styled Components
+// Styled Components - Responsive
 const MobileHeader = styled(Box)(({ theme }) => ({
   position: "fixed",
   top: 0,
   left: 0,
   right: 0,
   height: { xs: 56, sm: 60, md: 64 },
-  backgroundColor: "#ffffff",
+  backgroundColor: "rgba(255, 255, 255, 0.96)",
+  backdropFilter: "blur(10px)",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
@@ -79,6 +83,7 @@ const MobileNavItem = styled(ListItem, {
     : "transparent",
   color: active ? theme.palette.primary.main : theme.palette.text.secondary,
   "&:hover": { backgroundColor: alpha(theme.palette.primary.main, 0.05) },
+  "&:active": { transform: "scale(0.98)" },
   "& .MuiListItemIcon-root": { color: "inherit", minWidth: { xs: 36, sm: 40 } },
 }));
 
@@ -114,7 +119,9 @@ const DesktopSidebar = styled(Box)(({ theme, iscollapsed }) => ({
   boxShadow: `2px 0 12px ${alpha(theme.palette.common.black, 0.02)}`,
 }));
 
-// Navigation Configuration with Role-Based Access
+// Navigation Configuration with Proper Order Management
+// Each role has its own order sequence that can be easily adjusted
+
 const navItemsConfig = {
   super_admin: [
     {
@@ -123,7 +130,8 @@ const navItemsConfig = {
       label: "Dashboard",
       path: "/dashboard",
       roles: ["super_admin"],
-      order: 1,
+      order: 10, // Using increments of 10 allows inserting items between existing ones
+      section: "main",
     },
     {
       id: "clients",
@@ -131,7 +139,8 @@ const navItemsConfig = {
       label: "Customer Management",
       path: "/admin/clients",
       roles: ["super_admin"],
-      order: 2,
+      order: 20,
+      section: "management",
     },
     {
       id: "checklists",
@@ -139,39 +148,8 @@ const navItemsConfig = {
       label: "Checklists Builder",
       path: "/admin/checklists",
       roles: ["super_admin"],
-      order: 3,
-    },
-    {
-      id: "assigned",
-      icon: AssignmentOutlinedIcon,
-      label: "Assigned Checklist",
-      path: "/admin/assigned-checklists",
-      roles: ["super_admin"],
-      order: 5,
-    },
-    {
-      id: "reports",
-      icon: BarChartOutlinedIcon,
-      label: "Reports and Analysis",
-      path: "/admin/reports",
-      roles: ["super_admin"],
-      order: 6,
-    },
-    {
-      id: "contact-inquiries",
-      icon: EmailOutlinedIcon,
-      label: "Contact Inquiries",
-      path: "/admin/contact-inquiries",
-      roles: ["super_admin"],
-      order: 7,
-    },
-    {
-      id: "audit-logs",
-      icon: ReceiptLongOutlinedIcon,
-      label: "Audit Logs",
-      path: "/admin/audit-logs",
-      roles: ["super_admin"],
-      order: 8,
+      order: 30,
+      section: "content",
     },
     {
       id: "recycle-bin",
@@ -179,7 +157,44 @@ const navItemsConfig = {
       label: "Checklist Recycle Bin",
       path: "/admin/checklists/recycle-bin",
       roles: ["super_admin"],
-      order: 4,
+      order: 35, // Placed right after Checklists Builder
+      section: "content",
+    },
+    {
+      id: "assigned",
+      icon: AssignmentOutlinedIcon,
+      label: "Assigned Checklist",
+      path: "/admin/assigned-checklists",
+      roles: ["super_admin"],
+      order: 40,
+      section: "operations",
+    },
+    {
+      id: "reports",
+      icon: BarChartOutlinedIcon,
+      label: "Reports and Analysis",
+      path: "/admin/reports",
+      roles: ["super_admin"],
+      order: 50,
+      section: "analytics",
+    },
+    {
+      id: "contact-inquiries",
+      icon: EmailOutlinedIcon,
+      label: "Contact Inquiries",
+      path: "/admin/contact-inquiries",
+      roles: ["super_admin"],
+      order: 60,
+      section: "communications",
+    },
+    {
+      id: "audit-logs",
+      icon: ReceiptLongOutlinedIcon,
+      label: "Audit Logs",
+      path: "/admin/audit-logs",
+      roles: ["super_admin"],
+      order: 70,
+      section: "security",
     },
   ],
   admin: [
@@ -189,7 +204,8 @@ const navItemsConfig = {
       label: "Dashboard",
       path: "/dashboard",
       roles: ["admin"],
-      order: 1,
+      order: 10,
+      section: "main",
     },
     {
       id: "team",
@@ -197,7 +213,8 @@ const navItemsConfig = {
       label: "Team Management",
       path: "/admin/team",
       roles: ["admin"],
-      order: 2,
+      order: 20,
+      section: "management",
     },
     {
       id: "checklists",
@@ -205,39 +222,8 @@ const navItemsConfig = {
       label: "Checklists Builder",
       path: "/admin/checklists",
       roles: ["admin"],
-      order: 3,
-    },
-    {
-      id: "assigned",
-      icon: AssignmentOutlinedIcon,
-      label: "Assigned Checklist",
-      path: "/admin/assigned-checklists",
-      roles: ["admin"],
-      order: 5,
-    },
-    {
-      id: "assets",
-      icon: Inventory2OutlinedIcon,
-      label: "Assets Management",
-      path: "/admin/assets",
-      roles: ["admin"],
-      order: 6,
-    },
-    {
-      id: "reports",
-      icon: BarChartOutlinedIcon,
-      label: "Reports and Analysis",
-      path: "/admin/reports",
-      roles: ["admin"],
-      order: 7,
-    },
-    {
-      id: "audit-logs",
-      icon: ReceiptLongOutlinedIcon,
-      label: "Audit Logs",
-      path: "/admin/audit-logs",
-      roles: ["admin"],
-      order: 8,
+      order: 30,
+      section: "content",
     },
     {
       id: "recycle-bin",
@@ -245,7 +231,44 @@ const navItemsConfig = {
       label: "Checklist Recycle Bin",
       path: "/admin/checklists/recycle-bin",
       roles: ["admin"],
-      order: 4,
+      order: 35,
+      section: "content",
+    },
+    {
+      id: "assigned",
+      icon: AssignmentOutlinedIcon,
+      label: "Assigned Checklist",
+      path: "/admin/assigned-checklists",
+      roles: ["admin"],
+      order: 40,
+      section: "operations",
+    },
+    {
+      id: "assets",
+      icon: Inventory2OutlinedIcon,
+      label: "Assets Management",
+      path: "/admin/assets",
+      roles: ["admin"],
+      order: 45,
+      section: "operations",
+    },
+    {
+      id: "reports",
+      icon: BarChartOutlinedIcon,
+      label: "Reports and Analysis",
+      path: "/admin/reports",
+      roles: ["admin"],
+      order: 50,
+      section: "analytics",
+    },
+    {
+      id: "audit-logs",
+      icon: ReceiptLongOutlinedIcon,
+      label: "Audit Logs",
+      path: "/admin/audit-logs",
+      roles: ["admin"],
+      order: 60,
+      section: "security",
     },
   ],
   team: [
@@ -255,7 +278,8 @@ const navItemsConfig = {
       label: "My Tasks",
       path: "/team",
       roles: ["team"],
-      order: 1,
+      order: 10,
+      section: "main",
     },
     {
       id: "assets",
@@ -263,7 +287,8 @@ const navItemsConfig = {
       label: "Assets Management",
       path: "/admin/assets",
       roles: ["team"],
-      order: 2,
+      order: 20,
+      section: "management",
     },
     {
       id: "history",
@@ -271,7 +296,8 @@ const navItemsConfig = {
       label: "History",
       path: "/team/history",
       roles: ["team"],
-      order: 3,
+      order: 30,
+      section: "records",
     },
     {
       id: "audit-logs",
@@ -279,7 +305,8 @@ const navItemsConfig = {
       label: "Audit Logs",
       path: "/admin/audit-logs",
       roles: ["team"],
-      order: 4,
+      order: 40,
+      section: "security",
     },
     {
       id: "reports",
@@ -287,7 +314,8 @@ const navItemsConfig = {
       label: "Reports",
       path: "/team/reports",
       roles: ["team"],
-      order: 5,
+      order: 50,
+      section: "analytics",
     },
     {
       id: "profile",
@@ -295,23 +323,64 @@ const navItemsConfig = {
       label: "Profile",
       path: "/team/profile",
       roles: ["team"],
-      order: 6,
+      order: 60,
+      section: "user",
     },
   ],
 };
 
-// Helper function to filter and sort nav items based on user role
-export const getNavItems = (userRole) => {
+// Section headers for visual grouping (optional)
+const sectionHeaders = {
+  main: { label: "MAIN", order: 1 },
+  management: { label: "MANAGEMENT", order: 2 },
+  content: { label: "CONTENT", order: 3 },
+  operations: { label: "OPERATIONS", order: 4 },
+  analytics: { label: "ANALYTICS", order: 5 },
+  communications: { label: "COMMUNICATIONS", order: 6 },
+  security: { label: "SECURITY & AUDIT", order: 7 },
+  records: { label: "RECORDS", order: 8 },
+  user: { label: "USER", order: 9 },
+};
+
+// Helper function to filter, sort, and optionally group nav items
+export const getNavItems = (userRole, groupBySection = false) => {
+  let items = [];
+
   if (userRole === "super_admin") {
-    return [...navItemsConfig.super_admin].sort((a, b) => a.order - b.order);
+    items = [...navItemsConfig.super_admin];
+  } else if (userRole === "admin") {
+    items = [...navItemsConfig.admin];
+  } else if (userRole === "team") {
+    items = [...navItemsConfig.team];
+  } else {
+    return [];
   }
-  if (userRole === "admin") {
-    return [...navItemsConfig.admin].sort((a, b) => a.order - b.order);
+
+  // Sort by order
+  items.sort((a, b) => a.order - b.order);
+
+  if (groupBySection) {
+    // Group items by section
+    const grouped = {};
+    items.forEach((item) => {
+      const section = item.section || "other";
+      if (!grouped[section]) {
+        grouped[section] = [];
+      }
+      grouped[section].push(item);
+    });
+
+    // Sort sections by their defined order
+    const sortedSections = Object.keys(grouped).sort((a, b) => {
+      const orderA = sectionHeaders[a]?.order || 999;
+      const orderB = sectionHeaders[b]?.order || 999;
+      return orderA - orderB;
+    });
+
+    return { grouped, sortedSections, items };
   }
-  if (userRole === "team") {
-    return [...navItemsConfig.team].sort((a, b) => a.order - b.order);
-  }
-  return [];
+
+  return items;
 };
 
 // Helpers
@@ -347,11 +416,13 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [bottomNavValue, setBottomNavValue] = useState(0);
 
-  const navItems = getNavItems(user?.role);
+  // Get sorted nav items (no grouping for bottom nav)
+  const navItems = getNavItems(user?.role, false);
+  // Get grouped nav items for desktop sidebar (optional visual grouping)
+  const { grouped, sortedSections } = getNavItems(user?.role, true);
 
-  // Check if user can access recycle bin
-  const canAccessRecycleBin =
-    user?.role === "super_admin" || user?.role === "admin";
+  // Filter nav items for bottom navigation (max 5 items)
+  const bottomNavItems = navItems.slice(0, isMobile ? 4 : 5);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) navigate("/login");
@@ -368,11 +439,17 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
     const activeIndex = navItems.findIndex((item) => currentPath === item.path);
     if (activeIndex !== -1) {
       setActiveItem(navItems[activeIndex].id);
-      setBottomNavValue(activeIndex);
+      // Find index in bottom nav items
+      const bottomIndex = bottomNavItems.findIndex(
+        (item) => item.id === navItems[activeIndex].id,
+      );
+      if (bottomIndex !== -1) {
+        setBottomNavValue(bottomIndex);
+      }
     } else {
       setActiveItem("");
     }
-  }, [location.pathname, navItems]);
+  }, [location.pathname, navItems, bottomNavItems]);
 
   const handleLogout = async () => {
     try {
@@ -398,7 +475,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
   );
 
   const handleBottomNavChange = (_event, newValue) => {
-    const item = navItems[newValue];
+    const item = bottomNavItems[newValue];
     if (item) {
       setActiveItem(item.id);
       setBottomNavValue(newValue);
@@ -428,6 +505,128 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
 
   if (!user || navItems.length === 0) return null;
 
+  // Render nav items (with optional section headers for desktop)
+  const renderNavItems = (itemsList, showSectionHeaders = false) => {
+    if (showSectionHeaders && grouped && sortedSections) {
+      return sortedSections.map((section) => {
+        const sectionItems = grouped[section];
+        const header = sectionHeaders[section];
+
+        return (
+          <Box key={section}>
+            {header && !isCollapsed && (
+              <Typography
+                variant="caption"
+                sx={{
+                  px: { md: 1.5, lg: 2 },
+                  pt: 2,
+                  pb: 1,
+                  display: "block",
+                  color: "#94a3b8",
+                  fontWeight: 600,
+                  fontSize: { md: 10, lg: 11 },
+                  letterSpacing: "0.5px",
+                }}
+              >
+                {header.label}
+              </Typography>
+            )}
+            {sectionItems.map(({ id, icon: Icon, label, path }) => {
+              const isActive = activeItem === id || location.pathname === path;
+              const isRecycleBin = id === "recycle-bin";
+
+              return (
+                <Tooltip
+                  key={id}
+                  title={isCollapsed ? label : ""}
+                  placement="right"
+                  arrow
+                  enterDelay={500}
+                >
+                  <ListItem
+                    onClick={(e) => handleNavigation(path, id, e)}
+                    sx={{
+                      borderRadius: 2,
+                      mb: 0.5,
+                      py: { md: 1, lg: 1.2 },
+                      px: { md: 1.2, lg: 1.5 },
+                      cursor: "pointer",
+                      backgroundColor: isActive
+                        ? alpha(theme.palette.primary.main, 0.08)
+                        : "transparent",
+                      color: isActive
+                        ? theme.palette.primary.main
+                        : isRecycleBin && !isActive
+                          ? theme.palette.text.secondary
+                          : theme.palette.text.secondary,
+                      "&:hover": {
+                        backgroundColor:
+                          isRecycleBin && !isActive
+                            ? alpha(theme.palette.warning.main, 0.05)
+                            : alpha(theme.palette.primary.main, 0.05),
+                        transform: "translateX(4px)",
+                      },
+                      transition: "all 0.2s ease",
+                      "& .MuiListItemIcon-root": {
+                        color: "inherit",
+                        minWidth: isCollapsed ? "auto" : { md: 36, lg: 40 },
+                      },
+                    }}
+                  >
+                    <ListItemIcon>
+                      <Icon sx={{ fontSize: { md: 20, lg: 22, xl: 24 } }} />
+                    </ListItemIcon>
+                    {!isCollapsed && (
+                      <ListItemText
+                        primary={label}
+                        primaryTypographyProps={{
+                          fontSize: { md: 13, lg: 14, xl: 15 },
+                          fontWeight: isActive ? 600 : 500,
+                          noWrap: true,
+                        }}
+                      />
+                    )}
+                  </ListItem>
+                </Tooltip>
+              );
+            })}
+          </Box>
+        );
+      });
+    }
+
+    // Simple list without grouping (for mobile)
+    return itemsList.map(({ id, icon: Icon, label, path }) => {
+      const isActive = activeItem === id || location.pathname === path;
+      const isRecycleBin = id === "recycle-bin";
+
+      return (
+        <MobileNavItem
+          key={id}
+          active={isActive}
+          onClick={(e) => handleNavigation(path, id, e)}
+          sx={{
+            backgroundColor:
+              isRecycleBin && !isActive
+                ? alpha(theme.palette.warning.main, 0.03)
+                : undefined,
+          }}
+        >
+          <ListItemIcon>
+            <Icon sx={{ fontSize: { xs: 22, sm: 24 } }} />
+          </ListItemIcon>
+          <ListItemText
+            primary={label}
+            primaryTypographyProps={{
+              fontSize: { xs: 14, sm: 15 },
+              fontWeight: isActive ? 600 : 500,
+            }}
+          />
+        </MobileNavItem>
+      );
+    });
+  };
+
   // Desktop Sidebar Content
   const desktopSidebarContent = (
     <Box
@@ -452,37 +651,41 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
           position: "relative",
         }}
       >
-        <Box
-          sx={{
-            width: { md: 36, lg: 40, xl: 44 },
-            height: { md: 36, lg: 40, xl: 44 },
-            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-            borderRadius: { md: "10px", lg: "12px", xl: "14px" },
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: `0 6px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
-            flexShrink: 0,
-          }}
-        >
-          <Inventory2OutlinedIcon
-            sx={{ color: "#fff", fontSize: { md: 18, lg: 20, xl: 22 } }}
-          />
-        </Box>
-        {!isCollapsed && (
-          <Box sx={{ minWidth: 0 }}>
-            <Typography fontWeight={700} fontSize={{ md: 14, lg: 16 }} noWrap>
-              AssetMach
-            </Typography>
-            <Typography
-              fontSize={{ md: 10, lg: 11 }}
-              color="text.secondary"
-              textTransform="capitalize"
-              noWrap
-            >
-              {user?.role === "super_admin" ? "Super Admin" : user?.role}
-            </Typography>
+        <Zoom in={true} timeout={300}>
+          <Box
+            sx={{
+              width: { md: 36, lg: 40, xl: 44 },
+              height: { md: 36, lg: 40, xl: 44 },
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+              borderRadius: { md: "10px", lg: "12px", xl: "14px" },
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: `0 6px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+              flexShrink: 0,
+            }}
+          >
+            <Inventory2OutlinedIcon
+              sx={{ color: "#fff", fontSize: { md: 18, lg: 20, xl: 22 } }}
+            />
           </Box>
+        </Zoom>
+        {!isCollapsed && (
+          <Fade in={!isCollapsed}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography fontWeight={700} fontSize={{ md: 14, lg: 16 }} noWrap>
+                AssetMach
+              </Typography>
+              <Typography
+                fontSize={{ md: 10, lg: 11 }}
+                color="text.secondary"
+                textTransform="capitalize"
+                noWrap
+              >
+                {user?.role === "super_admin" ? "Super Admin" : user?.role}
+              </Typography>
+            </Box>
+          </Fade>
         )}
         {isDesktop && (
           <IconButton
@@ -511,74 +714,30 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
         )}
       </Box>
 
-      {/* Navigation Links */}
+      {/* Navigation Links with Section Headers */}
       <List
         sx={{
           flex: 1,
           px: isCollapsed ? 1 : { md: 1.5, lg: 2 },
           py: 2,
           overflowY: "auto",
+          "&::-webkit-scrollbar": {
+            width: "4px",
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "#f1f1f1",
+            borderRadius: "4px",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            background: "#c1c1c1",
+            borderRadius: "4px",
+            "&:hover": {
+              background: "#a1a1a1",
+            },
+          },
         }}
       >
-        {navItems.map(({ id, icon: Icon, label, path }) => {
-          const isActive = activeItem === id || location.pathname === path;
-          const isRecycleBin = id === "recycle-bin";
-
-          return (
-            <Tooltip
-              key={id}
-              title={isCollapsed ? label : ""}
-              placement="right"
-              arrow
-              enterDelay={500}
-            >
-              <ListItem
-                onClick={(e) => handleNavigation(path, id, e)}
-                sx={{
-                  borderRadius: 2,
-                  mb: 0.5,
-                  py: { md: 1, lg: 1.2 },
-                  px: { md: 1.2, lg: 1.5 },
-                  cursor: "pointer",
-                  backgroundColor: isActive
-                    ? alpha(theme.palette.primary.main, 0.08)
-                    : "transparent",
-                  color: isActive
-                    ? theme.palette.primary.main
-                    : isRecycleBin && !isActive
-                      ? theme.palette.text.secondary
-                      : theme.palette.text.secondary,
-                  "&:hover": {
-                    backgroundColor:
-                      isRecycleBin && !isActive
-                        ? alpha(theme.palette.warning.main, 0.05)
-                        : alpha(theme.palette.primary.main, 0.05),
-                    transform: "translateX(4px)",
-                  },
-                  transition: "all 0.2s ease",
-                  "& .MuiListItemIcon-root": {
-                    color: "inherit",
-                    minWidth: isCollapsed ? "auto" : { md: 36, lg: 40 },
-                  },
-                }}
-              >
-                <ListItemIcon>
-                  <Icon sx={{ fontSize: { md: 20, lg: 22, xl: 24 } }} />
-                </ListItemIcon>
-                {!isCollapsed && (
-                  <ListItemText
-                    primary={label}
-                    primaryTypographyProps={{
-                      fontSize: { md: 13, lg: 14, xl: 15 },
-                      fontWeight: isActive ? 600 : 500,
-                      noWrap: true,
-                    }}
-                  />
-                )}
-              </ListItem>
-            </Tooltip>
-          );
-        })}
+        {renderNavItems(navItems, true)}
       </List>
 
       {/* User Profile Section */}
@@ -665,7 +824,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
     </Box>
   );
 
-  // Mobile Drawer Content
+  // Mobile Drawer Content - Optimized for touch
   const mobileMenuContent = (
     <Box
       sx={{
@@ -676,6 +835,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
         width: isMobile ? "85vw" : 320,
       }}
     >
+      {/* Drawer Header */}
       <Box
         sx={{
           p: { xs: 1.5, sm: 2 },
@@ -705,11 +865,18 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
             AssetMach
           </Typography>
         </Box>
-        <IconButton onClick={handleCloseMobileMenu} size="small">
+        <IconButton
+          onClick={handleCloseMobileMenu}
+          size="small"
+          sx={{
+            "&:active": { transform: "scale(0.95)" },
+          }}
+        >
           <CloseOutlinedIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
         </IconButton>
       </Box>
 
+      {/* User Profile Card */}
       <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
         <Box
           sx={{
@@ -749,38 +916,29 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
 
       <Divider sx={{ mx: 2 }} />
 
-      <List sx={{ px: { xs: 1.5, sm: 2 }, flex: 1, overflowY: "auto" }}>
-        {navItems.map(({ id, icon: Icon, label, path }) => {
-          const isActive = activeItem === id || location.pathname === path;
-          const isRecycleBin = id === "recycle-bin";
-
-          return (
-            <MobileNavItem
-              key={id}
-              active={isActive}
-              onClick={(e) => handleNavigation(path, id, e)}
-              sx={{
-                backgroundColor:
-                  isRecycleBin && !isActive
-                    ? alpha(theme.palette.warning.main, 0.03)
-                    : undefined,
-              }}
-            >
-              <ListItemIcon>
-                <Icon sx={{ fontSize: { xs: 22, sm: 24 } }} />
-              </ListItemIcon>
-              <ListItemText
-                primary={label}
-                primaryTypographyProps={{
-                  fontSize: { xs: 14, sm: 15 },
-                  fontWeight: isActive ? 600 : 500,
-                }}
-              />
-            </MobileNavItem>
-          );
-        })}
+      {/* Navigation List - Scrollable */}
+      <List
+        sx={{
+          px: { xs: 1.5, sm: 2 },
+          flex: 1,
+          overflowY: "auto",
+          "&::-webkit-scrollbar": {
+            width: "4px",
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "#f1f1f1",
+            borderRadius: "4px",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            background: "#c1c1c1",
+            borderRadius: "4px",
+          },
+        }}
+      >
+        {renderNavItems(navItems, false)}
       </List>
 
+      {/* Logout Button */}
       <Box sx={{ p: { xs: 1.5, sm: 2 }, mt: "auto" }}>
         <Button
           onClick={handleLogout}
@@ -793,6 +951,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
             borderRadius: 2,
             textTransform: "none",
             fontSize: { xs: 13, sm: 14 },
+            "&:active": { transform: "scale(0.98)" },
           }}
         >
           Logout
@@ -805,54 +964,79 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
   if (isMobile || isTablet) {
     return (
       <>
+        {/* Mobile Header with glassmorphism */}
         <MobileHeader>
-          <IconButton onClick={handleOpenMobileMenu} size="small">
+          <IconButton
+            onClick={handleOpenMobileMenu}
+            size="small"
+            sx={{
+              "&:active": { transform: "scale(0.95)" },
+            }}
+          >
             <MenuOutlinedIcon sx={{ fontSize: { xs: 20, sm: 22 } }} />
           </IconButton>
+
+          {/* Logo in header */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Box
-              sx={{
-                width: { xs: 28, sm: 32 },
-                height: { xs: 28, sm: 32 },
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                borderRadius: "8px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Inventory2OutlinedIcon
-                sx={{ color: "#fff", fontSize: { xs: 16, sm: 18 } }}
-              />
-            </Box>
+            <Zoom in={true} timeout={300}>
+              <Box
+                sx={{
+                  width: { xs: 28, sm: 32 },
+                  height: { xs: 28, sm: 32 },
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Inventory2OutlinedIcon
+                  sx={{ color: "#fff", fontSize: { xs: 16, sm: 18 } }}
+                />
+              </Box>
+            </Zoom>
             <Typography fontWeight={600} fontSize={{ xs: 13, sm: 14 }}>
               AssetMach
             </Typography>
           </Box>
-          <IconButton onClick={handleLogout} size="small">
+
+          {/* Right side logout icon for quick access */}
+          <IconButton
+            onClick={handleLogout}
+            size="small"
+            sx={{
+              "&:active": { transform: "scale(0.95)" },
+            }}
+          >
             <LogoutOutlinedIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
           </IconButton>
         </MobileHeader>
+
+        {/* Spacer for fixed header */}
         <Box sx={{ height: { xs: 56, sm: 60, md: 64 } }} />
-        <SwipeableDrawer
+
+        {/* Mobile Drawer */}
+        <Drawer
           anchor="left"
           open={mobileMenuOpen}
           onClose={handleCloseMobileMenu}
-          onOpen={handleOpenMobileMenu}
-          disableBackdropTransition={false}
-          swipeAreaWidth={isMobile ? 20 : 30}
-          ModalProps={{ keepMounted: true }}
+          ModalProps={{
+            keepMounted: true,
+          }}
           sx={{
             "& .MuiDrawer-paper": {
               width: isMobile ? "85vw" : 320,
               boxSizing: "border-box",
               borderRight: "none",
+              boxShadow: `4px 0 20px ${alpha(theme.palette.common.black, 0.1)}`,
             },
           }}
         >
           {mobileMenuContent}
-        </SwipeableDrawer>
-        {navItems.length > 0 && (
+        </Drawer>
+
+        {/* Bottom Navigation Bar - Only show if there are items */}
+        {bottomNavItems.length > 0 && (
           <>
             <BottomNavBar elevation={0}>
               <BottomNavigation
@@ -864,13 +1048,16 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
                   backgroundColor: "transparent",
                 }}
               >
-                {navItems.slice(0, isMobile ? 4 : 5).map((item, idx) => (
+                {bottomNavItems.map((item, idx) => (
                   <BottomNavigationAction
                     key={item.id}
                     label={isMobile ? "" : item.label}
                     icon={
                       <item.icon
-                        sx={{ fontSize: { xs: 20, sm: 22, md: 24 } }}
+                        sx={{
+                          fontSize: { xs: 20, sm: 22, md: 24 },
+                          transition: "transform 0.2s ease",
+                        }}
                       />
                     }
                     sx={{
@@ -878,15 +1065,26 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
                         bottomNavValue === idx
                           ? theme.palette.primary.main
                           : theme.palette.text.secondary,
-                      "&.Mui-selected": { color: theme.palette.primary.main },
+                      "&.Mui-selected": {
+                        color: theme.palette.primary.main,
+                        "& .MuiBottomNavigationAction-label": {
+                          fontSize: { xs: 10, sm: 12 },
+                        },
+                      },
+                      "&:active": {
+                        transform: "scale(0.95)",
+                      },
                     }}
                   />
                 ))}
               </BottomNavigation>
             </BottomNavBar>
+            {/* Spacer for bottom navigation */}
             <Box sx={{ height: { xs: 56, sm: 60 } }} />
           </>
         )}
+
+        {/* Backdrop overlay when drawer is open */}
         <Backdrop
           open={mobileMenuOpen}
           onClick={handleCloseMobileMenu}
@@ -900,6 +1098,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
     );
   }
 
+  // Desktop Layout
   return (
     <DesktopSidebar iscollapsed={isCollapsed.toString()}>
       {desktopSidebarContent}

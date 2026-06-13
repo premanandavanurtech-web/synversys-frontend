@@ -1,5 +1,5 @@
 // src/pages/AssetCategoryPage.jsx
-// ── Redesigned · Full Error Handling · Empty States · Admin Only ─────────────
+// ── Fully Mobile Responsive · Modern Typography · All Screen Sizes ─────────────
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
@@ -25,11 +25,8 @@ import {
   Alert,
   Snackbar,
   Switch,
-  FormControlLabel,
   CircularProgress,
   Fade,
-  Grow,
-  Collapse,
   alpha,
   useMediaQuery,
   useTheme,
@@ -37,6 +34,14 @@ import {
   CardContent,
   Divider,
   LinearProgress,
+  Drawer,
+  AppBar,
+  Toolbar,
+  BottomNavigation,
+  BottomNavigationAction,
+  Fab,
+  Zoom,
+  SwipeableDrawer,
   Badge,
 } from "@mui/material";
 import {
@@ -53,8 +58,6 @@ import {
   ToggleOff,
   FolderOpen,
   Layers,
-  ViewModule,
-  ViewList,
   ArrowBack,
   SearchOff,
   Lock,
@@ -62,107 +65,128 @@ import {
   ErrorOutline,
   CheckCircle,
   InfoOutlined,
-  ExpandMore,
-  ExpandLess,
   GridView,
   TableRows,
   WifiOff,
-  HourglassEmpty,
   Inventory2,
+  Menu,
+  MoreVert,
+  FilterList,
+  Sort,
+  Home,
+  Dashboard,
+  Settings,
 } from "@mui/icons-material";
 import { useAssetCategory } from "../context/AssetCategoryContexts";
 import { useAuth } from "../context/AuthContexts";
 import { useNavigate } from "react-router-dom";
 import { keyframes } from "@mui/material/styles";
 
+// ─── Modern Font System ───────────────────────────────────────────────────────
+const typography = {
+  fontFamily: {
+    primary:
+      "'Sora', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+    heading: "'Sora', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+  mono: "'Sora', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+
+  },
+  weights: {
+    light: 300,
+    regular: 400,
+    medium: 500,
+    semibold: 600,
+    bold: 700,
+    extrabold: 800,
+  },
+};
+
 // ─── Animations ───────────────────────────────────────────────────────────────
-const fadeUp = keyframes`from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}`;
+const fadeUp = keyframes`from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}`;
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`;
-const slideRight = keyframes`from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}`;
-const pulse = keyframes`0%,100%{opacity:1}50%{opacity:0.4}`;
-const shimmer = keyframes`0%{background-position:-200% 0}100%{background-position:200% 0}`;
-const popIn = keyframes`0%{opacity:0;transform:scale(0.94)}100%{opacity:1;transform:scale(1)}`;
-const shake = keyframes`0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}`;
+const slideRight = keyframes`from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}`;
+const slideUp = keyframes`from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}`;
+const scaleIn = keyframes`from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}`;
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const T = {
   // Surfaces
-  bg: "#F4F3EF",
+  bg: "#F5F7F6",
   surface: "#FFFFFF",
-  surfaceAlt: "#F9F8F5",
-  surfaceHov: "#F2F1EC",
+  surfaceAlt: "#FAFBFB",
+  surfaceHov: "#F0F2F1",
   // Borders
-  border: "#E6E1D8",
-  borderMid: "#D5CEBD",
-  // Brand — warm forest ink
-  brand: "#2B3D2E",
-  brandMid: "#3F5C43",
-  brandLight: "#E6EDE7",
-  brandGlow: "rgba(43,61,46,0.12)",
-  brandPale: "#F0F5F1",
+  border: "#E2E8F0",
+  borderMid: "#CBD5E1",
+  // Brand — modern teal
+  brand: "#0f4556",
+  brandMid: "#11657c",
+  brandLight: "#E6F3F3",
+  brandGlow: "rgba(15,91,92,0.12)",
+  brandPale: "#F0F7F7",
   // Ink
-  ink: "#191916",
-  inkSec: "#535249",
-  inkMut: "#9A9690",
+  ink: "#1E2A32",
+  inkSec: "#5A6B76",
+  inkMut: "#8D9BA6",
   // Semantic
-  green: "#166534",
-  greenBg: "#DCFCE7",
-  red: "#B91C1C",
+  green: "#059669",
+  greenBg: "#D1FAE5",
+  red: "#DC2626",
   redBg: "#FEE2E2",
-  amber: "#92400E",
+  amber: "#D97706",
   amberBg: "#FEF3C7",
-  blue: "#1E40AF",
+  blue: "#2563EB",
   blueBg: "#DBEAFE",
-  // Typography
-  font: "'Outfit', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
-  fontMono: "'JetBrains Mono', 'Fira Code', monospace",
+  purple: "#7C3AED",
+  purpleBg: "#EDE9FE",
   // Shadows
   sh: {
-    xs: "0 1px 2px rgba(25,25,22,0.06)",
-    sm: "0 2px 6px rgba(25,25,22,0.07), 0 1px 2px rgba(25,25,22,0.04)",
-    md: "0 6px 20px rgba(25,25,22,0.09), 0 2px 6px rgba(25,25,22,0.05)",
-    lg: "0 16px 48px rgba(25,25,22,0.12), 0 4px 12px rgba(25,25,22,0.06)",
-    xl: "0 28px 72px rgba(25,25,22,0.16), 0 8px 24px rgba(25,25,22,0.07)",
+    xs: "0 1px 2px rgba(0,0,0,0.04)",
+    sm: "0 2px 4px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03)",
+    md: "0 6px 16px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04)",
+    lg: "0 16px 40px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)",
+    xl: "0 24px 64px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.06)",
   },
-  r: { xs: "4px", sm: "8px", md: "12px", lg: "16px", xl: "24px" },
+  r: { xs: "6px", sm: "10px", md: "14px", lg: "18px", xl: "24px" },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtDate = (d) =>
   d
-    ? new Date(d).toLocaleDateString("en-IN", {
-        day: "2-digit",
+    ? new Date(d).toLocaleDateString("en-US", {
+        day: "numeric",
         month: "short",
         year: "numeric",
       })
     : "—";
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-const StatCard = ({ label, value, icon, color, bg, delay = 0 }) => (
+// ─── Stat Card (Responsive) ───────────────────────────────────────────────────
+const StatCard = ({ label, value, icon, bg, delay = 0, isMobile }) => (
   <Box
     sx={{
-      p: 2.5,
+      p: isMobile ? 1.5 : 2.5,
       borderRadius: T.r.lg,
       bgcolor: T.surface,
       border: `1px solid ${T.border}`,
-      boxShadow: T.sh.sm,
+      boxShadow: T.sh.xs,
       animation: `${fadeUp} 0.45s ${delay}s ease both`,
       flex: 1,
       minWidth: 0,
-      transition: "box-shadow 0.2s, transform 0.2s",
-      "&:hover": { boxShadow: T.sh.md, transform: "translateY(-1px)" },
+      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+      "&:active": { transform: isMobile ? "scale(0.98)" : "none" },
+      "&:hover": { boxShadow: isMobile ? T.sh.md : T.sh.lg },
     }}
   >
     <Stack direction="row" alignItems="center" justifyContent="space-between">
-      <Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography
           sx={{
-            fontSize: "0.65rem",
-            fontWeight: 700,
+            fontSize: isMobile ? "0.6rem" : "0.7rem",
+            fontWeight: typography.weights.extrabold,
             color: T.inkMut,
             textTransform: "uppercase",
-            letterSpacing: "0.07em",
-            fontFamily: T.font,
+            letterSpacing: "0.1em",
+            fontFamily: typography.fontFamily.primary,
             mb: 0.5,
           }}
         >
@@ -170,11 +194,11 @@ const StatCard = ({ label, value, icon, color, bg, delay = 0 }) => (
         </Typography>
         <Typography
           sx={{
-            fontSize: "1.6rem",
-            fontWeight: 800,
+            fontSize: isMobile ? "1.4rem" : "1.8rem",
+            fontWeight: typography.weights.extrabold,
             color: T.ink,
-            fontFamily: T.font,
-            lineHeight: 1,
+            fontFamily: typography.fontFamily.heading,
+            lineHeight: 1.1,
             letterSpacing: "-0.03em",
           }}
         >
@@ -183,13 +207,14 @@ const StatCard = ({ label, value, icon, color, bg, delay = 0 }) => (
       </Box>
       <Box
         sx={{
-          width: 40,
-          height: 40,
+          width: isMobile ? 36 : 44,
+          height: isMobile ? 36 : 44,
           borderRadius: T.r.md,
           bgcolor: bg,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          flexShrink: 0,
         }}
       >
         {icon}
@@ -199,53 +224,56 @@ const StatCard = ({ label, value, icon, color, bg, delay = 0 }) => (
 );
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
-const StatusBadge = ({ active }) => (
+const StatusBadge = ({ active, isMobile }) => (
   <Chip
     label={active ? "Active" : "Inactive"}
     size="small"
     sx={{
-      height: 22,
-      fontSize: "0.67rem",
-      fontWeight: 700,
-      fontFamily: T.font,
+      height: isMobile ? 20 : 22,
+      fontSize: isMobile ? "0.6rem" : "0.7rem",
+      fontWeight: typography.weights.bold,
+      fontFamily: typography.fontFamily.primary,
       bgcolor: active ? T.greenBg : T.surfaceAlt,
       color: active ? T.green : T.inkMut,
       borderRadius: T.r.xs,
       border: `1px solid ${active ? alpha(T.green, 0.25) : T.border}`,
-      "& .MuiChip-label": { px: "8px" },
+      "& .MuiChip-label": { px: isMobile ? "6px" : "8px" },
     }}
   />
 );
 
 // ─── Error Banner ─────────────────────────────────────────────────────────────
-const ErrorBanner = ({ message, onRetry, onDismiss }) => (
+const ErrorBanner = ({ message, onRetry, onDismiss, isMobile }) => (
   <Fade in>
     <Box
       sx={{
-        p: "14px 18px",
+        p: isMobile ? "12px 14px" : "14px 18px",
         borderRadius: T.r.md,
         bgcolor: T.redBg,
         border: `1px solid ${alpha(T.red, 0.22)}`,
         display: "flex",
         alignItems: "center",
-        gap: 2,
+        gap: isMobile ? 1 : 2,
         mb: 2,
-        animation: `${shake} 0.35s ease`,
+        animation: `${fadeUp} 0.35s ease`,
       }}
     >
-      <ErrorOutline sx={{ color: T.red, fontSize: 20, flexShrink: 0 }} />
+      <ErrorOutline
+        sx={{ color: T.red, fontSize: isMobile ? 18 : 20, flexShrink: 0 }}
+      />
       <Typography
         sx={{
           flex: 1,
-          fontSize: "0.85rem",
+          fontSize: isMobile ? "0.75rem" : "0.85rem",
           color: T.red,
-          fontFamily: T.font,
-          fontWeight: 500,
+          fontFamily: typography.fontFamily.primary,
+          fontWeight: typography.weights.medium,
+          lineHeight: 1.4,
         }}
       >
         {message}
       </Typography>
-      <Stack direction="row" spacing={0.75}>
+      <Stack direction="row" spacing={0.5}>
         {onRetry && (
           <Button
             size="small"
@@ -253,13 +281,14 @@ const ErrorBanner = ({ message, onRetry, onDismiss }) => (
             sx={{
               textTransform: "none",
               color: T.red,
-              fontFamily: T.font,
-              fontWeight: 700,
-              fontSize: "0.75rem",
+              fontFamily: typography.fontFamily.primary,
+              fontWeight: typography.weights.bold,
+              fontSize: isMobile ? "0.7rem" : "0.75rem",
               borderRadius: T.r.xs,
               border: `1px solid ${alpha(T.red, 0.35)}`,
-              px: 1.5,
-              py: 0.25,
+              px: isMobile ? 1 : 1.5,
+              py: isMobile ? 0.25 : 0.5,
+              minWidth: "auto",
               "&:hover": { bgcolor: alpha(T.red, 0.08) },
             }}
           >
@@ -270,9 +299,13 @@ const ErrorBanner = ({ message, onRetry, onDismiss }) => (
           <IconButton
             size="small"
             onClick={onDismiss}
-            sx={{ color: T.red, borderRadius: T.r.xs }}
+            sx={{
+              color: T.red,
+              borderRadius: T.r.xs,
+              p: isMobile ? 0.5 : 0.75,
+            }}
           >
-            <Close sx={{ fontSize: 15 }} />
+            <Close sx={{ fontSize: isMobile ? 13 : 15 }} />
           </IconButton>
         )}
       </Stack>
@@ -280,15 +313,13 @@ const ErrorBanner = ({ message, onRetry, onDismiss }) => (
   </Fade>
 );
 
-// ─── Network Error ────────────────────────────────────────────────────────────
-const NetworkError = ({ onRetry }) => (
-  <Box
-    sx={{ py: 8, textAlign: "center", animation: `${fadeUp} 0.4s ease both` }}
-  >
+// ─── Network Error (Mobile Friendly) ─────────────────────────────────────────
+const NetworkError = ({ onRetry, isMobile }) => (
+  <Box sx={{ py: isMobile ? 6 : 8, textAlign: "center" }}>
     <Box
       sx={{
-        width: 72,
-        height: 72,
+        width: isMobile ? 64 : 80,
+        height: isMobile ? 64 : 80,
         borderRadius: "50%",
         bgcolor: T.redBg,
         border: `1.5px solid ${alpha(T.red, 0.2)}`,
@@ -296,45 +327,48 @@ const NetworkError = ({ onRetry }) => (
         alignItems: "center",
         justifyContent: "center",
         mx: "auto",
-        mb: 2.5,
+        mb: 2,
       }}
     >
-      <WifiOff sx={{ fontSize: 30, color: T.red }} />
+      <WifiOff sx={{ fontSize: isMobile ? 28 : 34, color: T.red }} />
     </Box>
     <Typography
       sx={{
-        fontWeight: 700,
-        fontSize: "1rem",
+        fontWeight: typography.weights.bold,
+        fontSize: isMobile ? "1rem" : "1.1rem",
         color: T.ink,
-        fontFamily: T.font,
+        fontFamily: typography.fontFamily.heading,
         mb: 0.75,
       }}
     >
-      Failed to Load
+      Connection Lost
     </Typography>
     <Typography
       sx={{
-        fontSize: "0.85rem",
+        fontSize: isMobile ? "0.8rem" : "0.85rem",
         color: T.inkSec,
-        fontFamily: T.font,
+        fontFamily: typography.fontFamily.primary,
         mb: 3,
         maxWidth: 280,
         mx: "auto",
+        px: 2,
       }}
     >
-      Could not fetch categories. Check your connection or permissions.
+      Unable to load categories. Please check your connection.
     </Typography>
     <Button
       onClick={onRetry}
       variant="contained"
-      startIcon={<Refresh sx={{ fontSize: 16 }} />}
+      startIcon={<Refresh sx={{ fontSize: isMobile ? 16 : 18 }} />}
       sx={{
         textTransform: "none",
         bgcolor: T.brand,
-        fontFamily: T.font,
-        fontWeight: 700,
+        fontFamily: typography.fontFamily.primary,
+        fontWeight: typography.weights.semibold,
         borderRadius: T.r.sm,
-        px: 3,
+        px: isMobile ? 2.5 : 3,
+        py: isMobile ? 0.75 : 1,
+        fontSize: isMobile ? "0.8rem" : "0.85rem",
         boxShadow: `0 2px 8px ${T.brandGlow}`,
         "&:hover": { bgcolor: T.brandMid },
       }}
@@ -344,15 +378,19 @@ const NetworkError = ({ onRetry }) => (
   </Box>
 );
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
-const EmptyState = ({ onAdd, hasSearch, searchTerm, onClearSearch }) => (
-  <Box
-    sx={{ py: 9, textAlign: "center", animation: `${fadeUp} 0.4s ease both` }}
-  >
+// ─── Empty State (Responsive) ─────────────────────────────────────────────────
+const EmptyState = ({
+  onAdd,
+  hasSearch,
+  searchTerm,
+  onClearSearch,
+  isMobile,
+}) => (
+  <Box sx={{ py: isMobile ? 6 : 9, textAlign: "center", px: 2 }}>
     <Box
       sx={{
-        width: 76,
-        height: 76,
+        width: isMobile ? 64 : 80,
+        height: isMobile ? 64 : 80,
         borderRadius: "50%",
         bgcolor: hasSearch ? T.surfaceAlt : T.brandPale,
         border: `1.5px solid ${hasSearch ? T.border : alpha(T.brand, 0.2)}`,
@@ -360,22 +398,22 @@ const EmptyState = ({ onAdd, hasSearch, searchTerm, onClearSearch }) => (
         alignItems: "center",
         justifyContent: "center",
         mx: "auto",
-        mb: 2.5,
+        mb: 2,
       }}
     >
       {hasSearch ? (
-        <SearchOff sx={{ fontSize: 32, color: T.inkMut }} />
+        <SearchOff sx={{ fontSize: isMobile ? 28 : 34, color: T.inkMut }} />
       ) : (
-        <Category sx={{ fontSize: 32, color: T.brand }} />
+        <Category sx={{ fontSize: isMobile ? 28 : 34, color: T.brand }} />
       )}
     </Box>
     <Typography
       sx={{
-        fontWeight: 800,
-        fontSize: "1.05rem",
+        fontWeight: typography.weights.extrabold,
+        fontSize: isMobile ? "1rem" : "1.1rem",
         color: T.ink,
-        fontFamily: T.font,
-        mb: 0.6,
+        fontFamily: typography.fontFamily.heading,
+        mb: 0.75,
         letterSpacing: "-0.01em",
       }}
     >
@@ -383,18 +421,18 @@ const EmptyState = ({ onAdd, hasSearch, searchTerm, onClearSearch }) => (
     </Typography>
     <Typography
       sx={{
-        fontSize: "0.85rem",
+        fontSize: isMobile ? "0.8rem" : "0.85rem",
         color: T.inkSec,
-        fontFamily: T.font,
-        mb: 3.5,
+        fontFamily: typography.fontFamily.primary,
+        mb: 3,
         maxWidth: 300,
         mx: "auto",
-        lineHeight: 1.6,
+        lineHeight: 1.5,
       }}
     >
       {hasSearch
-        ? "Try different keywords or clear the filters to see all categories"
-        : "Create your first category to start organising assets by type"}
+        ? "Try different keywords or clear the filters"
+        : "Create your first category to organise assets"}
     </Typography>
     {hasSearch ? (
       <Button
@@ -406,8 +444,9 @@ const EmptyState = ({ onAdd, hasSearch, searchTerm, onClearSearch }) => (
           borderRadius: T.r.sm,
           borderColor: T.border,
           color: T.inkSec,
-          fontFamily: T.font,
-          fontWeight: 600,
+          fontFamily: typography.fontFamily.primary,
+          fontWeight: typography.weights.semibold,
+          fontSize: isMobile ? "0.8rem" : "0.85rem",
           "&:hover": { bgcolor: T.surfaceAlt },
         }}
       >
@@ -423,9 +462,11 @@ const EmptyState = ({ onAdd, hasSearch, searchTerm, onClearSearch }) => (
           color: "#fff",
           textTransform: "none",
           borderRadius: T.r.sm,
-          fontWeight: 700,
-          fontFamily: T.font,
-          px: 3,
+          fontWeight: typography.weights.semibold,
+          fontFamily: typography.fontFamily.primary,
+          px: isMobile ? 2.5 : 3,
+          py: isMobile ? 0.75 : 1,
+          fontSize: isMobile ? "0.8rem" : "0.85rem",
           boxShadow: `0 2px 8px ${T.brandGlow}`,
           "&:hover": { bgcolor: T.brandMid },
         }}
@@ -437,29 +478,54 @@ const EmptyState = ({ onAdd, hasSearch, searchTerm, onClearSearch }) => (
 );
 
 // ─── Skeleton Row ─────────────────────────────────────────────────────────────
-const SkeletonRows = ({ count = 8 }) => (
+const SkeletonRows = ({ count = 8, isMobile }) => (
   <>
     {Array(count)
       .fill(0)
       .map((_, i) => (
         <TableRow key={i}>
-          {[40, 180, 220, 60, 80, 90, 100].map((w, j) => (
-            <TableCell key={j} sx={{ py: 1.75 }}>
+          <TableCell sx={{ py: isMobile ? 1.5 : 1.75 }}>
+            <Skeleton variant="rounded" width={40} height={20} />
+          </TableCell>
+          <TableCell sx={{ py: isMobile ? 1.5 : 1.75 }}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
               <Skeleton
                 variant="rounded"
-                width={w}
-                height={j === 1 ? 34 : 20}
-                sx={{ borderRadius: T.r.xs, animationDelay: `${i * 0.05}s` }}
+                width={isMobile ? 32 : 36}
+                height={isMobile ? 32 : 36}
               />
-            </TableCell>
-          ))}
+              <Box>
+                <Skeleton width={120} height={16} />
+                <Skeleton width={80} height={12} sx={{ mt: 0.5 }} />
+              </Box>
+            </Stack>
+          </TableCell>
+          <TableCell sx={{ py: isMobile ? 1.5 : 1.75 }}>
+            <Skeleton width={isMobile ? 140 : 200} height={20} />
+          </TableCell>
+          <TableCell sx={{ py: isMobile ? 1.5 : 1.75 }}>
+            <Skeleton width={50} height={28} />
+          </TableCell>
+          <TableCell sx={{ py: isMobile ? 1.5 : 1.75 }}>
+            <Skeleton width={60} height={22} />
+          </TableCell>
+          <TableCell sx={{ py: isMobile ? 1.5 : 1.75 }}>
+            <Skeleton width={80} height={16} />
+          </TableCell>
+          <TableCell sx={{ py: isMobile ? 1.5 : 1.75 }}>
+            <Stack direction="row" spacing={0.5}>
+              <Skeleton width={28} height={28} variant="rounded" />
+              <Skeleton width={28} height={28} variant="rounded" />
+              <Skeleton width={28} height={28} variant="rounded" />
+            </Stack>
+          </TableCell>
         </TableRow>
       ))}
   </>
 );
 
-// ─── Category Card (card view / mobile) ──────────────────────────────────────
-const CategoryCard = ({ cat, onEdit, onDelete, onToggle, index }) => {
+// ─── Category Card (Mobile First) ────────────────────────────────────────────
+const CategoryCard = ({ cat, onEdit, onDelete, onToggle, index, isMobile }) => {
   const isActive = cat.isActive !== false;
   return (
     <Card
@@ -467,120 +533,136 @@ const CategoryCard = ({ cat, onEdit, onDelete, onToggle, index }) => {
       sx={{
         border: `1px solid ${isActive ? T.border : alpha(T.border, 0.6)}`,
         borderRadius: T.r.lg,
-        mb: 1.5,
+        mb: isMobile ? 1.25 : 1.5,
         overflow: "visible",
         opacity: isActive ? 1 : 0.65,
-        transition: "all 0.2s ease",
-        animation: `${fadeUp} 0.35s ${index * 0.05}s ease both`,
-        "&:hover": {
-          boxShadow: T.sh.md,
-          borderColor: alpha(T.brand, 0.3),
-          transform: "translateY(-1px)",
-        },
+        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+        animation: `${slideUp} 0.35s ${index * 0.05}s ease both`,
+        "&:active": { transform: isMobile ? "scale(0.98)" : "none" },
       }}
     >
-      <CardContent sx={{ p: "18px", "&:last-child": { pb: "18px" } }}>
-        <Stack spacing={1.75}>
+      <CardContent
+        sx={{
+          p: isMobile ? "14px" : "18px",
+          "&:last-child": { pb: isMobile ? "14px" : "18px" },
+        }}
+      >
+        <Stack spacing={isMobile ? 1.5 : 1.75}>
           {/* Header */}
           <Stack
             direction="row"
             justifyContent="space-between"
             alignItems="flex-start"
           >
-            <Stack direction="row" spacing={1.5} alignItems="center">
+            <Stack
+              direction="row"
+              spacing={1.5}
+              alignItems="center"
+              sx={{ flex: 1, minWidth: 0 }}
+            >
               <Box
                 sx={{
-                  width: 42,
-                  height: 42,
+                  width: isMobile ? 40 : 44,
+                  height: isMobile ? 40 : 44,
                   borderRadius: T.r.md,
                   bgcolor: T.brandPale,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  border: `1.5px solid ${alpha(T.brand, 0.15)}`,
                   flexShrink: 0,
                 }}
               >
-                <Category sx={{ fontSize: 20, color: T.brand }} />
+                <Category
+                  sx={{ fontSize: isMobile ? 18 : 20, color: T.brand }}
+                />
               </Box>
-              <Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography
                   sx={{
-                    fontWeight: 700,
-                    fontSize: "0.9rem",
+                    fontWeight: typography.weights.bold,
+                    fontSize: isMobile ? "0.85rem" : "0.95rem",
                     color: T.ink,
-                    fontFamily: T.font,
+                    fontFamily: typography.fontFamily.heading,
                     letterSpacing: "-0.01em",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {cat.name}
                 </Typography>
                 <Typography
                   sx={{
-                    fontSize: "0.65rem",
+                    fontSize: isMobile ? "0.6rem" : "0.65rem",
                     color: T.inkMut,
-                    fontFamily: T.fontMono,
-                    mt: 0.15,
+                    fontFamily: typography.fontFamily.mono,
+                    mt: 0.25,
                   }}
                 >
                   #{cat._id?.slice(-8)}
                 </Typography>
               </Box>
             </Stack>
-            <StatusBadge active={isActive} />
+            <StatusBadge active={isActive} isMobile={isMobile} />
           </Stack>
 
           {/* Description */}
           <Typography
             sx={{
-              fontSize: "0.8rem",
+              fontSize: isMobile ? "0.75rem" : "0.8rem",
               color: T.inkSec,
-              lineHeight: 1.55,
-              fontFamily: T.font,
-              minHeight: "1.55em",
+              lineHeight: 1.5,
+              fontFamily: typography.fontFamily.primary,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
             }}
           >
             {cat.description || (
               <span style={{ color: T.inkMut, fontStyle: "italic" }}>
-                No description added
+                No description
               </span>
             )}
           </Typography>
 
           <Divider sx={{ borderColor: T.border }} />
 
-          {/* Meta */}
+          {/* Meta & Actions */}
           <Stack
             direction="row"
             alignItems="center"
             justifyContent="space-between"
           >
-            <Stack direction="row" spacing={2}>
-              <Stack direction="row" alignItems="center" spacing={0.6}>
-                <Inventory2 sx={{ fontSize: 13, color: T.brand }} />
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Stack direction="row" alignItems="center" spacing={0.5}>
+                <Inventory2
+                  sx={{ fontSize: isMobile ? 12 : 13, color: T.brand }}
+                />
                 <Typography
                   sx={{
-                    fontSize: "0.78rem",
-                    fontWeight: 700,
+                    fontSize: isMobile ? "0.7rem" : "0.78rem",
+                    fontWeight: typography.weights.bold,
                     color: T.brand,
-                    fontFamily: T.font,
+                    fontFamily: typography.fontFamily.primary,
                   }}
                 >
-                  {cat.assetCount ?? 0} assets
+                  {cat.assetCount ?? 0}
                 </Typography>
               </Stack>
               <Typography
                 sx={{
-                  fontSize: "0.72rem",
+                  fontSize: isMobile ? "0.65rem" : "0.72rem",
                   color: T.inkMut,
-                  fontFamily: T.font,
+                  fontFamily: typography.fontFamily.primary,
                 }}
               >
                 {fmtDate(cat.createdAt)}
               </Typography>
             </Stack>
-            {/* Actions */}
-            <Stack direction="row" spacing={0.6}>
+
+            {/* Action Buttons */}
+            <Stack direction="row" spacing={0.5}>
               <Tooltip
                 title={isActive ? "Deactivate" : "Activate"}
                 placement="top"
@@ -589,17 +671,21 @@ const CategoryCard = ({ cat, onEdit, onDelete, onToggle, index }) => {
                   size="small"
                   onClick={() => onToggle(cat)}
                   sx={{
-                    width: 30,
-                    height: 30,
+                    width: isMobile ? 28 : 30,
+                    height: isMobile ? 28 : 30,
                     borderRadius: T.r.xs,
                     bgcolor: alpha(T.border, 0.5),
-                    "&:hover": { bgcolor: T.border },
+                    "&:active": { transform: "scale(0.92)" },
                   }}
                 >
                   {isActive ? (
-                    <ToggleOn sx={{ fontSize: 17, color: T.green }} />
+                    <ToggleOn
+                      sx={{ fontSize: isMobile ? 15 : 16, color: T.green }}
+                    />
                   ) : (
-                    <ToggleOff sx={{ fontSize: 17, color: T.inkMut }} />
+                    <ToggleOff
+                      sx={{ fontSize: isMobile ? 15 : 16, color: T.inkMut }}
+                    />
                   )}
                 </IconButton>
               </Tooltip>
@@ -608,14 +694,14 @@ const CategoryCard = ({ cat, onEdit, onDelete, onToggle, index }) => {
                   size="small"
                   onClick={() => onEdit(cat)}
                   sx={{
-                    width: 30,
-                    height: 30,
+                    width: isMobile ? 28 : 30,
+                    height: isMobile ? 28 : 30,
                     borderRadius: T.r.xs,
                     bgcolor: T.brandPale,
-                    "&:hover": { bgcolor: alpha(T.brand, 0.15) },
+                    "&:active": { transform: "scale(0.92)" },
                   }}
                 >
-                  <Edit sx={{ fontSize: 14, color: T.brand }} />
+                  <Edit sx={{ fontSize: isMobile ? 12 : 13, color: T.brand }} />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Delete" placement="top">
@@ -623,14 +709,14 @@ const CategoryCard = ({ cat, onEdit, onDelete, onToggle, index }) => {
                   size="small"
                   onClick={() => onDelete(cat)}
                   sx={{
-                    width: 30,
-                    height: 30,
+                    width: isMobile ? 28 : 30,
+                    height: isMobile ? 28 : 30,
                     borderRadius: T.r.xs,
                     bgcolor: alpha(T.redBg, 0.8),
-                    "&:hover": { bgcolor: T.redBg },
+                    "&:active": { transform: "scale(0.92)" },
                   }}
                 >
-                  <Delete sx={{ fontSize: 14, color: T.red }} />
+                  <Delete sx={{ fontSize: isMobile ? 12 : 13, color: T.red }} />
                 </IconButton>
               </Tooltip>
             </Stack>
@@ -641,8 +727,15 @@ const CategoryCard = ({ cat, onEdit, onDelete, onToggle, index }) => {
   );
 };
 
-// ─── Category Form Dialog ─────────────────────────────────────────────────────
-const CategoryDialog = ({ open, onClose, onSubmit, editData, loading }) => {
+// ─── Category Form Dialog (Responsive) ────────────────────────────────────────
+const CategoryDialog = ({
+  open,
+  onClose,
+  onSubmit,
+  editData,
+  loading,
+  isMobile,
+}) => {
   const isEdit = !!editData;
   const [form, setForm] = useState({
     name: "",
@@ -671,8 +764,7 @@ const CategoryDialog = ({ open, onClose, onSubmit, editData, loading }) => {
   const validate = () => {
     const e = {};
     if (!form.name.trim()) e.name = "Category name is required";
-    else if (form.name.trim().length < 2)
-      e.name = "At least 2 characters required";
+    else if (form.name.trim().length < 2) e.name = "At least 2 characters";
     else if (form.name.trim().length > 80) e.name = "Max 80 characters";
     return e;
   };
@@ -690,15 +782,227 @@ const CategoryDialog = ({ open, onClose, onSubmit, editData, loading }) => {
     });
   };
 
-  const inputRoot = {
+  const inputStyles = {
     borderRadius: T.r.sm,
-    fontSize: "0.875rem",
-    fontFamily: T.font,
+    fontSize: isMobile ? "0.8rem" : "0.875rem",
+    fontFamily: typography.fontFamily.primary,
     "& fieldset": { borderColor: T.border },
     "&:hover fieldset": { borderColor: alpha(T.brand, 0.45) },
     "&.Mui-focused fieldset": { borderColor: T.brand, borderWidth: "1.5px" },
-    "&.Mui-focused": { boxShadow: `0 0 0 3px ${T.brandGlow}` },
   };
+
+  const dialogContent = (
+    <Box sx={{ p: isMobile ? 2 : 3 }}>
+      <Stack spacing={isMobile ? 2 : 2.5}>
+        {/* Name Field */}
+        <Box>
+          <Typography
+            sx={{
+              fontSize: isMobile ? "0.65rem" : "0.7rem",
+              fontWeight: typography.weights.bold,
+              color: T.inkSec,
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+              mb: 0.75,
+              fontFamily: typography.fontFamily.primary,
+            }}
+          >
+            Category Name <span style={{ color: T.red }}>*</span>
+          </Typography>
+          <TextField
+            inputRef={nameRef}
+            fullWidth
+            size="small"
+            placeholder="e.g. Electronics, Vehicles..."
+            value={form.name}
+            onChange={(e) => {
+              setForm((p) => ({ ...p, name: e.target.value }));
+              setErrors((p) => ({ ...p, name: "" }));
+            }}
+            onKeyDown={(e) =>
+              e.key === "Enter" && !e.shiftKey && handleSubmit()
+            }
+            error={!!errors.name}
+            helperText={errors.name}
+            InputProps={{ sx: inputStyles }}
+          />
+        </Box>
+
+        {/* Description Field */}
+        <Box>
+          <Typography
+            sx={{
+              fontSize: isMobile ? "0.65rem" : "0.7rem",
+              fontWeight: typography.weights.bold,
+              color: T.inkSec,
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+              mb: 0.75,
+              fontFamily: typography.fontFamily.primary,
+            }}
+          >
+            Description <span style={{ color: T.inkMut }}>(Optional)</span>
+          </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            multiline
+            rows={isMobile ? 2 : 3}
+            placeholder="Brief description of this category..."
+            value={form.description}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, description: e.target.value }))
+            }
+            InputProps={{ sx: inputStyles }}
+          />
+        </Box>
+
+        {/* Status Toggle */}
+        <Box
+          sx={{
+            p: isMobile ? "12px 14px" : "14px 16px",
+            borderRadius: T.r.md,
+            bgcolor: T.surfaceAlt,
+            border: `1px solid ${T.border}`,
+          }}
+        >
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <Box>
+              <Typography
+                sx={{
+                  fontSize: isMobile ? "0.8rem" : "0.85rem",
+                  fontWeight: typography.weights.bold,
+                  color: T.ink,
+                  fontFamily: typography.fontFamily.primary,
+                }}
+              >
+                {form.isActive ? "Active" : "Inactive"}
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: isMobile ? "0.65rem" : "0.72rem",
+                  color: T.inkMut,
+                  fontFamily: typography.fontFamily.primary,
+                  mt: 0.2,
+                }}
+              >
+                {form.isActive ? "Visible in asset forms" : "Hidden from forms"}
+              </Typography>
+            </Box>
+            <Switch
+              checked={form.isActive}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, isActive: e.target.checked }))
+              }
+              size="small"
+              sx={{
+                "& .MuiSwitch-switchBase.Mui-checked": { color: T.brand },
+                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                  bgcolor: T.brand,
+                },
+              }}
+            />
+          </Stack>
+        </Box>
+      </Stack>
+    </Box>
+  );
+
+  const dialogActions = (
+    <Box
+      sx={{
+        px: isMobile ? 2 : 3,
+        py: isMobile ? 1.5 : 2.5,
+        borderTop: `1px solid ${T.border}`,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 1,
+      }}
+    >
+      <Button
+        onClick={onClose}
+        disabled={loading}
+        fullWidth={isMobile}
+        sx={{
+          textTransform: "none",
+          borderRadius: T.r.sm,
+          color: T.inkSec,
+          fontFamily: typography.fontFamily.primary,
+          fontWeight: typography.weights.semibold,
+          border: `1px solid ${T.border}`,
+          bgcolor: T.surface,
+          px: isMobile ? 1.5 : 2.5,
+          "&:hover": { bgcolor: T.surfaceHov },
+        }}
+      >
+        Cancel
+      </Button>
+      <Button
+        onClick={handleSubmit}
+        disabled={loading}
+        variant="contained"
+        fullWidth={isMobile}
+        startIcon={
+          loading ? (
+            <CircularProgress size={14} />
+          ) : isEdit ? (
+            <Check />
+          ) : (
+            <Add />
+          )
+        }
+        sx={{
+          bgcolor: T.brand,
+          color: "#fff",
+          textTransform: "none",
+          borderRadius: T.r.sm,
+          fontWeight: typography.weights.semibold,
+          fontFamily: typography.fontFamily.primary,
+          px: isMobile ? 1.5 : 3,
+          "&:hover": { bgcolor: T.brandMid },
+        }}
+      >
+        {loading ? "Saving..." : isEdit ? "Save Changes" : "Create Category"}
+      </Button>
+    </Box>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer
+        anchor="bottom"
+        open={open}
+        onClose={!loading ? onClose : undefined}
+        PaperProps={{
+          sx: {
+            borderRadius: `${T.r.xl}px ${T.r.xl}px 0 0`,
+            maxHeight: "90vh",
+            overflow: "hidden",
+          },
+        }}
+      >
+        <Box sx={{ bgcolor: T.brand, p: 2, textAlign: "center" }}>
+          <Typography
+            sx={{
+              fontWeight: typography.weights.bold,
+              fontSize: "1rem",
+              color: "white",
+              fontFamily: typography.fontFamily.heading,
+            }}
+          >
+            {isEdit ? "Edit Category" : "New Category"}
+          </Typography>
+        </Box>
+        {dialogContent}
+        {dialogActions}
+      </Drawer>
+    );
+  }
 
   return (
     <Dialog
@@ -712,306 +1016,46 @@ const CategoryDialog = ({ open, onClose, onSubmit, editData, loading }) => {
           boxShadow: T.sh.xl,
           bgcolor: T.surface,
           overflow: "hidden",
-          animation: `${popIn} 0.22s ease both`,
+          animation: `${scaleIn} 0.25s ease both`,
         },
       }}
     >
-      {/* Header */}
-      <Box
-        sx={{
-          px: 3,
-          pt: 3,
-          pb: 2,
-          background: `linear-gradient(135deg, ${T.brandPale} 0%, ${T.surface} 80%)`,
-          borderBottom: `1px solid ${T.border}`,
-        }}
-      >
-        <Stack
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-        >
-          <Stack direction="row" alignItems="center" spacing={1.5}>
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: T.r.md,
-                bgcolor: T.brand,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: `0 3px 10px ${T.brandGlow}`,
-              }}
-            >
-              {isEdit ? (
-                <Edit sx={{ fontSize: 18, color: "#fff" }} />
-              ) : (
-                <Add sx={{ fontSize: 20, color: "#fff" }} />
-              )}
-            </Box>
-            <Box>
-              <Typography
-                sx={{
-                  fontWeight: 800,
-                  fontSize: "1rem",
-                  color: T.ink,
-                  fontFamily: T.font,
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                {isEdit ? "Edit Category" : "New Category"}
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: "0.72rem",
-                  color: T.inkMut,
-                  fontFamily: T.font,
-                }}
-              >
-                {isEdit
-                  ? `Editing "${editData?.name}"`
-                  : "Add a new asset category"}
-              </Typography>
-            </Box>
-          </Stack>
-          <IconButton
-            onClick={onClose}
-            disabled={loading}
-            size="small"
-            sx={{
-              bgcolor: T.surfaceAlt,
-              borderRadius: T.r.xs,
-              border: `1px solid ${T.border}`,
-              "&:hover": { bgcolor: T.border },
-            }}
-          >
-            <Close sx={{ fontSize: 16 }} />
-          </IconButton>
-        </Stack>
-      </Box>
-
-      <DialogContent sx={{ p: 3 }}>
-        <Stack spacing={2.5}>
-          {/* Name */}
-          <Box>
-            <Typography
-              sx={{
-                fontSize: "0.67rem",
-                fontWeight: 700,
-                color: T.inkSec,
-                textTransform: "uppercase",
-                letterSpacing: "0.07em",
-                mb: 0.75,
-                fontFamily: T.font,
-              }}
-            >
-              Category Name <span style={{ color: T.red }}>*</span>
-            </Typography>
-            <TextField
-              inputRef={nameRef}
-              fullWidth
-              size="small"
-              placeholder="e.g. Electronics, Vehicles, Office Equipment…"
-              value={form.name}
-              onChange={(e) => {
-                setForm((p) => ({ ...p, name: e.target.value }));
-                setErrors((p) => ({ ...p, name: "" }));
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) handleSubmit();
-              }}
-              error={!!errors.name}
-              helperText={errors.name}
-              InputProps={{ sx: inputRoot }}
-              sx={{
-                "& .MuiFormHelperText-root": {
-                  mt: 0.75,
-                  fontSize: "0.75rem",
-                  fontFamily: T.font,
-                  color: T.red,
-                },
-              }}
-            />
-            {form.name.length > 60 && (
-              <Typography
-                sx={{
-                  fontSize: "0.65rem",
-                  color: form.name.length > 80 ? T.red : T.inkMut,
-                  fontFamily: T.font,
-                  mt: 0.5,
-                  textAlign: "right",
-                }}
-              >
-                {form.name.length}/80
-              </Typography>
+      <Box sx={{ bgcolor: T.brandPale, px: 3, pt: 2.5, pb: 2 }}>
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Box sx={{ bgcolor: T.brand, p: 1, borderRadius: T.r.md }}>
+            {isEdit ? (
+              <Edit sx={{ fontSize: 18, color: "#fff" }} />
+            ) : (
+              <Add sx={{ fontSize: 18, color: "#fff" }} />
             )}
           </Box>
-
-          {/* Description */}
-          <Box>
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              mb={0.75}
-            >
-              <Typography
-                sx={{
-                  fontSize: "0.67rem",
-                  fontWeight: 700,
-                  color: T.inkSec,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.07em",
-                  fontFamily: T.font,
-                }}
-              >
-                Description
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: "0.65rem",
-                  color: T.inkMut,
-                  fontFamily: T.font,
-                }}
-              >
-                Optional
-              </Typography>
-            </Stack>
-            <TextField
-              fullWidth
-              size="small"
-              multiline
-              rows={3}
-              placeholder="Briefly describe what this category covers…"
-              value={form.description}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, description: e.target.value }))
-              }
-              InputProps={{ sx: inputRoot }}
-            />
-          </Box>
-
-          {/* Status toggle */}
-          <Box
+          <Typography
             sx={{
-              p: "14px 16px",
-              borderRadius: T.r.md,
-              bgcolor: T.surfaceAlt,
-              border: `1px solid ${T.border}`,
+              fontWeight: typography.weights.extrabold,
+              fontSize: "1rem",
+              color: T.ink,
+              fontFamily: typography.fontFamily.heading,
             }}
           >
-            <Stack
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-            >
-              <Box>
-                <Typography
-                  sx={{
-                    fontSize: "0.85rem",
-                    fontWeight: 700,
-                    color: T.ink,
-                    fontFamily: T.font,
-                  }}
-                >
-                  {form.isActive ? "Active" : "Inactive"}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: "0.72rem",
-                    color: T.inkMut,
-                    fontFamily: T.font,
-                    mt: 0.2,
-                  }}
-                >
-                  {form.isActive
-                    ? "Visible in asset assignment forms"
-                    : "Hidden from asset forms"}
-                </Typography>
-              </Box>
-              <Switch
-                checked={form.isActive}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, isActive: e.target.checked }))
-                }
-                size="small"
-                sx={{
-                  "& .MuiSwitch-switchBase.Mui-checked": { color: T.brand },
-                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                    bgcolor: T.brand,
-                  },
-                }}
-              />
-            </Stack>
-          </Box>
+            {isEdit ? "Edit Category" : "Create New Category"}
+          </Typography>
         </Stack>
-      </DialogContent>
-
-      {/* Footer */}
-      <Box
-        sx={{
-          px: 3,
-          py: 2.5,
-          borderTop: `1px solid ${T.border}`,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          bgcolor: T.surfaceAlt,
-        }}
-      >
-        <Button
-          onClick={onClose}
-          disabled={loading}
-          sx={{
-            textTransform: "none",
-            borderRadius: T.r.sm,
-            color: T.inkSec,
-            fontFamily: T.font,
-            fontWeight: 600,
-            px: 2.5,
-            border: `1px solid ${T.border}`,
-            bgcolor: T.surface,
-            "&:hover": { bgcolor: T.surfaceHov },
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          disabled={loading}
-          variant="contained"
-          startIcon={
-            loading ? (
-              <CircularProgress size={14} color="inherit" />
-            ) : isEdit ? (
-              <Check sx={{ fontSize: 16 }} />
-            ) : (
-              <Add sx={{ fontSize: 18 }} />
-            )
-          }
-          sx={{
-            bgcolor: T.brand,
-            color: "#fff",
-            textTransform: "none",
-            borderRadius: T.r.sm,
-            fontWeight: 700,
-            fontFamily: T.font,
-            px: 3,
-            boxShadow: `0 2px 8px ${T.brandGlow}`,
-            "&:hover": { bgcolor: T.brandMid },
-            "&.Mui-disabled": { opacity: 0.5 },
-          }}
-        >
-          {loading ? "Saving…" : isEdit ? "Save Changes" : "Create Category"}
-        </Button>
       </Box>
+      {dialogContent}
+      {dialogActions}
     </Dialog>
   );
 };
 
 // ─── Delete Dialog ────────────────────────────────────────────────────────────
-const DeleteDialog = ({ open, onClose, onConfirm, category, loading }) => (
+const DeleteDialog = ({
+  open,
+  onClose,
+  onConfirm,
+  category,
+  loading,
+  isMobile,
+}) => (
   <Dialog
     open={open}
     onClose={!loading ? onClose : undefined}
@@ -1022,47 +1066,39 @@ const DeleteDialog = ({ open, onClose, onConfirm, category, loading }) => (
         borderRadius: T.r.xl,
         boxShadow: T.sh.xl,
         bgcolor: T.surface,
-        animation: `${popIn} 0.2s ease both`,
+        m: isMobile ? 1 : 2,
       },
     }}
   >
-    <Box sx={{ p: 3 }}>
-      <Stack direction="row" spacing={1.75} alignItems="center" mb={2.5}>
+    <Box sx={{ p: isMobile ? 2 : 3 }}>
+      <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
         <Box
           sx={{
-            width: 44,
-            height: 44,
+            width: isMobile ? 40 : 44,
+            height: isMobile ? 40 : 44,
             borderRadius: T.r.md,
             bgcolor: T.redBg,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            flexShrink: 0,
           }}
         >
-          <Delete sx={{ color: T.red, fontSize: 22 }} />
+          <Delete sx={{ color: T.red, fontSize: isMobile ? 20 : 22 }} />
         </Box>
-        <Box>
-          <Typography
-            sx={{
-              fontWeight: 800,
-              fontSize: "0.95rem",
-              color: T.ink,
-              fontFamily: T.font,
-            }}
-          >
-            Delete Category
-          </Typography>
-          <Typography
-            sx={{ fontSize: "0.72rem", color: T.inkMut, fontFamily: T.font }}
-          >
-            This action cannot be undone
-          </Typography>
-        </Box>
+        <Typography
+          sx={{
+            fontWeight: typography.weights.extrabold,
+            fontSize: isMobile ? "0.9rem" : "1rem",
+            color: T.ink,
+            fontFamily: typography.fontFamily.heading,
+          }}
+        >
+          Delete Category
+        </Typography>
       </Stack>
       <Box
         sx={{
-          p: "14px 16px",
+          p: isMobile ? "12px" : "14px 16px",
           borderRadius: T.r.md,
           bgcolor: T.redBg,
           border: `1px solid ${alpha(T.red, 0.2)}`,
@@ -1071,46 +1107,44 @@ const DeleteDialog = ({ open, onClose, onConfirm, category, loading }) => (
       >
         <Typography
           sx={{
-            fontSize: "0.875rem",
+            fontSize: isMobile ? "0.8rem" : "0.85rem",
             color: T.red,
-            fontFamily: T.font,
-            fontWeight: 500,
-            lineHeight: 1.55,
+            fontFamily: typography.fontFamily.primary,
+            fontWeight: typography.weights.medium,
           }}
         >
           Delete <strong>"{category?.name}"</strong>? Assets using this category
-          will lose their category assignment.
+          will lose their assignment.
         </Typography>
         {(category?.assetCount ?? 0) > 0 && (
-          <Stack direction="row" alignItems="center" spacing={0.75} mt={1.25}>
-            <Warning sx={{ fontSize: 14, color: T.amber }} />
+          <Stack direction="row" alignItems="center" spacing={0.75} mt={1}>
+            <Warning sx={{ fontSize: 13, color: T.amber }} />
             <Typography
               sx={{
-                fontSize: "0.75rem",
+                fontSize: isMobile ? "0.7rem" : "0.75rem",
                 color: T.amber,
-                fontFamily: T.font,
-                fontWeight: 700,
+                fontFamily: typography.fontFamily.primary,
+                fontWeight: typography.weights.bold,
               }}
             >
               {category.assetCount} asset{category.assetCount !== 1 ? "s" : ""}{" "}
-              will be affected
+              affected
             </Typography>
           </Stack>
         )}
       </Box>
-      <Stack direction="row" spacing={1.25} justifyContent="flex-end">
+      <Stack direction="row" spacing={1} justifyContent="flex-end">
         <Button
           onClick={onClose}
           disabled={loading}
+          fullWidth={isMobile}
           sx={{
             textTransform: "none",
             borderRadius: T.r.sm,
             border: `1px solid ${T.border}`,
             color: T.inkSec,
-            fontFamily: T.font,
-            fontWeight: 600,
-            px: 2.5,
-            "&:hover": { bgcolor: T.surfaceAlt },
+            fontFamily: typography.fontFamily.primary,
+            fontWeight: typography.weights.semibold,
           }}
         >
           Cancel
@@ -1119,35 +1153,27 @@ const DeleteDialog = ({ open, onClose, onConfirm, category, loading }) => (
           onClick={onConfirm}
           disabled={loading}
           variant="contained"
-          startIcon={
-            loading ? (
-              <CircularProgress size={14} color="inherit" />
-            ) : (
-              <Delete sx={{ fontSize: 16 }} />
-            )
-          }
+          fullWidth={isMobile}
+          startIcon={loading ? <CircularProgress size={14} /> : <Delete />}
           sx={{
             bgcolor: T.red,
             color: "#fff",
             textTransform: "none",
             borderRadius: T.r.sm,
-            fontWeight: 700,
-            fontFamily: T.font,
-            px: 3,
-            boxShadow: `0 2px 8px ${alpha(T.red, 0.25)}`,
+            fontWeight: typography.weights.semibold,
+            fontFamily: typography.fontFamily.primary,
             "&:hover": { bgcolor: "#991B1B" },
-            "&.Mui-disabled": { opacity: 0.5 },
           }}
         >
-          {loading ? "Deleting…" : "Delete Permanently"}
+          {loading ? "Deleting..." : "Delete"}
         </Button>
       </Stack>
     </Box>
   </Dialog>
 );
 
-// ─── Access Denied ────────────────────────────────────────────────────────────
-const AccessDenied = () => (
+// ─── Access Denied (Mobile Friendly) ─────────────────────────────────────────
+const AccessDenied = ({ isMobile }) => (
   <Box
     sx={{
       minHeight: "100vh",
@@ -1155,68 +1181,83 @@ const AccessDenied = () => (
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
+      px: 2,
     }}
   >
-    <Box
-      sx={{
-        p: 5,
-        textAlign: "center",
-        maxWidth: 380,
-        animation: `${fadeUp} 0.4s ease both`,
-      }}
-    >
+    <Box sx={{ textAlign: "center", maxWidth: 340 }}>
       <Box
         sx={{
-          width: 72,
-          height: 72,
+          width: isMobile ? 64 : 80,
+          height: isMobile ? 64 : 80,
           borderRadius: "50%",
           bgcolor: T.redBg,
-          border: `1.5px solid ${alpha(T.red, 0.2)}`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           mx: "auto",
-          mb: 2.5,
+          mb: 2,
         }}
       >
-        <Lock sx={{ fontSize: 30, color: T.red }} />
+        <Lock sx={{ fontSize: isMobile ? 28 : 32, color: T.red }} />
       </Box>
       <Typography
         sx={{
-          fontWeight: 800,
-          fontSize: "1.1rem",
+          fontWeight: typography.weights.extrabold,
+          fontSize: isMobile ? "1rem" : "1.2rem",
           color: T.ink,
-          fontFamily: T.font,
+          fontFamily: typography.fontFamily.heading,
           mb: 1,
-          letterSpacing: "-0.02em",
         }}
       >
-        Admin Access Only
+        Admin Access Required
       </Typography>
       <Typography
         sx={{
-          fontSize: "0.875rem",
+          fontSize: isMobile ? "0.8rem" : "0.85rem",
           color: T.inkSec,
-          fontFamily: T.font,
-          lineHeight: 1.6,
+          fontFamily: typography.fontFamily.primary,
+          lineHeight: 1.5,
         }}
       >
-        Asset Categories can only be managed by administrators. Contact your
-        admin for access.
+        Asset Categories can only be managed by administrators.
       </Typography>
     </Box>
   </Box>
 );
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Floating Action Button (Mobile) ─────────────────────────────────────────
+const FloatingAddButton = ({ onClick }) => (
+  <Zoom in timeout={300}>
+    <Fab
+      color="primary"
+      aria-label="add"
+      onClick={onClick}
+      sx={{
+        position: "fixed",
+        bottom: 16,
+        right: 16,
+        bgcolor: T.brand,
+        color: "#fff",
+        "&:hover": { bgcolor: T.brandMid },
+        boxShadow: T.sh.lg,
+        zIndex: 1000,
+      }}
+    >
+      <Add />
+    </Fab>
+  </Zoom>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function AssetCategoryPage() {
   const { user } = useAuth();
   const theme = useTheme();
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
-  if (!isAdmin) return <AccessDenied />;
+  if (!isAdmin) return <AccessDenied isMobile={isMobile} />;
 
   const {
     categories,
@@ -1233,7 +1274,6 @@ export default function AssetCategoryPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(isMobile ? 5 : 10);
-  const [viewMode, setViewMode] = useState(isMobile ? "card" : "table");
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -1263,13 +1303,9 @@ export default function AssetCategoryPage() {
       } catch (err) {
         const status = err?.response?.status;
         if (status === 401 || status === 403) {
-          setFetchError(
-            "Session expired or insufficient permissions. Please refresh and log in again.",
-          );
+          setFetchError("Session expired. Please refresh.");
         } else if (!navigator.onLine) {
-          setFetchError(
-            "No internet connection. Check your network and try again.",
-          );
+          setFetchError("No internet connection.");
         } else {
           setFetchError(
             err?.response?.data?.message ||
@@ -1289,7 +1325,6 @@ export default function AssetCategoryPage() {
   }, [fetchCategories]);
   useEffect(() => {
     setRowsPerPage(isMobile ? 5 : 10);
-    if (isMobile) setViewMode("card");
   }, [isMobile]);
 
   const clearSearch = () => {
@@ -1301,7 +1336,7 @@ export default function AssetCategoryPage() {
     setSaving(true);
     try {
       await createCategory(formData);
-      toast("Category created successfully ✓");
+      toast("Category created successfully");
       setFormOpen(false);
       fetchCategories(true);
     } catch (e) {
@@ -1315,7 +1350,7 @@ export default function AssetCategoryPage() {
     setSaving(true);
     try {
       await updateCategory(editTarget._id, formData);
-      toast("Category updated successfully ✓");
+      toast("Category updated successfully");
       setEditTarget(null);
       setFormOpen(false);
       fetchCategories(true);
@@ -1366,17 +1401,16 @@ export default function AssetCategoryPage() {
   const totalCount = pagination?.total ?? categories.length;
   const activeCount = categories.filter((c) => c.isActive !== false).length;
 
-  // ─── Table headings ──────────────────────────────────────────────────────
   const headCell = (label) => (
     <TableCell
       sx={{
-        py: 1.5,
-        fontSize: "0.65rem",
-        fontWeight: 800,
+        py: isMobile ? 1.25 : 1.5,
+        fontSize: isMobile ? "0.6rem" : "0.65rem",
+        fontWeight: typography.weights.extrabold,
         color: T.inkSec,
         textTransform: "uppercase",
         letterSpacing: "0.08em",
-        fontFamily: T.font,
+        fontFamily: typography.fontFamily.primary,
         bgcolor: T.surfaceAlt,
         borderBottom: `2px solid ${T.border}`,
         whiteSpace: "nowrap",
@@ -1387,41 +1421,56 @@ export default function AssetCategoryPage() {
   );
 
   return (
-    <Box sx={{ minHeight: "100vh", fontFamily: T.font }}>
-      {/* ── Progress bar ── */}
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: T.bg,
+        fontFamily: typography.fontFamily.primary,
+        pb: isMobile ? 8 : 0,
+      }}
+    >
+      {/* Progress Bar */}
       {busy && (
         <LinearProgress
           sx={{
-            height: 2.5,
+            height: 2,
             bgcolor: alpha(T.brand, 0.08),
             "& .MuiLinearProgress-bar": { bgcolor: T.brand },
+            position: "sticky",
+            top: 0,
+            zIndex: 1100,
           }}
         />
       )}
 
-      {/* ── Header ── */}
+      {/* Header */}
       <Box
         sx={{
-          px: { xs: 2, sm: 3, md: 4 },
-          pt: { xs: 2.5, sm: 3 },
-          pb: 2.5,
-          width:"1165px",
-          marginLeft:"35px",
-          borderRadius:"12px",
+          px: isMobile ? 2 : 3,
+          pt: isMobile ? 2 : 3,
+          pb: isMobile ? 1.5 : 2.5,
           bgcolor: T.surface,
           borderBottom: `1px solid ${T.border}`,
-          boxShadow: `0 1px 0 ${T.border}`,
-          animation: `${fadeIn} 0.35s ease both`,
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+          backdropFilter: "blur(8px)",
+          backgroundColor: alpha(T.surface, 0.95),
         }}
       >
         <Stack
-          direction={{ xs: "column", sm: "row" }}
+          direction="row"
           justifyContent="space-between"
-          alignItems={{ xs: "flex-start", sm: "center" }}
+          alignItems="center"
           spacing={2}
         >
-          <Stack direction="row" spacing={1.75} alignItems="center">
-            <Tooltip title="Back to Assets">
+          <Stack
+            direction="row"
+            spacing={1.5}
+            alignItems="center"
+            sx={{ flex: 1, minWidth: 0 }}
+          >
+            <Tooltip title="Back">
               <IconButton
                 onClick={() => navigate("/admin/assets")}
                 size="small"
@@ -1429,189 +1478,161 @@ export default function AssetCategoryPage() {
                   bgcolor: T.brandPale,
                   borderRadius: T.r.sm,
                   color: T.brand,
-                  border: `1.5px solid ${alpha(T.brand, 0.18)}`,
-                  "&:hover": { bgcolor: T.brandLight },
+                  flexShrink: 0,
                 }}
               >
-                <ArrowBack sx={{ fontSize: 17 }} />
+                <ArrowBack sx={{ fontSize: isMobile ? 18 : 20 }} />
               </IconButton>
             </Tooltip>
-            <Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography
                 sx={{
-                  fontSize: { xs: "1.1rem", sm: "1.25rem" },
-                  fontWeight: 800,
+                  fontSize: isMobile ? "1rem" : "1.25rem",
+                  fontWeight: typography.weights.extrabold,
                   color: T.ink,
-                  fontFamily: T.font,
-                  letterSpacing: "-0.025em",
-                  lineHeight: 1.2,
+                  fontFamily: typography.fontFamily.heading,
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1.3,
                 }}
               >
                 Asset Categories
               </Typography>
               <Typography
                 sx={{
-                  fontSize: "0.7rem",
+                  fontSize: isMobile ? "0.65rem" : "0.7rem",
                   color: T.inkMut,
-                  fontFamily: T.font,
-                  mt: 0.2,
+                  fontFamily: typography.fontFamily.primary,
+                  mt: 0.25,
                 }}
               >
-                {totalCount} categories · {activeCount} active · Admin
+                {totalCount} categories · {activeCount} active
               </Typography>
             </Box>
           </Stack>
 
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Tooltip title="Refresh">
-              <IconButton
-                size="small"
-                onClick={() => fetchCategories()}
-                disabled={busy}
-                sx={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: T.r.sm,
-                  bgcolor: alpha(T.border, 0.5),
-                  border: `1px solid ${T.border}`,
-                  "&:hover": { bgcolor: T.border },
-                }}
-              >
-                {busy ? (
-                  <CircularProgress size={15} sx={{ color: T.brand }} />
-                ) : (
-                  <Refresh sx={{ fontSize: 17, color: T.inkSec }} />
-                )}
-              </IconButton>
-            </Tooltip>
-
-            {/* View toggle — desktop only */}
-            {!isMobile && (
-              <Stack
-                direction="row"
-                sx={{
-                  border: `1px solid ${T.border}`,
-                  borderRadius: T.r.sm,
-                  overflow: "hidden",
-                }}
-              >
-                {[
-                  ["table", <TableRows sx={{ fontSize: 15 }} />, "Table"],
-                  ["card", <GridView sx={{ fontSize: 15 }} />, "Cards"],
-                ].map(([mode, icon, tip]) => (
-                  <Tooltip key={mode} title={tip}>
-                    <IconButton
-                      size="small"
-                      onClick={() => setViewMode(mode)}
-                      sx={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 0,
-                        bgcolor: viewMode === mode ? T.brand : T.surface,
-                        color: viewMode === mode ? "#fff" : T.inkSec,
-                        transition: "all 0.15s",
-                        "&:hover": {
-                          bgcolor:
-                            viewMode === mode ? T.brandMid : T.surfaceAlt,
-                        },
-                      }}
-                    >
-                      {icon}
-                    </IconButton>
-                  </Tooltip>
-                ))}
-              </Stack>
-            )}
-
+          {/* Desktop Add Button */}
+          {!isMobile && (
             <Button
               variant="contained"
-              startIcon={<Add sx={{ fontSize: 16 }} />}
+              startIcon={<Add />}
               onClick={openNew}
               sx={{
                 bgcolor: T.brand,
-                color: "#fff",
                 textTransform: "none",
                 borderRadius: T.r.sm,
-                fontWeight: 700,
-                fontFamily: T.font,
-                fontSize: "0.82rem",
+                fontWeight: typography.weights.semibold,
+                fontFamily: typography.fontFamily.primary,
                 px: 2.5,
-                py: "7px",
-                boxShadow: `0 2px 8px ${T.brandGlow}`,
+                whiteSpace: "nowrap",
                 "&:hover": { bgcolor: T.brandMid },
               }}
             >
               Add Category
             </Button>
-          </Stack>
+          )}
+
+          {/* Refresh Button */}
+          <Tooltip title="Refresh">
+            <IconButton
+              onClick={() => fetchCategories()}
+              disabled={busy}
+              sx={{
+                bgcolor: alpha(T.border, 0.5),
+                borderRadius: T.r.sm,
+                flexShrink: 0,
+              }}
+            >
+              {busy ? (
+                <CircularProgress
+                  size={isMobile ? 16 : 18}
+                  sx={{ color: T.brand }}
+                />
+              ) : (
+                <Refresh
+                  sx={{ fontSize: isMobile ? 18 : 20, color: T.inkSec }}
+                />
+              )}
+            </IconButton>
+          </Tooltip>
         </Stack>
       </Box>
 
-      <Box sx={{ px: { xs: 2, sm: 3, md: 4 }, py: 3 }}>
-        {/* ── Stats row ── */}
+      {/* Main Content */}
+      <Box sx={{ px: isMobile ? 1.5 : 3, py: isMobile ? 2 : 3 }}>
+        {/* Stats Row */}
         <Stack
-          direction={{ xs: "grid", sm: "row" }}
-          sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mb: 3 }}
+          direction="row"
+          spacing={isMobile ? 1 : 1.5}
+          sx={{ mb: isMobile ? 2 : 3, flexWrap: "wrap" }}
         >
           <StatCard
-            label="Total Categories"
+            label="Total"
             value={totalCount}
-            icon={<Category sx={{ fontSize: 20, color: T.brand }} />}
-            color={T.brand}
+            icon={
+              <Category sx={{ fontSize: isMobile ? 16 : 18, color: T.brand }} />
+            }
             bg={T.brandPale}
-            delay={0}
+            isMobile={isMobile}
           />
           <StatCard
             label="Active"
             value={activeCount}
-            icon={<CheckCircle sx={{ fontSize: 20, color: T.green }} />}
-            color={T.green}
+            icon={
+              <CheckCircle
+                sx={{ fontSize: isMobile ? 16 : 18, color: T.green }}
+              />
+            }
             bg={T.greenBg}
-            delay={0.07}
+            isMobile={isMobile}
           />
           <StatCard
             label="Inactive"
             value={Math.max(0, totalCount - activeCount)}
-            icon={<ToggleOff sx={{ fontSize: 20, color: T.inkMut }} />}
-            color={T.inkMut}
+            icon={
+              <ToggleOff
+                sx={{ fontSize: isMobile ? 16 : 18, color: T.inkMut }}
+              />
+            }
             bg={T.surfaceAlt}
-            delay={0.14}
+            isMobile={isMobile}
           />
         </Stack>
 
-        {/* ── Error banners ── */}
+        {/* Error Banners */}
         {fetchError && (
           <ErrorBanner
             message={fetchError}
             onRetry={() => fetchCategories()}
             onDismiss={() => setFetchError("")}
+            isMobile={isMobile}
           />
         )}
         {error && !fetchError && (
-          <ErrorBanner message={error} onDismiss={() => setError(null)} />
+          <ErrorBanner
+            message={error}
+            onDismiss={() => setError(null)}
+            isMobile={isMobile}
+          />
         )}
 
-        {/* ── Search bar ── */}
+        {/* Search Bar */}
         <Box
           sx={{
-            p: 2,
+            p: isMobile ? 1.5 : 2,
             borderRadius: T.r.lg,
             bgcolor: T.surface,
             border: `1px solid ${T.border}`,
-            boxShadow: T.sh.xs,
-            mb: 2.5,
-            animation: `${fadeUp} 0.35s 0.1s ease both`,
+            mb: isMobile ? 2 : 2.5,
           }}
         >
           <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1.5}
-            alignItems={{ sm: "center" }}
+            direction={isMobile ? "column" : "row"}
+            spacing={isMobile ? 1.5 : 2}
           >
             <TextField
               fullWidth
               size="small"
-              placeholder="Search by name or description…"
+              placeholder="Search by name or description..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -1621,26 +1642,23 @@ export default function AssetCategoryPage() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Search sx={{ fontSize: 16, color: T.inkMut }} />
+                    <Search
+                      sx={{ fontSize: isMobile ? 16 : 18, color: T.inkMut }}
+                    />
                   </InputAdornment>
                 ),
-                endAdornment: search ? (
+                endAdornment: search && (
                   <InputAdornment position="end">
-                    <IconButton
-                      size="small"
-                      onClick={clearSearch}
-                      sx={{ borderRadius: T.r.xs }}
-                    >
-                      <Close sx={{ fontSize: 13 }} />
+                    <IconButton size="small" onClick={clearSearch}>
+                      <Close sx={{ fontSize: isMobile ? 13 : 14 }} />
                     </IconButton>
                   </InputAdornment>
-                ) : null,
+                ),
                 sx: {
                   borderRadius: T.r.sm,
-                  fontSize: "0.875rem",
-                  fontFamily: T.font,
+                  fontSize: isMobile ? "0.8rem" : "0.875rem",
+                  fontFamily: typography.fontFamily.primary,
                   "& fieldset": { borderColor: T.border },
-                  "&:hover fieldset": { borderColor: alpha(T.brand, 0.45) },
                   "&.Mui-focused fieldset": {
                     borderColor: T.brand,
                     borderWidth: "1.5px",
@@ -1648,64 +1666,40 @@ export default function AssetCategoryPage() {
                 },
               }}
             />
-            <Stack direction="row" spacing={1}>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => {
-                  setPage(0);
-                  fetchCategories();
-                }}
-                disabled={busy}
-                sx={{
-                  bgcolor: T.brand,
-                  color: "#fff",
-                  textTransform: "none",
-                  borderRadius: T.r.sm,
-                  fontWeight: 700,
-                  fontFamily: T.font,
-                  px: 2.5,
-                  py: "7.5px",
-                  whiteSpace: "nowrap",
-                  boxShadow: `0 2px 6px ${T.brandGlow}`,
-                  "&:hover": { bgcolor: T.brandMid },
-                  "&.Mui-disabled": { opacity: 0.5 },
-                }}
-              >
-                {fetching ? (
-                  <CircularProgress size={15} color="inherit" />
-                ) : (
-                  "Search"
-                )}
-              </Button>
-              {hasSearch && (
-                <Button
-                  size="small"
-                  startIcon={<ClearAll sx={{ fontSize: 14 }} />}
-                  onClick={clearSearch}
-                  sx={{
-                    textTransform: "none",
-                    color: T.inkSec,
-                    fontFamily: T.font,
-                    fontWeight: 600,
-                    fontSize: "0.8rem",
-                    borderRadius: T.r.sm,
-                    border: `1px solid ${T.border}`,
-                    px: 1.75,
-                    "&:hover": { bgcolor: T.surfaceAlt },
-                  }}
-                >
-                  Clear
-                </Button>
+            <Button
+              variant="contained"
+              onClick={() => {
+                setPage(0);
+                fetchCategories();
+              }}
+              disabled={busy}
+              fullWidth={isMobile}
+              sx={{
+                bgcolor: T.brand,
+                textTransform: "none",
+                borderRadius: T.r.sm,
+                fontWeight: typography.weights.semibold,
+                fontFamily: typography.fontFamily.primary,
+                px: isMobile ? 2 : 2.5,
+                py: isMobile ? 0.75 : "auto",
+                whiteSpace: "nowrap",
+                "&:hover": { bgcolor: T.brandMid },
+              }}
+            >
+              {fetching ? (
+                <CircularProgress size={isMobile ? 16 : 18} />
+              ) : (
+                "Search"
               )}
-            </Stack>
+            </Button>
           </Stack>
+
           {hasSearch && !busy && categories.length > 0 && (
             <Box
               sx={{
-                mt: 1.25,
+                mt: 1,
                 px: 1,
-                py: "6px",
+                py: "4px",
                 borderRadius: T.r.xs,
                 bgcolor: T.blueBg,
                 display: "inline-flex",
@@ -1713,13 +1707,14 @@ export default function AssetCategoryPage() {
                 gap: 0.75,
               }}
             >
-              <InfoOutlined sx={{ fontSize: 13, color: T.blue }} />
+              <InfoOutlined
+                sx={{ fontSize: isMobile ? 12 : 13, color: T.blue }}
+              />
               <Typography
                 sx={{
-                  fontSize: "0.73rem",
+                  fontSize: isMobile ? "0.7rem" : "0.73rem",
                   color: T.blue,
-                  fontFamily: T.font,
-                  fontWeight: 500,
+                  fontFamily: typography.fontFamily.primary,
                 }}
               >
                 {totalCount} result{totalCount !== 1 ? "s" : ""} for "
@@ -1729,23 +1724,25 @@ export default function AssetCategoryPage() {
           )}
         </Box>
 
-        {/* ── Main content area ── */}
+        {/* Main Content Area */}
         <Box
           sx={{
             borderRadius: T.r.lg,
             overflow: "hidden",
             bgcolor: T.surface,
             border: `1px solid ${T.border}`,
-            boxShadow: T.sh.sm,
           }}
         >
-          {/* Fetch error with retry — full area */}
+          {/* Network Error */}
           {fetchError && !busy && categories.length === 0 && (
-            <NetworkError onRetry={() => fetchCategories()} />
+            <NetworkError
+              onRetry={() => fetchCategories()}
+              isMobile={isMobile}
+            />
           )}
 
-          {/* Skeleton */}
-          {busy && categories.length === 0 && (
+          {/* Loading Skeleton */}
+          {busy && categories.length === 0 && !fetchError && (
             <TableContainer>
               <Table size="small">
                 <TableHead>
@@ -1762,15 +1759,11 @@ export default function AssetCategoryPage() {
                       <TableCell
                         key={h}
                         sx={{
-                          py: 1.5,
+                          py: isMobile ? 1.25 : 1.5,
                           fontSize: "0.65rem",
                           fontWeight: 800,
                           color: T.inkSec,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                          fontFamily: T.font,
-                          bgcolor: T.surfaceAlt,
-                          borderBottom: `2px solid ${T.border}`,
+                          fontFamily: typography.fontFamily.primary,
                         }}
                       >
                         {h}
@@ -1779,27 +1772,29 @@ export default function AssetCategoryPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  <SkeletonRows count={rowsPerPage} />
+                  <SkeletonRows count={rowsPerPage} isMobile={isMobile} />
                 </TableBody>
               </Table>
             </TableContainer>
           )}
 
-          {/* Empty state */}
+          {/* Empty State */}
           {noData && !fetchError && (
             <EmptyState
               onAdd={openNew}
               hasSearch={hasSearch}
               searchTerm={search}
               onClearSearch={clearSearch}
+              isMobile={isMobile}
             />
           )}
 
-          {/* Data */}
+          {/* Data Display */}
           {!busy && categories.length > 0 && (
             <>
-              {isMobile || viewMode === "card" ? (
-                <Box sx={{ p: 2 }}>
+              {isMobile ? (
+                // Mobile Card View
+                <Box sx={{ p: isMobile ? 1.5 : 2 }}>
                   {categories.map((cat, i) => (
                     <CategoryCard
                       key={cat._id}
@@ -1808,23 +1803,23 @@ export default function AssetCategoryPage() {
                       onEdit={openEdit}
                       onDelete={setDeleteTarget}
                       onToggle={handleToggleActive}
+                      isMobile={isMobile}
                     />
                   ))}
                 </Box>
               ) : (
+                // Desktop Table View
                 <TableContainer>
                   <Table stickyHeader size="small">
                     <TableHead>
                       <TableRow>
-                        {[
-                          "#",
-                          "Category",
-                          "Description",
-                          "Assets",
-                          "Status",
-                          "Created",
-                          "Actions",
-                        ].map((h) => headCell(h))}
+                        {headCell("#")}
+                        {headCell("Category")}
+                        {headCell("Description")}
+                        {headCell("Assets")}
+                        {headCell("Status")}
+                        {headCell("Created")}
+                        {headCell("Actions")}
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -1837,7 +1832,6 @@ export default function AssetCategoryPage() {
                               opacity: isActive ? 1 : 0.6,
                               "&:hover": { bgcolor: T.brandPale },
                               transition: "background 0.15s",
-                              animation: `${slideRight} 0.3s ${idx * 0.03}s ease both`,
                             }}
                           >
                             <TableCell
@@ -1845,14 +1839,11 @@ export default function AssetCategoryPage() {
                                 py: 1.75,
                                 fontSize: "0.78rem",
                                 color: T.inkMut,
-                                fontFamily: T.font,
-                                fontWeight: 600,
-                                pl: 2.5,
+                                fontFamily: typography.fontFamily.primary,
                               }}
                             >
                               {page * rowsPerPage + idx + 1}
                             </TableCell>
-
                             <TableCell sx={{ py: 1.75 }}>
                               <Stack
                                 direction="row"
@@ -1865,11 +1856,9 @@ export default function AssetCategoryPage() {
                                     height: 36,
                                     borderRadius: T.r.md,
                                     bgcolor: T.brandPale,
-                                    border: `1.5px solid ${alpha(T.brand, 0.14)}`,
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    flexShrink: 0,
                                   }}
                                 >
                                   <Category
@@ -1882,8 +1871,7 @@ export default function AssetCategoryPage() {
                                       fontWeight: 700,
                                       fontSize: "0.85rem",
                                       color: T.ink,
-                                      fontFamily: T.font,
-                                      letterSpacing: "-0.01em",
+                                      fontFamily: typography.fontFamily.heading,
                                     }}
                                   >
                                     {cat.name}
@@ -1892,7 +1880,7 @@ export default function AssetCategoryPage() {
                                     sx={{
                                       fontSize: "0.63rem",
                                       color: T.inkMut,
-                                      fontFamily: T.fontMono,
+                                      fontFamily: typography.fontFamily.mono,
                                     }}
                                   >
                                     #{cat._id?.slice(-8)}
@@ -1900,13 +1888,12 @@ export default function AssetCategoryPage() {
                                 </Box>
                               </Stack>
                             </TableCell>
-
                             <TableCell sx={{ py: 1.75, maxWidth: 260 }}>
                               <Typography
                                 sx={{
                                   fontSize: "0.8rem",
                                   color: T.inkSec,
-                                  fontFamily: T.font,
+                                  fontFamily: typography.fontFamily.primary,
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
                                   whiteSpace: "nowrap",
@@ -1924,7 +1911,6 @@ export default function AssetCategoryPage() {
                                 )}
                               </Typography>
                             </TableCell>
-
                             <TableCell sx={{ py: 1.75 }}>
                               <Box
                                 sx={{
@@ -1945,35 +1931,31 @@ export default function AssetCategoryPage() {
                                     fontSize: "0.8rem",
                                     fontWeight: 700,
                                     color: T.brand,
-                                    fontFamily: T.font,
+                                    fontFamily: typography.fontFamily.primary,
                                   }}
                                 >
                                   {cat.assetCount ?? 0}
                                 </Typography>
                               </Box>
                             </TableCell>
-
                             <TableCell sx={{ py: 1.75 }}>
-                              <StatusBadge active={isActive} />
+                              <StatusBadge active={isActive} isMobile={false} />
                             </TableCell>
-
                             <TableCell sx={{ py: 1.75 }}>
                               <Typography
                                 sx={{
                                   fontSize: "0.78rem",
                                   color: T.inkSec,
-                                  fontFamily: T.font,
+                                  fontFamily: typography.fontFamily.primary,
                                 }}
                               >
                                 {fmtDate(cat.createdAt)}
                               </Typography>
                             </TableCell>
-
                             <TableCell sx={{ py: 1.75 }}>
                               <Stack direction="row" spacing={0.5}>
                                 <Tooltip
                                   title={isActive ? "Deactivate" : "Activate"}
-                                  placement="top"
                                 >
                                   <IconButton
                                     size="small"
@@ -1983,7 +1965,6 @@ export default function AssetCategoryPage() {
                                       height: 28,
                                       borderRadius: T.r.xs,
                                       bgcolor: alpha(T.border, 0.5),
-                                      "&:hover": { bgcolor: T.border },
                                     }}
                                   >
                                     {isActive ? (
@@ -1997,7 +1978,7 @@ export default function AssetCategoryPage() {
                                     )}
                                   </IconButton>
                                 </Tooltip>
-                                <Tooltip title="Edit" placement="top">
+                                <Tooltip title="Edit">
                                   <IconButton
                                     size="small"
                                     onClick={() => openEdit(cat)}
@@ -2006,7 +1987,6 @@ export default function AssetCategoryPage() {
                                       height: 28,
                                       borderRadius: T.r.xs,
                                       bgcolor: T.brandPale,
-                                      "&:hover": { bgcolor: T.brandLight },
                                     }}
                                   >
                                     <Edit
@@ -2014,7 +1994,7 @@ export default function AssetCategoryPage() {
                                     />
                                   </IconButton>
                                 </Tooltip>
-                                <Tooltip title="Delete" placement="top">
+                                <Tooltip title="Delete">
                                   <IconButton
                                     size="small"
                                     onClick={() => setDeleteTarget(cat)}
@@ -2023,7 +2003,6 @@ export default function AssetCategoryPage() {
                                       height: 28,
                                       borderRadius: T.r.xs,
                                       bgcolor: alpha(T.redBg, 0.8),
-                                      "&:hover": { bgcolor: T.redBg },
                                     }}
                                   >
                                     <Delete
@@ -2061,11 +2040,16 @@ export default function AssetCategoryPage() {
                   }}
                   sx={{
                     "& .MuiTablePagination-toolbar": {
-                      fontFamily: T.font,
+                      fontFamily: typography.fontFamily.primary,
                       fontSize: "0.8rem",
+                      flexWrap: "wrap",
+                      gap: 1,
                     },
                     "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
-                      { fontFamily: T.font, fontSize: "0.8rem" },
+                      {
+                        fontFamily: typography.fontFamily.primary,
+                        fontSize: "0.75rem",
+                      },
                   }}
                 />
               </Box>
@@ -2074,7 +2058,10 @@ export default function AssetCategoryPage() {
         </Box>
       </Box>
 
-      {/* ── Dialogs ── */}
+      {/* Mobile FAB */}
+      {isMobile && !formOpen && <FloatingAddButton onClick={openNew} />}
+
+      {/* Dialogs */}
       <CategoryDialog
         open={formOpen}
         onClose={() => {
@@ -2084,6 +2071,7 @@ export default function AssetCategoryPage() {
         onSubmit={editTarget ? handleUpdate : handleCreate}
         editData={editTarget}
         loading={saving}
+        isMobile={isMobile}
       />
       <DeleteDialog
         open={!!deleteTarget}
@@ -2091,22 +2079,26 @@ export default function AssetCategoryPage() {
         onConfirm={handleDelete}
         category={deleteTarget}
         loading={saving}
+        isMobile={isMobile}
       />
 
-      {/* ── Snackbar ── */}
+      {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4500}
+        autoHideDuration={4000}
         onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: isMobile ? "center" : "right",
+        }}
       >
         <Alert
           severity={snackbar.severity}
           onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
           sx={{
             borderRadius: T.r.md,
-            fontFamily: T.font,
-            fontSize: "0.82rem",
+            fontFamily: typography.fontFamily.primary,
+            fontSize: "0.8rem",
             fontWeight: 500,
             boxShadow: T.sh.lg,
           }}

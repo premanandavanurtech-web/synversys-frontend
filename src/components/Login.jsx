@@ -1,4 +1,5 @@
-// components/Login.jsx
+// components/Login.jsx - Fixed Redirect Issue & Modal
+
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Box,
@@ -23,6 +24,12 @@ import {
   Tooltip,
   Fade,
   Collapse,
+  Zoom,
+  Slide,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import {
   ArrowForward,
@@ -36,6 +43,8 @@ import {
   Lock,
   MailOutline,
   ShieldOutlined,
+  Close as CloseIcon,
+  WarningAmberOutlined,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContexts";
@@ -43,10 +52,31 @@ import Navbar from "../pages/landing/Navbar";
 import { keyframes } from "@mui/material/styles";
 
 // ─── Animations ───────────────────────────────────────────────────────────────
-const fadeUp = keyframes`from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}`;
-const fadeIn = keyframes`from{opacity:0}to{opacity:1}`;
-const slideLeft = keyframes`from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:translateX(0)}`;
-const glow = keyframes`0%,100%{opacity:0.5}50%{opacity:1}`;
+const fadeUp = keyframes`
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
+const fadeIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+
+const slideLeft = keyframes`
+  from { opacity: 0; transform: translateX(22px); }
+  to { opacity: 1; transform: translateX(0); }
+`;
+
+const glow = keyframes`
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+`;
+
+const shake = keyframes`
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+`;
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -68,11 +98,12 @@ const C = {
   greenBg: "#ECFDF5",
   red: "#DC2626",
   redBg: "#FEF2F2",
+  orange: "#EA580C",
+  orangeBg: "#FFF7ED",
   shadow: "0 1px 3px rgba(15,42,64,0.08), 0 1px 2px rgba(15,42,64,0.04)",
   shadowMd: "0 8px 24px rgba(15,42,64,0.10), 0 3px 8px rgba(15,42,64,0.06)",
   shadowLg: "0 20px 48px rgba(15,42,64,0.14), 0 6px 16px rgba(15,42,64,0.07)",
   font: "'Sora', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
-  fontMono: "'JetBrains Mono', 'Fira Code', monospace",
 };
 
 // ─── Shared input sx ─────────────────────────────────────────────────────────
@@ -82,8 +113,11 @@ const inputSx = (hasError) => ({
     borderRadius: "10px",
     fontFamily: C.font,
     fontSize: "0.875rem",
-    transition: "box-shadow 0.2s",
-    "& fieldset": { borderColor: hasError ? C.red : C.border },
+    transition: "box-shadow 0.2s, border-color 0.2s",
+    "& fieldset": {
+      borderColor: hasError ? C.red : C.border,
+      transition: "border-color 0.2s",
+    },
     "&:hover fieldset": {
       borderColor: hasError ? C.red : alpha(C.brand, 0.45),
     },
@@ -98,11 +132,15 @@ const inputSx = (hasError) => ({
   "& .MuiInputBase-input": {
     py: 1.35,
     fontFamily: C.font,
-    fontSize: "0.875rem",
-    "&::placeholder": { color: C.inkMut, opacity: 1 },
+    fontSize: { xs: "0.8rem", sm: "0.875rem" },
+    "&::placeholder": {
+      color: C.inkMut,
+      opacity: 1,
+      fontSize: { xs: "0.75rem", sm: "0.8rem" },
+    },
   },
   "& .MuiFormHelperText-root": {
-    fontSize: "0.72rem",
+    fontSize: { xs: "0.68rem", sm: "0.72rem" },
     marginLeft: 0,
     mt: 0.6,
     fontFamily: C.font,
@@ -126,6 +164,177 @@ const getRedirectPath = (role) => {
   return "/dashboard";
 };
 
+// ─── Validation Functions ────────────────────────────────────────────────────
+const validateEmail = (v) => {
+  if (!v) return "Email is required";
+  if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v))
+    return "Enter a valid email address";
+  return "";
+};
+
+const validatePassword = (v) => {
+  if (!v) return "Password is required";
+  if (v.length < 6) return "At least 6 characters required";
+  return "";
+};
+
+// ─── Forgot Password Modal ───────────────────────────────────────────────────
+function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [touched, setTouched] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+
+    const result = await onForgotPassword(email);
+    if (result.success) {
+      setSuccess(result.message);
+      setError("");
+      setTimeout(() => {
+        onClose();
+        setEmail("");
+        setSuccess("");
+      }, 3000);
+    } else {
+      setError(result.error);
+      setSuccess("");
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: "20px",
+          boxShadow: C.shadowLg,
+          overflow: "hidden",
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          pb: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: `1px solid ${C.border}`,
+        }}
+      >
+        <Typography
+          sx={{
+            fontSize: { xs: "1.1rem", sm: "1.25rem" },
+            fontWeight: 700,
+            color: C.ink,
+            fontFamily: C.font,
+          }}
+        >
+          Reset Password
+        </Typography>
+        <IconButton onClick={onClose} size="small">
+          <CloseIcon sx={{ fontSize: 20, color: C.inkMut }} />
+        </IconButton>
+      </DialogTitle>
+
+      <form onSubmit={handleSubmit}>
+        <DialogContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+          <Typography
+            sx={{
+              fontSize: { xs: "0.8rem", sm: "0.85rem" },
+              color: C.inkSec,
+              mb: 2.5,
+              fontFamily: C.font,
+            }}
+          >
+            Enter your email address and we'll send you a link to reset your
+            password.
+          </Typography>
+
+          <TextField
+            fullWidth
+            label="Email Address"
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (touched) {
+                setError(validateEmail(e.target.value));
+              }
+            }}
+            onBlur={() => {
+              setTouched(true);
+              setError(validateEmail(email));
+            }}
+            error={!!error && touched}
+            helperText={touched ? error : ""}
+            disabled={loading}
+            sx={inputSx(!!error && touched)}
+          />
+
+          {success && (
+            <Fade in={!!success}>
+              <Alert
+                severity="success"
+                sx={{
+                  mt: 2,
+                  borderRadius: "10px",
+                  fontSize: "0.8rem",
+                }}
+              >
+                {success}
+              </Alert>
+            </Fade>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: { xs: 2, sm: 2.5 }, pt: 0 }}>
+          <Button
+            onClick={onClose}
+            sx={{
+              textTransform: "none",
+              fontFamily: C.font,
+              fontSize: "0.85rem",
+              color: C.inkSec,
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading || !!error || !email}
+            sx={{
+              textTransform: "none",
+              fontFamily: C.font,
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              bgcolor: C.brand,
+              borderRadius: "8px",
+              px: 3,
+              "&:hover": {
+                bgcolor: C.brandDark,
+              },
+            }}
+          >
+            {loading ? <CircularProgress size={20} /> : "Send Reset Link"}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  );
+}
+
 export default function LoginPage() {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -133,17 +342,16 @@ export default function LoginPage() {
   const isLgUp = useMediaQuery(theme.breakpoints.up("lg"));
 
   const isMounted = useRef(true);
-  // True while a login attempt is in flight — blocks the isAuthenticated watcher
-  const loginInProgress = useRef(false);
+  const redirectInProgress = useRef(false);
+  const redirectTimerRef = useRef(null);
 
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
-  const { login, loading: authLoading, user, isAuthenticated } = useAuth();
+  const {
+    login,
+    forgotPassword,
+    loading: authLoading,
+    user,
+    isAuthenticated,
+  } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -151,6 +359,8 @@ export default function LoginPage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [errOpen, setErrOpen] = useState(false);
   const [okOpen, setOkOpen] = useState(false);
+  const [forgotModalOpen, setForgotModalOpen] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -161,8 +371,11 @@ export default function LoginPage() {
     email: false,
     password: false,
   });
+  const [shakeField, setShakeField] = useState(null);
+  const [networkError, setNetworkError] = useState(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
-  const isDisabled = submitting;
+  const isDisabled = submitting || forgotLoading;
 
   // Load remembered email
   useEffect(() => {
@@ -173,32 +386,53 @@ export default function LoginPage() {
     }
   }, []);
 
-  // ── Redirect already-authenticated users (not mid-login) ──────────────────
-  // Only fires on mount / when auth state changes externally (e.g. page refresh
-  // while still logged in). The loginInProgress guard prevents this from racing
-  // with the explicit navigate() call inside handleSubmit.
+  // Check backend status on mount
   useEffect(() => {
-    if (loginInProgress.current) return;
+    const checkBackend = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:9001/api/v1/auth/health",
+          { method: "GET", timeout: 5000 },
+        );
+        if (!response.ok) {
+          setNetworkError(true);
+        }
+      } catch {
+        setNetworkError(true);
+      } finally {
+        setInitialCheckDone(true);
+      }
+    };
+    checkBackend();
+  }, []);
+
+  // FIXED: Redirect already-authenticated users - Only run once on mount
+  useEffect(() => {
+    if (!initialCheckDone) return;
+    if (submitting || redirectInProgress.current) return;
     if (!authLoading && isAuthenticated && user) {
       const path = getRedirectPath(user.role);
       console.log("[Login] Already authenticated, redirecting to:", path);
+      redirectInProgress.current = true;
       navigate(path, { replace: true });
     }
-  }, [isAuthenticated, user, authLoading, navigate]);
+  }, [
+    isAuthenticated,
+    user,
+    authLoading,
+    navigate,
+    submitting,
+    initialCheckDone,
+  ]);
 
-  // ── Validation ────────────────────────────────────────────────────────────
-  const validateEmail = (v) => {
-    if (!v) return "Email is required";
-    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v))
-      return "Enter a valid email address";
-    return "";
-  };
-
-  const validatePassword = (v) => {
-    if (!v) return "Password is required";
-    if (v.length < 6) return "At least 6 characters required";
-    return "";
-  };
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleChange = useCallback(
     (e) => {
@@ -212,20 +446,30 @@ export default function LoginPage() {
         }));
       }
       if (errorMsg) setErrorMsg("");
+      if (shakeField === name) setShakeField(null);
     },
-    [fieldTouched, errorMsg],
+    [fieldTouched, errorMsg, shakeField],
   );
 
   const handleBlur = useCallback((e) => {
     const { name, value } = e.target;
     setFieldTouched((p) => ({ ...p, [name]: true }));
-    setFieldErrors((p) => ({
-      ...p,
-      [name]: name === "email" ? validateEmail(value) : validatePassword(value),
-    }));
+    const error =
+      name === "email" ? validateEmail(value) : validatePassword(value);
+    setFieldErrors((p) => ({ ...p, [name]: error }));
+    if (error) {
+      setShakeField(name);
+      setTimeout(() => setShakeField(null), 500);
+    }
   }, []);
 
-  // ── Submit ────────────────────────────────────────────────────────────────
+  const handleForgotPassword = async (email) => {
+    setForgotLoading(true);
+    const result = await forgotPassword(email);
+    setForgotLoading(false);
+    return result;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -238,11 +482,12 @@ export default function LoginPage() {
     if (emailErr || passwordErr) {
       setErrorMsg(emailErr || passwordErr);
       setErrOpen(true);
+      if (emailErr) setShakeField("email");
+      if (passwordErr) setShakeField("password");
+      setTimeout(() => setShakeField(null), 500);
       return;
     }
 
-    // Block the isAuthenticated watcher for the duration of this login flow
-    loginInProgress.current = true;
     setSubmitting(true);
     setErrorMsg("");
 
@@ -250,7 +495,6 @@ export default function LoginPage() {
       const result = await login(formData.email, formData.password);
 
       if (result.success) {
-        // Persist "remember me"
         if (formData.remember) {
           localStorage.setItem("rememberMe", "true");
           localStorage.setItem("rememberedEmail", formData.email);
@@ -259,40 +503,36 @@ export default function LoginPage() {
           localStorage.removeItem("rememberedEmail");
         }
 
-        // Determine redirect — prefer the explicit role returned from login(),
-        // fall back to result.redirectPath if provided, then derive from user object.
         const role = result.role || result.user?.role || result.userType;
-
-        const path = result.redirectPath || getRedirectPath(role);
+        const path = getRedirectPath(role);
 
         console.log("[Login] Success — role:", role, "→ redirecting to:", path);
 
         setSuccessMsg(result.message || "Login successful! Redirecting…");
         setOkOpen(true);
+        redirectInProgress.current = true;
 
-        const timer = setTimeout(() => {
+        if (redirectTimerRef.current) {
+          clearTimeout(redirectTimerRef.current);
+        }
+
+        redirectTimerRef.current = setTimeout(() => {
           if (isMounted.current) {
             setOkOpen(false);
-            loginInProgress.current = false;
+            setSubmitting(false);
             navigate(path, { replace: true });
           }
-        }, 1200);
-
-        // Cleanup on unmount
-        return () => {
-          clearTimeout(timer);
-          loginInProgress.current = false;
-        };
+        }, 1000);
       } else {
-        loginInProgress.current = false;
         if (isMounted.current) {
           setErrorMsg(result.error || "Invalid email or password");
           setErrOpen(true);
           setSubmitting(false);
+          setShakeField("password");
+          setTimeout(() => setShakeField(null), 500);
         }
       }
     } catch (err) {
-      loginInProgress.current = false;
       if (isMounted.current) {
         console.error("[Login] Unexpected error:", err);
         setErrorMsg("An unexpected error occurred. Please try again.");
@@ -301,6 +541,26 @@ export default function LoginPage() {
       }
     }
   };
+
+  const getAnimationStyle = (fieldName) => ({
+    animation: shakeField === fieldName ? `${shake} 0.5s ease` : "none",
+  });
+
+  if (authLoading && !initialCheckDone) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: C.bg,
+        }}
+      >
+        <CircularProgress sx={{ color: C.brand }} />
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -322,8 +582,8 @@ export default function LoginPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          pt: { xs: "80px", sm: "88px", md: "96px" },
-          pb: { xs: 3, sm: 4 },
+          pt: { xs: "72px", sm: "80px", md: "88px", lg: "96px" },
+          pb: { xs: 3, sm: 4, md: 5 },
           px: { xs: 1.5, sm: 2, md: 3 },
         }}
       >
@@ -333,7 +593,6 @@ export default function LoginPage() {
             maxWidth: { xs: "100%", sm: 500, md: 720, lg: 1020, xl: 1100 },
             transition: "box-shadow 0.3s ease",
             borderRadius: { xs: "16px", sm: "20px", md: "24px" },
-            "&:hover": { boxShadow: C.shadowLg },
           }}
         >
           <Paper
@@ -348,7 +607,7 @@ export default function LoginPage() {
               border: `1px solid ${C.border}`,
             }}
           >
-            {/* Left panel - Hidden on mobile */}
+            {/* Left panel */}
             <Box
               sx={{
                 display: { xs: "none", lg: "flex" },
@@ -359,10 +618,9 @@ export default function LoginPage() {
                 color: "#fff",
                 position: "relative",
                 overflow: "hidden",
-                minHeight: 0,
+                minHeight: 500,
               }}
             >
-              {/* Decorative orbs */}
               <Box
                 sx={{
                   position: "absolute",
@@ -587,6 +845,28 @@ export default function LoginPage() {
                   width: "100%",
                 }}
               >
+                {networkError && (
+                  <Fade in={networkError}>
+                    <Alert
+                      severity="warning"
+                      icon={<WarningAmberOutlined />}
+                      sx={{
+                        mb: 2.5,
+                        borderRadius: "10px",
+                        fontSize: "0.75rem",
+                        bgcolor: C.orangeBg,
+                        color: C.orange,
+                        "& .MuiAlert-icon": { color: C.orange },
+                      }}
+                    >
+                      <Typography sx={{ fontSize: "0.75rem", fontWeight: 500 }}>
+                        Backend connection may be slow. Please check your
+                        network and try again.
+                      </Typography>
+                    </Alert>
+                  </Fade>
+                )}
+
                 <Box
                   mb={{ xs: 3, sm: 3.5 }}
                   sx={{ animation: `${fadeUp} 0.45s ease both` }}
@@ -608,7 +888,7 @@ export default function LoginPage() {
                       <ShieldOutlined sx={{ fontSize: 14, color: C.brand }} />
                       <Typography
                         sx={{
-                          fontSize: "0.65rem",
+                          fontSize: { xs: "0.6rem", sm: "0.65rem" },
                           fontWeight: 700,
                           letterSpacing: "0.09em",
                           textTransform: "uppercase",
@@ -622,7 +902,7 @@ export default function LoginPage() {
                   )}
                   <Typography
                     sx={{
-                      fontSize: { xs: "1.4rem", sm: "1.55rem", md: "1.65rem" },
+                      fontSize: { xs: "1.3rem", sm: "1.55rem", md: "1.65rem" },
                       fontWeight: 800,
                       color: C.ink,
                       fontFamily: C.font,
@@ -635,7 +915,7 @@ export default function LoginPage() {
                   </Typography>
                   <Typography
                     sx={{
-                      fontSize: "0.83rem",
+                      fontSize: { xs: "0.78rem", sm: "0.83rem" },
                       color: C.inkSec,
                       fontFamily: C.font,
                     }}
@@ -649,7 +929,7 @@ export default function LoginPage() {
                     <Box sx={{ animation: `${fadeUp} 0.45s 0.08s ease both` }}>
                       <Typography
                         sx={{
-                          fontSize: "0.67rem",
+                          fontSize: { xs: "0.65rem", sm: "0.67rem" },
                           fontWeight: 700,
                           letterSpacing: "0.08em",
                           color: C.inkSec,
@@ -679,7 +959,7 @@ export default function LoginPage() {
                             <InputAdornment position="start">
                               <MailOutline
                                 sx={{
-                                  fontSize: 17,
+                                  fontSize: { xs: 16, sm: 17 },
                                   color:
                                     fieldErrors.email && fieldTouched.email
                                       ? C.red
@@ -689,7 +969,10 @@ export default function LoginPage() {
                             </InputAdornment>
                           ),
                         }}
-                        sx={inputSx(fieldTouched.email && !!fieldErrors.email)}
+                        sx={{
+                          ...inputSx(fieldTouched.email && !!fieldErrors.email),
+                          ...getAnimationStyle("email"),
+                        }}
                       />
                     </Box>
 
@@ -700,11 +983,13 @@ export default function LoginPage() {
                           justifyContent: "space-between",
                           alignItems: "center",
                           mb: 0.75,
+                          flexWrap: "wrap",
+                          gap: 0.5,
                         }}
                       >
                         <Typography
                           sx={{
-                            fontSize: "0.67rem",
+                            fontSize: { xs: "0.65rem", sm: "0.67rem" },
                             fontWeight: 700,
                             letterSpacing: "0.08em",
                             color: C.inkSec,
@@ -717,10 +1002,10 @@ export default function LoginPage() {
                         <Link
                           component="button"
                           type="button"
-                          onClick={() => navigate("/forgot-password")}
+                          onClick={() => setForgotModalOpen(true)}
                           underline="hover"
                           sx={{
-                            fontSize: "0.75rem",
+                            fontSize: { xs: "0.7rem", sm: "0.75rem" },
                             color: C.brand,
                             fontWeight: 600,
                             fontFamily: C.font,
@@ -756,7 +1041,7 @@ export default function LoginPage() {
                             <InputAdornment position="start">
                               <Lock
                                 sx={{
-                                  fontSize: 16,
+                                  fontSize: { xs: 15, sm: 16 },
                                   color:
                                     fieldErrors.password &&
                                     fieldTouched.password
@@ -774,24 +1059,37 @@ export default function LoginPage() {
                                 size="small"
                                 tabIndex={-1}
                                 disabled={isDisabled}
-                                sx={{ borderRadius: "6px", mr: -0.25 }}
+                                sx={{
+                                  borderRadius: "6px",
+                                  mr: -0.25,
+                                  p: { xs: 0.75, sm: 0.5 },
+                                }}
                               >
                                 {showPassword ? (
                                   <VisibilityOff
-                                    sx={{ fontSize: 17, color: C.inkMut }}
+                                    sx={{
+                                      fontSize: { xs: 16, sm: 17 },
+                                      color: C.inkMut,
+                                    }}
                                   />
                                 ) : (
                                   <Visibility
-                                    sx={{ fontSize: 17, color: C.inkMut }}
+                                    sx={{
+                                      fontSize: { xs: 16, sm: 17 },
+                                      color: C.inkMut,
+                                    }}
                                   />
                                 )}
                               </IconButton>
                             </InputAdornment>
                           ),
                         }}
-                        sx={inputSx(
-                          fieldTouched.password && !!fieldErrors.password,
-                        )}
+                        sx={{
+                          ...inputSx(
+                            fieldTouched.password && !!fieldErrors.password,
+                          ),
+                          ...getAnimationStyle("password"),
+                        }}
                       />
                     </Box>
 
@@ -811,14 +1109,16 @@ export default function LoginPage() {
                             sx={{
                               color: C.inkMut,
                               "&.Mui-checked": { color: C.brand },
-                              "& .MuiSvgIcon-root": { fontSize: 18 },
+                              "& .MuiSvgIcon-root": {
+                                fontSize: { xs: 17, sm: 18 },
+                              },
                             }}
                           />
                         }
                         label={
                           <Typography
                             sx={{
-                              fontSize: "0.82rem",
+                              fontSize: { xs: "0.78rem", sm: "0.82rem" },
                               color: C.inkSec,
                               fontFamily: C.font,
                             }}
@@ -842,11 +1142,15 @@ export default function LoginPage() {
                         }}
                       >
                         <ErrorIcon
-                          sx={{ fontSize: 16, color: C.red, flexShrink: 0 }}
+                          sx={{
+                            fontSize: { xs: 15, sm: 16 },
+                            color: C.red,
+                            flexShrink: 0,
+                          }}
                         />
                         <Typography
                           sx={{
-                            fontSize: "0.8rem",
+                            fontSize: { xs: "0.75rem", sm: "0.8rem" },
                             color: C.red,
                             fontFamily: C.font,
                             fontWeight: 500,
@@ -864,21 +1168,28 @@ export default function LoginPage() {
                         variant="contained"
                         disabled={isDisabled}
                         endIcon={
-                          !isDisabled && <ArrowForward sx={{ fontSize: 16 }} />
+                          !isDisabled && (
+                            <ArrowForward
+                              sx={{ fontSize: { xs: 15, sm: 16 } }}
+                            />
+                          )
                         }
                         sx={{
-                          py: "11px",
+                          py: { xs: "10px", sm: "11px" },
                           bgcolor: C.brand,
                           borderRadius: "10px",
                           fontWeight: 700,
                           fontFamily: C.font,
-                          fontSize: "0.9rem",
+                          fontSize: { xs: "0.85rem", sm: "0.9rem" },
                           textTransform: "none",
                           letterSpacing: "-0.01em",
                           boxShadow: `0 4px 14px ${alpha(C.brand, 0.25)}`,
                           "&:hover": {
                             bgcolor: C.brandMid,
                             boxShadow: `0 6px 18px ${alpha(C.brand, 0.3)}`,
+                          },
+                          "&:active": {
+                            transform: "scale(0.98)",
                           },
                           "&.Mui-disabled": {
                             bgcolor: alpha(C.brand, 0.55),
@@ -909,7 +1220,7 @@ export default function LoginPage() {
                 >
                   <Typography
                     sx={{
-                      fontSize: "0.68rem",
+                      fontSize: { xs: "0.65rem", sm: "0.68rem" },
                       color: C.inkMut,
                       letterSpacing: "0.07em",
                       textTransform: "uppercase",
@@ -925,40 +1236,55 @@ export default function LoginPage() {
                   spacing={1.5}
                   justifyContent="center"
                   mb={3}
+                  sx={{
+                    flexWrap: "wrap",
+                    gap: 1,
+                  }}
                 >
                   {[
-                    { tip: "Sign in with Google", Icon: Google },
-                    { tip: "Sign in with Microsoft", Icon: Microsoft },
-                    { tip: "Sign in with Apple", Icon: Apple },
-                  ].map(({ tip, Icon }) => (
-                    <Tooltip key={tip} title={tip} placement="top">
-                      <span>
+                    {
+                      tip: "Sign in with Google",
+                      Icon: Google,
+                      color: "#DB4437",
+                    },
+                    {
+                      tip: "Sign in with Microsoft",
+                      Icon: Microsoft,
+                      color: "#0078D4",
+                    },
+                    { tip: "Sign in with Apple", Icon: Apple, color: "#000" },
+                  ].map(({ tip, Icon, color }) => (
+                    <Tooltip key={tip} title={tip} placement="top" arrow>
+                      <Zoom in={true}>
                         <IconButton
                           disabled={isDisabled}
                           sx={{
                             border: `1.5px solid ${C.border}`,
                             borderRadius: "10px",
-                            p: 1.25,
-                            width: 48,
-                            height: 48,
+                            p: { xs: 1, sm: 1.25 },
+                            width: { xs: 42, sm: 48 },
+                            height: { xs: 42, sm: 48 },
                             bgcolor: C.surface,
                             transition: "all 0.18s",
                             "&:hover": {
                               bgcolor: C.brandPale,
-                              borderColor: alpha(C.brand, 0.35),
+                              borderColor: alpha(color, 0.35),
                               transform: "translateY(-2px)",
+                            },
+                            "&:active": {
+                              transform: "translateY(0)",
                             },
                             "&.Mui-disabled": { opacity: 0.45 },
                           }}
                         >
                           <Icon
                             sx={{
-                              fontSize: 20,
-                              color: isDisabled ? C.inkMut : C.inkSec,
+                              fontSize: { xs: 18, sm: 20 },
+                              color: isDisabled ? C.inkMut : color,
                             }}
                           />
                         </IconButton>
-                      </span>
+                      </Zoom>
                     </Tooltip>
                   ))}
                 </Stack>
@@ -966,7 +1292,7 @@ export default function LoginPage() {
                 <Box textAlign="center">
                   <Typography
                     sx={{
-                      fontSize: "0.82rem",
+                      fontSize: { xs: "0.78rem", sm: "0.82rem" },
                       color: C.inkSec,
                       fontFamily: C.font,
                     }}
@@ -1005,6 +1331,7 @@ export default function LoginPage() {
         autoHideDuration={5000}
         onClose={() => setErrOpen(false)}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        TransitionComponent={Slide}
       >
         <Alert
           severity="error"
@@ -1016,7 +1343,7 @@ export default function LoginPage() {
             maxWidth: { xs: "calc(100vw - 32px)", sm: 420 },
             borderRadius: "12px",
             fontFamily: C.font,
-            fontSize: "0.82rem",
+            fontSize: { xs: "0.78rem", sm: "0.82rem" },
             fontWeight: 500,
             boxShadow: "0 8px 24px rgba(0,0,0,0.14)",
           }}
@@ -1031,6 +1358,7 @@ export default function LoginPage() {
         autoHideDuration={3000}
         onClose={() => setOkOpen(false)}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        TransitionComponent={Slide}
       >
         <Alert
           severity="success"
@@ -1044,7 +1372,7 @@ export default function LoginPage() {
             color: "#fff",
             fontWeight: 600,
             fontFamily: C.font,
-            fontSize: "0.82rem",
+            fontSize: { xs: "0.78rem", sm: "0.82rem" },
             borderRadius: "12px",
             boxShadow: "0 8px 24px rgba(0,0,0,0.14)",
             "& .MuiAlert-icon": { color: "#fff" },
@@ -1054,6 +1382,14 @@ export default function LoginPage() {
           {successMsg}
         </Alert>
       </Snackbar>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        open={forgotModalOpen}
+        onClose={() => setForgotModalOpen(false)}
+        onForgotPassword={handleForgotPassword}
+        loading={forgotLoading}
+      />
     </Box>
   );
 }

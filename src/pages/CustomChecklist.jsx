@@ -1,4 +1,5 @@
-// Requires: npm install jspdf html2canvas
+// CustomChecklist.jsx - Fully Responsive with All Issues Fixed
+
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -24,11 +25,27 @@ import {
   Select,
   MenuItem,
   FormControl,
+  useMediaQuery,
+  useTheme,
+  Drawer,
+  Fab,
+  SwipeableDrawer,
+  Card,
+  CardContent,
+  Collapse,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
 } from "@mui/material";
 import { createTheme, ThemeProvider, alpha } from "@mui/material/styles";
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { useChecklistBuilder } from "../context/ChecklistBuilderContext";
 
-// ── MUI Theme ─────────────────────────────────────────────────────────────────
+// ── MUI Theme with responsive adjustments ─────────────────────────────────────────────────
 const theme = createTheme({
   palette: {
     primary: { main: "#144c5c", dark: "#0d3a47", light: "#e8f4f7" },
@@ -36,74 +53,111 @@ const theme = createTheme({
     text: { primary: "#111827", secondary: "#6b7280" },
   },
   typography: {
-    fontFamily: "system-ui,-apple-system,sans-serif",
+    fontFamily:
+      "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     button: { textTransform: "none", fontWeight: 500 },
+    h6: { fontSize: "1rem", fontWeight: 600 },
+    body2: { fontSize: "0.875rem", lineHeight: 1.5 },
   },
-  shape: { borderRadius: 8 },
+  shape: { borderRadius: 12 },
+  breakpoints: {
+    values: { xs: 0, sm: 600, md: 900, lg: 1200, xl: 1536 },
+  },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: 10,
           boxShadow: "none",
+          padding: "6px 16px",
           "&:hover": { boxShadow: "none" },
         },
-        outlined: {
-          borderColor: "#e5e7eb",
-          color: "#374151",
-          "&:hover": { background: "#f0f1f2", borderColor: "#e5e7eb" },
-        },
-        outlinedPrimary: {
-          borderColor: "#144c5c",
-          color: "#144c5c",
-          "&:hover": { background: "#e8f4f7" },
-        },
-        containedPrimary: {
-          background: "#144c5c",
-          "&:hover": { background: "#0d3a47" },
-        },
+        sizeSmall: { padding: "4px 12px", fontSize: "0.75rem" },
+        sizeLarge: { padding: "8px 24px", fontSize: "0.9375rem" },
       },
     },
     MuiPaper: {
       styleOverrides: {
-        root: { boxShadow: "none", border: "1px solid #e8ecef" },
+        root: {
+          boxShadow: "none",
+          border: "1px solid #e8ecef",
+          transition: "all 0.2s ease",
+        },
+        elevation1: { boxShadow: "0 1px 2px rgba(0,0,0,0.05)" },
       },
     },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
-          fontSize: 13,
+          borderRadius: 10,
+          fontSize: "0.875rem",
           "& fieldset": { borderColor: "#dde3e8" },
           "&:hover fieldset": { borderColor: "#144c5c !important" },
-          "&.Mui-focused fieldset": { borderColor: "#144c5c !important" },
+          "&.Mui-focused fieldset": {
+            borderColor: "#144c5c !important",
+            borderWidth: "2px",
+          },
         },
-        input: { padding: "10px 14px" },
+        input: {
+          padding: "12px 14px",
+          "@media (max-width:600px)": { padding: "10px 12px" },
+        },
+        inputMultiline: { padding: "12px 14px" },
       },
     },
     MuiChip: {
       styleOverrides: {
-        root: { borderRadius: 20, fontSize: 11, height: 24 },
+        root: { borderRadius: 20, fontSize: "0.6875rem", height: 26 },
+        sizeSmall: { height: 22, fontSize: "0.625rem" },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        select: { padding: "12px 14px" },
       },
     },
   },
 });
 
 // ── Section Header ─────────────────────────────────────────────────────────
-function SectionHeader({ title }) {
+function SectionHeader({ title, isCollapsed, onToggle }) {
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   return (
     <Box
+      onClick={onToggle}
       sx={{
         background: "#f0f4f6",
         borderRadius: "10px",
-        px: 2.25,
-        py: 1.5,
-        mb: 2.5,
+        px: { xs: 1.5, sm: 2.25 },
+        py: { xs: 1, sm: 1.5 },
+        mb: { xs: 2, sm: 2.5 },
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        cursor: onToggle ? "pointer" : "default",
+        transition: "background 0.2s",
+        "&:hover": onToggle ? { background: "#e8ecef" } : {},
       }}
     >
-      <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#1a3a47" }}>
+      <Typography
+        sx={{
+          fontSize: { xs: "0.8125rem", sm: "0.9375rem" },
+          fontWeight: 700,
+          color: "#1a3a47",
+        }}
+      >
         {title}
       </Typography>
+      {onToggle && (
+        <IconButton size="small" sx={{ p: 0.5 }}>
+          {isCollapsed ? (
+            <ExpandMoreIcon sx={{ fontSize: 18 }} />
+          ) : (
+            <ExpandLessIcon sx={{ fontSize: 18 }} />
+          )}
+        </IconButton>
+      )}
     </Box>
   );
 }
@@ -112,17 +166,195 @@ function SectionHeader({ title }) {
 function FieldLabel({ label, required }) {
   return (
     <Typography
-      sx={{ fontSize: 13, fontWeight: 600, color: "#144c5c", mb: 0.75 }}
+      sx={{
+        fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+        fontWeight: 600,
+        color: "#144c5c",
+        mb: 0.75,
+      }}
     >
       {label}
-      {required && " *"}
+      {required && <span style={{ color: "#dc2626", marginLeft: 2 }}>*</span>}
     </Typography>
   );
 }
 
-// ── Dynamic Field Renderer ─────────────────────────────────────────────────
+// ── Signature Pad (Touch Optimized) ──────────────────────────────────────────
+function SignaturePad({ value, onChange }) {
+  const canvasRef = useRef(null);
+  const [drawing, setDrawing] = useState(false);
+  const [hasSig, setHasSig] = useState(false);
+  const last = useRef(null);
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const getPos = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const src = e.touches ? e.touches[0] : e;
+    let x = (src.clientX - rect.left) * scaleX;
+    let y = (src.clientY - rect.top) * scaleY;
+    x = Math.max(0, Math.min(canvas.width, x));
+    y = Math.max(0, Math.min(canvas.height, y));
+    return { x, y };
+  };
+
+  const start = (e) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    const pos = getPos(e, canvas);
+    last.current = pos;
+    setDrawing(true);
+  };
+
+  const move = (e) => {
+    e.preventDefault();
+    if (!drawing) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const pos = getPos(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(last.current.x, last.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = "#1a3a47";
+    ctx.lineWidth = isMobile ? 2.5 : 1.8;
+    ctx.lineCap = "round";
+    ctx.stroke();
+    last.current = pos;
+    setHasSig(true);
+    onChange && onChange(canvasRef.current.toDataURL());
+  };
+
+  const end = () => setDrawing(false);
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasSig(false);
+    onChange && onChange(null);
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas && value) {
+      const img = new Image();
+      img.src = value;
+      img.onload = () => {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setHasSig(true);
+      };
+    }
+  }, [value]);
+
+  return (
+    <Box
+      sx={{
+        border: "1px solid #dde3e8",
+        borderRadius: "10px",
+        background: "#fff",
+        overflow: "hidden",
+      }}
+    >
+      <Box
+        sx={{ position: "relative", textAlign: "center", bgcolor: "#fafafa" }}
+      >
+        {!hasSig && (
+          <Typography
+            sx={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%,-50%)",
+              fontSize: { xs: "0.6875rem", sm: "0.8125rem" },
+              color: "#9ca3af",
+              pointerEvents: "none",
+              zIndex: 1,
+              textAlign: "center",
+            }}
+          >
+            {isMobile ? "Tap and drag to sign" : "Draw your signature here"}
+          </Typography>
+        )}
+        <canvas
+          ref={canvasRef}
+          width={isMobile ? 400 : 580}
+          height={isMobile ? 100 : 120}
+          onMouseDown={start}
+          onMouseMove={move}
+          onMouseUp={end}
+          onMouseLeave={end}
+          onTouchStart={start}
+          onTouchMove={move}
+          onTouchEnd={end}
+          style={{
+            display: "block",
+            cursor: "crosshair",
+            width: "100%",
+            height: isMobile ? 100 : 120,
+            touchAction: "none",
+            backgroundColor: "#ffffff",
+          }}
+        />
+      </Box>
+      <Divider />
+      <Box
+        sx={{
+          px: { xs: 1.5, sm: 2 },
+          py: 1,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 1,
+        }}
+      >
+        <Typography
+          sx={{ fontSize: { xs: "0.625rem", sm: "0.75rem" }, color: "#144c5c" }}
+        >
+          {isMobile
+            ? "Use finger or stylus to sign"
+            : "Sign above using mouse or touch"}
+        </Typography>
+        {hasSig && (
+          <Button
+            size="small"
+            onClick={clear}
+            sx={{
+              fontSize: { xs: "0.6875rem", sm: "0.75rem" },
+              color: "#9ca3af",
+              minWidth: 0,
+              p: 0,
+              "&:hover": { color: "#dc2626", background: "transparent" },
+            }}
+          >
+            Clear
+          </Button>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
+// ── Dynamic Field Renderer (Mobile Optimized) ─────────────────────────────────
 function DynamicField({ field, value, onChange }) {
   const handleChange = (val) => onChange(field._id || field.label, val);
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [filePreview, setFilePreview] = useState([]);
+
+  useEffect(() => {
+    if (
+      Array.isArray(value) &&
+      value.length > 0 &&
+      field.type === "image_upload"
+    ) {
+      const previews = value.map((file) => URL.createObjectURL(file));
+      setFilePreview(previews);
+      return () => previews.forEach(URL.revokeObjectURL);
+    }
+  }, [value, field.type]);
 
   switch (field.type) {
     case "text_input":
@@ -134,8 +366,10 @@ function DynamicField({ field, value, onChange }) {
           value={value || ""}
           onChange={(e) => handleChange(e.target.value)}
           sx={{
-            "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 },
-            "& .MuiOutlinedInput-input": { color: "#374151" },
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "10px",
+              fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+            },
           }}
         />
       );
@@ -145,14 +379,16 @@ function DynamicField({ field, value, onChange }) {
         <TextField
           fullWidth
           multiline
-          minRows={3}
+          minRows={isMobile ? 3 : 4}
           size="small"
           placeholder={field.placeholder || `Enter ${field.label}`}
           value={value || ""}
           onChange={(e) => handleChange(e.target.value)}
           sx={{
-            "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 },
-            "& .MuiOutlinedInput-input": { color: "#374151" },
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "10px",
+              fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+            },
           }}
         />
       );
@@ -165,16 +401,24 @@ function DynamicField({ field, value, onChange }) {
             onChange={(e) => handleChange(e.target.value)}
             displayEmpty
             sx={{
-              borderRadius: "8px",
-              fontSize: 13,
+              borderRadius: "10px",
+              fontSize: { xs: "0.75rem", sm: "0.8125rem" },
               color: value ? "#374151" : "#9ca3af",
             }}
           >
-            <MenuItem value="" disabled sx={{ fontSize: 13, color: "#9ca3af" }}>
+            <MenuItem
+              value=""
+              disabled
+              sx={{ fontSize: { xs: "0.75rem", sm: "0.8125rem" } }}
+            >
               Select {field.label}
             </MenuItem>
             {(field.options || []).map((opt, i) => (
-              <MenuItem key={i} value={opt} sx={{ fontSize: 13 }}>
+              <MenuItem
+                key={i}
+                value={opt}
+                sx={{ fontSize: { xs: "0.75rem", sm: "0.8125rem" } }}
+              >
                 {opt}
               </MenuItem>
             ))}
@@ -187,9 +431,9 @@ function DynamicField({ field, value, onChange }) {
         <Box
           sx={{
             border: "1px solid #dde3e8",
-            borderRadius: "8px",
-            px: 2,
-            py: 1.5,
+            borderRadius: "10px",
+            px: { xs: 1.5, sm: 2 },
+            py: { xs: 1, sm: 1.5 },
             background: "#fff",
           }}
         >
@@ -218,11 +462,16 @@ function DynamicField({ field, value, onChange }) {
                   />
                 }
                 label={
-                  <Typography sx={{ fontSize: 13, color: "#374151" }}>
+                  <Typography
+                    sx={{
+                      fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+                      color: "#374151",
+                    }}
+                  >
                     {item}
                   </Typography>
                 }
-                sx={{ mx: 0 }}
+                sx={{ mx: 0, my: 0.25 }}
               />
             ))}
           </Stack>
@@ -235,26 +484,33 @@ function DynamicField({ field, value, onChange }) {
         <Box
           sx={{
             border: "1px solid #dde3e8",
-            borderRadius: "8px",
-            px: 2,
-            py: 1.5,
+            borderRadius: "10px",
+            px: { xs: 1.5, sm: 2 },
+            py: { xs: 1, sm: 1.5 },
             background: "#fff",
             display: "flex",
             alignItems: "center",
             gap: 1.5,
+            flexWrap: "wrap",
           }}
         >
           <Rating
             value={value || 0}
             onChange={(_, v) => handleChange(v)}
             max={max}
+            size={isMobile ? "small" : "medium"}
             sx={{
               "& .MuiRating-iconFilled": { color: "#f59e0b" },
               "& .MuiRating-iconEmpty": { color: "#d1d5db" },
             }}
           />
-          <Typography sx={{ fontSize: 12, color: "#9ca3af" }}>
-            {value ? `${value}/${max}` : `[Rating Scale: 1-${max}]`}
+          <Typography
+            sx={{
+              fontSize: { xs: "0.6875rem", sm: "0.75rem" },
+              color: "#9ca3af",
+            }}
+          >
+            {value ? `${value}/${max}` : `Rate from 1-${max}`}
           </Typography>
         </Box>
       );
@@ -270,8 +526,10 @@ function DynamicField({ field, value, onChange }) {
           onChange={(e) => handleChange(e.target.value)}
           InputLabelProps={{ shrink: true }}
           sx={{
-            "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 },
-            "& .MuiOutlinedInput-input": { color: "#374151" },
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "10px",
+              fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+            },
           }}
         />
       );
@@ -279,59 +537,128 @@ function DynamicField({ field, value, onChange }) {
     case "image_upload":
     case "file_upload":
       return (
-        <Box
-          component="label"
-          sx={{
-            display: "block",
-            border: "1.5px dashed #c6d4da",
-            borderRadius: "8px",
-            py: 5,
-            px: 3,
-            textAlign: "center",
-            background: "#fff",
-            cursor: "pointer",
-            "&:hover": { borderColor: "#144c5c", background: "#f0f9fb" },
-            transition: "all .12s",
-          }}
-        >
-          <input
-            type="file"
-            hidden
-            accept={field.type === "image_upload" ? "image/*" : "*"}
-            multiple
-            onChange={(e) => handleChange(Array.from(e.target.files))}
-          />
-          <Box sx={{ mb: 1, display: "flex", justifyContent: "center" }}>
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-              <rect width="40" height="40" rx="6" fill="#f0f4f6" />
-              <rect
-                x="9"
-                y="11"
-                width="22"
-                height="18"
-                rx="2"
-                stroke="#9ca3af"
-                strokeWidth="1.4"
-              />
-              <path
-                d="M14 21l4 4 9-8"
-                stroke="#9ca3af"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-              <circle cx="27" cy="15" r="3" fill="#c6d4da" />
-            </svg>
+        <Box>
+          <Box
+            component="label"
+            sx={{
+              display: "block",
+              border: "1.5px dashed #c6d4da",
+              borderRadius: "10px",
+              py: { xs: 3, sm: 5 },
+              px: { xs: 2, sm: 3 },
+              textAlign: "center",
+              background: "#fff",
+              cursor: "pointer",
+              "&:hover": { borderColor: "#144c5c", background: "#f0f9fb" },
+              transition: "all 0.2s",
+            }}
+          >
+            <input
+              type="file"
+              hidden
+              accept={field.type === "image_upload" ? "image/*" : "*"}
+              multiple
+              onChange={(e) => handleChange(Array.from(e.target.files))}
+            />
+            <Box sx={{ mb: 1, display: "flex", justifyContent: "center" }}>
+              <svg
+                width={isMobile ? 32 : 40}
+                height={isMobile ? 32 : 40}
+                viewBox="0 0 40 40"
+                fill="none"
+              >
+                <rect width="40" height="40" rx="8" fill="#f0f4f6" />
+                <rect
+                  x="10"
+                  y="12"
+                  width="20"
+                  height="16"
+                  rx="2"
+                  stroke="#9ca3af"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M14 22l4 4 8-8"
+                  stroke="#9ca3af"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+                <circle cx="26" cy="16" r="3" fill="#c6d4da" />
+              </svg>
+            </Box>
+            <Typography
+              sx={{
+                fontSize: { xs: "0.6875rem", sm: "0.8125rem" },
+                color: "#374151",
+                mb: 0.5,
+              }}
+            >
+              {Array.isArray(value) && value.length > 0
+                ? `${value.length} file(s) selected`
+                : `Tap to ${field.type === "image_upload" ? "upload images" : "upload files"}`}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: { xs: "0.625rem", sm: "0.75rem" },
+                color: "#144c5c",
+              }}
+            >
+              Max 10MB per file
+            </Typography>
           </Box>
-          <Typography sx={{ fontSize: 13, color: "#374151", mb: 0.5 }}>
-            {Array.isArray(value) && value.length > 0
-              ? `${value.length} file(s) selected`
-              : `Drag and drop ${field.type === "image_upload" ? "images" : "files"} here or click to browse`}
-          </Typography>
-          <Typography sx={{ fontSize: 12, color: "#144c5c" }}>
-            {field.type === "image_upload"
-              ? "Supported: JPG, PNG (Max 10MB)"
-              : "Supported: All formats (Max 10MB)"}
-          </Typography>
+          {filePreview.length > 0 && (
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ mt: 1.5, flexWrap: "wrap", gap: 1 }}
+            >
+              {filePreview.slice(0, 3).map((preview, idx) => (
+                <Box
+                  key={idx}
+                  sx={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: "8px",
+                    overflow: "hidden",
+                    border: "1px solid #e8ecef",
+                  }}
+                >
+                  <img
+                    src={preview}
+                    alt={`Preview ${idx}`}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                </Box>
+              ))}
+              {filePreview.length > 3 && (
+                <Box
+                  sx={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: "8px",
+                    bgcolor: "#f0f4f6",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: "0.75rem",
+                      color: "#144c5c",
+                      fontWeight: 600,
+                    }}
+                  >
+                    +{filePreview.length - 3}
+                  </Typography>
+                </Box>
+              )}
+            </Stack>
+          )}
         </Box>
       );
 
@@ -347,129 +674,20 @@ function DynamicField({ field, value, onChange }) {
           value={value || ""}
           onChange={(e) => handleChange(e.target.value)}
           sx={{
-            "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 },
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "10px",
+              fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+            },
           }}
         />
       );
   }
 }
 
-// ── Signature Pad ──────────────────────────────────────────────────────────
-function SignaturePad({ value, onChange }) {
-  const canvasRef = useRef(null);
-  const [drawing, setDrawing] = useState(false);
-  const [hasSig, setHasSig] = useState(false);
-  const last = useRef(null);
-
-  const getPos = (e, canvas) => {
-    const rect = canvas.getBoundingClientRect();
-    const src = e.touches ? e.touches[0] : e;
-    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
-  };
-  const start = (e) => {
-    e.preventDefault();
-    last.current = getPos(e, canvasRef.current);
-    setDrawing(true);
-  };
-  const move = (e) => {
-    e.preventDefault();
-    if (!drawing) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    const pos = getPos(e, canvas);
-    ctx.beginPath();
-    ctx.moveTo(last.current.x, last.current.y);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.strokeStyle = "#1a3a47";
-    ctx.lineWidth = 1.8;
-    ctx.lineCap = "round";
-    ctx.stroke();
-    last.current = pos;
-    setHasSig(true);
-    onChange && onChange(canvasRef.current.toDataURL());
-  };
-  const end = () => setDrawing(false);
-  const clear = () => {
-    canvasRef.current.getContext("2d").clearRect(0, 0, 580, 120);
-    setHasSig(false);
-    onChange && onChange(null);
-  };
-
-  return (
-    <Box
-      sx={{
-        border: "1px solid #dde3e8",
-        borderRadius: "8px",
-        background: "#fff",
-        overflow: "hidden",
-      }}
-    >
-      <Box sx={{ position: "relative", textAlign: "center" }}>
-        {!hasSig && (
-          <Typography
-            sx={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%,-50%)",
-              fontSize: 13,
-              color: "#9ca3af",
-              pointerEvents: "none",
-              zIndex: 1,
-            }}
-          >
-            [Signature Pad — draw here]
-          </Typography>
-        )}
-        <canvas
-          ref={canvasRef}
-          width={580}
-          height={120}
-          onMouseDown={start}
-          onMouseMove={move}
-          onMouseUp={end}
-          onMouseLeave={end}
-          onTouchStart={start}
-          onTouchMove={move}
-          onTouchEnd={end}
-          style={{
-            display: "block",
-            cursor: "crosshair",
-            width: "100%",
-            height: 120,
-            touchAction: "none",
-          }}
-        />
-      </Box>
-      <Divider />
-      <Box
-        sx={{
-          px: 2,
-          py: 1,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Typography sx={{ fontSize: 12, color: "#144c5c" }}>
-          Sign above using mouse or touch
-        </Typography>
-        {hasSig && (
-          <Button
-            size="small"
-            onClick={clear}
-            sx={{ fontSize: 12, color: "#9ca3af", minWidth: 0, p: 0 }}
-          >
-            Clear
-          </Button>
-        )}
-      </Box>
-    </Box>
-  );
-}
-
-// ── Sidebar Detail Row ─────────────────────────────────────────────────────
+// ── Sidebar Detail Row (Mobile Optimized) ─────────────────────────────────────
 function DetailRow({ iconEl, label, value, isTag }) {
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   return (
     <Box
       sx={{
@@ -482,8 +700,8 @@ function DetailRow({ iconEl, label, value, isTag }) {
     >
       <Box
         sx={{
-          width: 34,
-          height: 34,
+          width: { xs: 32, sm: 34 },
+          height: { xs: 32, sm: 34 },
           borderRadius: "8px",
           background: "#e8f4f7",
           display: "flex",
@@ -494,8 +712,14 @@ function DetailRow({ iconEl, label, value, isTag }) {
       >
         {iconEl}
       </Box>
-      <Box>
-        <Typography sx={{ fontSize: 11, color: "#9ca3af", mb: 0.25 }}>
+      <Box sx={{ flex: 1 }}>
+        <Typography
+          sx={{
+            fontSize: { xs: "0.625rem", sm: "0.6875rem" },
+            color: "#9ca3af",
+            mb: 0.25,
+          }}
+        >
           {label}
         </Typography>
         {isTag ? (
@@ -509,12 +733,20 @@ function DetailRow({ iconEl, label, value, isTag }) {
                   background: "#e8f4f7",
                   color: "#144c5c",
                   fontWeight: 500,
+                  fontSize: { xs: "0.625rem", sm: "0.6875rem" },
                 }}
               />
             ))}
           </Stack>
         ) : (
-          <Typography sx={{ fontSize: 13, fontWeight: 500, color: "#1a3a47" }}>
+          <Typography
+            sx={{
+              fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+              fontWeight: 500,
+              color: "#1a3a47",
+              wordBreak: "break-word",
+            }}
+          >
             {value || "—"}
           </Typography>
         )}
@@ -523,7 +755,7 @@ function DetailRow({ iconEl, label, value, isTag }) {
   );
 }
 
-// ── SVG Icons ──────────────────────────────────────────────────────────────
+// ── SVG Icons (Scalable) ──────────────────────────────────────────────────────────────
 const IconForm = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
     <rect
@@ -604,8 +836,19 @@ const IconTag = () => (
     <circle cx="5.5" cy="5.5" r="1" fill="#144c5c" />
   </svg>
 );
+const IconCheck = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <path
+      d="M2 7.5l3 3L12 3"
+      stroke="#144c5c"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
-// ── Group fields into sections ─────────────────────────────────────────────
+// ── Group fields into sections with responsive layout ─────────────────────────────
 function groupFieldsIntoSections(fields) {
   if (!fields || fields.length === 0) return [];
   const basicTypes = ["text_input", "dropdown", "date"];
@@ -623,39 +866,55 @@ function groupFieldsIntoSections(fields) {
   if (basic.length > 0)
     sections.push({ title: "Basic Information", fields: basic });
   if (checks.length > 0)
-    sections.push({ title: "Safety Checks", fields: checks });
-  if (docs.length > 0) sections.push({ title: "Documentation", fields: docs });
+    sections.push({ title: "Safety & Quality Checks", fields: checks });
+  if (docs.length > 0)
+    sections.push({ title: "Documentation & Media", fields: docs });
   if (other.length > 0)
-    sections.push({ title: "Additional Fields", fields: other });
+    sections.push({ title: "Additional Information", fields: other });
   return sections.length > 0 ? sections : [{ title: "Form Fields", fields }];
 }
 
-// ── Loading Skeleton ───────────────────────────────────────────────────────
+// ── Loading Skeleton (Mobile Optimized) ───────────────────────────────────────
 function FormSkeleton() {
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   return (
-    <Paper sx={{ borderRadius: "14px", p: { xs: 3, md: 4.5 } }}>
-      <Skeleton variant="text" width="60%" height={36} sx={{ mb: 1 }} />
-      <Skeleton variant="text" width="80%" height={20} sx={{ mb: 3 }} />
+    <Paper sx={{ borderRadius: "14px", p: { xs: 2, sm: 3, md: 4.5 } }}>
+      <Skeleton
+        variant="text"
+        width="60%"
+        height={isMobile ? 28 : 36}
+        sx={{ mb: 1 }}
+      />
+      <Skeleton
+        variant="text"
+        width="80%"
+        height={isMobile ? 16 : 20}
+        sx={{ mb: 3 }}
+      />
       <Skeleton
         variant="rectangular"
-        height={40}
+        height={isMobile ? 38 : 40}
         sx={{ mb: 2, borderRadius: 2 }}
       />
-      {[1, 2, 3, 4].map((i) => (
+      {[1, 2, 3].map((i) => (
         <Skeleton
           key={i}
           variant="rectangular"
-          height={50}
+          height={isMobile ? 70 : 60}
           sx={{ mb: 2, borderRadius: 2 }}
         />
       ))}
+      <Skeleton
+        variant="rectangular"
+        height={isMobile ? 100 : 80}
+        sx={{ mb: 2, borderRadius: 2 }}
+      />
     </Paper>
   );
 }
 
-// ── Build API payload (matches POST /checklists body exactly) ──────────────
-// Strips user-entered values; sends only the checklist schema fields.
-// The backend persists field definitions — not user responses.
+// ── Build API payload ──────────────────────────────────────────────────────
 function buildChecklistPayload(checklist) {
   return {
     name: checklist.name,
@@ -664,26 +923,28 @@ function buildChecklistPayload(checklist) {
     isGlobal: checklist.isGlobal ?? false,
     category: checklist.category || "general",
     tags: checklist.tags || [],
-    fields: (checklist.fields || []).map((field, idx) => {
-      const f = {
-        type: field.type,
-        label: field.label,
-        required: field.required ?? false,
-        order: field.order ?? idx,
-      };
-      if (field.placeholder) f.placeholder = field.placeholder;
-      if (field.options && field.options.length > 0) f.options = field.options;
-      if (field.validation) f.validation = field.validation;
-      return f;
-    }),
+    fields: (checklist.fields || []).map((field, idx) => ({
+      type: field.type,
+      label: field.label,
+      required: field.required ?? false,
+      order: field.order ?? idx,
+      ...(field.placeholder && { placeholder: field.placeholder }),
+      ...(field.options &&
+        field.options.length > 0 && { options: field.options }),
+      ...(field.validation && { validation: field.validation }),
+    })),
   };
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────
+// ── Main Page (Fully Responsive) ─────────────────────────────────────────────
 export default function CustomChecklist({ checklistId }) {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState({});
 
-  // Pull createChecklist (handles auth + axios) and helpers from context
   const {
     createChecklist,
     getChecklistById,
@@ -706,14 +967,21 @@ export default function CustomChecklist({ checklistId }) {
   const [fetchError, setFetchError] = useState(null);
   const formRef = useRef(null);
 
-  // ── Fetch checklist on mount ────────────────────────────────────────────
+  const toggleSection = (sectionIndex) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [sectionIndex]: !prev[sectionIndex],
+    }));
+  };
+
+  // Fetch checklist on mount
   useEffect(() => {
     if (!checklistId) {
-      // Demo mode — no real checklistId provided
       const demoChecklist = {
         _id: "demo-001",
         name: "Equipment Safety Inspection",
-        description: "Form to document equipment safety inspection results.",
+        description:
+          "Complete this form to document equipment safety inspection results.",
         checklistType: "custom",
         isGlobal: false,
         category: "safety",
@@ -721,7 +989,7 @@ export default function CustomChecklist({ checklistId }) {
         version: 1,
         status: "published",
         createdAt: "2024-11-27T00:00:00.000Z",
-        createdBy: { name: "Customer Admin" },
+        createdBy: { name: "Safety Admin" },
         fields: [
           {
             _id: "f1",
@@ -834,46 +1102,30 @@ export default function CustomChecklist({ checklistId }) {
     fetchChecklist();
   }, [checklistId, getChecklistById, convertAPIToUIField]);
 
-  // ── Field value change ──────────────────────────────────────────────────
   const handleFieldChange = useCallback((key, value) => {
     setFormValues((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  // ── Clear form ──────────────────────────────────────────────────────────
   const handleClear = () => {
     setFormValues({});
     setSubmitted(false);
   };
 
-  // ── Submit — calls createChecklist from context (auth-aware, axios) ─────
-  //
-  // What we POST to /checklists:
-  //   { name, description, checklistType, isGlobal, category, tags, fields[] }
-  //
-  // The fields[] array carries the checklist schema (type, label, options…).
-  // User-entered formValues are NOT part of this POST — they are stored
-  // in a separate submissions endpoint. Here we are saving the checklist
-  // definition itself so it appears in /admin/checklists.
-  // ─────────────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!checklist) return;
-
     setSubmitting(true);
     clearMessages();
-
     try {
       const payload = buildChecklistPayload(checklist);
       const result = await createChecklist(payload);
-
       if (result.success) {
         setSubmitted(true);
         setSnackbar({
           open: true,
-          message: "Checklist saved successfully!",
+          message: "Checklist submitted successfully!",
           severity: "success",
         });
-        // Redirect after snackbar is visible
-        setTimeout(() => navigate("/admin/checklists"), 1200);
+        setTimeout(() => navigate("/admin/checklists"), 1500);
       } else {
         throw new Error(result.error || "Failed to save checklist");
       }
@@ -888,13 +1140,12 @@ export default function CustomChecklist({ checklistId }) {
     }
   };
 
-  // ── Download as PDF ─────────────────────────────────────────────────────
   const handleDownloadPDF = async () => {
     if (!checklist || !formRef.current) return;
     setPdfDownloading(true);
     setSnackbar({
       open: true,
-      message: "Generating PDF, please wait…",
+      message: "Generating PDF...",
       severity: "info",
     });
     try {
@@ -902,17 +1153,13 @@ export default function CustomChecklist({ checklistId }) {
         import("jspdf"),
         import("html2canvas"),
       ]);
-
       const element = formRef.current;
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
       });
-
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
@@ -924,7 +1171,6 @@ export default function CustomChecklist({ checklistId }) {
       const usableW = pageW - margin * 2;
       const imgH = (canvas.height * usableW) / canvas.width;
 
-      // Header
       pdf.setFillColor(20, 76, 92);
       pdf.rect(0, 0, pageW, 14, "F");
       pdf.setTextColor(255, 255, 255);
@@ -944,7 +1190,6 @@ export default function CustomChecklist({ checklistId }) {
       const availableH = pageH - startY - margin;
       let yOffset = 0,
         page = 1;
-
       while (yOffset < imgH) {
         if (page > 1) {
           pdf.addPage();
@@ -958,11 +1203,9 @@ export default function CustomChecklist({ checklistId }) {
           pdf.setFontSize(7);
           pdf.text(`Page ${page}`, pageW - margin, 9.5, { align: "right" });
         }
-
         const sliceH = Math.min(availableH, imgH - yOffset);
         const srcY = (yOffset / imgH) * canvas.height;
         const srcH = (sliceH / imgH) * canvas.height;
-
         const sliceCanvas = document.createElement("canvas");
         sliceCanvas.width = canvas.width;
         sliceCanvas.height = srcH;
@@ -979,7 +1222,6 @@ export default function CustomChecklist({ checklistId }) {
             canvas.width,
             srcH,
           );
-
         pdf.addImage(
           sliceCanvas.toDataURL("image/jpeg", 0.92),
           "JPEG",
@@ -992,7 +1234,6 @@ export default function CustomChecklist({ checklistId }) {
         page++;
       }
 
-      // Footer
       pdf.setFillColor(240, 244, 246);
       pdf.rect(0, pageH - 8, pageW, 8, "F");
       pdf.setTextColor(107, 114, 128);
@@ -1001,7 +1242,7 @@ export default function CustomChecklist({ checklistId }) {
       const formId =
         checklist._id !== "demo-001" ? checklist._id : "FORM-2024-001";
       pdf.text(
-        `Form ID: ${formId} | v${checklist.version || 1}.0 | ${checklist.category || "general"}`,
+        `Form ID: ${formId} | v${checklist.version || 1}.0`,
         margin,
         pageH - 2.5,
       );
@@ -1029,7 +1270,6 @@ export default function CustomChecklist({ checklistId }) {
     }
   };
 
-  // ── Derived values ──────────────────────────────────────────────────────
   const sections = groupFieldsIntoSections(checklist?.fields || []);
   const createdAt = checklist?.createdAt
     ? new Date(checklist.createdAt).toLocaleDateString("en-US", {
@@ -1043,41 +1283,210 @@ export default function CustomChecklist({ checklistId }) {
       ? checklist?.createdBy?.name || checklist?.createdBy?.email || "Admin"
       : "Admin";
 
-  // ── Render ──────────────────────────────────────────────────────────────
+  const requiredCount = (checklist?.fields || []).filter(
+    (f) => f.required,
+  ).length;
+  const filledCount = (checklist?.fields || []).filter((f) => {
+    const key = f._id || f.label;
+    const val = formValues[key];
+    return (
+      f.required &&
+      val !== undefined &&
+      val !== null &&
+      val !== "" &&
+      !(Array.isArray(val) && val.length === 0)
+    );
+  }).length;
+  const completionPercent =
+    requiredCount > 0 ? Math.round((filledCount / requiredCount) * 100) : 100;
+
+  // Sidebar content
+  const sidebarContent = (
+    <Paper sx={{ borderRadius: "14px", p: { xs: 2, sm: 2.5 }, height: "100%"  }}>
+      <Typography
+        sx={{
+          fontSize: { xs: "0.875rem", sm: "1rem" },
+          fontWeight: 700,
+          color: "#1a3a47",
+          mb: 1,
+        }}
+      >
+        Form Details
+      </Typography>
+      {loading && !checklist ? (
+        <>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} height={48} sx={{ mb: 0.5 }} />
+          ))}
+        </>
+      ) : checklist ? (
+        <>
+          <DetailRow
+            iconEl={<IconForm />}
+            label="Form Name"
+            value={checklist.name}
+          />
+          <DetailRow
+            iconEl={<IconUser />}
+            label="Created By"
+            value={createdByName}
+          />
+          <DetailRow
+            iconEl={<IconCal />}
+            label="Created On"
+            value={createdAt}
+          />
+          <DetailRow
+            iconEl={<IconForm />}
+            label="Category"
+            value={checklist.category || "Custom Form"}
+          />
+          <DetailRow
+            iconEl={<IconHash />}
+            label="Total Fields"
+            value={String(checklist.fields?.length || 0)}
+          />
+          <DetailRow
+            iconEl={<IconVer />}
+            label="Form Version"
+            value={`v${checklist.version || 1}.0`}
+          />
+          {checklist.tags?.length > 0 && (
+            <DetailRow
+              iconEl={<IconTag />}
+              label="Tags"
+              value={checklist.tags}
+              isTag
+            />
+          )}
+        </>
+      ) : null}
+
+      {checklist && (
+        <Box
+          sx={{
+            mt: 2,
+            background: "#f0f4f6",
+            borderRadius: "10px",
+            px: 2,
+            py: 1.5,
+          }}
+        >
+          <Stack direction="row" justifyContent="space-between" mb={0.75}>
+            <Typography
+              sx={{
+                fontSize: { xs: "0.6875rem", sm: "0.75rem" },
+                fontWeight: 600,
+                color: "#1a3a47",
+              }}
+            >
+              Completion
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: { xs: "0.6875rem", sm: "0.75rem" },
+                color: "#144c5c",
+                fontWeight: 700,
+              }}
+            >
+              {filledCount}/{requiredCount} required
+            </Typography>
+          </Stack>
+          <Box
+            sx={{
+              height: 6,
+              borderRadius: 3,
+              background: "#dde3e8",
+              overflow: "hidden",
+            }}
+          >
+            <Box
+              sx={{
+                height: "100%",
+                width: `${completionPercent}%`,
+                background: completionPercent === 100 ? "#16a34a" : "#144c5c",
+                borderRadius: 3,
+                transition: "width 0.3s ease",
+              }}
+            />
+          </Box>
+          <Typography
+            sx={{
+              fontSize: { xs: "0.625rem", sm: "0.6875rem" },
+              color: "#9ca3af",
+              mt: 0.5,
+            }}
+          >
+            {completionPercent === 100
+              ? "All required fields completed ✓"
+              : `${100 - completionPercent}% remaining`}
+          </Typography>
+        </Box>
+      )}
+
+      <Box
+        sx={{
+          mt: 2,
+          background: "#f0f4f6",
+          borderRadius: "10px",
+          px: 2,
+          py: 1.5,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 1,
+          cursor: "pointer",
+          "&:hover": { background: alpha("#144c5c", 0.08) },
+          transition: "background 0.2s",
+        }}
+      >
+        <IconCheck />
+        <Typography
+          sx={{
+            fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+            fontWeight: 500,
+            color: "#144c5c",
+          }}
+        >
+          Ready to Submit
+        </Typography>
+      </Box>
+    </Paper>
+  );
+
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ minHeight: "100vh" }}>
-        {/* ── AppBar ── */}
+      <Box sx={{ minHeight: "100vh", bgcolor: "#f5f6f7", pb: 4 }}>
+        {/* AppBar - Sticky with mobile optimizations */}
         <AppBar
           position="sticky"
           elevation={0}
-          sx={{
-            background: "#fff",
-            borderBottom: "1px solid #e5e7eb",
-            width: "1175px",
-            borderRadius: 2,
-            marginLeft: "30px",
-          }}
+          sx={{ background: "#fff", borderBottom: "1px solid #e5e7eb" }}
         >
           <Toolbar
             sx={{
               justifyContent: "space-between",
-              minHeight: "60px !important",
-              px: 3.5,
+              minHeight: { xs: "56px !important", sm: "60px !important" },
+              px: { xs: 1.5, sm: 2, md: 3.5 },
             }}
           >
-            <Stack direction="row" alignItems="center" spacing={1.25}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1.25}
+              sx={{ flex: 1, minWidth: 0 }}
+            >
               <IconButton
                 size="small"
                 sx={{
                   border: "1px solid #e5e7eb",
                   borderRadius: "8px",
-                  width: 32,
-                  height: 32,
+                  width: { xs: 28, sm: 32 },
+                  height: { xs: 28, sm: 32 },
                 }}
                 onClick={() => navigate("/admin/checklists")}
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                   <path
                     d="M10 3L5 8l5 5"
                     stroke="#374151"
@@ -1087,63 +1496,105 @@ export default function CustomChecklist({ checklistId }) {
                   />
                 </svg>
               </IconButton>
-              <Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography
                   sx={{
-                    fontSize: 16,
+                    fontSize: { xs: "0.875rem", sm: "1rem" },
                     fontWeight: 700,
                     color: "#111827",
                     lineHeight: 1.3,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {loading && !checklist
                     ? "Loading..."
                     : checklist?.name || "Custom Checklist Builder"}
                 </Typography>
-                <Typography sx={{ fontSize: 11, color: "#9ca3af" }}>
-                  {checklist?.description ||
-                    "Create and manage inspection checklists and review customer requests"}
-                </Typography>
+                {!isMobile && (
+                  <Typography sx={{ fontSize: "0.6875rem", color: "#9ca3af" }}>
+                    {checklist?.description ||
+                      "Create and manage inspection checklists"}
+                  </Typography>
+                )}
               </Box>
             </Stack>
-
-            <Stack direction="row" spacing={1.25}>
-              <Button
-                variant="outlined"
-                color="primary"
-                disabled={!checklist || loading || pdfDownloading}
-                onClick={handleDownloadPDF}
-                startIcon={
-                  pdfDownloading ? (
-                    <CircularProgress size={13} color="inherit" />
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path
-                        d="M7 1v8M4 6l3 3 3-3M2 11h10"
-                        stroke="#144c5c"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  )
-                }
-                sx={{ fontSize: 13 }}
-              >
-                {pdfDownloading ? "Generating PDF…" : "Download Custom Form"}
-              </Button>
+            <Stack direction="row" spacing={1}>
+              {!isMobile && (
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  disabled={!checklist || loading || pdfDownloading}
+                  onClick={handleDownloadPDF}
+                  startIcon={
+                    pdfDownloading ? <CircularProgress size={14} /> : null
+                  }
+                  sx={{
+                    fontSize: "0.75rem",
+                    display: { xs: "none", sm: "flex" },
+                  }}
+                >
+                  {pdfDownloading ? "Generating..." : "Download PDF"}
+                </Button>
+              )}
+              {isMobile && (
+                <Fab
+                  size="small"
+                  color="primary"
+                  onClick={() => setSidebarOpen(true)}
+                  sx={{
+                    boxShadow: "none",
+                    width: 36,
+                    height: 36,
+                    minHeight: 36,
+                  }}
+                >
+                  <MenuIcon />
+                </Fab>
+              )}
             </Stack>
           </Toolbar>
         </AppBar>
 
-        {/* ── Body ── */}
-        <Box sx={{ width: "1400px", p: { xs: 2, md: 3.5 } }}>
-          <Grid container spacing={2.5} alignItems="flex-start">
-            {/* ── Form Column ── */}
-            <Grid item xs={12} md={9} sx={{ width: "800px" }}>
-              {/* Error state */}
+        {/* Mobile PDF Button Bar */}
+        {isMobile && checklist && !loading && (
+          <Box
+            sx={{
+              px: 1.5,
+              py: 1,
+              bgcolor: "#fff",
+              borderBottom: "1px solid #e5e7eb",
+            }}
+          >
+            <Button
+              fullWidth
+              variant="outlined"
+              size="small"
+              disabled={pdfDownloading}
+              onClick={handleDownloadPDF}
+              startIcon={pdfDownloading ? <CircularProgress size={14} /> : null}
+              sx={{ fontSize: "0.75rem", py: 0.75 }}
+            >
+              {pdfDownloading ? "Generating PDF..." : "Download Form PDF"}
+            </Button>
+          </Box>
+        )}
+
+        {/* Main Content */}
+        <Box sx={{ p: { xs: 1.5, sm: 2, md: 3.5 } }}>
+          <Grid container spacing={{ xs: 2, sm: 2.5 }} alignItems="flex-start">
+            {/* Form Column */}
+            <Grid item xs={12} md={9}>
               {fetchError && (
                 <Paper sx={{ borderRadius: "14px", p: 4, textAlign: "center" }}>
-                  <Typography sx={{ color: "#dc2626", fontSize: 15, mb: 1 }}>
+                  <Typography
+                    sx={{
+                      color: "#dc2626",
+                      fontSize: { xs: "0.875rem", sm: "0.9375rem" },
+                      mb: 1,
+                    }}
+                  >
                     {fetchError}
                   </Typography>
                   <Button
@@ -1156,30 +1607,39 @@ export default function CustomChecklist({ checklistId }) {
                 </Paper>
               )}
 
-              {/* Loading skeleton */}
               {loading && !checklist && !fetchError && <FormSkeleton />}
 
-              {/* Form */}
               {checklist && !fetchError && (
                 <Paper
                   ref={formRef}
-                  sx={{ borderRadius: "14px", p: { xs: 3, md: 4.5 } }}
+                  sx={{
+                    borderRadius: "14px",
+                    p: { xs: 2, sm: 3, md: 4.5 },
+                    overflow: "hidden",
+                  }}
                 >
-                  {/* Form Title */}
+                  {/* Form Header */}
                   <Box
-                    sx={{ mb: 3.5, pb: 2.5, borderBottom: "1px solid #f0f1f2" }}
+                    sx={{
+                      mb: { xs: 2, sm: 3 },
+                      pb: { xs: 1.5, sm: 2 },
+                      borderBottom: "1px solid #f0f1f2",
+                    }}
                   >
                     <Stack
                       direction="row"
                       alignItems="center"
-                      spacing={1.5}
+                      spacing={1}
                       mb={0.75}
+                      flexWrap="wrap"
+                      gap={0.5}
                     >
                       <Typography
                         sx={{
-                          fontSize: 20,
-                          fontWeight: 1000,
+                          fontSize: { xs: "1.125rem", sm: "1.25rem" },
+                          fontWeight: 800,
                           color: "#1a3a47",
+                          lineHeight: 1.3,
                         }}
                       >
                         {checklist.name}
@@ -1199,95 +1659,107 @@ export default function CustomChecklist({ checklistId }) {
                                 : "#92400e",
                             fontWeight: 600,
                             textTransform: "capitalize",
+                            fontSize: "0.625rem",
                           }}
                         />
                       )}
                     </Stack>
-                    <Typography sx={{ fontSize: 13, color: "#6b7280" }}>
-                      {checklist.description || "Complete all fields below."}
+                    <Typography
+                      sx={{
+                        fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+                        color: "#6b7280",
+                      }}
+                    >
+                      {checklist.description ||
+                        "Complete all required fields below."}
                     </Typography>
                   </Box>
 
-                  {/* ── Dynamic Sections ── */}
+                  {/* Dynamic Sections with Collapse Support */}
                   {sections.map((section, si) => (
-                    <Box key={si} sx={{ mb: 3.5 }}>
-                      <SectionHeader title={section.title} />
-                      {(() => {
-                        const inlineTypes = ["text_input", "dropdown", "date"];
-                        const rows = [];
-                        let i = 0;
-                        const sFields = section.fields;
-                        while (i < sFields.length) {
-                          const curr = sFields[i];
-                          const next = sFields[i + 1];
-                          if (
-                            inlineTypes.includes(curr.type) &&
-                            next &&
-                            inlineTypes.includes(next.type)
-                          ) {
-                            rows.push({ type: "pair", fields: [curr, next] });
-                            i += 2;
-                          } else {
-                            rows.push({ type: "single", field: curr });
-                            i += 1;
+                    <Box key={si} sx={{ mb: { xs: 2, sm: 3 } , width:"700px" }}>
+                      <SectionHeader
+                        title={section.title}
+                        isCollapsed={collapsedSections[si]}
+                        onToggle={() => toggleSection(si)}
+                      />
+                      <Collapse in={!collapsedSections[si]}>
+                        {(() => {
+                          const inlineTypes = [
+                            "text_input",
+                            "dropdown",
+                            "date",
+                          ];
+                          const rows = [];
+                          let i = 0;
+                          const sFields = section.fields;
+                          while (i < sFields.length) {
+                            const curr = sFields[i];
+                            const next = sFields[i + 1];
+                            if (
+                              inlineTypes.includes(curr.type) &&
+                              next &&
+                              inlineTypes.includes(next.type)
+                            ) {
+                              rows.push({ type: "pair", fields: [curr, next] });
+                              i += 2;
+                            } else {
+                              rows.push({ type: "single", field: curr });
+                              i += 1;
+                            }
                           }
-                        }
-                        return rows.map((row, ri) => {
-                          if (row.type === "pair") {
+                          return rows.map((row, ri) => {
+                            if (row.type === "pair") {
+                              return (
+                                <Grid
+                                  container
+                                  spacing={{ xs: 1.5, sm: 2.5 }}
+                                  sx={{ mb: { xs: 2, sm: 2.5 } }}
+                                  key={ri}
+                                >
+                                  {row.fields.map((field) => {
+                                    const key = field._id || field.label;
+                                    return (
+                                      <Grid item xs={12} sm={6} key={key} sx={{ width:"300px"}}>
+                                        <FieldLabel
+                                          label={field.label}
+                                          required={field.required}
+                                        />
+                                        <DynamicField
+                                          field={field}
+                                          value={formValues[key]}
+                                          onChange={handleFieldChange}
+                                        />
+                                      </Grid>
+                                    );
+                                  })}
+                                </Grid>
+                              );
+                            }
+                            const field = row.field;
+                            const key = field._id || field.label;
                             return (
-                              <Grid
-                                container
-                                spacing={2.5}
-                                sx={{ mb: 2.5 }}
-                                key={ri}
-                              >
-                                {row.fields.map((field) => {
-                                  const key = field._id || field.label;
-                                  return (
-                                    <Grid
-                                      item
-                                      xs={12}
-                                      sm={6}
-                                      key={key}
-                                      sx={{ width: "300px" }}
-                                    >
-                                      <FieldLabel
-                                        label={field.label}
-                                        required={field.required}
-                                      />
-                                      <DynamicField
-                                        field={field}
-                                        value={formValues[key]}
-                                        onChange={handleFieldChange}
-                                      />
-                                    </Grid>
-                                  );
-                                })}
-                              </Grid>
+                              <Box sx={{ mb: { xs: 2, sm: 2.5 } }} key={key}>
+                                <FieldLabel
+                                  label={field.label}
+                                  required={field.required}
+                                />
+                                <DynamicField
+                                  field={field}
+                                  value={formValues[key]}
+                                  onChange={handleFieldChange}
+                                />
+                              </Box>
                             );
-                          }
-                          const field = row.field;
-                          const key = field._id || field.label;
-                          return (
-                            <Box sx={{ mb: 2.5 }} key={key}>
-                              <FieldLabel
-                                label={field.label}
-                                required={field.required}
-                              />
-                              <DynamicField
-                                field={field}
-                                value={formValues[key]}
-                                onChange={handleFieldChange}
-                              />
-                            </Box>
-                          );
-                        });
-                      })()}
+                          });
+                        })()}
+                      </Collapse>
                     </Box>
                   ))}
 
-                  {/* ── Footer ── */}
-                  <Divider sx={{ mb: 2.5 }} />
+                  <Divider sx={{ my: { xs: 2, sm: 2.5 } }} />
+
+                  {/* Action Buttons */}
                   <Box
                     sx={{
                       display: "flex",
@@ -1297,27 +1769,31 @@ export default function CustomChecklist({ checklistId }) {
                       gap: 1.5,
                     }}
                   >
-                    <Typography sx={{ fontSize: 12, color: "#9ca3af" }}>
+                    <Typography
+                      sx={{
+                        fontSize: { xs: "0.625rem", sm: "0.75rem" },
+                        color: "#9ca3af",
+                      }}
+                    >
                       {checklist._id !== "demo-001"
                         ? `Form ID: ${checklist._id}`
-                        : "Form ID: FORM-2024-001"}{" "}
-                      | Last Updated: {createdAt}
+                        : "Form ID: FORM-2024-001"}
                     </Typography>
-                    <Stack direction="row" spacing={1.25}>
+                    <Stack direction="row" spacing={{ xs: 1, sm: 1.5 }}>
                       <Button
                         variant="outlined"
-                        sx={{ fontSize: 13 }}
+                        size={isMobile ? "small" : "medium"}
                         onClick={handleClear}
                         disabled={submitting}
                       >
-                        Clear Checklist
+                        Clear All
                       </Button>
                       <Button
                         variant="contained"
                         color="primary"
                         onClick={handleSubmit}
                         disabled={submitting}
-                        sx={{ fontSize: 13, minWidth: 140 }}
+                        size={isMobile ? "small" : "medium"}
                         startIcon={
                           submitting ? (
                             <CircularProgress size={14} color="inherit" />
@@ -1327,8 +1803,8 @@ export default function CustomChecklist({ checklistId }) {
                         {submitting
                           ? "Submitting..."
                           : submitted
-                            ? "✓ Submitted!"
-                            : "Submit Inspection"}
+                            ? "✓ Submitted"
+                            : "Submit Form"}
                       </Button>
                     </Stack>
                   </Box>
@@ -1336,208 +1812,58 @@ export default function CustomChecklist({ checklistId }) {
               )}
             </Grid>
 
-            {/* ── Sidebar ── */}
-            <Grid item xs={12} md={3} sx={{ width:"355px"}}>
-              <Paper
-                sx={{
-                  borderRadius: "14px",
-                  p: 2.5,
-                  position: { md: "sticky" },
-                  top: { md: 76 },
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: "#1a3a47",
-                    mb: 0.5,
-                  }}
-                >
-                  Form Details
-                </Typography>
-
-                {loading && !checklist ? (
-                  <>
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Skeleton key={i} height={48} sx={{ mb: 0.5 }} />
-                    ))}
-                  </>
-                ) : checklist ? (
-                  <>
-                    <DetailRow
-                      iconEl={<IconForm />}
-                      label="Form Name"
-                      value={checklist.name}
-                    />
-                    <DetailRow
-                      iconEl={<IconUser />}
-                      label="Created By"
-                      value={createdByName}
-                    />
-                    <DetailRow
-                      iconEl={<IconCal />}
-                      label="Created On"
-                      value={createdAt}
-                    />
-                    <DetailRow
-                      iconEl={<IconForm />}
-                      label="Category"
-                      value={checklist.category || "Custom Form"}
-                    />
-                    <DetailRow
-                      iconEl={<IconHash />}
-                      label="Total Fields"
-                      value={String(checklist.fields?.length || 0)}
-                    />
-                    <DetailRow
-                      iconEl={<IconVer />}
-                      label="Form Version"
-                      value={`v${checklist.version || 1}.0`}
-                    />
-                    {checklist.tags?.length > 0 && (
-                      <DetailRow
-                        iconEl={<IconTag />}
-                        label="Tags"
-                        value={checklist.tags}
-                        isTag
-                      />
-                    )}
-                  </>
-                ) : null}
-
-                {/* Completion progress */}
-                {checklist &&
-                  (() => {
-                    const required = (checklist.fields || []).filter(
-                      (f) => f.required,
-                    );
-                    const filled = required.filter((f) => {
-                      const key = f._id || f.label;
-                      const val = formValues[key];
-                      return (
-                        val !== undefined &&
-                        val !== null &&
-                        val !== "" &&
-                        !(Array.isArray(val) && val.length === 0)
-                      );
-                    });
-                    const pct =
-                      required.length > 0
-                        ? Math.round((filled.length / required.length) * 100)
-                        : 100;
-                    return (
-                      <Box
-                        sx={{
-                          mt: 2,
-                          background: "#f0f4f6",
-                          borderRadius: "10px",
-                          px: 2,
-                          py: 1.5,
-                        }}
-                      >
-                        <Stack
-                          direction="row"
-                          justifyContent="space-between"
-                          mb={0.75}
-                        >
-                          <Typography
-                            sx={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#1a3a47",
-                            }}
-                          >
-                            Required Fields
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontSize: 12,
-                              color: "#144c5c",
-                              fontWeight: 700,
-                            }}
-                          >
-                            {filled.length}/{required.length}
-                          </Typography>
-                        </Stack>
-                        <Box
-                          sx={{
-                            height: 6,
-                            borderRadius: 3,
-                            background: "#dde3e8",
-                            overflow: "hidden",
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              height: "100%",
-                              width: `${pct}%`,
-                              background: pct === 100 ? "#16a34a" : "#144c5c",
-                              borderRadius: 3,
-                              transition: "width .3s ease",
-                            }}
-                          />
-                        </Box>
-                        <Typography
-                          sx={{ fontSize: 11, color: "#9ca3af", mt: 0.5 }}
-                        >
-                          {pct === 100
-                            ? "All required fields completed ✓"
-                            : `${100 - pct}% remaining`}
-                        </Typography>
-                      </Box>
-                    );
-                  })()}
-
-                {/* Ready to Assign */}
-                <Box
-                  sx={{
-                    mt: 2,
-                    background: "#f0f4f6",
-                    borderRadius: "10px",
-                    px: 2,
-                    py: 1.5,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 1,
-                    cursor: "pointer",
-                    "&:hover": { background: alpha("#144c5c", 0.08) },
-                    transition: "background .12s",
-                  }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path
-                      d="M2 7.5l3 3L12 3"
-                      stroke="#144c5c"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <Typography
-                    sx={{ fontSize: 13, fontWeight: 500, color: "#144c5c" }}
-                  >
-                    Ready to Assign
-                  </Typography>
+            {/* Sidebar - Desktop */}
+            {!isMobile && (
+              <Grid item xs={12} md={3}>
+                <Box sx={{ position: { md: "sticky" }, top: { md: 76 } }}>
+                  {sidebarContent}
                 </Box>
-              </Paper>
-            </Grid>
+              </Grid>
+            )}
           </Grid>
         </Box>
       </Box>
 
-      {/* ── Snackbar ── */}
+      {/* Mobile Sidebar Drawer - Swipeable */}
+      <SwipeableDrawer
+        anchor="right"
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onOpen={() => {}}
+        disableSwipeToOpen
+        PaperProps={{
+          sx: {
+            width: { xs: "85%", sm: 320  },
+            borderTopLeftRadius: 16,
+            borderBottomLeftRadius: 16,
+          },
+        }}
+      >
+        <Box sx={{ p: 2 }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1  }}>
+            <IconButton onClick={() => setSidebarOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          {sidebarContent}
+        </Box>
+      </SwipeableDrawer>
+
+      {/* Snackbar Notifications */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: isMobile ? "center" : "right",
+        }}
+        sx={{ bottom: { xs: 16, sm: 24 } }}
       >
         <Alert
           severity={snackbar.severity}
           onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-          sx={{ borderRadius: "10px", fontSize: 13 }}
+          sx={{ borderRadius: "10px", fontSize: "0.8125rem", width: "100%" }}
         >
           {snackbar.message}
         </Alert>

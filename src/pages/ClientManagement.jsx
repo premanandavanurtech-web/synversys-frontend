@@ -1,4 +1,4 @@
-// pages/ClientManagement.jsx - Complete Fixed Version with Role-Based Access
+// ClientManagement.jsx - Complete Fixed Version
 
 import React, {
   useState,
@@ -20,7 +20,6 @@ import {
   Chip,
   Divider,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
   Stack,
@@ -38,6 +37,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Fade,
+  LinearProgress,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -64,14 +65,17 @@ import {
   Add,
   Remove,
   Lock as LockIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+  Language as LanguageIcon,
+  Business as BusinessIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useClient } from "../context/ClientContext";
 import { useAuth } from "../context/AuthContexts";
 
-// Color palette
-const colors = {
-  primary: "#0d4a5c",
+const C = {
+  primary: "#075971",
   primaryDark: "#0a3a49",
   primaryLight: "#e6f0f3",
   success: "#10b981",
@@ -80,41 +84,36 @@ const colors = {
   surface: "#f8fafc",
   card: "#ffffff",
   border: "#e2e8f0",
-  text: {
-    primary: "#0f172a",
-    secondary: "#475569",
-    muted: "#94a3b8",
-  },
+  text: { primary: "#0f172a", secondary: "#475569", muted: "#94a3b8" },
 };
 
-const plans = {
-  free: { label: "Free", color: "#94a3b8", bg: "#f1f5f9" },
+const PLAN_META = {
+  free: { label: "Free", color: "#64748b", bg: "#f1f5f9" },
   standard: { label: "Standard", color: "#0d4a5c", bg: "#e6f0f3" },
-  premium: { label: "Premium", color: "#f59e0b", bg: "#fffbeb" },
-  enterprise: { label: "Enterprise", color: "#8b5cf6", bg: "#f5f3ff" },
+  premium: { label: "Premium", color: "#d97706", bg: "#fffbeb" },
+  enterprise: { label: "Enterprise", color: "#7c3aed", bg: "#f5f3ff" },
 };
 
 const PLANS = ["free", "standard", "premium", "enterprise"];
 
-const getInitials = (name) => {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .substring(0, 2)
-    .toUpperCase();
-};
+const initials = (name) =>
+  !name
+    ? "?"
+    : name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
 
-const formatError = (err) => {
-  if (typeof err === "string") return err;
-  return err.response?.data?.message || err.message || "Something went wrong";
-};
+const fmtErr = (e) =>
+  typeof e === "string"
+    ? e
+    : e?.response?.data?.message || e?.message || "Something went wrong";
 
 // Access Denied Component
 const AccessDenied = () => {
-  const navigate = useNavigate();
-
+  const nav = useNavigate();
   return (
     <Box
       sx={{
@@ -129,8 +128,8 @@ const AccessDenied = () => {
     >
       <Box
         sx={{
-          width: 80,
-          height: 80,
+          width: { xs: 64, sm: 80 },
+          height: { xs: 64, sm: 80 },
           borderRadius: "50%",
           bgcolor: "#fef2f2",
           display: "flex",
@@ -139,13 +138,13 @@ const AccessDenied = () => {
           mb: 2,
         }}
       >
-        <LockIcon sx={{ fontSize: 40, color: colors.error }} />
+        <LockIcon sx={{ fontSize: { xs: 32, sm: 40 }, color: C.error }} />
       </Box>
       <Typography
         sx={{
           fontWeight: 700,
-          fontSize: "1.25rem",
-          color: colors.text.primary,
+          fontSize: { xs: "1.1rem", sm: "1.25rem" },
+          color: C.text.primary,
           mb: 1,
         }}
       >
@@ -153,23 +152,23 @@ const AccessDenied = () => {
       </Typography>
       <Typography
         sx={{
-          fontSize: "0.875rem",
-          color: colors.text.secondary,
+          fontSize: { xs: "0.75rem", sm: "0.875rem" },
+          color: C.text.secondary,
           mb: 3,
           maxWidth: 400,
         }}
       >
-        You don't have permission to access this page. This area is restricted
-        to Super Administrators only.
+        You don't have permission to access this page. Restricted to Super
+        Administrators.
       </Typography>
       <Button
         variant="contained"
-        onClick={() => navigate("/admin/dashboard")}
+        onClick={() => nav("/dashboard")}
         sx={{
-          bgcolor: colors.primary,
+          bgcolor: C.primary,
           textTransform: "none",
           borderRadius: 2,
-          "&:hover": { bgcolor: colors.primaryDark },
+          "&:hover": { bgcolor: C.primaryDark },
         }}
       >
         Return to Dashboard
@@ -181,9 +180,7 @@ const AccessDenied = () => {
 // Stepper Component
 const Stepper = ({ value, onChange, min = 1, max = 1000, label }) => (
   <Box>
-    <Typography
-      sx={{ fontSize: "0.72rem", color: colors.text.secondary, mb: 0.75 }}
-    >
+    <Typography sx={{ fontSize: "0.72rem", color: C.text.secondary, mb: 0.75 }}>
       {label}
     </Typography>
     <Box
@@ -191,7 +188,7 @@ const Stepper = ({ value, onChange, min = 1, max = 1000, label }) => (
         display: "flex",
         alignItems: "center",
         gap: 1,
-        border: `1px solid ${colors.border}`,
+        border: `1px solid ${C.border}`,
         borderRadius: "8px",
         px: 1,
         py: 0.5,
@@ -212,7 +209,7 @@ const Stepper = ({ value, onChange, min = 1, max = 1000, label }) => (
           fontWeight: 600,
           minWidth: 36,
           textAlign: "center",
-          color: colors.text.primary,
+          color: C.text.primary,
         }}
       >
         {value}
@@ -237,16 +234,13 @@ const PwRule = ({ ok, label }) => (
         width: 6,
         height: 6,
         borderRadius: "50%",
-        bgcolor: ok ? colors.success : colors.text.muted,
-        flexShrink: 0,
-        transition: "background-color 0.2s",
+        bgcolor: ok ? C.success : C.text.muted,
       }}
     />
     <Typography
       sx={{
         fontSize: "0.7rem",
-        color: ok ? colors.success : colors.text.secondary,
-        transition: "color 0.2s",
+        color: ok ? C.success : C.text.secondary,
       }}
     >
       {label}
@@ -256,48 +250,58 @@ const PwRule = ({ ok, label }) => (
 
 // Stat Card Component
 const StatCard = ({ icon: Icon, label, value, color, loading }) => {
-  if (loading) {
+  if (loading)
     return (
       <Card sx={{ borderRadius: 2, height: "100%" }}>
         <CardContent sx={{ p: 2 }}>
-          <Skeleton variant="circular" width={32} height={32} sx={{ mb: 1 }} />
+          <Skeleton variant="circular" width={36} height={36} sx={{ mb: 1 }} />
           <Skeleton variant="text" width="60%" height={14} />
           <Skeleton variant="text" width="40%" height={28} />
         </CardContent>
       </Card>
     );
-  }
   return (
     <Card
       sx={{
         borderRadius: 2,
         height: "100%",
-        width: "277px",
+        width:"275px",
+        border: `1px solid ${C.border}`,
         transition: "all 0.2s",
         "&:hover": { transform: "translateY(-2px)", boxShadow: 2 },
       }}
+      elevation={0}
     >
-      <CardContent sx={{ p: 2 }}>
+      <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
         <Box
           sx={{
-            width: 32,
-            height: 32,
-            borderRadius: 1.5,
-            bgcolor: `${color}15`,
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
             mb: 1,
           }}
         >
-          <Icon sx={{ fontSize: 16, color }} />
+          <Box
+            sx={{
+              width: { xs: 36, sm: 40 },
+              height: { xs: 36, sm: 40 },
+              borderRadius: "10px",
+              bgcolor: `${color}18`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon sx={{ fontSize: { xs: 18, sm: 20 }, color }} />
+          </Box>
         </Box>
         <Typography
           sx={{
             fontSize: "0.65rem",
             fontWeight: 500,
-            color: colors.text.muted,
+            color: C.text.muted,
             textTransform: "uppercase",
+            letterSpacing: "0.06em",
             mb: 0.5,
           }}
         >
@@ -305,9 +309,9 @@ const StatCard = ({ icon: Icon, label, value, color, loading }) => {
         </Typography>
         <Typography
           sx={{
-            fontSize: "1.3rem",
+            fontSize: { xs: "1.4rem", sm: "1.6rem" },
             fontWeight: 700,
-            color: colors.text.primary,
+            color: C.text.primary,
           }}
         >
           {value ?? 0}
@@ -319,59 +323,67 @@ const StatCard = ({ icon: Icon, label, value, color, loading }) => {
 
 // Client Card Component
 const ClientCard = ({ client, onEdit, onDelete, onView }) => {
-  const [anchorEl, setAnchorEl] = useState(null);
-  const plan = plans[client.membershipPlan] || plans.free;
+  const [anchor, setAnchor] = useState(null);
+  const plan = PLAN_META[client.membershipPlan] || PLAN_META.free;
   const isActive = client.status === "active";
   const daysLeft = client.daysRemaining || 0;
   const used = client.usersUsed || 0;
   const limit = client.licenseLimit || 1;
-  const percentage = Math.min(100, Math.round((used / limit) * 100));
-  const isExpiring = daysLeft > 0 && daysLeft <= 7;
+  const pct = Math.min(100, Math.round((used / limit) * 100));
+  const expiring = daysLeft > 0 && daysLeft <= 7;
 
   return (
     <Card
       sx={{
         borderRadius: 2,
-        width: "375px",
-        border: `1px solid ${colors.border}`,
-        position: "relative",
+        width: "370px",
+        border: `1px solid ${C.border}`,
         transition: "all 0.2s",
-        "&:hover": { borderColor: colors.primary, boxShadow: 2 },
+        position: "relative",
+        "&:hover": {
+          borderColor: C.primary,
+          boxShadow: "0 4px 20px rgba(13,74,92,0.10)",
+        },
       }}
+      elevation={0}
     >
-      <CardContent sx={{ p: 2 }}>
+      <CardContent sx={{ p: { xs: 1.75, sm: 2 } }}>
         <Box
           sx={{
             position: "absolute",
-            top: 12,
-            right: 12,
+            top: 14,
+            right: 14,
             width: 8,
             height: 8,
             borderRadius: "50%",
-            bgcolor: isActive ? colors.success : colors.text.muted,
+            bgcolor: isActive ? C.success : C.text.muted,
           }}
         />
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
           <Avatar
             sx={{
-              width: 44,
-              height: 44,
-              borderRadius: 1.5,
-              bgcolor: colors.primary,
+              width: { xs: 40, sm: 44 },
+              height: { xs: 40, sm: 44 },
+              borderRadius: "10px",
+              bgcolor: C.primary,
               fontSize: "0.85rem",
               fontWeight: 700,
+              flexShrink: 0,
             }}
           >
-            {getInitials(client.customerName)}
+            {initials(client.customerName)}
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
               sx={{
                 fontWeight: 700,
                 fontSize: "0.85rem",
-                color: colors.text.primary,
+                color: C.text.primary,
                 mb: 0.25,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
               {client.customerName}
@@ -379,7 +391,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
             <Typography
               sx={{
                 fontSize: "0.65rem",
-                color: colors.text.secondary,
+                color: C.text.secondary,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
@@ -390,8 +402,8 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
           </Box>
           <IconButton
             size="small"
-            onClick={(e) => setAnchorEl(e.currentTarget)}
-            sx={{ color: colors.text.muted }}
+            onClick={(e) => setAnchor(e.currentTarget)}
+            sx={{ color: C.text.muted, flexShrink: 0 }}
           >
             <MoreVertIcon sx={{ fontSize: "1rem" }} />
           </IconButton>
@@ -405,65 +417,81 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
             mb: 2,
           }}
         >
-          <Chip
-            label={plan.label}
-            size="small"
-            sx={{
-              height: 22,
-              fontSize: "0.6rem",
-              fontWeight: 600,
-              bgcolor: plan.bg,
-              color: plan.color,
-            }}
-          />
-          <Typography
-            sx={{
-              fontSize: "0.7rem",
-              fontWeight: 600,
-              color: isExpiring ? colors.warning : colors.text.secondary,
-            }}
-          >
-            {daysLeft > 0 ? `${daysLeft}d left` : "Expired"}
-          </Typography>
+          <Box>
+            <Typography
+              sx={{ fontSize: "0.6rem", color: C.text.muted, mb: 0.25 }}
+            >
+              Membership
+            </Typography>
+            <Chip
+              label={plan.label}
+              size="small"
+              sx={{
+                height: 22,
+                fontSize: "0.6rem",
+                fontWeight: 700,
+                bgcolor: plan.bg,
+                color: plan.color,
+                border: "none",
+              }}
+            />
+          </Box>
+          <Box sx={{ textAlign: "right" }}>
+            <Typography
+              sx={{ fontSize: "0.6rem", color: C.text.muted, mb: 0.25 }}
+            >
+              Duration
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                color: expiring ? C.warning : C.text.secondary,
+              }}
+            >
+              {daysLeft > 0 ? `${daysLeft} days left` : "Expired"}
+            </Typography>
+          </Box>
         </Box>
 
         <Box sx={{ mb: 2 }}>
           <Box
             sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}
           >
-            <Typography sx={{ fontSize: "0.6rem", color: colors.text.muted }}>
-              License Usage
+            <Typography sx={{ fontSize: "0.6rem", color: C.text.muted }}>
+              Usage
             </Typography>
             <Typography
               sx={{
                 fontSize: "0.65rem",
                 fontWeight: 600,
-                color: colors.text.secondary,
+                color: pct > 85 ? C.error : C.text.secondary,
               }}
             >
-              {used}/{limit} · {percentage}%
+              {pct}%
             </Typography>
           </Box>
           <Box
             sx={{
-              height: 4,
-              bgcolor: colors.surface,
-              borderRadius: 2,
+              height: 5,
+              bgcolor: "#f1f5f9",
+              borderRadius: 3,
               overflow: "hidden",
             }}
           >
             <Box
               sx={{
                 height: "100%",
-                width: `${percentage}%`,
-                bgcolor: percentage > 85 ? colors.error : colors.primary,
-                borderRadius: 2,
+                width: `${pct}%`,
+                bgcolor: pct > 85 ? C.error : C.primary,
+                borderRadius: 3,
+                transition: "width 0.4s ease",
               }}
             />
           </Box>
         </Box>
 
-        <Divider sx={{ mb: 2 }} />
+        <Divider sx={{ mb: 1.5 }} />
 
         <Box
           sx={{
@@ -475,11 +503,13 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
           <Button
             size="small"
             onClick={() => onView(client._id)}
-            startIcon={<VisibilityIcon sx={{ fontSize: "0.7rem" }} />}
+            startIcon={<VisibilityIcon sx={{ fontSize: "0.75rem" }} />}
             sx={{
               fontSize: "0.65rem",
               textTransform: "none",
-              color: colors.primary,
+              color: C.primary,
+              px: 0,
+              minWidth: 0,
             }}
           >
             View
@@ -491,8 +521,8 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
                 onClick={() => onEdit(client)}
                 sx={{
                   p: 0.5,
-                  color: colors.text.secondary,
-                  "&:hover": { color: colors.primary },
+                  color: C.text.muted,
+                  "&:hover": { color: C.primary, bgcolor: C.primaryLight },
                 }}
               >
                 <EditIcon sx={{ fontSize: "0.85rem" }} />
@@ -504,8 +534,8 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
                 onClick={() => onDelete(client)}
                 sx={{
                   p: 0.5,
-                  color: colors.text.secondary,
-                  "&:hover": { color: colors.error },
+                  color: C.text.muted,
+                  "&:hover": { color: C.error, bgcolor: "#fef2f2" },
                 }}
               >
                 <DeleteIcon sx={{ fontSize: "0.85rem" }} />
@@ -515,15 +545,15 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
         </Box>
 
         <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={() => setAnchorEl(null)}
+          anchorEl={anchor}
+          open={Boolean(anchor)}
+          onClose={() => setAnchor(null)}
           PaperProps={{ sx: { minWidth: 140, borderRadius: 2, mt: 0.5 } }}
         >
           <MenuItem
             onClick={() => {
               onEdit(client);
-              setAnchorEl(null);
+              setAnchor(null);
             }}
             sx={{ fontSize: "0.75rem", gap: 1 }}
           >
@@ -532,7 +562,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
           <MenuItem
             onClick={() => {
               onView(client._id);
-              setAnchorEl(null);
+              setAnchor(null);
             }}
             sx={{ fontSize: "0.75rem", gap: 1 }}
           >
@@ -542,9 +572,9 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
           <MenuItem
             onClick={() => {
               onDelete(client);
-              setAnchorEl(null);
+              setAnchor(null);
             }}
-            sx={{ fontSize: "0.75rem", gap: 1, color: colors.error }}
+            sx={{ fontSize: "0.75rem", gap: 1, color: C.error }}
           >
             <DeleteIcon sx={{ fontSize: "0.8rem" }} />{" "}
             {isActive ? "Deactivate" : "Activate"}
@@ -559,12 +589,15 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
 const ClientModal = ({ open, client, onClose, onSave, loading }) => {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isEdit = !!client;
 
-  const [activeTab, setActiveTab] = useState(0);
-  const [showPassword, setShowPassword] = useState(false);
+  const [tab, setTab] = useState(0);
+  const [showPw, setShowPw] = useState(false);
+  const [form, setForm] = useState({});
+  const [errors, setErrors] = useState({});
 
-  const defaultForm = {
+  const blank = {
     customerName: "",
     email: "",
     phone: "",
@@ -576,13 +609,10 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
     password: "",
   };
 
-  const [form, setForm] = useState(defaultForm);
-  const [errors, setErrors] = useState({});
-
   useEffect(() => {
     if (open) {
-      setActiveTab(0);
-      setShowPassword(false);
+      setTab(0);
+      setShowPw(false);
       setErrors({});
       setForm(
         client
@@ -597,40 +627,37 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
               notes: client.notes || "",
               password: "",
             }
-          : defaultForm,
+          : blank,
       );
     }
   }, [client, open]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+    setForm((p) => ({ ...p, [name]: value }));
+    if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
   };
 
   const validate = () => {
     const e = {};
-    if (!form.customerName?.trim())
-      e.customerName = "Customer name is required";
-    if (!form.email?.trim()) e.email = "Email is required";
+    if (!form.customerName?.trim()) e.customerName = "Required";
+    if (!form.email?.trim()) e.email = "Required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      e.email = "Invalid email format";
-    if (!form.phone?.trim()) e.phone = "Phone is required";
+      e.email = "Invalid email";
+    if (!form.phone?.trim()) e.phone = "Required";
     if (
       form.website &&
       !/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i.test(
         form.website,
       )
     )
-      e.website = "Invalid URL format";
+      e.website = "Invalid URL";
     if (!isEdit) {
-      if (!form.password) e.password = "Password is required";
-      else if (form.password.length < 8) e.password = "Min 8 characters";
-      else if (!/[A-Z]/.test(form.password))
-        e.password = "Needs an uppercase letter";
-      else if (!/[a-z]/.test(form.password))
-        e.password = "Needs a lowercase letter";
-      else if (!/[0-9]/.test(form.password)) e.password = "Needs a number";
+      if (!form.password) e.password = "Required";
+      else if (form.password.length < 8) e.password = "Min 8 chars";
+      else if (!/[A-Z]/.test(form.password)) e.password = "Needs uppercase";
+      else if (!/[a-z]/.test(form.password)) e.password = "Needs lowercase";
+      else if (!/[0-9]/.test(form.password)) e.password = "Needs number";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -638,21 +665,21 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
 
   const handleSubmit = async () => {
     if (!validate()) {
-      const hasAccountError =
+      const hasAcc =
         errors.customerName || errors.email || errors.phone || errors.website;
-      if (hasAccountError) setActiveTab(0);
-      else if (errors.password) setActiveTab(2);
+      if (hasAcc) setTab(0);
+      else if (errors.password) setTab(2);
       return;
     }
     await onSave(form);
   };
 
-  const pw = form.password;
-  const pwRules = [
-    { ok: pw.length >= 8, label: "At least 8 characters" },
-    { ok: /[A-Z]/.test(pw), label: "One uppercase letter" },
-    { ok: /[a-z]/.test(pw), label: "One lowercase letter" },
-    { ok: /[0-9]/.test(pw), label: "One number" },
+  const pw = form.password || "";
+  const rules = [
+    { ok: pw.length >= 8, l: "At least 8 characters" },
+    { ok: /[A-Z]/.test(pw), l: "One uppercase letter" },
+    { ok: /[a-z]/.test(pw), l: "One lowercase letter" },
+    { ok: /[0-9]/.test(pw), l: "One number" },
   ];
 
   const TABS = isEdit
@@ -671,12 +698,28 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
     return false;
   };
 
+  const inputSx = (hasError = false) => ({
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "10px",
+      fontSize: "0.875rem",
+      "& fieldset": { borderColor: hasError ? C.error : C.border },
+      "&:hover fieldset": { borderColor: hasError ? C.error : C.primary },
+      "&.Mui-focused fieldset": {
+        borderColor: hasError ? C.error : C.primary,
+        borderWidth: "1.5px",
+      },
+    },
+    "& .MuiInputLabel-root": { fontSize: "0.8rem" },
+    "& .MuiInputBase-input": { py: 1.3 },
+    "& .MuiFormHelperText-root": { fontSize: "0.68rem", ml: 0, mt: 0.5 },
+  });
+
   const TabAccountInfo = (
-    <Stack spacing={1.75} sx={{ mt: 3 }}>
+    <Stack spacing={2} sx={{ mt: 2 }}>
       <TextField
         name="customerName"
         label="Customer name"
-        value={form.customerName}
+        value={form.customerName || ""}
         onChange={handleChange}
         fullWidth
         size="small"
@@ -684,117 +727,133 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
         error={!!errors.customerName}
         helperText={errors.customerName}
         placeholder="Acme Corp"
+        sx={inputSx(!!errors.customerName)}
       />
-      <Grid container spacing={1.5}>
+      <Grid container spacing={2}>
         <Grid item xs={12} sm={6}>
           <TextField
             name="email"
             label="Email address"
             type="email"
-            value={form.email}
+            value={form.email || ""}
             onChange={handleChange}
             fullWidth
             size="small"
             required
             error={!!errors.email}
             helperText={errors.email}
-            placeholder="admin@acme.com"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <EmailIcon sx={{ fontSize: 16, color: C.text.muted }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={inputSx(!!errors.email)}
           />
         </Grid>
         <Grid item xs={12} sm={6}>
           <TextField
             name="phone"
             label="Phone number"
-            value={form.phone}
+            value={form.phone || ""}
             onChange={handleChange}
             fullWidth
             size="small"
             required
             error={!!errors.phone}
             helperText={errors.phone}
-            placeholder="+1 555 000 0000"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <PhoneIcon sx={{ fontSize: 16, color: C.text.muted }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={inputSx(!!errors.phone)}
           />
         </Grid>
       </Grid>
       <TextField
         name="website"
         label="Website (optional)"
-        value={form.website}
+        value={form.website || ""}
         onChange={handleChange}
         fullWidth
         size="small"
         error={!!errors.website}
         helperText={errors.website}
         placeholder="https://acme.com"
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <LanguageIcon sx={{ fontSize: 16, color: C.text.muted }} />
+            </InputAdornment>
+          ),
+        }}
+        sx={inputSx(!!errors.website)}
       />
       <TextField
         name="notes"
         label="Notes (optional)"
         multiline
-        rows={3}
-        value={form.notes}
+        rows={isMobile ? 2 : 3}
+        value={form.notes || ""}
         onChange={handleChange}
         fullWidth
         size="small"
-        placeholder="Any internal notes about this customer…"
+        placeholder="Internal notes…"
+        sx={inputSx()}
       />
     </Stack>
   );
 
   const TabPlanLimits = (
-    <Stack spacing={2.5} sx={{ mt: 3 }}>
+    <Stack spacing={2.5} sx={{ mt: 2 }}>
       <Box>
         <Typography
           sx={{
-            fontSize: "0.68rem",
+            fontSize: "0.72rem",
             fontWeight: 600,
-            letterSpacing: "0.08em",
-            color: colors.text.muted,
+            letterSpacing: "0.07em",
+            color: C.text.muted,
             textTransform: "uppercase",
-            mb: 1,
+            mb: 1.5,
           }}
         >
           Membership plan
         </Typography>
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-          {PLANS.map((plan) => (
+          {PLANS.map((p) => (
             <Chip
-              key={plan}
-              label={plan.charAt(0).toUpperCase() + plan.slice(1)}
-              onClick={() =>
-                setForm((prev) => ({ ...prev, membershipPlan: plan }))
-              }
+              key={p}
+              label={p.charAt(0).toUpperCase() + p.slice(1)}
+              onClick={() => setForm((f) => ({ ...f, membershipPlan: p }))}
               size="small"
               sx={{
                 cursor: "pointer",
-                fontWeight: form.membershipPlan === plan ? 600 : 400,
-                bgcolor:
-                  form.membershipPlan === plan ? colors.primary : "transparent",
-                color:
-                  form.membershipPlan === plan
-                    ? "white"
-                    : colors.text.secondary,
-                border: `1px solid ${form.membershipPlan === plan ? colors.primary : colors.border}`,
+                fontWeight: form.membershipPlan === p ? 700 : 400,
+                fontSize: "0.75rem",
+                py: 0.5,
+                bgcolor: form.membershipPlan === p ? C.primary : "transparent",
+                color: form.membershipPlan === p ? "white" : C.text.secondary,
+                border: `1px solid ${form.membershipPlan === p ? C.primary : C.border}`,
                 "&:hover": {
                   bgcolor:
-                    form.membershipPlan === plan
-                      ? colors.primaryDark
-                      : colors.surface,
+                    form.membershipPlan === p ? C.primaryDark : C.surface,
                 },
               }}
             />
           ))}
         </Box>
       </Box>
-
       <Divider />
-
       <Grid container spacing={3}>
         <Grid item xs={12} sm={6}>
           <Stepper
             label="License limit"
-            value={form.licenseLimit}
-            onChange={(v) => setForm((prev) => ({ ...prev, licenseLimit: v }))}
+            value={form.licenseLimit || 10}
+            onChange={(v) => setForm((f) => ({ ...f, licenseLimit: v }))}
             min={1}
             max={1000}
           />
@@ -803,8 +862,8 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
           <Grid item xs={12} sm={6}>
             <Stepper
               label="Duration (days)"
-              value={form.duration}
-              onChange={(v) => setForm((prev) => ({ ...prev, duration: v }))}
+              value={form.duration || 30}
+              onChange={(v) => setForm((f) => ({ ...f, duration: v }))}
               min={1}
               max={365}
             />
@@ -815,58 +874,73 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
   );
 
   const TabSecurity = (
-    <Stack spacing={2} sx={{ mt: 3 }}>
+    <Stack spacing={2.5} sx={{ mt: 2 }}>
       <TextField
         name="password"
         label="Temporary password"
-        type={showPassword ? "text" : "password"}
-        value={form.password}
+        type={showPw ? "text" : "password"}
+        value={form.password || ""}
         onChange={handleChange}
         fullWidth
         size="small"
         required
         error={!!errors.password}
         helperText={errors.password}
-        placeholder="Min 8 chars, uppercase, number"
         InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <LockIcon sx={{ fontSize: 16, color: C.text.muted }} />
+            </InputAdornment>
+          ),
           endAdornment: (
             <InputAdornment position="end">
               <IconButton
                 size="small"
-                onClick={() => setShowPassword((p) => !p)}
+                onClick={() => setShowPw((p) => !p)}
                 edge="end"
               >
-                {showPassword ? (
-                  <VisibilityOff sx={{ fontSize: "1rem" }} />
+                {showPw ? (
+                  <VisibilityOff sx={{ fontSize: 16 }} />
                 ) : (
-                  <Visibility sx={{ fontSize: "1rem" }} />
+                  <Visibility sx={{ fontSize: 16 }} />
                 )}
               </IconButton>
             </InputAdornment>
           ),
         }}
+        sx={inputSx(!!errors.password)}
       />
       {form.password && (
-        <Box
-          sx={{
-            p: 1.5,
-            borderRadius: "8px",
-            bgcolor: colors.surface,
-            border: `1px solid ${colors.border}`,
-            display: "flex",
-            flexDirection: "column",
-            gap: 0.75,
-          }}
-        >
-          {pwRules.map((r) => (
-            <PwRule key={r.label} ok={r.ok} label={r.label} />
-          ))}
-        </Box>
+        <Fade in>
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: "10px",
+              bgcolor: C.surface,
+              border: `1px solid ${C.border}`,
+              display: "flex",
+              flexDirection: "column",
+              gap: 0.75,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: "0.7rem",
+                fontWeight: 600,
+                color: C.text.secondary,
+                mb: 0.5,
+              }}
+            >
+              Password requirements:
+            </Typography>
+            {rules.map((r) => (
+              <PwRule key={r.l} ok={r.ok} label={r.l} />
+            ))}
+          </Box>
+        </Fade>
       )}
     </Stack>
   );
-
-  const panels = [TabAccountInfo, TabPlanLimits, TabSecurity];
 
   return (
     <Dialog
@@ -876,7 +950,11 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
       fullWidth
       fullScreen={fullScreen}
       PaperProps={{
-        sx: { borderRadius: fullScreen ? 0 : "16px", overflow: "hidden" },
+        sx: {
+          borderRadius: fullScreen ? 0 : { xs: "12px", sm: "16px" },
+          overflow: "hidden",
+          margin: { xs: 0, sm: 2 },
+        },
       }}
     >
       <DialogTitle sx={{ p: 0 }}>
@@ -885,37 +963,47 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            px: 2.5,
-            py: 1.75,
-            borderBottom: `1px solid ${colors.border}`,
+            px: { xs: 2, sm: 2.5 },
+            py: { xs: 1.5, sm: 1.75 },
+            borderBottom: `1px solid ${C.border}`,
+            bgcolor: "white",
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
             <Box
               sx={{
-                width: 34,
-                height: 34,
+                width: { xs: 30, sm: 34 },
+                height: { xs: 30, sm: 34 },
                 borderRadius: "8px",
-                bgcolor: colors.primaryLight,
+                bgcolor: C.primaryLight,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <StoreIcon sx={{ fontSize: "1.1rem", color: colors.primary }} />
+              <StoreIcon
+                sx={{
+                  fontSize: { xs: "1rem", sm: "1.1rem" },
+                  color: C.primary,
+                }}
+              />
             </Box>
             <Box>
               <Typography
                 sx={{
                   fontWeight: 600,
-                  fontSize: "0.875rem",
-                  color: colors.text.primary,
+                  fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                  color: C.text.primary,
                 }}
               >
                 {isEdit ? "Edit customer" : "Add new customer"}
               </Typography>
               <Typography
-                sx={{ fontSize: "0.7rem", color: colors.text.secondary }}
+                sx={{
+                  fontSize: "0.7rem",
+                  color: C.text.secondary,
+                  display: { xs: "none", sm: "block" },
+                }}
               >
                 {isEdit
                   ? "Update the customer's details"
@@ -927,56 +1015,54 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
             size="small"
             onClick={onClose}
             sx={{
-              border: `1px solid ${colors.border}`,
+              border: `1px solid ${C.border}`,
               borderRadius: "8px",
-              width: 28,
-              height: 28,
+              width: { xs: 26, sm: 28 },
+              height: { xs: 26, sm: 28 },
             }}
           >
             <CloseIcon sx={{ fontSize: "0.9rem" }} />
           </IconButton>
         </Box>
-
         <Box
           sx={{
             display: "flex",
-            borderBottom: `1px solid ${colors.border}`,
-            px: 2.5,
-            bgcolor: colors.surface,
+            borderBottom: `1px solid ${C.border}`,
+            px: { xs: 1.5, sm: 2.5 },
+            bgcolor: C.surface,
+            overflowX: "auto",
+            "&::-webkit-scrollbar": { height: "2px" },
           }}
         >
-          {TABS.map((tab, i) => (
+          {TABS.map((t, i) => (
             <Box
-              key={tab}
-              onClick={() => setActiveTab(i)}
+              key={t}
+              onClick={() => setTab(i)}
               sx={{
-                px: 1.5,
-                py: 1.25,
+                px: { xs: 1.5, sm: 2 },
+                py: { xs: 1, sm: 1.25 },
                 cursor: "pointer",
-                fontSize: "0.78rem",
-                fontWeight: activeTab === i ? 600 : 400,
-                color: activeTab === i ? colors.primary : colors.text.secondary,
+                fontSize: { xs: "0.75rem", sm: "0.8rem" },
+                fontWeight: tab === i ? 700 : 500,
+                color: tab === i ? C.primary : C.text.secondary,
                 borderBottom: "2px solid",
-                borderColor: activeTab === i ? colors.primary : "transparent",
+                borderColor: tab === i ? C.primary : "transparent",
                 transition: "all 0.15s",
                 userSelect: "none",
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: 0.5,
-                "&:hover": {
-                  color: activeTab === i ? colors.primary : colors.text.primary,
-                },
+                gap: 0.75,
+                flexShrink: 0,
               }}
             >
-              {tab}
+              {t}
               {tabHasError(i) && (
                 <Box
                   sx={{
-                    width: 5,
-                    height: 5,
+                    width: 6,
+                    height: 6,
                     borderRadius: "50%",
-                    bgcolor: colors.error,
-                    flexShrink: 0,
+                    bgcolor: C.error,
                   }}
                 />
               )}
@@ -985,35 +1071,52 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ px: 2.5, py: 2.5 }}>
-        {panels[activeTab]}
+      <DialogContent
+        sx={{
+          px: { xs: 2, sm: 2.5 },
+          py: { xs: 2, sm: 2.5 },
+          maxHeight: { xs: "calc(100vh - 180px)", sm: "60vh" },
+          overflowY: "auto",
+          "&::-webkit-scrollbar": { width: "4px" },
+          "&::-webkit-scrollbar-thumb": {
+            background: C.primary,
+            borderRadius: "4px",
+          },
+        }}
+      >
+        {tab === 0 && TabAccountInfo}
+        {tab === 1 && TabPlanLimits}
+        {tab === 2 && TabSecurity}
       </DialogContent>
 
       <DialogActions
         sx={{
-          px: 2.5,
+          px: { xs: 2, sm: 2.5 },
           py: 1.5,
-          borderTop: `1px solid ${colors.border}`,
+          borderTop: `1px solid ${C.border}`,
           justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 1,
+          bgcolor: "white",
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-          <ShieldIcon sx={{ fontSize: "0.9rem", color: colors.text.muted }} />
-          <Typography sx={{ fontSize: "0.7rem", color: colors.text.muted }}>
+          <ShieldIcon sx={{ fontSize: "0.9rem", color: C.text.muted }} />
+          <Typography sx={{ fontSize: "0.7rem", color: C.text.muted }}>
             Encrypted & secure
           </Typography>
         </Box>
-        <Box sx={{ display: "flex", gap: 1 }}>
+        <Box sx={{ display: "flex", gap: 1.5 }}>
           <Button
             onClick={onClose}
             size="small"
             sx={{
               textTransform: "none",
-              fontSize: "0.78rem",
+              fontSize: "0.8rem",
               borderRadius: "8px",
-              border: `1px solid ${colors.border}`,
-              color: colors.text.secondary,
-              px: 2,
+              border: `1px solid ${C.border}`,
+              color: C.text.secondary,
+              px: 2.5,
             }}
           >
             Cancel
@@ -1025,24 +1128,24 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
             disabled={loading}
             startIcon={
               loading ? null : isEdit ? (
-                <SaveIcon sx={{ fontSize: "0.9rem !important" }} />
+                <SaveIcon sx={{ fontSize: "0.9rem" }} />
               ) : (
-                <PersonAddIcon sx={{ fontSize: "0.9rem !important" }} />
+                <PersonAddIcon sx={{ fontSize: "0.9rem" }} />
               )
             }
             sx={{
               textTransform: "none",
-              fontSize: "0.78rem",
+              fontSize: "0.8rem",
               fontWeight: 600,
               borderRadius: "8px",
-              bgcolor: colors.primary,
-              px: 2,
-              "&:hover": { bgcolor: colors.primaryDark },
-              "&.Mui-disabled": { bgcolor: colors.border },
+              bgcolor: C.primary,
+              px: 2.5,
+              "&:hover": { bgcolor: C.primaryDark },
+              "&.Mui-disabled": { bgcolor: C.border },
             }}
           >
             {loading ? (
-              <CircularProgress size={16} color="inherit" />
+              <CircularProgress size={18} color="inherit" />
             ) : isEdit ? (
               "Save changes"
             ) : (
@@ -1055,8 +1158,8 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
   );
 };
 
-// Delete Confirm Dialog
-const DeleteConfirmDialog = ({ open, client, onClose, onConfirm, loading }) => (
+// Status Dialog Component
+const StatusDialog = ({ open, client, onClose, onConfirm, loading }) => (
   <Dialog
     open={open}
     onClose={onClose}
@@ -1072,7 +1175,7 @@ const DeleteConfirmDialog = ({ open, client, onClose, onConfirm, loading }) => (
           justifyContent: "space-between",
           px: 2.5,
           py: 1.75,
-          borderBottom: `1px solid ${colors.border}`,
+          borderBottom: `1px solid ${C.border}`,
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
@@ -1087,13 +1190,13 @@ const DeleteConfirmDialog = ({ open, client, onClose, onConfirm, loading }) => (
               justifyContent: "center",
             }}
           >
-            <WarningIcon sx={{ fontSize: "1rem", color: colors.error }} />
+            <WarningIcon sx={{ fontSize: "1rem", color: C.error }} />
           </Box>
           <Typography
             sx={{
               fontWeight: 600,
               fontSize: "0.875rem",
-              color: colors.text.primary,
+              color: C.text.primary,
             }}
           >
             {client?.status === "active" ? "Deactivate" : "Activate"} customer
@@ -1103,7 +1206,7 @@ const DeleteConfirmDialog = ({ open, client, onClose, onConfirm, loading }) => (
           size="small"
           onClick={onClose}
           sx={{
-            border: `1px solid ${colors.border}`,
+            border: `1px solid ${C.border}`,
             borderRadius: "8px",
             width: 28,
             height: 28,
@@ -1113,31 +1216,25 @@ const DeleteConfirmDialog = ({ open, client, onClose, onConfirm, loading }) => (
         </IconButton>
       </Box>
     </DialogTitle>
-
     <DialogContent sx={{ px: 2.5, py: 2 }}>
       <Typography
-        sx={{
-          fontSize: "0.8rem",
-          color: colors.text.secondary,
-          lineHeight: 1.6,
-        }}
+        sx={{ fontSize: "0.8rem", color: C.text.secondary, lineHeight: 1.6 }}
       >
         Are you sure you want to{" "}
         <strong>
           {client?.status === "active" ? "deactivate" : "activate"}
         </strong>{" "}
-        <strong style={{ color: colors.text.primary }}>
+        <strong style={{ color: C.text.primary }}>
           {client?.customerName}
         </strong>
         ?{" "}
         {client?.status === "active"
-          ? "They will lose access to the platform immediately."
+          ? "They will lose access immediately."
           : "They will regain access to the platform."}
       </Typography>
     </DialogContent>
-
     <DialogActions
-      sx={{ px: 2.5, py: 1.5, borderTop: `1px solid ${colors.border}`, gap: 1 }}
+      sx={{ px: 2.5, py: 1.5, borderTop: `1px solid ${C.border}`, gap: 1 }}
     >
       <Button
         onClick={onClose}
@@ -1146,8 +1243,8 @@ const DeleteConfirmDialog = ({ open, client, onClose, onConfirm, loading }) => (
           textTransform: "none",
           fontSize: "0.78rem",
           borderRadius: "8px",
-          border: `1px solid ${colors.border}`,
-          color: colors.text.secondary,
+          border: `1px solid ${C.border}`,
+          color: C.text.secondary,
           px: 2,
         }}
       >
@@ -1163,12 +1260,12 @@ const DeleteConfirmDialog = ({ open, client, onClose, onConfirm, loading }) => (
           fontSize: "0.78rem",
           fontWeight: 600,
           borderRadius: "8px",
-          bgcolor: client?.status === "active" ? colors.error : colors.success,
+          bgcolor: client?.status === "active" ? C.error : C.success,
           px: 2,
           "&:hover": {
             bgcolor: client?.status === "active" ? "#dc2626" : "#059669",
           },
-          "&.Mui-disabled": { bgcolor: colors.border },
+          "&.Mui-disabled": { bgcolor: C.border },
         }}
       >
         {loading ? (
@@ -1186,7 +1283,7 @@ const DeleteConfirmDialog = ({ open, client, onClose, onConfirm, loading }) => (
 // Main Component
 export default function ClientManagement() {
   const theme = useTheme();
-  const navigate = useNavigate();
+  const nav = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user, isAuthenticated } = useAuth();
 
@@ -1212,7 +1309,7 @@ export default function ClientManagement() {
   const [search, setSearch] = useState(filters.search || "");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
   const [statusAnchor, setStatusAnchor] = useState(null);
   const [planAnchor, setPlanAnchor] = useState(null);
@@ -1221,38 +1318,28 @@ export default function ClientManagement() {
     message: "",
     severity: "success",
   });
-
   const searchTimer = useRef(null);
-  const isInitialMount = useRef(true);
+  const isInitMount = useRef(true);
 
-  // Check if user has super_admin role
-  const isSuperAdmin = useMemo(() => {
-    return user?.role === "super_admin";
-  }, [user]);
+  const isSuperAdmin = useMemo(() => user?.role === "super_admin", [user]);
 
-  const showToast = useCallback((message, severity = "success") => {
-    setToast({ open: true, message, severity });
+  const showToast = useCallback((msg, sev = "success") => {
+    setToast({ open: true, message: msg, severity: sev });
   }, []);
 
   const closeToast = useCallback(() => {
-    setToast((prev) => ({ ...prev, open: false }));
+    setToast((p) => ({ ...p, open: false }));
   }, []);
 
-  // Sync search state with filters
   useEffect(() => {
-    if (filters.search !== search) {
-      setSearch(filters.search);
-    }
+    if (filters.search !== search) setSearch(filters.search);
   }, [filters.search]);
 
-  // Debounced search
   useEffect(() => {
-    // Skip on initial mount
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
+    if (isInitMount.current) {
+      isInitMount.current = false;
       return;
     }
-
     clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => {
       if (search !== filters.search) {
@@ -1260,7 +1347,6 @@ export default function ClientManagement() {
         fetchClients({ search: search.trim(), page: 1 });
       }
     }, 500);
-
     return () => clearTimeout(searchTimer.current);
   }, [search, updateFilters, fetchClients, filters.search]);
 
@@ -1271,7 +1357,7 @@ export default function ClientManagement() {
       setModalOpen(false);
       fetchClients({ page: 1 });
     } catch (err) {
-      showToast(formatError(err), "error");
+      showToast(fmtErr(err), "error");
     }
   };
 
@@ -1290,7 +1376,7 @@ export default function ClientManagement() {
       setEditingClient(null);
       fetchClients();
     } catch (err) {
-      showToast(formatError(err), "error");
+      showToast(fmtErr(err), "error");
     }
   };
 
@@ -1302,11 +1388,11 @@ export default function ClientManagement() {
       showToast(
         `Customer ${newStatus === "active" ? "activated" : "deactivated"} successfully!`,
       );
-      setDeleteDialogOpen(false);
+      setDeleteOpen(false);
       setSelectedClient(null);
       fetchClients();
     } catch (err) {
-      showToast(formatError(err), "error");
+      showToast(fmtErr(err), "error");
     }
   };
 
@@ -1345,31 +1431,30 @@ export default function ClientManagement() {
         icon: GroupIcon,
         label: "Total Customers",
         value: stats?.total || 0,
-        color: colors.primary,
+        color: C.primary,
       },
       {
         icon: ActiveIcon,
-        label: "Active",
+        label: "Active Customers",
         value: stats?.active || 0,
-        color: colors.success,
+        color: C.success,
       },
       {
-        icon: TrendingUpIcon,
-        label: "Premium",
-        value: stats?.byPlan?.premium || 0,
-        color: colors.warning,
+        icon: BusinessIcon,
+        label: "Enterprise",
+        value: stats?.byPlan?.enterprise || 0,
+        color: "#7c3aed",
       },
       {
         icon: WarningIcon,
         label: "Expiring Soon",
         value: stats?.expiringSoon || 0,
-        color: colors.error,
+        color: C.warning,
       },
     ],
     [stats],
   );
 
-  // Check authentication and role
   if (!isAuthenticated) {
     return (
       <Box
@@ -1380,25 +1465,16 @@ export default function ClientManagement() {
           minHeight: "100vh",
         }}
       >
-        <CircularProgress sx={{ color: colors.primary }} />
+        <CircularProgress sx={{ color: C.primary }} />
       </Box>
     );
   }
 
-  if (!isSuperAdmin) {
-    return <AccessDenied />;
-  }
+  if (!isSuperAdmin) return <AccessDenied />;
 
-  // Loading state
   if (initialLoading && !clients?.length) {
     return (
-      <Box
-        sx={{
-          p: { xs: 2, sm: 3 },
-          bgcolor: colors.surface,
-          minHeight: "100vh",
-        }}
-      >
+      <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: C.surface, minHeight: "100vh" }}>
         <Skeleton variant="text" width={200} height={32} sx={{ mb: 1 }} />
         <Skeleton variant="text" width={300} height={20} sx={{ mb: 3 }} />
         <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -1424,10 +1500,11 @@ export default function ClientManagement() {
   }
 
   return (
-    <Box
-      sx={{ bgcolor: colors.surface, minHeight: "100vh", p: { xs: 2, sm: 3 } }}
-    >
-      {/* Header */}
+    <Box sx={{ bgcolor: C.surface, minHeight: "100vh", p: { xs: 2, sm: 3 } }}>
+      {(loading || actionLoading) && !initialLoading && (
+        <LinearProgress sx={{ mb: 2, borderRadius: 2, height: 3 }} />
+      )}
+
       <Box
         sx={{
           display: "flex",
@@ -1442,17 +1519,20 @@ export default function ClientManagement() {
           <Typography
             sx={{
               fontWeight: 800,
-              fontSize: { xs: "1.2rem", sm: "1.3rem" },
-              color: colors.text.primary,
+              fontSize: { xs: "1.25rem", sm: "1.4rem" },
+              color: C.text.primary,
               mb: 0.25,
             }}
           >
             Customer Management
           </Typography>
           <Typography
-            sx={{ fontSize: "0.75rem", color: colors.text.secondary }}
+            sx={{
+              fontSize: { xs: "0.7rem", sm: "0.75rem" },
+              color: C.text.secondary,
+            }}
           >
-            Manage customer accounts and subscriptions
+            Manage customer accounts and memberships
           </Typography>
         </Box>
         <Button
@@ -1463,18 +1543,19 @@ export default function ClientManagement() {
             setModalOpen(true);
           }}
           sx={{
-            bgcolor: colors.primary,
+            bgcolor: C.primary,
             textTransform: "none",
-            borderRadius: 2,
+            borderRadius: "10px",
             fontWeight: 600,
-            "&:hover": { bgcolor: colors.primaryDark },
+            px: { xs: 2, sm: 2.5 },
+            fontSize: "0.85rem",
+            "&:hover": { bgcolor: C.primaryDark },
           }}
         >
           Add Customer
         </Button>
       </Box>
 
-      {/* Error Alert */}
       {error && (
         <Alert
           severity="error"
@@ -1485,131 +1566,135 @@ export default function ClientManagement() {
         </Alert>
       )}
 
-      {/* Stats Cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {statCards.map((stat, i) => (
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+        {statCards.map((s, i) => (
           <Grid key={i} item xs={6} sm={6} md={3}>
-            <StatCard {...stat} loading={initialLoading} />
+            <StatCard {...s} loading={initialLoading} />
           </Grid>
         ))}
       </Grid>
 
-      {/* Filters Section */}
       <Paper
         sx={{
-          p: 2,
+          p: { xs: 1.5, sm: 2 },
           mb: 3,
           borderRadius: 2,
-          border: `1px solid ${colors.border}`,
+          border: `1px solid ${C.border}`,
         }}
         elevation={0}
       >
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search customers..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{
+              flex: 1,
+              minWidth: { xs: "100%", sm: 200 },
+              "& .MuiOutlinedInput-root": { borderRadius: 2 },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon
+                    sx={{ fontSize: "0.9rem", color: C.text.muted }}
+                  />
+                </InputAdornment>
+              ),
+              endAdornment: search && (
+                <IconButton size="small" onClick={() => setSearch("")}>
+                  <ClearIcon sx={{ fontSize: "0.8rem" }} />
+                </IconButton>
+              ),
+            }}
+          />
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <Button
               size="small"
-              placeholder="Search by name, email, phone..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon
-                      sx={{ fontSize: "0.9rem", color: colors.text.muted }}
-                    />
-                  </InputAdornment>
-                ),
-                endAdornment: search && (
-                  <IconButton size="small" onClick={() => setSearch("")}>
-                    <ClearIcon sx={{ fontSize: "0.8rem" }} />
-                  </IconButton>
-                ),
-              }}
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Box
+              variant={filters.status !== "all" ? "contained" : "outlined"}
+              onClick={(e) => setStatusAnchor(e.currentTarget)}
+              endIcon={<ArrowDownIcon sx={{ fontSize: "0.8rem" }} />}
               sx={{
-                display: "flex",
-                gap: 1,
-                flexWrap: "wrap",
-                alignItems: "center",
+                textTransform: "none",
+                borderRadius: "8px",
+                fontSize: "0.75rem",
+                whiteSpace: "nowrap",
+                ...(filters.status !== "all" && { bgcolor: C.primary }),
               }}
             >
+              {filters.status === "all"
+                ? "All Status"
+                : filters.status === "active"
+                  ? "Active"
+                  : "Inactive"}
+            </Button>
+            <Button
+              size="small"
+              variant={
+                filters.membershipPlan !== "all" ? "contained" : "outlined"
+              }
+              onClick={(e) => setPlanAnchor(e.currentTarget)}
+              endIcon={<ArrowDownIcon sx={{ fontSize: "0.8rem" }} />}
+              sx={{
+                textTransform: "none",
+                borderRadius: "8px",
+                fontSize: "0.75rem",
+                whiteSpace: "nowrap",
+                ...(filters.membershipPlan !== "all" && { bgcolor: C.primary }),
+              }}
+            >
+              {filters.membershipPlan === "all"
+                ? "All Memberships"
+                : filters.membershipPlan.charAt(0).toUpperCase() +
+                  filters.membershipPlan.slice(1)}
+            </Button>
+            {hasFilters && (
               <Button
                 size="small"
-                variant={filters.status !== "all" ? "contained" : "outlined"}
-                onClick={(e) => setStatusAnchor(e.currentTarget)}
-                endIcon={<ArrowDownIcon sx={{ fontSize: "0.8rem" }} />}
+                onClick={handleClearFilters}
                 sx={{
                   textTransform: "none",
-                  borderRadius: 1.5,
+                  color: C.error,
+                  borderRadius: "8px",
                   fontSize: "0.75rem",
-                  ...(filters.status !== "all" && { bgcolor: colors.primary }),
                 }}
               >
-                {filters.status === "all"
-                  ? "All Status"
-                  : filters.status === "active"
-                    ? "Active"
-                    : "Inactive"}
+                Clear
               </Button>
-              <Button
-                size="small"
-                variant={
-                  filters.membershipPlan !== "all" ? "contained" : "outlined"
-                }
-                onClick={(e) => setPlanAnchor(e.currentTarget)}
-                endIcon={<ArrowDownIcon sx={{ fontSize: "0.8rem" }} />}
+            )}
+            <IconButton
+              size="small"
+              onClick={handleRefresh}
+              disabled={loading}
+              sx={{ border: `1px solid ${C.border}`, borderRadius: "8px" }}
+            >
+              <RefreshIcon
                 sx={{
-                  textTransform: "none",
-                  borderRadius: 1.5,
-                  fontSize: "0.75rem",
-                  ...(filters.membershipPlan !== "all" && {
-                    bgcolor: colors.primary,
-                  }),
+                  fontSize: "0.9rem",
+                  animation: loading ? "spin 1s linear infinite" : "none",
                 }}
-              >
-                {filters.membershipPlan === "all"
-                  ? "All Plans"
-                  : filters.membershipPlan.charAt(0).toUpperCase() +
-                    filters.membershipPlan.slice(1)}
-              </Button>
-              {hasFilters && (
-                <Button
-                  size="small"
-                  onClick={handleClearFilters}
-                  sx={{
-                    textTransform: "none",
-                    color: colors.error,
-                    borderRadius: 1.5,
-                    fontSize: "0.75rem",
-                  }}
-                >
-                  Clear
-                </Button>
-              )}
-              <IconButton
-                size="small"
-                onClick={handleRefresh}
-                disabled={loading}
-                sx={{ border: `1px solid ${colors.border}`, borderRadius: 1.5 }}
-              >
-                <RefreshIcon
-                  sx={{
-                    fontSize: "0.9rem",
-                    animation: loading ? "spin 1s linear infinite" : "none",
-                  }}
-                />
-              </IconButton>
-            </Box>
-          </Grid>
-        </Grid>
+              />
+            </IconButton>
+          </Box>
+        </Box>
       </Paper>
 
-      {/* Results Count */}
       <Box
         sx={{
           display: "flex",
@@ -1618,16 +1703,13 @@ export default function ClientManagement() {
           mb: 2,
         }}
       >
-        <Typography sx={{ fontSize: "0.7rem", color: colors.text.muted }}>
+        <Typography sx={{ fontSize: "0.7rem", color: C.text.muted }}>
           Showing <strong>{clients?.length || 0}</strong> of{" "}
           <strong>{pagination?.total || 0}</strong> customers
         </Typography>
-        {loading && (
-          <CircularProgress size={16} sx={{ color: colors.primary }} />
-        )}
+        {loading && <CircularProgress size={16} sx={{ color: C.primary }} />}
       </Box>
 
-      {/* Client Grid */}
       {!clients?.length && !loading ? (
         <Box sx={{ textAlign: "center", py: 8 }}>
           <Box
@@ -1635,7 +1717,7 @@ export default function ClientManagement() {
               width: 64,
               height: 64,
               borderRadius: "50%",
-              bgcolor: colors.primaryLight,
+              bgcolor: C.primaryLight,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1643,20 +1725,20 @@ export default function ClientManagement() {
               mb: 2,
             }}
           >
-            <InboxIcon sx={{ fontSize: 32, color: colors.primary }} />
+            <InboxIcon sx={{ fontSize: 32, color: C.primary }} />
           </Box>
           <Typography
             sx={{
               fontWeight: 700,
               fontSize: "1rem",
-              color: colors.text.primary,
+              color: C.text.primary,
               mb: 0.5,
             }}
           >
             {search ? "No results found" : "No customers yet"}
           </Typography>
           <Typography
-            sx={{ fontSize: "0.75rem", color: colors.text.secondary, mb: 2 }}
+            sx={{ fontSize: "0.75rem", color: C.text.secondary, mb: 2 }}
           >
             {search
               ? "Try adjusting your search"
@@ -1670,34 +1752,37 @@ export default function ClientManagement() {
                 setEditingClient(null);
                 setModalOpen(true);
               }}
-              sx={{ bgcolor: colors.primary, textTransform: "none" }}
+              sx={{
+                bgcolor: C.primary,
+                textTransform: "none",
+                borderRadius: "10px",
+              }}
             >
               Add Customer
             </Button>
           )}
         </Box>
       ) : (
-        <Grid container spacing={2}>
-          {clients?.map((client) => (
-            <Grid key={client._id} item xs={12} sm={6} lg={4} xl={3}>
+        <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+          {clients?.map((c) => (
+            <Grid key={c._id} item xs={12} sm={6} lg={4} xl={3}>
               <ClientCard
-                client={client}
-                onEdit={(c) => {
-                  setEditingClient(c);
+                client={c}
+                onEdit={(cl) => {
+                  setEditingClient(cl);
                   setModalOpen(true);
                 }}
-                onDelete={(c) => {
-                  setSelectedClient(c);
-                  setDeleteDialogOpen(true);
+                onDelete={(cl) => {
+                  setSelectedClient(cl);
+                  setDeleteOpen(true);
                 }}
-                onView={(id) => navigate(`/admin/clients-details/${id}`)}
+                onView={(id) => nav(`/admin/clients-details/${id}`)}
               />
             </Grid>
           ))}
         </Grid>
       )}
 
-      {/* Pagination */}
       {pagination?.pages > 1 && (
         <Box
           sx={{
@@ -1714,16 +1799,14 @@ export default function ClientManagement() {
             onClick={() => handlePageChange(pagination.page - 1)}
             sx={{
               textTransform: "none",
-              borderRadius: 1.5,
-              border: `1px solid ${colors.border}`,
-              color: colors.text.secondary,
+              borderRadius: "8px",
+              border: `1px solid ${C.border}`,
+              color: C.text.secondary,
             }}
           >
             Previous
           </Button>
-          <Typography
-            sx={{ fontSize: "0.75rem", color: colors.text.secondary }}
-          >
+          <Typography sx={{ fontSize: "0.75rem", color: C.text.secondary }}>
             Page {pagination.page} of {pagination.pages}
           </Typography>
           <Button
@@ -1732,9 +1815,9 @@ export default function ClientManagement() {
             onClick={() => handlePageChange(pagination.page + 1)}
             sx={{
               textTransform: "none",
-              borderRadius: 1.5,
-              border: `1px solid ${colors.border}`,
-              color: colors.text.secondary,
+              borderRadius: "8px",
+              border: `1px solid ${C.border}`,
+              color: C.text.secondary,
             }}
           >
             Next
@@ -1742,7 +1825,6 @@ export default function ClientManagement() {
         </Box>
       )}
 
-      {/* Status Filter Menu */}
       <Menu
         anchorEl={statusAnchor}
         open={Boolean(statusAnchor)}
@@ -1765,7 +1847,6 @@ export default function ClientManagement() {
         ))}
       </Menu>
 
-      {/* Plan Filter Menu */}
       <Menu
         anchorEl={planAnchor}
         open={Boolean(planAnchor)}
@@ -1786,7 +1867,6 @@ export default function ClientManagement() {
         ))}
       </Menu>
 
-      {/* Modals */}
       <ClientModal
         open={modalOpen}
         client={editingClient}
@@ -1797,18 +1877,17 @@ export default function ClientManagement() {
         onSave={editingClient ? handleEditClient : handleAddClient}
         loading={actionLoading}
       />
-      <DeleteConfirmDialog
-        open={deleteDialogOpen}
+      <StatusDialog
+        open={deleteOpen}
         client={selectedClient}
         onClose={() => {
-          setDeleteDialogOpen(false);
+          setDeleteOpen(false);
           setSelectedClient(null);
         }}
         onConfirm={handleStatusChange}
         loading={actionLoading}
       />
 
-      {/* Toast Notifications */}
       <Snackbar
         open={toast.open}
         autoHideDuration={5000}

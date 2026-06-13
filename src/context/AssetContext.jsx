@@ -27,7 +27,7 @@ export const useAsset = () => {
   return context;
 };
 
-const API_BASE_URL = "https://assset-management-backend-4.onrender.com/api/v1";
+const API_BASE_URL = "http://localhost:9001/api/v1";
 
 // ─── Shared axios instance (exported for all contexts to import) ──────────────
 export const api = axios.create({ baseURL: API_BASE_URL });
@@ -137,7 +137,7 @@ export const AssetProvider = ({ children }) => {
           if (v !== undefined && v !== "" && v !== null) params.append(k, v);
         });
 
-        const url = `/assets${params.toString() ? `?${params}` : ""}`;
+        const url = `/assets`;
         const res = await api.get(url, { signal: abortRef.current.signal });
 
         if (res.data?.success) {

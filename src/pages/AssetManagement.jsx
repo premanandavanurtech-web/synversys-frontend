@@ -1,27 +1,4 @@
-// src/pages/AssetManagement.jsx
-// ─── FIXES ────────────────────────────────────────────────────────────────────
-// 1. Page header: removed hardcoded `width: "1170px"` and `ml: 4` — now 100%
-//    responsive with proper padding.
-// 2. fetchAssets: wrapped in try/catch that surfaces the actual error message
-//    instead of always showing "Failed to load assets". Network errors, 401s,
-//    and backend validation errors are all displayed properly.
-// 3. Empty state: distinguished between "no data at all" (first load, no
-//    assets registered) and "no results for this search/filter". Different copy
-//    and actions for each case.
-// 4. Error state: dedicated error banner with retry button when the fetch fails.
-//    Previously errors were silently swallowed after showing a toast.
-// 5. Categories filter: was built from the current page's assets only — now
-//    also persisted across page changes so the filter list doesn't collapse
-//    when you navigate to page 2.
-// 6. AssetCard width: removed hardcoded `width: "360px"` — let Grid control it.
-// 7. Clone dialog: shows a proper error message inside the dialog on failure
-//    instead of closing + toast so the user can retry without re-opening.
-// 8. Delete dialog: same — error shown inside dialog.
-// 9. Pagination sync: `rowsPerPage` change now resets `page` to 0 correctly.
-// 10. Sort: `setPage(0)` was missing from handleSort — now added.
-// 11. Redesigned with a clean, refined industrial aesthetic: editorial grid,
-//     sharp typographic hierarchy, muted tones, surgical use of color.
-// ─────────────────────────────────────────────────────────────────────────────
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -148,8 +125,8 @@ const DS = {
   shadowLg: "0 12px 28px rgba(17,19,24,0.10), 0 4px 8px rgba(17,19,24,0.06)",
 
   // Typography
-  font: "'Sora', 'Plus Jakarta Sans', system-ui, sans-serif",
-  mono: "'IBM Plex Mono', 'Fira Code', monospace",
+  font: "'Sora', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+  mono: "'Sora', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
 
   // Radius
   r: { xs: "3px", sm: "6px", md: "10px", lg: "14px", xl: "18px" },
@@ -1145,7 +1122,7 @@ export default function AssetManagement() {
           pt: { xs: 2, sm: 2.5 },
           pb: { xs: 1.5, sm: 2 },
           bgcolor: DS.white,
-          width:"1175px",
+          width:"1120px",
           marginLeft:"30px",
           borderBottom: `1px solid ${DS.line}`,
           boxShadow: DS.shadow,

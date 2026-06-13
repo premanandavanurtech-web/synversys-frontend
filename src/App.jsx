@@ -48,7 +48,7 @@ import AssetView from "./pages/AssetView";
 import EditAsset from "./pages/EditAsset";
 import CloneAssets from "./pages/CloneAssetList";
 import MyTasks from "./pages/MyTask";
-import TaskDetails from "./pages/TaskDetails";
+//import TaskDetails from "./pages/TaskDetails";
 import InspectionHistory from "./pages/Inspectionhistory";
 import InspectionHistoryDetails from "./pages/InspectionHistoryDetails";
 import MyRequests from "./pages/Myrequests";
@@ -198,7 +198,7 @@ export default function App() {
 
           {/* ==================== TEAM ROUTES (Specific first, then general) ==================== */}
           {/* Task Details - Specific route with ID parameter */}
-          <Route
+          {/* <Route
             path="/team/task/:id"
             element={
               <ProtectedRoute allowedRoles={["team"]}>
@@ -207,7 +207,7 @@ export default function App() {
                 </DashboardLayout>
               </ProtectedRoute>
             }
-          />
+          /> */}
 
           {/* Inspection Details - Specific route with ID parameter */}
           <Route

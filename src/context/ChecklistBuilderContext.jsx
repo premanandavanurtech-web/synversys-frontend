@@ -1,4 +1,5 @@
-// context/ChecklistBuilderContext.jsx
+// context/ChecklistBuilderContext.jsx - Fixed API Paths
+
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { useAuth } from "./AuthContexts";
 import axios from "axios";
@@ -15,7 +16,8 @@ export const useChecklistBuilder = () => {
   return context;
 };
 
-const API_BASE = "https://assset-management-backend-4.onrender.com/api/v1";
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:9001/api/v1";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Field type maps
@@ -32,7 +34,7 @@ export const BACKEND_FIELD_TYPES = [
   "rating",
   "image_upload",
   "signature",
-  "date", // ← backend enum uses "date" not "date_picker"
+  "date",
   "file_upload",
 ];
 
@@ -40,17 +42,17 @@ export const BACKEND_FIELD_TYPES = [
 const FRONTEND_TO_BACKEND = {
   text_input: "text_input",
   text_area: "text_area",
-  textarea: "text_area", // alias
+  textarea: "text_area",
   dropdown: "dropdown",
   checkbox: "checkbox",
   rating: "rating",
   image_upload: "image_upload",
-  image: "image_upload", // alias
+  image: "image_upload",
   signature: "signature",
   date: "date",
-  date_picker: "date", // ← frontend alias → backend "date"
+  date_picker: "date",
   file_upload: "file_upload",
-  file: "file_upload", // alias
+  file: "file_upload",
 };
 
 // Backend enum value → UI display label
@@ -62,7 +64,7 @@ const BACKEND_TO_FRONTEND = {
   rating: "rating",
   image_upload: "image_upload",
   signature: "signature",
-  date: "date", // keep as "date" in UI too
+  date: "date",
   file_upload: "file_upload",
 };
 
@@ -116,7 +118,6 @@ export const ChecklistBuilderProvider = ({ children }) => {
           throw new Error("Session expired. Please login again.");
         }
 
-        // Log detailed error info for debugging
         if (err.response) {
           console.error("Response status:", err.response.status);
           console.error("Response data:", err.response.data);
@@ -165,7 +166,6 @@ export const ChecklistBuilderProvider = ({ children }) => {
             ? await post(url, data)
             : await makeAuthenticatedRequest("POST", url, data);
         case "PATCH":
-          // AuthContext typically exposes `put` but we need PATCH – always use axios
           return await makeAuthenticatedRequest("PATCH", url, data);
         case "PUT":
           return put
@@ -187,15 +187,12 @@ export const ChecklistBuilderProvider = ({ children }) => {
   // ─────────────────────────────────────────────────────────────────────────
   // 1. CREATE CHECKLIST
   //    POST /api/v1/checklists
-  //    Body: { name, description, checklistType, isGlobal, globalScope?,
-  //            allowedWorkspaces?, category, tags, fields[] }
   // ─────────────────────────────────────────────────────────────────────────
   const createChecklist = useCallback(
     async (checklistData) => {
       setLoading(true);
       setError(null);
       try {
-        // Normalise field types before sending
         const normalized = {
           ...checklistData,
           fields: (checklistData.fields || []).map((f, idx) => ({
@@ -225,7 +222,7 @@ export const ChecklistBuilderProvider = ({ children }) => {
 
   // ─────────────────────────────────────────────────────────────────────────
   // 2. GET ALL CHECKLISTS
-  //    GET /api/v1/checklists?checklistType=&status=&category=&search=&page=&limit=
+  //    GET /api/v1/checklists
   // ─────────────────────────────────────────────────────────────────────────
   const getAllChecklists = useCallback(
     async (filters = {}) => {
@@ -234,12 +231,9 @@ export const ChecklistBuilderProvider = ({ children }) => {
       try {
         const q = new URLSearchParams();
 
-        // Backend param is "checklistType" not "type"
-        if (filters.checklistType)
-          q.append("checklistType", filters.checklistType);
-        if (filters.type) q.append("checklistType", filters.type); // legacy alias
-        if (filters.isGlobal !== undefined)
-          q.append("isGlobal", filters.isGlobal);
+        if (filters.checklistType) q.append("checklistType", filters.checklistType);
+        if (filters.type) q.append("checklistType", filters.type);
+        if (filters.isGlobal !== undefined) q.append("isGlobal", filters.isGlobal);
         if (filters.status) q.append("status", filters.status);
         if (filters.category) q.append("category", filters.category);
         if (filters.tag) q.append("tag", filters.tag);
@@ -250,14 +244,8 @@ export const ChecklistBuilderProvider = ({ children }) => {
         if (filters.sortOrder) q.append("sortOrder", filters.sortOrder);
 
         const url = `/checklists${q.toString() ? `?${q}` : ""}`;
-
-        console.log("[ChecklistBuilder] Fetching checklists with URL:", url);
-
         const response = await request("GET", url);
 
-        console.log("[ChecklistBuilder] Response received:", response);
-
-        // Handle different response structures
         let checklistsData = response;
         if (response?.data?.checklists) {
           checklistsData = response.data;
@@ -268,16 +256,11 @@ export const ChecklistBuilderProvider = ({ children }) => {
         return { success: true, data: checklistsData };
       } catch (err) {
         console.error("[ChecklistBuilder] Error fetching checklists:", err);
-        console.error("[ChecklistBuilder] Error response:", err.response?.data);
-
         const msg = extractError(err, "Failed to fetch checklists");
         setError(msg);
 
-        // Return empty data structure for development to prevent UI crashes
         if (process.env.NODE_ENV === "development") {
-          console.warn(
-            "[ChecklistBuilder] Returning empty checklists array for development",
-          );
+          console.warn("[ChecklistBuilder] Returning empty checklists array for development");
           return {
             success: true,
             data: {
@@ -308,7 +291,7 @@ export const ChecklistBuilderProvider = ({ children }) => {
       setError(null);
       try {
         const response = await request("GET", `/checklists/${id}`);
-        return { success: true, data: response };
+        return { success: true, data: response.data || response };
       } catch (err) {
         const msg = extractError(err, "Failed to fetch checklist");
         setError(msg);
@@ -322,14 +305,13 @@ export const ChecklistBuilderProvider = ({ children }) => {
 
   // ─────────────────────────────────────────────────────────────────────────
   // 4. UPDATE CHECKLIST
-  //    PATCH /api/v1/checklists/:id
+  //    PUT /api/v1/checklists/:id
   // ─────────────────────────────────────────────────────────────────────────
   const updateChecklist = useCallback(
     async (id, updateData) => {
       setLoading(true);
       setError(null);
       try {
-        // Normalise field types if fields are included in the update
         const normalized = updateData.fields
           ? {
               ...updateData,
@@ -341,12 +323,7 @@ export const ChecklistBuilderProvider = ({ children }) => {
             }
           : updateData;
 
-        // Always PATCH – AuthContext put() would send PUT
-        const response = await makeAuthenticatedRequest(
-          "PATCH",
-          `/checklists/${id}`,
-          normalized,
-        );
+        const response = await request("PUT", `/checklists/${id}`, normalized);
 
         if (response?.success || response?.data || response?._id) {
           setSuccess("Checklist updated successfully!");
@@ -361,7 +338,7 @@ export const ChecklistBuilderProvider = ({ children }) => {
         setLoading(false);
       }
     },
-    [makeAuthenticatedRequest, resolveFieldType],
+    [request, resolveFieldType],
   );
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -397,17 +374,14 @@ export const ChecklistBuilderProvider = ({ children }) => {
 
   // ─────────────────────────────────────────────────────────────────────────
   // 6. RESTORE CHECKLIST
-  //    PATCH /api/v1/checklists/:id/restore
+  //    POST /api/v1/checklists/:id/restore
   // ─────────────────────────────────────────────────────────────────────────
   const restoreChecklist = useCallback(
     async (id) => {
       setLoading(true);
       setError(null);
       try {
-        const response = await makeAuthenticatedRequest(
-          "PATCH",
-          `/checklists/${id}/restore`,
-        );
+        const response = await request("POST", `/checklists/${id}/restore`);
         if (response?.success || response?.data) {
           setSuccess("Checklist restored successfully!");
           return { success: true, data: response.data || response };
@@ -421,12 +395,12 @@ export const ChecklistBuilderProvider = ({ children }) => {
         setLoading(false);
       }
     },
-    [makeAuthenticatedRequest],
+    [request],
   );
 
   // ─────────────────────────────────────────────────────────────────────────
   // 7. GET DELETED CHECKLISTS
-  //    GET /api/v1/checklists/deleted/list
+  //    GET /api/v1/checklists/deleted
   // ─────────────────────────────────────────────────────────────────────────
   const getDeletedChecklists = useCallback(
     async (filters = {}) => {
@@ -437,7 +411,7 @@ export const ChecklistBuilderProvider = ({ children }) => {
         if (filters.page) q.append("page", filters.page);
         if (filters.limit) q.append("limit", filters.limit);
         if (filters.search) q.append("search", filters.search);
-        const url = `/checklists/deleted/list${q.toString() ? `?${q}` : ""}`;
+        const url = `/checklists/deleted${q.toString() ? `?${q}` : ""}`;
         const response = await request("GET", url);
         return { success: true, data: response };
       } catch (err) {
@@ -460,10 +434,7 @@ export const ChecklistBuilderProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       try {
-        const response = await makeAuthenticatedRequest(
-          "DELETE",
-          `/checklists/${id}/permanent`,
-        );
+        const response = await request("DELETE", `/checklists/${id}/permanent`);
         const isSuccess =
           response?.success === true ||
           response?.status === "success" ||
@@ -481,28 +452,20 @@ export const ChecklistBuilderProvider = ({ children }) => {
         setLoading(false);
       }
     },
-    [makeAuthenticatedRequest],
+    [request],
   );
 
   // ─────────────────────────────────────────────────────────────────────────
   // 9. CLONE CHECKLIST
-  //    POST /api/v1/checklists/:id/clone      ← correct path
-  //    Body: { newName?, includeSubmissions? }
+  //    POST /api/v1/checklists/:id/clone
   // ─────────────────────────────────────────────────────────────────────────
   const cloneChecklist = useCallback(
     async (id, cloneData = {}) => {
       setLoading(true);
       setError(null);
       try {
-        // Accept either cloneChecklist(id, "New Name") or cloneChecklist(id, { newName })
-        const body =
-          typeof cloneData === "string" ? { newName: cloneData } : cloneData;
-
-        const response = await request(
-          "POST",
-          `/checklists/${id}/clone`, // ← fixed from /clone/:id
-          body,
-        );
+        const body = typeof cloneData === "string" ? { newName: cloneData } : cloneData;
+        const response = await request("POST", `/checklists/${id}/clone`, body);
 
         if (response?.success || response?.data) {
           setSuccess("Checklist cloned successfully!");
@@ -522,7 +485,7 @@ export const ChecklistBuilderProvider = ({ children }) => {
 
   // ─────────────────────────────────────────────────────────────────────────
   // 10. GET CLONEABLE CHECKLISTS
-  //     GET /api/v1/checklists/cloneable      ← fixed from /clone/list
+  //     GET /api/v1/checklists/cloneable
   // ─────────────────────────────────────────────────────────────────────────
   const getCloneableChecklists = useCallback(
     async (filters = {}) => {
@@ -548,7 +511,6 @@ export const ChecklistBuilderProvider = ({ children }) => {
     [request],
   );
 
-  // Keep old name as alias for backwards compat
   const getCloneList = getCloneableChecklists;
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -572,8 +534,7 @@ export const ChecklistBuilderProvider = ({ children }) => {
 
   // ─────────────────────────────────────────────────────────────────────────
   // 12. IMPORT FROM EXCEL
-  //     POST /api/v1/checklists/import-excel  (multipart/form-data)
-  //     FormData: excelFile, checklistType, isGlobal, globalScope?, allowedWorkspaces?
+  //     POST /api/v1/checklists/import-excel
   // ─────────────────────────────────────────────────────────────────────────
   const importFromExcel = useCallback(
     async (file, options = {}) => {
@@ -584,24 +545,14 @@ export const ChecklistBuilderProvider = ({ children }) => {
         formData.append("excelFile", file);
         formData.append("checklistType", options.checklistType || "import");
         formData.append("isGlobal", String(options.isGlobal || false));
-        if (options.globalScope)
-          formData.append("globalScope", options.globalScope);
+        if (options.globalScope) formData.append("globalScope", options.globalScope);
         if (options.allowedWorkspaces?.length)
-          formData.append(
-            "allowedWorkspaces",
-            JSON.stringify(options.allowedWorkspaces),
-          );
+          formData.append("allowedWorkspaces", JSON.stringify(options.allowedWorkspaces));
 
-        const response = await makeAuthenticatedRequest(
-          "POST",
-          "/checklists/import-excel",
-          formData,
-        );
+        const response = await request("POST", "/checklists/import-excel", formData);
 
         if (response?.success || response?.data) {
-          setSuccess(
-            `${response?.data?.imported ?? ""} checklist(s) imported successfully!`,
-          );
+          setSuccess(`${response?.data?.imported ?? ""} checklist(s) imported successfully!`);
           return { success: true, data: response.data || response };
         }
         return { success: false, error: response?.message || "Import failed" };
@@ -613,26 +564,19 @@ export const ChecklistBuilderProvider = ({ children }) => {
         setLoading(false);
       }
     },
-    [makeAuthenticatedRequest],
+    [request],
   );
 
   // ─────────────────────────────────────────────────────────────────────────
   // 13. TEST BACKEND CONNECTION
-  //     GET /api/v1/checklists?limit=1
   // ─────────────────────────────────────────────────────────────────────────
   const testBackendConnection = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       console.log("[ChecklistBuilder] Testing backend connection...");
-      const response = await makeAuthenticatedRequest(
-        "GET",
-        "/checklists?limit=1",
-      );
-      console.log(
-        "[ChecklistBuilder] Backend connection test successful:",
-        response,
-      );
+      const response = await request("GET", "/checklists?limit=1");
+      console.log("[ChecklistBuilder] Backend connection test successful:", response);
       return { success: true, data: response };
     } catch (err) {
       console.error("[ChecklistBuilder] Backend connection test failed:", err);
@@ -644,20 +588,15 @@ export const ChecklistBuilderProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [makeAuthenticatedRequest]);
+  }, [request]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Field conversion helpers  (UI ↔ API)
+  // Field conversion helpers (UI ↔ API)
   // ─────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Convert a UI field object to the shape the backend expects.
-   * Key difference: backend uses "type" not "fieldType", and uses
-   * "required" not "isRequired".
-   */
   const convertUIToAPIField = useCallback(
     (uiField, index = 0) => ({
-      type: resolveFieldType(uiField.type), // ← backend "type" enum
+      type: resolveFieldType(uiField.type),
       label: uiField.label,
       placeholder: uiField.placeholder || "",
       required: uiField.required || false,
@@ -672,9 +611,6 @@ export const ChecklistBuilderProvider = ({ children }) => {
     [resolveFieldType],
   );
 
-  /**
-   * Convert a backend field document back to a UI field object.
-   */
   const convertAPIToUIField = useCallback(
     (apiField) => ({
       id: apiField._id || `field_${Date.now()}_${Math.random()}`,
@@ -690,10 +626,6 @@ export const ChecklistBuilderProvider = ({ children }) => {
     [],
   );
 
-  /**
-   * Build a full checklist payload ready to POST/PATCH.
-   * Handles the flat fields[] structure the backend expects.
-   */
   const prepareChecklistPayload = useCallback(
     ({
       name,
@@ -723,7 +655,6 @@ export const ChecklistBuilderProvider = ({ children }) => {
     [convertUIToAPIField],
   );
 
-  // ── Clear state ───────────────────────────────────────────────────────────
   const clearMessages = useCallback(() => {
     setError(null);
     setSuccess(null);
@@ -735,7 +666,6 @@ export const ChecklistBuilderProvider = ({ children }) => {
     error,
     success,
 
-    // Checklist CRUD
     createChecklist,
     getAllChecklists,
     getChecklistById,
@@ -745,22 +675,18 @@ export const ChecklistBuilderProvider = ({ children }) => {
     getDeletedChecklists,
     permanentDeleteChecklist,
 
-    // Clone
     cloneChecklist,
     getCloneableChecklists,
-    getCloneList, // alias
+    getCloneList,
 
-    // Utilities
     getChecklistTypesSummary,
     importFromExcel,
-    testBackendConnection, // Added for debugging
+    testBackendConnection,
 
-    // Converters
     convertUIToAPIField,
     convertAPIToUIField,
     prepareChecklistPayload,
 
-    // Constants
     FRONTEND_TO_BACKEND,
     BACKEND_TO_FRONTEND,
     BACKEND_FIELD_TYPES,

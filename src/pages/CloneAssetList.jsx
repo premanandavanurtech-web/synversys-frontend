@@ -73,8 +73,8 @@ const T = {
     secondary: "#64748b",
     muted: "#94a3b8",
   },
-  primary: "#145a66",
-  primaryDark: "#0b4049",
+  primary: "#0a4c58",
+  primaryDark: "#154d57",
   success: "#10b981",
   error: "#ef4444",
   warning: "#f59e0b",
@@ -569,7 +569,7 @@ export default function CloneAssets() {
           zIndex: 100,
           marginLeft: "42px",
           borderRadius: 2,
-          width: "1140px",
+          width: "1100px",
           boxShadow: T.shadow,
         }}
       >
@@ -619,7 +619,7 @@ export default function CloneAssets() {
       <Box sx={{ px: { xs: 2, sm: 4, md: 6 }, py: 3 }}>
         {/* Stats Cards */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={6} sm={3} sx={{ width: "270px" }}>
+          <Grid item xs={6} sm={3} sx={{ width: "257px" }}>
             <Paper sx={{ p: 2, borderRadius: T.radius.lg, bgcolor: T.surface }}>
               <Stack
                 direction="row"
@@ -646,7 +646,7 @@ export default function CloneAssets() {
               </Stack>
             </Paper>
           </Grid>
-          <Grid item xs={6} sm={3} sx={{ width: "270px" }}>
+          <Grid item xs={6} sm={3} sx={{ width: "257px" }}>
             <Paper sx={{ p: 2, borderRadius: T.radius.lg, bgcolor: T.surface }}>
               <Stack
                 direction="row"
@@ -673,7 +673,7 @@ export default function CloneAssets() {
               </Stack>
             </Paper>
           </Grid>
-          <Grid item xs={6} sm={3} sx={{ width: "270px" }}>
+          <Grid item xs={6} sm={3} sx={{ width: "257px" }}>
             <Paper sx={{ p: 2, borderRadius: T.radius.lg, bgcolor: T.surface }}>
               <Stack
                 direction="row"
@@ -698,7 +698,7 @@ export default function CloneAssets() {
               </Stack>
             </Paper>
           </Grid>
-          <Grid item xs={6} sm={3} sx={{ width: "270px" }}>
+          <Grid item xs={6} sm={3} sx={{ width: "257px" }}>
             <Paper sx={{ p: 2, borderRadius: T.radius.lg, bgcolor: T.surface }}>
               <Stack
                 direction="row"

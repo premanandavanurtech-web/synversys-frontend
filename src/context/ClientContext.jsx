@@ -10,7 +10,9 @@ import React, {
 } from "react";
 import axios from "axios";
 
-const API_BASE_URL = "https://assset-management-backend-4.onrender.com/api/v1";
+const API_BASE_URL =
+  import.meta.env?.VITE_API_URL ||
+  "http://localhost:9001/api/v1";
 
 // Initial state
 const initialState = {
@@ -118,16 +120,13 @@ const clientReducer = (state, action) => {
 
 // Helper functions with better token handling
 const getAuthHeaders = () => {
-  const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
-  
-  // Debug: Check if token exists
-  console.log("Getting auth headers, token exists:", !!token);
-  
+  const token =
+    localStorage.getItem("accessToken") || localStorage.getItem("token");
+
   if (!token || token === "undefined" || token === "null" || token === "") {
-    console.warn("No valid token found in localStorage");
     return null;
   }
-  
+
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
@@ -135,16 +134,14 @@ const getAuthHeaders = () => {
 };
 
 const getToken = () => {
-  const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
-  
+  const token =
+    localStorage.getItem("accessToken") || localStorage.getItem("token");
   if (!token || token === "undefined" || token === "null" || token === "") {
     return null;
   }
-  
   return token;
 };
 
-// Check if user has admin role
 const isAdminUser = () => {
   try {
     const userStr = localStorage.getItem("user");
@@ -175,10 +172,8 @@ export const ClientProvider = ({ children }) => {
   const getAllClients = useCallback(
     async (params = {}) => {
       const token = getToken();
-      
-      // Check authentication
+
       if (!token) {
-        console.error("No authentication token found");
         dispatch({
           type: ACTION_TYPES.SET_ERROR,
           payload: "Authentication required. Please login again.",
@@ -187,25 +182,17 @@ export const ClientProvider = ({ children }) => {
         return null;
       }
 
-      // Check admin role
-      const isAdmin = isAdminUser();
-      if (!isAdmin) {
-        console.error("User does not have admin permissions");
+      if (!isAdminUser()) {
         dispatch({
           type: ACTION_TYPES.SET_ERROR,
-          payload: "Access denied. Admin permissions required to view clients.",
+          payload: "Access denied. Admin permissions required.",
         });
         dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
         return null;
       }
 
-      // Prevent multiple simultaneous requests
-      if (isFetchingRef.current) {
-        console.log("Already fetching clients, skipping...");
-        return null;
-      }
+      if (isFetchingRef.current) return null;
 
-      // Abort previous request
       if (activeControllerRef.current) {
         activeControllerRef.current.abort();
       }
@@ -217,11 +204,14 @@ export const ClientProvider = ({ children }) => {
       try {
         const page = params.page || state.pagination.page;
         const limit = params.limit || state.pagination.limit;
-        const search = params.search !== undefined ? params.search : state.filters.search;
-        const status = params.status !== undefined ? params.status : state.filters.status;
-        const membershipPlan = params.membershipPlan !== undefined
-          ? params.membershipPlan
-          : state.filters.membershipPlan;
+        const search =
+          params.search !== undefined ? params.search : state.filters.search;
+        const status =
+          params.status !== undefined ? params.status : state.filters.status;
+        const membershipPlan =
+          params.membershipPlan !== undefined
+            ? params.membershipPlan
+            : state.filters.membershipPlan;
         const sortBy = params.sortBy || state.filters.sortBy;
         const sortOrder = params.sortOrder || state.filters.sortOrder;
 
@@ -241,21 +231,15 @@ export const ClientProvider = ({ children }) => {
         const url = `${API_BASE_URL}/clients?${queryParams.toString()}`;
         const headers = getAuthHeaders();
 
-        console.log("Fetching clients from:", url);
-        console.log("Headers:", { ...headers, Authorization: "Bearer [REDACTED]" });
-
         const response = await axios.get(url, {
           headers,
           signal: activeControllerRef.current.signal,
         });
 
-        console.log("Clients response:", response.data);
-
         const clientsData = response.data.clients || [];
         const paginationData = response.data.pagination || {};
         const summaryData = response.data.summary || {};
 
-        // Update stats
         dispatch({
           type: ACTION_TYPES.SET_STATS,
           payload: {
@@ -285,31 +269,22 @@ export const ClientProvider = ({ children }) => {
         return response.data;
       } catch (error) {
         if (axios.isCancel(error) || error.name === "CanceledError") {
-          console.log("Request cancelled");
           return null;
         }
-        
-        console.error("Get all clients error:", error);
-        console.error("Error status:", error.response?.status);
-        console.error("Error message:", error.response?.data?.message);
-        
+
         let errorMessage = "Failed to fetch clients";
-        
+
         if (error.response?.status === 401) {
           errorMessage = "Session expired. Please login again.";
-          // Clear invalid token
           localStorage.removeItem("accessToken");
           localStorage.removeItem("token");
         } else if (error.response?.status === 403) {
-          errorMessage = "Access denied. You don't have permission to view clients.";
-        } else if (error.response?.status === 404) {
-          errorMessage = "Clients endpoint not found. Please check API configuration.";
+          errorMessage =
+            "Access denied. You don't have permission to view clients.";
         } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
-        } else if (error.message) {
-          errorMessage = error.message;
         }
-        
+
         dispatch({ type: ACTION_TYPES.SET_ERROR, payload: errorMessage });
         throw error;
       } finally {
@@ -329,12 +304,10 @@ export const ClientProvider = ({ children }) => {
     ],
   );
 
-  // Fetch clients with current filters
   const fetchClients = useCallback(
     async (params = {}) => {
       const token = getToken();
       if (!token) {
-        console.error("No token available for fetchClients");
         dispatch({
           type: ACTION_TYPES.SET_ERROR,
           payload: "Authentication required. Please login again.",
@@ -342,24 +315,11 @@ export const ClientProvider = ({ children }) => {
         dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
         return null;
       }
-      
-      const isAdmin = isAdminUser();
-      if (!isAdmin) {
-        console.error("Non-admin user attempted to fetch clients");
-        dispatch({
-          type: ACTION_TYPES.SET_ERROR,
-          payload: "Access denied. Admin permissions required.",
-        });
-        dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
-        return null;
-      }
-      
       return await getAllClients(params);
     },
     [getAllClients],
   );
 
-  // Get client by ID
   const getClientById = useCallback(async (clientId) => {
     const token = getToken();
     if (!token) {
@@ -373,7 +333,7 @@ export const ClientProvider = ({ children }) => {
         headers: getAuthHeaders(),
       });
 
-      const clientData = response.data.client;
+      const clientData = response.data.client || response.data;
       dispatch({
         type: ACTION_TYPES.SET_SELECTED_CLIENT,
         payload: clientData,
@@ -381,7 +341,6 @@ export const ClientProvider = ({ children }) => {
 
       return response.data;
     } catch (error) {
-      console.error("Get client by ID error:", error);
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
@@ -393,17 +352,11 @@ export const ClientProvider = ({ children }) => {
     }
   }, []);
 
-  // Create client
   const addClient = useCallback(
     async (clientData) => {
       const token = getToken();
       if (!token) {
         throw new Error("Authentication required. Please login again.");
-      }
-
-      const isAdmin = isAdminUser();
-      if (!isAdmin) {
-        throw new Error("Access denied. Admin permissions required to create clients.");
       }
 
       dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: true });
@@ -412,15 +365,12 @@ export const ClientProvider = ({ children }) => {
         const response = await axios.post(
           `${API_BASE_URL}/clients`,
           clientData,
-          {
-            headers: getAuthHeaders(),
-          },
+          { headers: getAuthHeaders() },
         );
 
         await fetchClients({ page: 1 });
         return response.data;
       } catch (error) {
-        console.error("Create client error:", error);
         const errorMessage =
           error.response?.data?.message ||
           error.message ||
@@ -433,17 +383,11 @@ export const ClientProvider = ({ children }) => {
     [fetchClients],
   );
 
-  // Update client
   const editClient = useCallback(
     async (clientId, updateData) => {
       const token = getToken();
       if (!token) {
         throw new Error("Authentication required. Please login again.");
-      }
-
-      const isAdmin = isAdminUser();
-      if (!isAdmin) {
-        throw new Error("Access denied. Admin permissions required to update clients.");
       }
 
       dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: true });
@@ -452,9 +396,7 @@ export const ClientProvider = ({ children }) => {
         const response = await axios.put(
           `${API_BASE_URL}/clients/${clientId}`,
           updateData,
-          {
-            headers: getAuthHeaders(),
-          },
+          { headers: getAuthHeaders() },
         );
 
         if (
@@ -471,7 +413,6 @@ export const ClientProvider = ({ children }) => {
         await fetchClients();
         return response.data;
       } catch (error) {
-        console.error("Update client error:", error);
         const errorMessage =
           error.response?.data?.message ||
           error.message ||
@@ -484,17 +425,11 @@ export const ClientProvider = ({ children }) => {
     [state.selectedClient, fetchClients],
   );
 
-  // Update client status
   const changeClientStatus = useCallback(
     async (clientId, status) => {
       const token = getToken();
       if (!token) {
         throw new Error("Authentication required. Please login again.");
-      }
-
-      const isAdmin = isAdminUser();
-      if (!isAdmin) {
-        throw new Error("Access denied. Admin permissions required.");
       }
 
       dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: true });
@@ -503,9 +438,7 @@ export const ClientProvider = ({ children }) => {
         const response = await axios.patch(
           `${API_BASE_URL}/clients/${clientId}/status`,
           { status },
-          {
-            headers: getAuthHeaders(),
-          },
+          { headers: getAuthHeaders() },
         );
 
         await fetchClients();
@@ -519,7 +452,6 @@ export const ClientProvider = ({ children }) => {
 
         return response.data;
       } catch (error) {
-        console.error("Update client status error:", error);
         const errorMessage =
           error.response?.data?.message ||
           error.message ||
@@ -532,7 +464,6 @@ export const ClientProvider = ({ children }) => {
     [fetchClients, getClientById, state.selectedClient],
   );
 
-  // Soft delete client
   const deleteClient = useCallback(
     async (clientId) => {
       const token = getToken();
@@ -540,19 +471,12 @@ export const ClientProvider = ({ children }) => {
         throw new Error("Authentication required. Please login again.");
       }
 
-      const isAdmin = isAdminUser();
-      if (!isAdmin) {
-        throw new Error("Access denied. Admin permissions required.");
-      }
-
       dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: true });
 
       try {
         const response = await axios.delete(
           `${API_BASE_URL}/clients/${clientId}`,
-          {
-            headers: getAuthHeaders(),
-          },
+          { headers: getAuthHeaders() },
         );
 
         await fetchClients();
@@ -566,7 +490,6 @@ export const ClientProvider = ({ children }) => {
 
         return response.data;
       } catch (error) {
-        console.error("Delete client error:", error);
         const errorMessage =
           error.response?.data?.message ||
           error.message ||
@@ -579,7 +502,6 @@ export const ClientProvider = ({ children }) => {
     [fetchClients, state.selectedClient],
   );
 
-  // Renew client membership
   const renewClientMembership = useCallback(
     async (clientId, extendDays) => {
       const token = getToken();
@@ -587,20 +509,13 @@ export const ClientProvider = ({ children }) => {
         throw new Error("Authentication required. Please login again.");
       }
 
-      const isAdmin = isAdminUser();
-      if (!isAdmin) {
-        throw new Error("Access denied. Admin permissions required.");
-      }
-
       dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: true });
 
       try {
-        const response = await axios.put(
-          `${API_BASE_URL}/clients/${clientId}`,
+        const response = await axios.post(
+          `${API_BASE_URL}/clients/${clientId}/renew`,
           { extendDays },
-          {
-            headers: getAuthHeaders(),
-          },
+          { headers: getAuthHeaders() },
         );
 
         await fetchClients();
@@ -614,7 +529,6 @@ export const ClientProvider = ({ children }) => {
 
         return response.data;
       } catch (error) {
-        console.error("Renew membership error:", error);
         const errorMessage =
           error.response?.data?.message ||
           error.message ||
@@ -627,51 +541,14 @@ export const ClientProvider = ({ children }) => {
     [fetchClients, getClientById, state.selectedClient],
   );
 
-  // Update auto-renewal
-  const updateAutoRenewal = useCallback(async (clientId, enabled) => {
-    const token = getToken();
-    if (!token) {
-      throw new Error("Authentication required. Please login again.");
-    }
-
-    const isAdmin = isAdminUser();
-    if (!isAdmin) {
-      throw new Error("Access denied. Admin permissions required.");
-    }
-
-    try {
-      const response = await axios.patch(
-        `${API_BASE_URL}/clients/${clientId}/auto-renewal`,
-        { enabled },
-        {
-          headers: getAuthHeaders(),
-        },
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Update auto-renewal error:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to update auto-renewal";
-      throw new Error(errorMessage);
-    }
-  }, []);
-
-  // Update filters
   const updateFilters = useCallback((filters) => {
     dispatch({ type: ACTION_TYPES.UPDATE_FILTERS, payload: filters });
   }, []);
 
-  // Change page
   const changePage = useCallback((page) => {
-    dispatch({
-      type: ACTION_TYPES.SET_PAGINATION,
-      payload: { page },
-    });
+    dispatch({ type: ACTION_TYPES.SET_PAGINATION, payload: { page } });
   }, []);
 
-  // Reset filters
   const resetFilters = useCallback(() => {
     dispatch({
       type: ACTION_TYPES.UPDATE_FILTERS,
@@ -686,26 +563,21 @@ export const ClientProvider = ({ children }) => {
     });
   }, []);
 
-  // Initial load - only runs once and checks permissions
+  // Initial load
   useEffect(() => {
     if (!initialLoadDone.current) {
       initialLoadDone.current = true;
       const token = getToken();
       const isAdmin = isAdminUser();
-      
-      console.log("Initial load - Token exists:", !!token);
-      console.log("Initial load - Is admin:", isAdmin);
-      
+
       if (token && isAdmin) {
         fetchClients({ page: 1 });
       } else if (!token) {
-        console.warn("No token found, skipping initial client load");
         dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
       } else if (!isAdmin) {
-        console.warn("User is not admin, skipping client load");
-        dispatch({ 
-          type: ACTION_TYPES.SET_ERROR, 
-          payload: "Access denied. Admin permissions required to view clients." 
+        dispatch({
+          type: ACTION_TYPES.SET_ERROR,
+          payload: "Access denied. Admin permissions required to view clients.",
         });
         dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
       }
@@ -722,7 +594,6 @@ export const ClientProvider = ({ children }) => {
     changeClientStatus,
     deleteClient,
     renewClientMembership,
-    updateAutoRenewal,
     updateFilters,
     changePage,
     resetFilters,

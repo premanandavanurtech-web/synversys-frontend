@@ -1,4 +1,4 @@
-// pages/AssetRequestDetails.jsx — Fully redesigned + all APIs integrated
+// pages/AssetRequestDetails.jsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
@@ -20,14 +20,14 @@ import {
   Tooltip,
   Paper,
   Grid,
-  useMediaQuery,
-  useTheme,
   Divider,
   Collapse,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { styled, keyframes } from "@mui/material/styles";
 import { useParams, useNavigate } from "react-router-dom";
@@ -49,23 +49,25 @@ import {
   ExpandLess,
   Inventory2,
   Warning,
+  TaskAlt,
+  Refresh,
 } from "@mui/icons-material";
 import { useAssetRequest } from "../context/AssetRequestContext";
 import { useAuth } from "../context/AuthContexts";
 
-// ─── Animations ───────────────────────────────────────────────────────────────
+// ─── Animations ────────────────────────────────────────────────────────────────
 const fadeUp = keyframes`
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 `;
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
+// ─── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
   bg: "#f0f4f7",
   surface: "#ffffff",
   border: "#e2e8ef",
-  teal: "#124640",
-  tealDark: "#063f38",
+  teal: "#146478",
+  tealDark: "#08465a",
   tealLight: "#e6f4f2",
   tealMid: "#cce9e6",
   text: "#0d1b2a",
@@ -82,50 +84,48 @@ const C = {
   orange: "#ea580c",
 };
 
-// ─── Styled ───────────────────────────────────────────────────────────────────
-const PageWrap = styled(Box)(({ theme }) => ({
+// ─── Styled components ─────────────────────────────────────────────────────────
+const PageWrap = styled(Box)({
   minHeight: "100vh",
   background: C.bg,
   paddingBottom: 60,
-  animation: `${fadeUp} 0.3s ease both`,
-}));
+  animation: `${fadeUp} 0.28s ease both`,
+});
 
-const TopBar = styled(Box)({
+const TopBar = styled(Box)(({ theme }) => ({
   background: C.surface,
   borderBottom: `1px solid ${C.border}`,
-  padding: "12px 28px",
+  padding: "12px 24px",
   display: "flex",
-  width:"1140px",
-  marginLeft:"25px",
   alignItems: "center",
   justifyContent: "space-between",
   flexWrap: "wrap",
   gap: 12,
   position: "sticky",
   top: 0,
-  zIndex: 200,
-  backdropFilter: "blur(8px)",
+  width:"1100px",
+  marginLeft:"26px",
   borderRadius: "12px",
-  "@media (max-width:600px)": { padding: "10px 14px" },
-});
+  zIndex: 200,
+  [theme.breakpoints.down("sm")]: { padding: "10px 12px" },
+}));
 
 const ContentWrap = styled(Box)(({ theme }) => ({
-  padding: "24px 28px",
-  [theme.breakpoints.down("sm")]: { padding: "16px 14px" },
+  padding: "24px 24px",
+  [theme.breakpoints.down("sm")]: { padding: "14px 10px" },
 }));
 
 const SectionCard = styled(Paper)({
   borderRadius: 14,
-  width:"560px",
   border: `1px solid ${C.border}`,
   overflow: "hidden",
   boxShadow: "none",
-  marginBottom: 16,
+  marginBottom: 14,
   background: C.surface,
 });
 
 const SectionHead = styled(Box)({
-  padding: "12px 18px",
+  padding: "11px 18px",
   borderBottom: `1px solid ${C.border}`,
   background: "#f8fafc",
   display: "flex",
@@ -136,7 +136,7 @@ const SectionHead = styled(Box)({
 const SectionTitle = ({ icon, children }) => (
   <Typography
     sx={{
-      fontSize: 11,
+      fontSize: 10.5,
       fontWeight: 800,
       textTransform: "uppercase",
       letterSpacing: "0.07em",
@@ -146,7 +146,7 @@ const SectionTitle = ({ icon, children }) => (
       gap: 0.8,
     }}
   >
-    {icon && React.cloneElement(icon, { sx: { fontSize: 15 } })}
+    {icon && React.cloneElement(icon, { sx: { fontSize: 14 } })}
     {children}
   </Typography>
 );
@@ -156,7 +156,7 @@ const InfoRow = ({ label, children, noBorder }) => (
     sx={{
       display: "flex",
       alignItems: "flex-start",
-      py: 1.75,
+      py: 1.5,
       px: 2.25,
       borderBottom: noBorder ? "none" : `1px solid ${C.border}`,
       flexWrap: "wrap",
@@ -166,13 +166,14 @@ const InfoRow = ({ label, children, noBorder }) => (
   >
     <Typography
       sx={{
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: 700,
         color: C.textMuted,
-        minWidth: 140,
+        minWidth: 130,
         textTransform: "uppercase",
         letterSpacing: "0.04em",
         pt: 0.2,
+        flexShrink: 0,
       }}
     >
       {label}
@@ -180,8 +181,8 @@ const InfoRow = ({ label, children, noBorder }) => (
     <Box
       sx={{
         flex: 1,
-        minWidth: 160,
-        fontSize: 13.5,
+        minWidth: 140,
+        fontSize: 13,
         fontWeight: 500,
         color: C.text,
       }}
@@ -191,30 +192,30 @@ const InfoRow = ({ label, children, noBorder }) => (
   </Box>
 );
 
-// ─── Status / chip helpers ────────────────────────────────────────────────────
+// ─── Chip helpers ──────────────────────────────────────────────────────────────
 const STATUS_CFG = {
   pending: {
     bg: C.amberBg,
     color: C.amber,
-    icon: <HourglassEmpty sx={{ fontSize: 13 }} />,
+    icon: <HourglassEmpty sx={{ fontSize: 12 }} />,
     label: "Pending",
   },
   approved: {
     bg: C.greenBg,
     color: C.green,
-    icon: <CheckCircle sx={{ fontSize: 13 }} />,
+    icon: <CheckCircle sx={{ fontSize: 12 }} />,
     label: "Approved",
   },
   rejected: {
     bg: C.redBg,
     color: C.red,
-    icon: <Cancel sx={{ fontSize: 13 }} />,
+    icon: <Cancel sx={{ fontSize: 12 }} />,
     label: "Rejected",
   },
   completed: {
     bg: C.blueBg,
     color: C.blue,
-    icon: <DoneAll sx={{ fontSize: 13 }} />,
+    icon: <DoneAll sx={{ fontSize: 12 }} />,
     label: "Completed",
   },
 };
@@ -230,10 +231,9 @@ const StatusChip = ({ status }) => {
         bgcolor: c.bg,
         color: c.color,
         fontWeight: 700,
-        fontSize: "0.72rem",
-        height: 26,
+        fontSize: "0.7rem",
+        height: 24,
         "& .MuiChip-icon": { color: c.color },
-        borderRadius: "20px",
       }}
     />
   );
@@ -246,6 +246,7 @@ const TYPE_COLORS = {
   checkout: "#10b981",
   other: "#94a3b8",
 };
+
 const TypeChip = ({ type }) => {
   const color = TYPE_COLORS[type] || "#94a3b8";
   return (
@@ -256,8 +257,8 @@ const TypeChip = ({ type }) => {
         bgcolor: `${color}18`,
         color,
         fontWeight: 700,
-        fontSize: "0.72rem",
-        height: 26,
+        fontSize: "0.7rem",
+        height: 24,
         textTransform: "capitalize",
         border: `1px solid ${color}28`,
       }}
@@ -271,6 +272,7 @@ const URGENCY_CFG = {
   high: { bg: "#fff7ed", color: C.orange },
   critical: { bg: C.redBg, color: C.red },
 };
+
 const UrgencyChip = ({ urgency }) => {
   const c = URGENCY_CFG[urgency] || URGENCY_CFG.medium;
   return (
@@ -281,37 +283,38 @@ const UrgencyChip = ({ urgency }) => {
         bgcolor: c.bg,
         color: c.color,
         fontWeight: 700,
-        fontSize: "0.72rem",
-        height: 26,
+        fontSize: "0.7rem",
+        height: 24,
         textTransform: "capitalize",
       }}
     />
   );
 };
 
-// ─── Copyable ID ──────────────────────────────────────────────────────────────
-const CopyId = ({ id, full }) => {
+// ─── Copyable ID ───────────────────────────────────────────────────────────────
+const CopyId = ({ id }) => {
   const [copied, setCopied] = useState(false);
   if (!id || id === "—")
     return (
       <Typography
-        sx={{ fontFamily: "monospace", fontSize: 13, color: C.textMuted }}
+        sx={{ fontFamily: "monospace", fontSize: 12, color: C.textMuted }}
       >
         —
       </Typography>
     );
-  const display = full ? id : id?.slice(-12);
+  const displayId =
+    typeof id === "string" ? (id.length > 14 ? id.slice(-14) : id) : String(id);
   return (
-    <Stack direction="row" alignItems="center" spacing={0.8}>
+    <Stack direction="row" alignItems="center" spacing={0.75}>
       <Typography
-        sx={{ fontFamily: "monospace", fontSize: 13, color: C.textSub }}
+        sx={{ fontFamily: "monospace", fontSize: 12, color: C.textSub }}
       >
-        {display}
+        {displayId}
       </Typography>
-      <Tooltip title={copied ? "Copied!" : "Copy ID"}>
+      <Tooltip title={copied ? "Copied!" : "Copy"}>
         <IconButton
           size="small"
-          sx={{ p: 0.4 }}
+          sx={{ p: 0.35 }}
           onClick={() => {
             navigator.clipboard?.writeText(id);
             setCopied(true);
@@ -319,7 +322,7 @@ const CopyId = ({ id, full }) => {
           }}
         >
           <ContentCopy
-            sx={{ fontSize: 12, color: copied ? C.green : C.textMuted }}
+            sx={{ fontSize: 11, color: copied ? C.green : C.textMuted }}
           />
         </IconButton>
       </Tooltip>
@@ -327,11 +330,16 @@ const CopyId = ({ id, full }) => {
   );
 };
 
-// ─── Timeline dot ─────────────────────────────────────────────────────────────
-const TimelineDot = ({ color, label, date, active }) => (
-  <Stack direction="row" spacing={1.5} alignItems="flex-start">
+// ─── Timeline dot ──────────────────────────────────────────────────────────────
+const TDot = ({ color, label, date, active }) => (
+  <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ pb: 2 }}>
     <Box
-      sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        pt: 0.4,
+      }}
     >
       <Box
         sx={{
@@ -339,12 +347,11 @@ const TimelineDot = ({ color, label, date, active }) => (
           height: 10,
           borderRadius: "50%",
           bgcolor: active ? color : C.border,
-          mt: 0.3,
           boxShadow: active ? `0 0 0 3px ${color}28` : "none",
         }}
       />
     </Box>
-    <Box sx={{ pb: 2 }}>
+    <Box>
       <Typography
         sx={{
           fontSize: 12,
@@ -354,14 +361,19 @@ const TimelineDot = ({ color, label, date, active }) => (
       >
         {label}
       </Typography>
-      <Typography sx={{ fontSize: 11, color: C.textMuted }}>{date}</Typography>
+      <Typography sx={{ fontSize: 10.5, color: C.textMuted }}>
+        {date}
+      </Typography>
     </Box>
   </Stack>
 );
 
-// ─── Approve Dialog ───────────────────────────────────────────────────────────
+// ─── Dialogs ───────────────────────────────────────────────────────────────────
 function ApproveDialog({ open, onClose, onSubmit, submitting }) {
   const [notes, setNotes] = useState("");
+  useEffect(() => {
+    if (open) setNotes("");
+  }, [open]);
   return (
     <Dialog
       open={open}
@@ -370,12 +382,12 @@ function ApproveDialog({ open, onClose, onSubmit, submitting }) {
       fullWidth
       PaperProps={{ sx: { borderRadius: 3 } }}
     >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: "1.05rem", pb: 1 }}>
+      <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
           <Box
             sx={{
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               borderRadius: 2,
               bgcolor: C.greenBg,
               display: "flex",
@@ -383,14 +395,17 @@ function ApproveDialog({ open, onClose, onSubmit, submitting }) {
               justifyContent: "center",
             }}
           >
-            <CheckCircle sx={{ color: C.green, fontSize: 20 }} />
+            <CheckCircle sx={{ color: C.green, fontSize: 18 }} />
           </Box>
           Approve Request
         </Stack>
       </DialogTitle>
       <Divider />
-      <DialogContent sx={{ pt: 2.5 }}>
-        <Alert severity="info" sx={{ mb: 2.5, borderRadius: 2, fontSize: 13 }}>
+      <DialogContent sx={{ pt: 2 }}>
+        <Alert
+          severity="info"
+          sx={{ mb: 2.5, borderRadius: 2, fontSize: 12.5 }}
+        >
           This will approve the request and notify the requester.
         </Alert>
         <TextField
@@ -426,7 +441,7 @@ function ApproveDialog({ open, onClose, onSubmit, submitting }) {
           }}
         >
           {submitting ? (
-            <CircularProgress size={18} sx={{ color: "#fff" }} />
+            <CircularProgress size={17} sx={{ color: "#fff" }} />
           ) : (
             "Approve Request"
           )}
@@ -436,10 +451,15 @@ function ApproveDialog({ open, onClose, onSubmit, submitting }) {
   );
 }
 
-// ─── Reject Dialog ────────────────────────────────────────────────────────────
 function RejectDialog({ open, onClose, onSubmit, submitting }) {
   const [reason, setReason] = useState("");
   const [err, setErr] = useState("");
+  useEffect(() => {
+    if (open) {
+      setReason("");
+      setErr("");
+    }
+  }, [open]);
   const handle = () => {
     if (!reason.trim()) {
       setErr("Rejection reason is required");
@@ -456,12 +476,12 @@ function RejectDialog({ open, onClose, onSubmit, submitting }) {
       fullWidth
       PaperProps={{ sx: { borderRadius: 3 } }}
     >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: "1.05rem", pb: 1 }}>
+      <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
           <Box
             sx={{
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               borderRadius: 2,
               bgcolor: C.redBg,
               display: "flex",
@@ -469,16 +489,16 @@ function RejectDialog({ open, onClose, onSubmit, submitting }) {
               justifyContent: "center",
             }}
           >
-            <Cancel sx={{ color: C.red, fontSize: 20 }} />
+            <Cancel sx={{ color: C.red, fontSize: 18 }} />
           </Box>
           Reject Request
         </Stack>
       </DialogTitle>
       <Divider />
-      <DialogContent sx={{ pt: 2.5 }}>
+      <DialogContent sx={{ pt: 2 }}>
         <Alert
           severity="warning"
-          sx={{ mb: 2.5, borderRadius: 2, fontSize: 13 }}
+          sx={{ mb: 2, borderRadius: 2, fontSize: 12.5 }}
         >
           This action cannot be undone. Please provide a clear reason.
         </Alert>
@@ -499,7 +519,6 @@ function RejectDialog({ open, onClose, onSubmit, submitting }) {
             setErr("");
           }}
           placeholder="Explain why this request is being rejected…"
-          required
           sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
         />
       </DialogContent>
@@ -519,7 +538,7 @@ function RejectDialog({ open, onClose, onSubmit, submitting }) {
           sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
         >
           {submitting ? (
-            <CircularProgress size={18} sx={{ color: "#fff" }} />
+            <CircularProgress size={17} sx={{ color: "#fff" }} />
           ) : (
             "Reject Request"
           )}
@@ -529,11 +548,95 @@ function RejectDialog({ open, onClose, onSubmit, submitting }) {
   );
 }
 
-// ─── Link Asset Dialog ────────────────────────────────────────────────────────
+function CompleteDialog({ open, onClose, onSubmit, submitting }) {
+  const [notes, setNotes] = useState("");
+  useEffect(() => {
+    if (open) setNotes("");
+  }, [open]);
+  return (
+    <Dialog
+      open={open}
+      onClose={() => !submitting && onClose()}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3 } }}
+    >
+      <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: 2,
+              bgcolor: C.blueBg,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <TaskAlt sx={{ color: C.blue, fontSize: 18 }} />
+          </Box>
+          Mark as Complete
+        </Stack>
+      </DialogTitle>
+      <Divider />
+      <DialogContent sx={{ pt: 2 }}>
+        <Alert severity="info" sx={{ mb: 2, borderRadius: 2, fontSize: 12.5 }}>
+          This marks the request as completed. The requester will be notified.
+        </Alert>
+        <TextField
+          fullWidth
+          multiline
+          rows={3}
+          size="small"
+          label="Completion Notes (Optional)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Describe what was done…"
+          sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+        />
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+        <Button
+          onClick={onClose}
+          disabled={submitting}
+          sx={{ borderRadius: 2, textTransform: "none" }}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={() => onSubmit(notes)}
+          disabled={submitting}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 600,
+            bgcolor: C.blue,
+            "&:hover": { bgcolor: "#1d4ed8" },
+          }}
+        >
+          {submitting ? (
+            <CircularProgress size={17} sx={{ color: "#fff" }} />
+          ) : (
+            "Complete Request"
+          )}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 function LinkAssetDialog({ open, onClose, onSubmit, submitting }) {
   const [assetId, setAssetId] = useState("");
   const [rel, setRel] = useState("accessory");
   const [err, setErr] = useState("");
+  useEffect(() => {
+    if (open) {
+      setAssetId("");
+      setErr("");
+    }
+  }, [open]);
   const handle = () => {
     if (!assetId.trim()) {
       setErr("Asset ID is required");
@@ -546,16 +649,16 @@ function LinkAssetDialog({ open, onClose, onSubmit, submitting }) {
     <Dialog
       open={open}
       onClose={() => !submitting && onClose()}
-      maxWidth="sm"
+      maxWidth="xs"
       fullWidth
       PaperProps={{ sx: { borderRadius: 3 } }}
     >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: "1.05rem", pb: 1 }}>
+      <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
           <Box
             sx={{
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               borderRadius: 2,
               bgcolor: C.greenBg,
               display: "flex",
@@ -563,13 +666,13 @@ function LinkAssetDialog({ open, onClose, onSubmit, submitting }) {
               justifyContent: "center",
             }}
           >
-            <LinkIcon sx={{ color: C.green, fontSize: 20 }} />
+            <LinkIcon sx={{ color: C.green, fontSize: 18 }} />
           </Box>
-          Link Asset to Request
+          Link Asset
         </Stack>
       </DialogTitle>
       <Divider />
-      <DialogContent sx={{ pt: 2.5 }}>
+      <DialogContent sx={{ pt: 2 }}>
         {err && (
           <Alert severity="error" sx={{ mb: 1.5, borderRadius: 2 }}>
             {err}
@@ -585,8 +688,8 @@ function LinkAssetDialog({ open, onClose, onSubmit, submitting }) {
               setAssetId(e.target.value);
               setErr("");
             }}
-            placeholder="Enter the MongoDB _id of the asset"
-            helperText="You can find the asset ID on the Assets page"
+            placeholder="Enter the MongoDB _id"
+            helperText="Find the asset ID on the Assets page"
             sx={{
               "& .MuiOutlinedInput-root": {
                 borderRadius: 2,
@@ -636,7 +739,7 @@ function LinkAssetDialog({ open, onClose, onSubmit, submitting }) {
           }}
         >
           {submitting ? (
-            <CircularProgress size={18} sx={{ color: "#fff" }} />
+            <CircularProgress size={17} sx={{ color: "#fff" }} />
           ) : (
             "Link Asset"
           )}
@@ -646,13 +749,20 @@ function LinkAssetDialog({ open, onClose, onSubmit, submitting }) {
   );
 }
 
-// ─── Create Child Request Dialog ──────────────────────────────────────────────
 function CreateChildDialog({ open, onClose, onSubmit, submitting, parentId }) {
   const [form, setForm] = useState({
     requestType: "maintenance",
     description: "",
     urgency: "medium",
   });
+  useEffect(() => {
+    if (open)
+      setForm({
+        requestType: "maintenance",
+        description: "",
+        urgency: "medium",
+      });
+  }, [open]);
   return (
     <Dialog
       open={open}
@@ -661,12 +771,12 @@ function CreateChildDialog({ open, onClose, onSubmit, submitting, parentId }) {
       fullWidth
       PaperProps={{ sx: { borderRadius: 3 } }}
     >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: "1.05rem", pb: 1 }}>
+      <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
           <Box
             sx={{
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               borderRadius: 2,
               bgcolor: C.blueBg,
               display: "flex",
@@ -674,30 +784,30 @@ function CreateChildDialog({ open, onClose, onSubmit, submitting, parentId }) {
               justifyContent: "center",
             }}
           >
-            <AccountTree sx={{ color: C.blue, fontSize: 20 }} />
+            <AccountTree sx={{ color: C.blue, fontSize: 18 }} />
           </Box>
           Add Child Request
         </Stack>
       </DialogTitle>
       <Divider />
-      <DialogContent sx={{ pt: 2.5 }}>
-        <Alert severity="info" sx={{ mb: 2, borderRadius: 2, fontSize: 13 }}>
+      <DialogContent sx={{ pt: 2 }}>
+        <Alert severity="info" sx={{ mb: 2, borderRadius: 2, fontSize: 12.5 }}>
           Parent:{" "}
-          <code style={{ fontFamily: "monospace" }}>
-            {parentId?.slice(-12)}
+          <code style={{ fontFamily: "monospace", fontSize: 12 }}>
+            …{parentId?.slice(-12)}
           </code>
         </Alert>
         <Stack spacing={2.5}>
-          <Stack direction="row" spacing={2}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <FormControl fullWidth size="small">
               <InputLabel>Request Type</InputLabel>
               <Select
                 value={form.requestType}
+                label="Request Type"
+                sx={{ borderRadius: 2 }}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, requestType: e.target.value }))
                 }
-                label="Request Type"
-                sx={{ borderRadius: 2 }}
               >
                 {["transfer", "maintenance", "repair", "checkout", "other"].map(
                   (t) => (
@@ -716,11 +826,11 @@ function CreateChildDialog({ open, onClose, onSubmit, submitting, parentId }) {
               <InputLabel>Urgency</InputLabel>
               <Select
                 value={form.urgency}
+                label="Urgency"
+                sx={{ borderRadius: 2 }}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, urgency: e.target.value }))
                 }
-                label="Urgency"
-                sx={{ borderRadius: 2 }}
               >
                 {["low", "medium", "high", "critical"].map((u) => (
                   <MenuItem
@@ -770,7 +880,7 @@ function CreateChildDialog({ open, onClose, onSubmit, submitting, parentId }) {
           }}
         >
           {submitting ? (
-            <CircularProgress size={18} sx={{ color: "#fff" }} />
+            <CircularProgress size={17} sx={{ color: "#fff" }} />
           ) : (
             "Create Child"
           )}
@@ -780,7 +890,26 @@ function CreateChildDialog({ open, onClose, onSubmit, submitting, parentId }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── FIXED: extract request data from any response shape ──────────────────────
+function extractRequestData(responseData) {
+  if (!responseData) return null;
+
+  // Case 1: _id at top level (your actual API — fields flat alongside success/message)
+  if (responseData._id) return responseData;
+
+  // Case 2: Nested in data.request
+  if (responseData?.data?.request?._id) return responseData.data.request;
+
+  // Case 3: Nested in data directly
+  if (responseData?.data?._id) return responseData.data;
+
+  // Case 4: Nested in request property
+  if (responseData?.request?._id) return responseData.request;
+
+  return null;
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 export default function AssetRequestDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -790,30 +919,36 @@ export default function AssetRequestDetails() {
     rejectRequest,
     linkAsset,
     createChildRequest,
+    completeRequest,
   } = useAssetRequest();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin: authIsAdmin } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [request, setRequest] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [pageError, setPageError] = useState(null);
   const [snack, setSnack] = useState({
     open: false,
     message: "",
     severity: "success",
   });
 
-  // Dialog states
   const [approveOpen, setApproveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [childOpen, setChildOpen] = useState(false);
+  const [completeOpen, setCompleteOpen] = useState(false);
   const [linkedExpanded, setLinkedExpanded] = useState(true);
   const [childrenExpanded, setChildrenExpanded] = useState(true);
 
-  const userIsAdmin = isAdmin?.() || user?.role === "admin";
+  const userIsAdmin = useMemo(() => {
+    if (typeof authIsAdmin === "function") return authIsAdmin();
+    return (
+      authIsAdmin || user?.role === "admin" || user?.role === "super_admin"
+    );
+  }, [authIsAdmin, user]);
 
   const showSnack = (msg, sev = "success") =>
     setSnack({ open: true, message: msg, severity: sev });
@@ -821,36 +956,43 @@ export default function AssetRequestDetails() {
   const fmt = (iso, withTime = false) => {
     if (!iso) return "—";
     try {
-      const opts = {
+      return new Date(iso).toLocaleString("en-US", {
         day: "2-digit",
         month: "short",
         year: "numeric",
         ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
-      };
-      return new Date(iso).toLocaleString("en-US", opts);
+      });
     } catch {
       return "—";
     }
   };
 
+  // ── FIXED fetch: raw API response goes through extractRequestData ─────────────
   const fetchRequest = useCallback(async () => {
     setInitialLoading(true);
-    setError(null);
+    setPageError(null);
     try {
-      const data = await getRequestById(id);
-      const req =
-        data?.request ||
-        data?.data?.request ||
-        (data?._id ? data : null) ||
-        data?.data;
-      if (!req) throw new Error("Request not found");
+      // getRequestById may return either the raw axios res.data OR already-extracted data
+      // depending on context version — we handle both safely
+      const raw = await getRequestById(id);
+      console.log("getRequestById returned:", raw);
+
+      // Try extracting in case context returned raw res.data
+      const req = extractRequestData(raw) ?? raw;
+
+      if (!req?._id) {
+        throw new Error("Request not found or invalid data structure received");
+      }
+
+      console.log("Final request object:", req);
       setRequest(req);
     } catch (err) {
+      console.error("Fetch error:", err);
       const msg =
         err?.response?.data?.message ||
         err?.message ||
-        "Failed to load request";
-      setError(msg);
+        "Failed to load request details";
+      setPageError(msg);
       showSnack(msg, "error");
     } finally {
       setInitialLoading(false);
@@ -861,10 +1003,11 @@ export default function AssetRequestDetails() {
     if (id) fetchRequest();
   }, [fetchRequest, id]);
 
-  const handleApprove = async (notes) => {
+  // ── Action handlers ───────────────────────────────────────────────────────────
+  const handleApprove = async (approvalNotes) => {
     setSubmitting(true);
     try {
-      await approveRequest(id, notes);
+      await approveRequest(id, approvalNotes);
       showSnack("Request approved successfully");
       setApproveOpen(false);
       await fetchRequest();
@@ -884,6 +1027,20 @@ export default function AssetRequestDetails() {
       await fetchRequest();
     } catch (err) {
       showSnack(err?.response?.data?.message || "Failed to reject", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleComplete = async (completionNotes) => {
+    setSubmitting(true);
+    try {
+      await completeRequest(id, completionNotes);
+      showSnack("Request marked as complete");
+      setCompleteOpen(false);
+      await fetchRequest();
+    } catch (err) {
+      showSnack(err?.response?.data?.message || "Failed to complete", "error");
     } finally {
       setSubmitting(false);
     }
@@ -923,25 +1080,42 @@ export default function AssetRequestDetails() {
     }
   };
 
-  const requesterInitial = useMemo(
-    () => request?.requestedBy?.email?.charAt(0).toUpperCase() || "?",
-    [request],
-  );
-  const isPending = request?.status?.toLowerCase() === "pending";
+  // ── Derived state ─────────────────────────────────────────────────────────────
+  const statusLower = request?.status?.toLowerCase();
+  const isPending = statusLower === "pending";
+  const isApproved = statusLower === "approved";
 
-  // ── Loading ──────────────────────────────────────────────────────────────────
+  const canComplete =
+    isApproved &&
+    (userIsAdmin ||
+      request?.requestedBy?._id === user?._id ||
+      request?.requestedBy?._id === user?.id);
+
+  const requesterEmail = request?.requestedBy?.email || "";
+  const requesterInitial = requesterEmail.charAt(0).toUpperCase() || "?";
+  const requesterName = requesterEmail.split("@")[0] || "Unknown User";
+
+  const assetName =
+    request?.assetId?.name ||
+    request?.assetId?.assetName ||
+    (typeof request?.assetId === "string" ? "—" : "—");
+  const assetIdValue =
+    request?.assetId?._id ||
+    (typeof request?.assetId === "string" ? request.assetId : "—");
+
+  // ── Loading skeleton ──────────────────────────────────────────────────────────
   if (initialLoading) {
     return (
       <PageWrap>
         <TopBar>
           <Stack direction="row" alignItems="center" spacing={1.5}>
             <IconButton
-              onClick={() => navigate("/admin/asset-requests")}
+              onClick={() => navigate(-1)}
               sx={{ border: `1px solid ${C.border}`, borderRadius: 2 }}
             >
               <ArrowBack sx={{ fontSize: 17 }} />
             </IconButton>
-            <Skeleton width={200} height={24} />
+            <Skeleton width={200} height={22} />
           </Stack>
         </TopBar>
         <ContentWrap>
@@ -951,7 +1125,7 @@ export default function AssetRequestDetails() {
                 <Skeleton
                   key={i}
                   variant="rounded"
-                  height={140}
+                  height={130}
                   sx={{ mb: 2, borderRadius: 2 }}
                 />
               ))}
@@ -961,7 +1135,7 @@ export default function AssetRequestDetails() {
                 <Skeleton
                   key={i}
                   variant="rounded"
-                  height={140}
+                  height={130}
                   sx={{ mb: 2, borderRadius: 2 }}
                 />
               ))}
@@ -972,14 +1146,14 @@ export default function AssetRequestDetails() {
     );
   }
 
-  // ── Error ────────────────────────────────────────────────────────────────────
-  if (error) {
+  // ── Error state ───────────────────────────────────────────────────────────────
+  if (pageError) {
     return (
       <PageWrap>
         <TopBar>
           <Stack direction="row" alignItems="center" spacing={1.5}>
             <IconButton
-              onClick={() => navigate("/admin/asset-requests")}
+              onClick={() => navigate(-1)}
               sx={{ border: `1px solid ${C.border}`, borderRadius: 2 }}
             >
               <ArrowBack sx={{ fontSize: 17 }} />
@@ -989,15 +1163,30 @@ export default function AssetRequestDetails() {
         </TopBar>
         <ContentWrap>
           <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
-            {error}
+            {pageError}
           </Alert>
-          <Button
-            variant="contained"
-            onClick={() => navigate("/admin/asset-requests")}
-            sx={{ borderRadius: 2 }}
-          >
-            Go Back
-          </Button>
+          <Stack direction="row" spacing={1.5}>
+            <Button
+              variant="outlined"
+              onClick={() => navigate(-1)}
+              sx={{ borderRadius: 2, textTransform: "none" }}
+            >
+              ← Go Back
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<Refresh />}
+              onClick={fetchRequest}
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+                bgcolor: C.teal,
+                "&:hover": { bgcolor: C.tealDark },
+              }}
+            >
+              Retry
+            </Button>
+          </Stack>
         </ContentWrap>
       </PageWrap>
     );
@@ -1005,12 +1194,7 @@ export default function AssetRequestDetails() {
 
   if (!request) return null;
 
-  // ── Asset name helper ────────────────────────────────────────────────────────
-  const assetName = request.assetId?.name || request.assetId?.assetName || "—";
-  const assetId =
-    request.assetId?._id ||
-    (typeof request.assetId === "string" ? request.assetId : "—");
-
+  // ── Main render ───────────────────────────────────────────────────────────────
   return (
     <>
       {/* ── Top Bar ── */}
@@ -1023,7 +1207,7 @@ export default function AssetRequestDetails() {
           minWidth={0}
         >
           <IconButton
-            onClick={() => navigate("/admin/asset-requests")}
+            onClick={() => navigate(-1)}
             sx={{
               border: `1px solid ${C.border}`,
               borderRadius: 2,
@@ -1039,7 +1223,13 @@ export default function AssetRequestDetails() {
               alignItems="center"
               flexWrap="wrap"
             >
-              <Typography sx={{ fontSize: 16, fontWeight: 800, color: C.text }}>
+              <Typography
+                sx={{
+                  fontSize: { xs: 14, sm: 16 },
+                  fontWeight: 800,
+                  color: C.text,
+                }}
+              >
                 Request Details
               </Typography>
               <StatusChip status={request.status} />
@@ -1049,8 +1239,8 @@ export default function AssetRequestDetails() {
                   size="small"
                   icon={<ChildCare sx={{ fontSize: 11 }} />}
                   sx={{
-                    height: 24,
-                    fontSize: 11,
+                    height: 22,
+                    fontSize: 10,
                     bgcolor: C.blueBg,
                     color: C.blue,
                   }}
@@ -1060,9 +1250,9 @@ export default function AssetRequestDetails() {
             <Typography
               sx={{
                 fontFamily: "monospace",
-                fontSize: 11,
+                fontSize: 10,
                 color: C.textMuted,
-                mt: 0.3,
+                mt: 0.25,
               }}
             >
               ID: {request._id}
@@ -1070,90 +1260,124 @@ export default function AssetRequestDetails() {
           </Box>
         </Stack>
 
-        {/* Admin action buttons */}
-        {userIsAdmin && (
-          <Stack direction="row" spacing={1} flexShrink={0} flexWrap="wrap">
-            <Tooltip title="Add Child Request">
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AccountTree sx={{ fontSize: 16 }} />}
-                onClick={() => setChildOpen(true)}
-                sx={{
-                  borderRadius: 2.5,
-                  textTransform: "none",
-                  fontWeight: 600,
-                  fontSize: 12,
-                  borderColor: C.blue,
-                  color: C.blue,
-                  "&:hover": { borderColor: C.blue, bgcolor: C.blueBg },
-                }}
-              >
-                {!isMobile && "Child"}
-              </Button>
-            </Tooltip>
-            <Tooltip title="Link Asset">
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<LinkIcon sx={{ fontSize: 16 }} />}
-                onClick={() => setLinkOpen(true)}
-                sx={{
-                  borderRadius: 2.5,
-                  textTransform: "none",
-                  fontWeight: 600,
-                  fontSize: 12,
-                  borderColor: C.green,
-                  color: C.green,
-                  "&:hover": { borderColor: C.green, bgcolor: C.greenBg },
-                }}
-              >
-                {!isMobile && "Link Asset"}
-              </Button>
-            </Tooltip>
-            {isPending && (
-              <>
+        <Stack direction="row" spacing={0.75} flexShrink={0} flexWrap="wrap">
+          {userIsAdmin && (
+            <>
+              <Tooltip title="Add Child Request">
                 <Button
                   variant="outlined"
                   size="small"
-                  color="error"
-                  startIcon={<Cancel sx={{ fontSize: 16 }} />}
-                  onClick={() => setRejectOpen(true)}
+                  onClick={() => setChildOpen(true)}
+                  startIcon={
+                    !isMobile ? (
+                      <AccountTree sx={{ fontSize: 15 }} />
+                    ) : undefined
+                  }
                   sx={{
                     borderRadius: 2.5,
                     textTransform: "none",
                     fontWeight: 600,
-                    fontSize: 12,
+                    fontSize: 11,
+                    borderColor: C.blue,
+                    color: C.blue,
+                    "&:hover": { borderColor: C.blue, bgcolor: C.blueBg },
+                    minWidth: isMobile ? 36 : undefined,
                   }}
                 >
-                  {!isMobile && "Reject"}
+                  {isMobile ? <AccountTree sx={{ fontSize: 16 }} /> : "Child"}
                 </Button>
+              </Tooltip>
+              <Tooltip title="Link Asset">
                 <Button
-                  variant="contained"
+                  variant="outlined"
                   size="small"
-                  startIcon={<CheckCircle sx={{ fontSize: 16 }} />}
-                  onClick={() => setApproveOpen(true)}
+                  onClick={() => setLinkOpen(true)}
+                  startIcon={
+                    !isMobile ? <LinkIcon sx={{ fontSize: 15 }} /> : undefined
+                  }
                   sx={{
                     borderRadius: 2.5,
                     textTransform: "none",
                     fontWeight: 600,
-                    fontSize: 12,
-                    bgcolor: C.green,
-                    "&:hover": { bgcolor: "#047857" },
+                    fontSize: 11,
+                    borderColor: C.green,
+                    color: C.green,
+                    "&:hover": { borderColor: C.green, bgcolor: C.greenBg },
+                    minWidth: isMobile ? 36 : undefined,
                   }}
                 >
-                  {!isMobile && "Approve"}
+                  {isMobile ? <LinkIcon sx={{ fontSize: 16 }} /> : "Link Asset"}
                 </Button>
-              </>
-            )}
-          </Stack>
-        )}
+              </Tooltip>
+            </>
+          )}
+          {canComplete && (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setCompleteOpen(true)}
+              startIcon={
+                !isMobile ? <TaskAlt sx={{ fontSize: 15 }} /> : undefined
+              }
+              sx={{
+                borderRadius: 2.5,
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: 11,
+                borderColor: C.blue,
+                color: C.blue,
+                "&:hover": { bgcolor: C.blueBg },
+              }}
+            >
+              {isMobile ? <TaskAlt sx={{ fontSize: 16 }} /> : "Complete"}
+            </Button>
+          )}
+          {userIsAdmin && isPending && (
+            <>
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                onClick={() => setRejectOpen(true)}
+                startIcon={
+                  !isMobile ? <Cancel sx={{ fontSize: 15 }} /> : undefined
+                }
+                sx={{
+                  borderRadius: 2.5,
+                  textTransform: "none",
+                  fontWeight: 600,
+                  fontSize: 11,
+                }}
+              >
+                {isMobile ? <Cancel sx={{ fontSize: 16 }} /> : "Reject"}
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => setApproveOpen(true)}
+                startIcon={
+                  !isMobile ? <CheckCircle sx={{ fontSize: 15 }} /> : undefined
+                }
+                sx={{
+                  borderRadius: 2.5,
+                  textTransform: "none",
+                  fontWeight: 600,
+                  fontSize: 11,
+                  bgcolor: C.green,
+                  "&:hover": { bgcolor: "#047857" },
+                }}
+              >
+                {isMobile ? <CheckCircle sx={{ fontSize: 16 }} /> : "Approve"}
+              </Button>
+            </>
+          )}
+        </Stack>
       </TopBar>
 
       <ContentWrap>
         <Grid container spacing={2}>
-          {/* ── Main column ── */}
-          <Grid item xs={12} md={8}>
+          {/* ── Left column ── */}
+          <Grid item xs={12} md={8} sx={{ width:"600px"}}>
             {/* Requester card */}
             <SectionCard>
               <Box
@@ -1165,36 +1389,43 @@ export default function AssetRequestDetails() {
                 <Stack direction="row" spacing={2} alignItems="center">
                   <Avatar
                     sx={{
-                      width: 52,
-                      height: 52,
+                      width: 48,
+                      height: 48,
                       bgcolor: C.teal,
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: 700,
                     }}
                   >
                     {requesterInitial}
                   </Avatar>
                   <Box flex={1} minWidth={0}>
-                    <Typography fontWeight={800} fontSize={16} color={C.text}>
-                      {request.requestedBy?.email?.split("@")[0] ||
-                        "Unknown User"}
+                    <Typography
+                      fontWeight={800}
+                      fontSize={15}
+                      color={C.text}
+                      noWrap
+                    >
+                      {requesterName}
                     </Typography>
                     <Stack
                       direction="row"
-                      spacing={0.8}
+                      spacing={0.75}
                       alignItems="center"
-                      mt={0.4}
+                      mt={0.3}
                     >
-                      <Email sx={{ fontSize: 13, color: C.textMuted }} />
-                      <Typography sx={{ fontSize: 12.5, color: C.textSub }}>
-                        {request.requestedBy?.email || "No email provided"}
+                      <Email sx={{ fontSize: 12, color: C.textMuted }} />
+                      <Typography
+                        sx={{ fontSize: 12, color: C.textSub }}
+                        noWrap
+                      >
+                        {requesterEmail || "No email provided"}
                       </Typography>
                     </Stack>
                   </Box>
                   <Box sx={{ textAlign: "right", flexShrink: 0 }}>
                     <Typography
                       sx={{
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: 700,
                         textTransform: "uppercase",
                         color: C.textMuted,
@@ -1205,10 +1436,10 @@ export default function AssetRequestDetails() {
                     </Typography>
                     <Typography
                       sx={{
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: 600,
                         color: C.text,
-                        mt: 0.3,
+                        mt: 0.25,
                       }}
                     >
                       {fmt(request.createdAt, true)}
@@ -1226,15 +1457,15 @@ export default function AssetRequestDetails() {
                 </SectionTitle>
               </SectionHead>
               <InfoRow label="Asset Name">
-                <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: 13.5 }}>
                   {assetName}
                 </Typography>
               </InfoRow>
               <InfoRow label="Asset ID">
-                <CopyId id={assetId} />
+                <CopyId id={assetIdValue} />
               </InfoRow>
-              <InfoRow label="Asset Status">
-                {request.assetId?.status ? (
+              {request.assetId?.status && (
+                <InfoRow label="Asset Status">
                   <Chip
                     label={request.assetId.status}
                     size="small"
@@ -1246,19 +1477,23 @@ export default function AssetRequestDetails() {
                       color:
                         request.assetId.status === "Active" ? C.green : C.amber,
                       fontWeight: 700,
-                      fontSize: 11,
+                      fontSize: 10.5,
+                      height: 22,
                     }}
                   />
-                ) : (
-                  <Typography sx={{ fontSize: 13, color: C.textMuted }}>
-                    —
-                  </Typography>
-                )}
-              </InfoRow>
+                </InfoRow>
+              )}
               {request.assetId?.serialNumber && (
-                <InfoRow label="Serial Number">
-                  <Typography sx={{ fontFamily: "monospace", fontSize: 13 }}>
+                <InfoRow label="Serial No.">
+                  <Typography sx={{ fontFamily: "monospace", fontSize: 12 }}>
                     {request.assetId.serialNumber}
+                  </Typography>
+                </InfoRow>
+              )}
+              {request.assetId?.category && (
+                <InfoRow label="Category">
+                  <Typography sx={{ fontSize: 13 }}>
+                    {request.assetId.category}
                   </Typography>
                 </InfoRow>
               )}
@@ -1278,7 +1513,7 @@ export default function AssetRequestDetails() {
                   Request Information
                 </SectionTitle>
               </SectionHead>
-              <InfoRow label="Request Type">
+              <InfoRow label="Type">
                 <TypeChip type={request.requestType} />
               </InfoRow>
               <InfoRow label="Urgency">
@@ -1290,7 +1525,7 @@ export default function AssetRequestDetails() {
               <InfoRow label="Description">
                 <Typography
                   sx={{
-                    fontSize: 13.5,
+                    fontSize: 13,
                     lineHeight: 1.7,
                     color: request.description ? C.text : C.textMuted,
                   }}
@@ -1299,6 +1534,7 @@ export default function AssetRequestDetails() {
                 </Typography>
               </InfoRow>
 
+              {/* Approval notes */}
               {request.metadata?.approvalNotes && (
                 <InfoRow label="Approval Notes">
                   <Paper
@@ -1310,7 +1546,7 @@ export default function AssetRequestDetails() {
                     }}
                   >
                     <Typography
-                      sx={{ fontSize: 13, color: "#047857", lineHeight: 1.6 }}
+                      sx={{ fontSize: 12.5, color: "#047857", lineHeight: 1.6 }}
                     >
                       {request.metadata.approvalNotes}
                     </Typography>
@@ -1318,8 +1554,9 @@ export default function AssetRequestDetails() {
                 </InfoRow>
               )}
 
+              {/* Rejection reason */}
               {request.rejectionReason && (
-                <InfoRow label="Rejection Reason" noBorder>
+                <InfoRow label="Rejection Reason">
                   <Paper
                     sx={{
                       p: 1.5,
@@ -1331,18 +1568,42 @@ export default function AssetRequestDetails() {
                     <Stack direction="row" spacing={1} alignItems="flex-start">
                       <Warning
                         sx={{
-                          fontSize: 16,
+                          fontSize: 15,
                           color: C.red,
-                          mt: 0.2,
+                          mt: 0.25,
                           flexShrink: 0,
                         }}
                       />
                       <Typography
-                        sx={{ fontSize: 13, color: "#b91c1c", lineHeight: 1.6 }}
+                        sx={{
+                          fontSize: 12.5,
+                          color: "#b91c1c",
+                          lineHeight: 1.6,
+                        }}
                       >
                         {request.rejectionReason}
                       </Typography>
                     </Stack>
+                  </Paper>
+                </InfoRow>
+              )}
+
+              {/* Completion notes */}
+              {request.completionNotes && (
+                <InfoRow label="Completion Notes" noBorder>
+                  <Paper
+                    sx={{
+                      p: 1.5,
+                      bgcolor: C.blueBg,
+                      borderRadius: 2,
+                      border: `1px solid ${C.blue}28`,
+                    }}
+                  >
+                    <Typography
+                      sx={{ fontSize: 12.5, color: "#1d4ed8", lineHeight: 1.6 }}
+                    >
+                      {request.completionNotes}
+                    </Typography>
                   </Paper>
                 </InfoRow>
               )}
@@ -1362,8 +1623,8 @@ export default function AssetRequestDetails() {
                       size="small"
                       sx={{
                         ml: 1,
-                        height: 18,
-                        fontSize: 10,
+                        height: 17,
+                        fontSize: 9.5,
                         bgcolor: C.greenBg,
                         color: C.green,
                       }}
@@ -1372,28 +1633,28 @@ export default function AssetRequestDetails() {
                 </SectionTitle>
                 <IconButton size="small">
                   {linkedExpanded ? (
-                    <ExpandLess sx={{ fontSize: 18 }} />
+                    <ExpandLess sx={{ fontSize: 17 }} />
                   ) : (
-                    <ExpandMore sx={{ fontSize: 18 }} />
+                    <ExpandMore sx={{ fontSize: 17 }} />
                   )}
                 </IconButton>
               </SectionHead>
               <Collapse in={linkedExpanded}>
                 {!request.metadata?.childAssets?.length ? (
                   <Box sx={{ p: 3, textAlign: "center" }}>
-                    <Typography sx={{ fontSize: 13, color: C.textMuted }}>
+                    <Typography sx={{ fontSize: 12.5, color: C.textMuted }}>
                       No assets linked yet
                     </Typography>
                     {userIsAdmin && (
                       <Button
                         size="small"
-                        startIcon={<LinkIcon sx={{ fontSize: 14 }} />}
+                        startIcon={<LinkIcon sx={{ fontSize: 13 }} />}
                         onClick={() => setLinkOpen(true)}
                         sx={{
-                          mt: 1.5,
+                          mt: 1.25,
                           borderRadius: 2,
                           textTransform: "none",
-                          fontSize: 12,
+                          fontSize: 11.5,
                           color: C.green,
                           border: `1px solid ${C.green}`,
                           "&:hover": { bgcolor: C.greenBg },
@@ -1409,7 +1670,7 @@ export default function AssetRequestDetails() {
                       key={idx}
                       sx={{
                         px: 2.5,
-                        py: 1.75,
+                        py: 1.5,
                         borderBottom:
                           idx < request.metadata.childAssets.length - 1
                             ? `1px solid ${C.border}`
@@ -1430,8 +1691,8 @@ export default function AssetRequestDetails() {
                         >
                           <Box
                             sx={{
-                              width: 32,
-                              height: 32,
+                              width: 30,
+                              height: 30,
                               borderRadius: 2,
                               bgcolor: C.greenBg,
                               display: "flex",
@@ -1439,7 +1700,7 @@ export default function AssetRequestDetails() {
                               justifyContent: "center",
                             }}
                           >
-                            <Inventory2 sx={{ fontSize: 16, color: C.green }} />
+                            <Inventory2 sx={{ fontSize: 15, color: C.green }} />
                           </Box>
                           <Box>
                             <CopyId
@@ -1450,23 +1711,21 @@ export default function AssetRequestDetails() {
                               }
                             />
                             <Typography
-                              sx={{ fontSize: 11, color: C.textMuted }}
+                              sx={{ fontSize: 10.5, color: C.textMuted }}
                             >
                               {fmt(asset.linkedAt)}
                             </Typography>
                           </Box>
                         </Stack>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Chip
-                            label={asset.relationshipType || "related"}
-                            size="small"
-                            sx={{
-                              textTransform: "capitalize",
-                              fontSize: 11,
-                              height: 22,
-                            }}
-                          />
-                        </Stack>
+                        <Chip
+                          label={asset.relationshipType || "related"}
+                          size="small"
+                          sx={{
+                            textTransform: "capitalize",
+                            fontSize: 10.5,
+                            height: 21,
+                          }}
+                        />
                       </Stack>
                     </Box>
                   ))
@@ -1488,8 +1747,8 @@ export default function AssetRequestDetails() {
                       size="small"
                       sx={{
                         ml: 1,
-                        height: 18,
-                        fontSize: 10,
+                        height: 17,
+                        fontSize: 9.5,
                         bgcolor: C.blueBg,
                         color: C.blue,
                       }}
@@ -1498,28 +1757,28 @@ export default function AssetRequestDetails() {
                 </SectionTitle>
                 <IconButton size="small">
                   {childrenExpanded ? (
-                    <ExpandLess sx={{ fontSize: 18 }} />
+                    <ExpandLess sx={{ fontSize: 17 }} />
                   ) : (
-                    <ExpandMore sx={{ fontSize: 18 }} />
+                    <ExpandMore sx={{ fontSize: 17 }} />
                   )}
                 </IconButton>
               </SectionHead>
               <Collapse in={childrenExpanded}>
                 {!request.childRequests?.length ? (
                   <Box sx={{ p: 3, textAlign: "center" }}>
-                    <Typography sx={{ fontSize: 13, color: C.textMuted }}>
+                    <Typography sx={{ fontSize: 12.5, color: C.textMuted }}>
                       No child requests yet
                     </Typography>
                     {userIsAdmin && (
                       <Button
                         size="small"
-                        startIcon={<AccountTree sx={{ fontSize: 14 }} />}
+                        startIcon={<AccountTree sx={{ fontSize: 13 }} />}
                         onClick={() => setChildOpen(true)}
                         sx={{
-                          mt: 1.5,
+                          mt: 1.25,
                           borderRadius: 2,
                           textTransform: "none",
-                          fontSize: 12,
+                          fontSize: 11.5,
                           color: C.blue,
                           border: `1px solid ${C.blue}`,
                           "&:hover": { bgcolor: C.blueBg },
@@ -1533,17 +1792,21 @@ export default function AssetRequestDetails() {
                   request.childRequests.map((child, idx) => {
                     const cId = typeof child === "string" ? child : child._id;
                     const cType =
-                      typeof child === "object" ? child.requestType : "—";
+                      typeof child === "object" ? child.requestType : null;
                     const cStatus =
                       typeof child === "object" ? child.status : "pending";
-                    const cUrgency =
+                    const cUrg =
                       typeof child === "object" ? child.urgency : null;
                     return (
                       <Box
                         key={idx}
+                        onClick={() =>
+                          typeof child === "object" &&
+                          navigate(`/admin/asset-requests/${cId}`)
+                        }
                         sx={{
                           px: 2.5,
-                          py: 1.75,
+                          py: 1.5,
                           borderBottom:
                             idx < request.childRequests.length - 1
                               ? `1px solid ${C.border}`
@@ -1552,10 +1815,6 @@ export default function AssetRequestDetails() {
                             typeof child === "object" ? "pointer" : "default",
                           "&:hover": { bgcolor: "#f8fffe" },
                         }}
-                        onClick={() =>
-                          typeof child === "object" &&
-                          navigate(`/admin/asset-requests/${cId}`)
-                        }
                       >
                         <Stack
                           direction="row"
@@ -1571,8 +1830,8 @@ export default function AssetRequestDetails() {
                           >
                             <Box
                               sx={{
-                                width: 32,
-                                height: 32,
+                                width: 30,
+                                height: 30,
                                 borderRadius: 2,
                                 bgcolor: C.blueBg,
                                 display: "flex",
@@ -1580,30 +1839,30 @@ export default function AssetRequestDetails() {
                                 justifyContent: "center",
                               }}
                             >
-                              <ChildCare sx={{ fontSize: 16, color: C.blue }} />
+                              <ChildCare sx={{ fontSize: 15, color: C.blue }} />
                             </Box>
                             <Box>
                               <Typography
                                 sx={{
                                   fontFamily: "monospace",
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   color: C.textSub,
                                 }}
                               >
                                 #{cId?.slice(-12)}
                               </Typography>
-                              {typeof child === "object" && (
+                              {typeof child === "object" && child.createdAt && (
                                 <Typography
-                                  sx={{ fontSize: 11, color: C.textMuted }}
+                                  sx={{ fontSize: 10.5, color: C.textMuted }}
                                 >
                                   {fmt(child.createdAt)}
                                 </Typography>
                               )}
                             </Box>
                           </Stack>
-                          <Stack direction="row" spacing={1}>
-                            {cType !== "—" && <TypeChip type={cType} />}
-                            {cUrgency && <UrgencyChip urgency={cUrgency} />}
+                          <Stack direction="row" spacing={0.75} flexWrap="wrap">
+                            {cType && <TypeChip type={cType} />}
+                            {cUrg && <UrgencyChip urgency={cUrg} />}
                             <StatusChip status={cStatus} />
                           </Stack>
                         </Stack>
@@ -1616,30 +1875,40 @@ export default function AssetRequestDetails() {
           </Grid>
 
           {/* ── Sidebar ── */}
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={4} sx={{ width:"485px"}}>
             {/* Timeline */}
             <SectionCard>
               <SectionHead>
                 <SectionTitle icon={<CalendarToday />}>Timeline</SectionTitle>
               </SectionHead>
-              <Box sx={{ p: 2.5 }}>
-                <TimelineDot
+              <Box sx={{ p: 2.25 }}>
+                <TDot
                   color={C.teal}
                   label="Request Created"
                   date={fmt(request.createdAt, true)}
-                  active={true}
+                  active
                 />
-                <TimelineDot
+                <TDot
                   color={C.green}
                   label="Approved"
                   date={
                     request.approvedAt
                       ? fmt(request.approvedAt, true)
-                      : "Not yet"
+                      : "Awaiting approval"
                   }
                   active={!!request.approvedAt}
                 />
-                <TimelineDot
+                {statusLower === "rejected" && (
+                  <TDot
+                    color={C.red}
+                    label="Rejected"
+                    date={
+                      request.updatedAt ? fmt(request.updatedAt, true) : "—"
+                    }
+                    active
+                  />
+                )}
+                <TDot
                   color={C.blue}
                   label="Completed"
                   date={
@@ -1649,11 +1918,11 @@ export default function AssetRequestDetails() {
                   }
                   active={!!request.completedAt}
                 />
-                <TimelineDot
+                <TDot
                   color={C.textMuted}
                   label="Last Updated"
                   date={fmt(request.updatedAt, true)}
-                  active={true}
+                  active
                 />
               </Box>
             </SectionCard>
@@ -1669,15 +1938,15 @@ export default function AssetRequestDetails() {
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Avatar
                         sx={{
-                          width: 26,
-                          height: 26,
+                          width: 24,
+                          height: 24,
                           bgcolor: C.teal,
-                          fontSize: 11,
+                          fontSize: 10,
                         }}
                       >
                         {request.approvedBy.email.charAt(0).toUpperCase()}
                       </Avatar>
-                      <Typography sx={{ fontSize: 13 }}>
+                      <Typography sx={{ fontSize: 12.5 }}>
                         {request.approvedBy.email}
                       </Typography>
                     </Stack>
@@ -1685,7 +1954,7 @@ export default function AssetRequestDetails() {
                 )}
                 <InfoRow label="Approved At" noBorder>
                   <Typography
-                    sx={{ fontSize: 13, color: C.green, fontWeight: 600 }}
+                    sx={{ fontSize: 12.5, color: C.green, fontWeight: 600 }}
                   >
                     {fmt(request.approvedAt, true)}
                   </Typography>
@@ -1714,13 +1983,13 @@ export default function AssetRequestDetails() {
                   sx={{
                     bgcolor: request.isChildRequest ? C.blueBg : "#f1f5f9",
                     color: request.isChildRequest ? C.blue : C.textMuted,
-                    fontSize: 11,
-                    height: 22,
+                    fontSize: 10.5,
+                    height: 21,
                   }}
                 />
               </InfoRow>
-              <InfoRow label="Parent Request">
-                {request.parentRequestId ? (
+              {request.parentRequestId && (
+                <InfoRow label="Parent Request">
                   <Box
                     sx={{ cursor: "pointer" }}
                     onClick={() => {
@@ -1739,19 +2008,15 @@ export default function AssetRequestDetails() {
                       }
                     />
                   </Box>
-                ) : (
-                  <Typography sx={{ fontSize: 13, color: C.textMuted }}>
-                    —
-                  </Typography>
-                )}
-              </InfoRow>
-              <InfoRow label="Child Count">
-                <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
+                </InfoRow>
+              )}
+              <InfoRow label="Children">
+                <Typography sx={{ fontWeight: 700, fontSize: 12.5 }}>
                   {request.childRequests?.length || 0}
                 </Typography>
               </InfoRow>
               <InfoRow label="Linked Assets" noBorder>
-                <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: 12.5 }}>
                   {request.metadata?.childAssets?.length || 0}
                 </Typography>
               </InfoRow>
@@ -1766,7 +2031,7 @@ export default function AssetRequestDetails() {
                 {request.completedAt && (
                   <InfoRow label="Completed At">
                     <Typography
-                      sx={{ fontSize: 13, color: C.blue, fontWeight: 600 }}
+                      sx={{ fontSize: 12.5, color: C.blue, fontWeight: 600 }}
                     >
                       {fmt(request.completedAt, true)}
                     </Typography>
@@ -1774,7 +2039,7 @@ export default function AssetRequestDetails() {
                 )}
                 {request.completionNotes && (
                   <InfoRow label="Notes" noBorder>
-                    <Typography sx={{ fontSize: 13 }}>
+                    <Typography sx={{ fontSize: 12.5 }}>
                       {request.completionNotes}
                     </Typography>
                   </InfoRow>
@@ -1794,11 +2059,28 @@ export default function AssetRequestDetails() {
         >
           <Button
             variant="outlined"
-            onClick={() => navigate("/admin/asset-requests")}
+            onClick={() => navigate(-1)}
             sx={{ borderRadius: 2.5, textTransform: "none", fontWeight: 600 }}
           >
-            ← Back to List
+            ← Back
           </Button>
+          {canComplete && (
+            <Button
+              variant="outlined"
+              onClick={() => setCompleteOpen(true)}
+              startIcon={<TaskAlt />}
+              sx={{
+                borderRadius: 2.5,
+                textTransform: "none",
+                fontWeight: 600,
+                borderColor: C.blue,
+                color: C.blue,
+                "&:hover": { bgcolor: C.blueBg },
+              }}
+            >
+              Complete
+            </Button>
+          )}
           {userIsAdmin && isPending && (
             <>
               <Button
@@ -1846,6 +2128,12 @@ export default function AssetRequestDetails() {
         onSubmit={handleReject}
         submitting={submitting}
       />
+      <CompleteDialog
+        open={completeOpen}
+        onClose={() => setCompleteOpen(false)}
+        onSubmit={handleComplete}
+        submitting={submitting}
+      />
       <LinkAssetDialog
         open={linkOpen}
         onClose={() => setLinkOpen(false)}
@@ -1864,8 +2152,8 @@ export default function AssetRequestDetails() {
       <Snackbar
         open={snack.open}
         autoHideDuration={4000}
-        onClose={() => setSnack((p) => ({ ...p, open: false }))}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        onClose={() => setSnack((p) => ({ ...p, open: false }))}
       >
         <Alert
           severity={snack.severity}

@@ -1,4 +1,4 @@
-// pages/admin/ImportChecklistFields.jsx — Redesigned with Enhanced Design & Dummy Template Download
+// pages/admin/ImportChecklistFields.jsx - Fully Responsive with All Issues Fixed
 
 import React, { useState, useRef } from "react";
 import {
@@ -24,7 +24,8 @@ import {
   useTheme,
   Stepper,
   Step,
-  StepLabel,Container,
+  StepLabel,
+  Container,
   StepContent,
   Card,
   CardContent,
@@ -49,17 +50,16 @@ import {
   Rule,
   Download,
   Info,
-  Checklist as ChecklistIcon,
   Warning,
   FilePresent,
   Check as CheckIcon,
   Clear as ClearIcon,
   HelpOutline,
+  Assignment as AssignmentIcon, // ← Replaced ChecklistIcon with AssignmentIcon
 } from "@mui/icons-material";
 import { useChecklistBuilder } from "../context/ChecklistBuilderContext";
 import { useNavigate } from "react-router-dom";
 
-// ─── Design Tokens ─────────────────────────────────────────────────────────
 const C = {
   primary: "#0d474e",
   primaryDark: "#10424b",
@@ -81,7 +81,6 @@ const C = {
   info: "#2E7D8A",
 };
 
-// ─── Styled Components ─────────────────────────────────────────────────────
 const DropZone = ({ isDragging, hasFile, children, onClick }) => (
   <Box
     onClick={onClick}
@@ -118,7 +117,6 @@ export default function ImportChecklistFields() {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { importFromExcel, loading, error, success, clearMessages } =
     useChecklistBuilder();
-
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -132,14 +130,11 @@ export default function ImportChecklistFields() {
   const [downloadLoading, setDownloadLoading] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Handle drag events
   const handleDragOver = (e) => {
     e.preventDefault();
     setIsDragging(true);
   };
-
   const handleDragLeave = () => setIsDragging(false);
-
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
@@ -152,7 +147,6 @@ export default function ImportChecklistFields() {
       showSnackbar("Please upload a valid Excel file (.xlsx or .xls)", "error");
     }
   };
-
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file && (file.name.endsWith(".xlsx") || file.name.endsWith(".xls"))) {
@@ -163,18 +157,15 @@ export default function ImportChecklistFields() {
       showSnackbar("Please upload a valid Excel file (.xlsx or .xls)", "error");
     }
   };
-
   const showSnackbar = (message, severity) => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
   };
 
-  // Download dummy template
   const handleDownloadTemplate = async () => {
     setDownloadLoading(true);
     try {
-      // Create dummy Excel file data
       const dummyData = [
         [
           "Section",
@@ -250,8 +241,6 @@ export default function ImportChecklistFields() {
           "Supporting documents",
         ],
       ];
-
-      // Create CSV content (simpler for browser download)
       const csvContent = dummyData
         .map((row) => row.map((cell) => `"${cell}"`).join(","))
         .join("\n");
@@ -259,12 +248,11 @@ export default function ImportChecklistFields() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "checklist_template.xlsx";
+      link.download = "checklist_template.csv";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
       showSnackbar(
         "Template downloaded successfully! Open in Excel and save as .xlsx",
         "success",
@@ -281,11 +269,9 @@ export default function ImportChecklistFields() {
       showSnackbar("Please select a file first", "error");
       return;
     }
-
     setImporting(true);
     const result = await importFromExcel(selectedFile);
     setImporting(false);
-
     if (result.success) {
       setImportResponse(result.data);
       setImportSuccess(true);
@@ -315,10 +301,7 @@ export default function ImportChecklistFields() {
     }
   };
 
-  const handleViewChecklist = () => {
-    navigate("/admin/checklists");
-  };
-
+  const handleViewChecklist = () => navigate("/admin/checklists");
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
     clearMessages();
@@ -326,7 +309,6 @@ export default function ImportChecklistFields() {
 
   const renderImportedSections = () => {
     if (!importResponse?.sections) return null;
-
     return (
       <Stack spacing={2} sx={{ mt: 2 }}>
         {importResponse.sections.map((section, idx) => (
@@ -435,7 +417,6 @@ export default function ImportChecklistFields() {
     );
   };
 
-  // Steps configuration
   const steps = [
     {
       label: "Upload File",
@@ -456,15 +437,11 @@ export default function ImportChecklistFields() {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: C.surfaceAlt }}>
-      {/* Header */}
       <Box
         sx={{
           position: "sticky",
           top: 0,
-          width:"1145px",
-          marginLeft:"35px",
           zIndex: 50,
-          borderRadius:"12px",
           bgcolor: C.surface,
           borderBottom: `1px solid ${C.border}`,
           px: { xs: 2, sm: 4 },
@@ -492,7 +469,7 @@ export default function ImportChecklistFields() {
                 "&:hover": { bgcolor: alpha(C.primary, 0.12) },
               }}
             >
-              <ArrowBack sx={{ color: C.primary , fontSize: 18}} />
+              <ArrowBack sx={{ color: C.primary, fontSize: 18 }} />
             </IconButton>
             <Box>
               <Typography
@@ -520,14 +497,13 @@ export default function ImportChecklistFields() {
               color: C.primary,
               fontWeight: 600,
               borderRadius: "12px",
-              padding:"10px 20px"
+              padding: "10px 20px",
             }}
           />
         </Box>
       </Box>
 
       <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 }, py: 4 }}>
-        {/* Stepper */}
         <Paper
           elevation={0}
           sx={{
@@ -586,7 +562,6 @@ export default function ImportChecklistFields() {
           </Stepper>
         </Paper>
 
-        {/* Template Download Card */}
         <Paper
           elevation={0}
           sx={{
@@ -652,7 +627,6 @@ export default function ImportChecklistFields() {
           </Box>
         </Paper>
 
-        {/* Main Content */}
         <Paper
           elevation={0}
           sx={{
@@ -663,7 +637,6 @@ export default function ImportChecklistFields() {
           }}
         >
           {importSuccess ? (
-            // Success State
             <Fade in timeout={500}>
               <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, textAlign: "center" }}>
                 <Box
@@ -702,7 +675,6 @@ export default function ImportChecklistFields() {
                   Your checklist "{importResponse?.name}" has been created
                   successfully
                 </Typography>
-
                 <Box
                   sx={{ maxWidth: 600, mx: "auto", textAlign: "left", mb: 3 }}
                 >
@@ -752,13 +724,11 @@ export default function ImportChecklistFields() {
                       </Typography>
                     </Grid>
                   </Grid>
-
                   <Typography sx={{ fontWeight: 700, mb: 1.5 }}>
                     Sections & Fields
                   </Typography>
                   {renderImportedSections()}
                 </Box>
-
                 <Stack direction="row" spacing={2} justifyContent="center">
                   <Button
                     variant="outlined"
@@ -785,7 +755,6 @@ export default function ImportChecklistFields() {
             </Fade>
           ) : (
             <Box>
-              {/* Drop Zone */}
               <Box
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -800,7 +769,7 @@ export default function ImportChecklistFields() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".xlsx,.xls"
+                    accept=".xlsx,.xls,.csv"
                     style={{ display: "none" }}
                     onChange={handleFileSelect}
                   />
@@ -824,7 +793,6 @@ export default function ImportChecklistFields() {
                       <CloudUpload sx={{ fontSize: 32, color: C.primary }} />
                     )}
                   </Box>
-
                   {selectedFile ? (
                     <>
                       <Typography
@@ -881,7 +849,7 @@ export default function ImportChecklistFields() {
                           textAlign: "center",
                         }}
                       >
-                        or click to browse • Supported: .xlsx / .xls
+                        or click to browse • Supported: .xlsx / .xls / .csv
                       </Typography>
                       <Button
                         variant="contained"
@@ -898,8 +866,6 @@ export default function ImportChecklistFields() {
                     </>
                   )}
                 </DropZone>
-
-                {/* File Requirements */}
                 {!selectedFile && (
                   <Box
                     sx={{
@@ -949,8 +915,6 @@ export default function ImportChecklistFields() {
                   </Box>
                 )}
               </Box>
-
-              {/* Action Buttons */}
               {selectedFile && (
                 <Box
                   sx={{
@@ -1008,7 +972,6 @@ export default function ImportChecklistFields() {
           )}
         </Paper>
 
-        {/* Help Section */}
         {!importSuccess && (
           <Paper
             elevation={0}
@@ -1076,7 +1039,6 @@ export default function ImportChecklistFields() {
         )}
       </Container>
 
-      {/* Preview Dialog */}
       <Dialog
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
@@ -1136,7 +1098,6 @@ export default function ImportChecklistFields() {
             >
               Size: {(selectedFile?.size / 1024).toFixed(1)} KB
             </Typography>
-
             <Box
               sx={{
                 bgcolor: alpha(C.primary, 0.04),
@@ -1205,7 +1166,6 @@ export default function ImportChecklistFields() {
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={5000}

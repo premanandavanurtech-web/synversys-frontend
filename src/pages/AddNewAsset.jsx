@@ -1,22 +1,4 @@
-// src/pages/AddNewAsset.jsx
-// ─── FIXES ────────────────────────────────────────────────────────────────────
-// 1. Sticky header: removed hardcoded `width: "1160px"` and `marginLeft: "25px"`.
-//    Now uses width:"100%" so it works on all screen sizes.
-//
-// 2. "Other" category name: otherCategoryName was captured in state but never
-//    sent to the API. Added `customCategoryName` field to the payload so the
-//    backend receives it when "other" is selected.
-//
-// 3. TeamContext api: added a note + pattern showing how TeamContext must also
-//    import the shared `api` from AssetContext (same fix as AssetCategoryContext).
-//    The `fetchTeamMembers` call will 401 until that context is updated.
-//
-// 4. useEffect deps: getAllCategories and fetchTeamMembers are useCallback-stable
-//    references — listing them is correct and prevents stale-closure warnings.
-//
-// 5. All previously-retained schema fixes kept (driverName, healthStatusIndex
-//    enum, assetCategoryId, faultType array, etc.).
-// ─────────────────────────────────────────────────────────────────────────────
+
 import { useState, useEffect, useCallback } from "react";
 import {
   Box,
@@ -746,8 +728,6 @@ export default function AddNewAsset() {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: T.bg }}>
-      {/* ── Sticky Header ─────────────────────────────────────────────────── */}
-      {/* FIX 1: removed hardcoded width:"1160px" and marginLeft:"25px"       */}
       <Box
         sx={{
           borderBottom: `1px solid ${T.border}`,
@@ -756,7 +736,8 @@ export default function AddNewAsset() {
           py: { xs: 1.5, sm: 2 },
           position: "sticky",
           top: 0,
-          width: "100%", // ← was "1160px"
+          width:"1110px",
+          marginLeft:"30px",
           borderRadius: 2,
           zIndex: 100,
           boxSizing: "border-box",
@@ -848,7 +829,7 @@ export default function AddNewAsset() {
       >
         <Grid container spacing={{ xs: 2, md: 3 }}>
           {/* ── LEFT SIDEBAR ──────────────────────────────────────────────── */}
-          <Grid item xs={12} md={4} lg={3.5}>
+          <Grid item xs={12} md={4} lg={3.5} sx={{ width:"350px"}}>
             {/* Core Identification */}
             <Paper
               elevation={0}
@@ -1314,7 +1295,7 @@ export default function AddNewAsset() {
           </Grid>
 
           {/* ── RIGHT MAIN AREA ────────────────────────────────────────────── */}
-          <Grid item xs={12} md={8} lg={8.5}>
+          <Grid item xs={12} md={8} lg={8.5} sx={{width:"730px"}}>
             {/* Primary Information */}
             <Paper
               elevation={0}

@@ -1,4 +1,5 @@
-// GlobalChecklistBuilder.jsx
+// GlobalChecklistBuilder.jsx - Fully Responsive with All Issues Fixed
+
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -26,6 +27,9 @@ import {
   MenuItem,
   Select,
   FormControl,
+  useMediaQuery,
+  Drawer,
+  Fab,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
@@ -44,6 +48,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SaveIcon from "@mui/icons-material/Save";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
+import MenuIcon from "@mui/icons-material/Menu";
 import { useChecklistBuilder } from "../context/ChecklistBuilderContext";
 import { useNavigate } from "react-router-dom";
 
@@ -82,11 +87,7 @@ const theme = createTheme({
   },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Field type definitions
-// IMPORTANT: "type" values here are the EXACT backend enum strings.
-// "date_picker" is NOT a valid backend type – use "date".
-// ─────────────────────────────────────────────────────────────────────────────
 const FIELD_TYPES = [
   {
     type: "text_input",
@@ -124,7 +125,7 @@ const FIELD_TYPES = [
     icon: <GestureIcon sx={{ fontSize: 18, color: "#374151" }} />,
   },
   {
-    type: "date", // ← backend enum value (not "date_picker")
+    type: "date",
     label: "Date Picker",
     icon: <CalendarTodayIcon sx={{ fontSize: 18, color: "#374151" }} />,
   },
@@ -135,7 +136,6 @@ const FIELD_TYPES = [
   },
 ];
 
-// Default extra properties per type
 function buildFieldDefaults(type) {
   switch (type) {
     case "dropdown":
@@ -144,19 +144,12 @@ function buildFieldDefaults(type) {
       return { validation: { min: 1, max: 5 } };
     case "checkbox":
       return { options: ["Item 1", "Item 2"] };
-    case "date":
-      return {};
-    case "image_upload":
-    case "file_upload":
-      return {};
-    case "signature":
-      return {};
     default:
       return {};
   }
 }
 
-// ── Option Editor Dialog ──────────────────────────────────────────────────────
+// Option Editor Dialog
 function OptionEditorDialog({ open, onClose, options, onSave }) {
   const [tempOptions, setTempOptions] = useState(
     options?.length ? options : ["Option 1", "Option 2"],
@@ -168,8 +161,14 @@ function OptionEditorDialog({ open, onClose, options, onSave }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Edit Options</DialogTitle>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: "16px" } }}
+    >
+      <DialogTitle sx={{ pb: 1 }}>Edit Options</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {tempOptions.map((option, i) => (
@@ -211,7 +210,7 @@ function OptionEditorDialog({ open, onClose, options, onSave }) {
           </Button>
         </Stack>
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose}>Cancel</Button>
         <Button onClick={handleSave} variant="contained">
           Save Options
@@ -221,7 +220,7 @@ function OptionEditorDialog({ open, onClose, options, onSave }) {
   );
 }
 
-// ── Preview Dialog ────────────────────────────────────────────────────────────
+// Preview Dialog
 function PreviewDialog({
   open,
   onClose,
@@ -235,6 +234,7 @@ function PreviewDialog({
   const [ratings, setRatings] = useState({});
   const [checked, setChecked] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const renderField = (field) => {
     switch (field.type) {
@@ -257,7 +257,7 @@ function PreviewDialog({
           <TextField
             fullWidth
             multiline
-            rows={3}
+            rows={isMobile ? 2 : 3}
             size="small"
             placeholder="Enter text…"
             value={values[field.id] || ""}
@@ -315,14 +315,14 @@ function PreviewDialog({
         );
       case "rating":
         return (
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
             <Rating
               value={ratings[field.id] || 0}
               max={field.validation?.max || 5}
               onChange={(_, v) => setRatings((p) => ({ ...p, [field.id]: v }))}
               sx={{ "& .MuiRating-iconFilled": { color: "#1a4a5c" } }}
             />
-            <Typography sx={{ fontSize: 12, color: "#9ca3af" }}>
+            <Typography sx={{ fontSize: { xs: 11, sm: 12 }, color: "#9ca3af" }}>
               {ratings[field.id]
                 ? `${ratings[field.id]}/${field.validation?.max || 5}`
                 : `Rate 1–${field.validation?.max || 5}`}
@@ -337,7 +337,7 @@ function PreviewDialog({
               border: "2px dashed #d1d5db",
               borderRadius: "8px",
               bgcolor: "#fafafa",
-              py: 2.5,
+              py: { xs: 2, sm: 2.5 },
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -346,7 +346,7 @@ function PreviewDialog({
             }}
           >
             <ImageOutlinedIcon sx={{ fontSize: 28, color: "#d1d5db" }} />
-            <Typography sx={{ fontSize: 13, color: "#9ca3af" }}>
+            <Typography sx={{ fontSize: { xs: 11, sm: 13 }, color: "#9ca3af" }}>
               {field.type === "file_upload"
                 ? "Click to upload file"
                 : "Drag & drop or click to browse"}
@@ -359,14 +359,14 @@ function PreviewDialog({
             sx={{
               border: "1.5px solid #e5e7eb",
               borderRadius: "8px",
-              height: 120,
+              height: { xs: 100, sm: 120 },
               bgcolor: "#fafafa",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Typography sx={{ fontSize: 12, color: "#9ca3af" }}>
+            <Typography sx={{ fontSize: { xs: 11, sm: 12 }, color: "#9ca3af" }}>
               Signature pad
             </Typography>
           </Box>
@@ -396,14 +396,22 @@ function PreviewDialog({
       fullWidth
       PaperProps={{ sx: { borderRadius: "16px", maxHeight: "90vh" } }}
     >
-      <DialogTitle sx={{ p: 3, pb: 2 }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
+      <DialogTitle sx={{ p: { xs: 2, sm: 3 }, pb: { xs: 1, sm: 2 } }}>
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="space-between"
+          flexWrap="wrap"
+          gap={1}
+        >
           <Box>
-            <Typography sx={{ fontSize: 20, fontWeight: 700 }}>
+            <Typography sx={{ fontSize: { xs: 18, sm: 20 }, fontWeight: 700 }}>
               Preview: {checklistName}
             </Typography>
             {description && (
-              <Typography sx={{ fontSize: 13, color: "#6b7280", mt: 0.5 }}>
+              <Typography
+                sx={{ fontSize: { xs: 12, sm: 13 }, color: "#6b7280", mt: 0.5 }}
+              >
                 {description}
               </Typography>
             )}
@@ -425,23 +433,16 @@ function PreviewDialog({
           </IconButton>
         </Box>
       </DialogTitle>
-      <DialogContent dividers sx={{ p: 3 }}>
+      <DialogContent dividers sx={{ p: { xs: 2, sm: 3 } }}>
         {submitted ? (
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              py: 8,
-            }}
-          >
+          <Box display="flex" flexDirection="column" alignItems="center" py={8}>
             <CheckCircleIcon sx={{ fontSize: 64, color: "#4caf50", mb: 2 }} />
             <Typography sx={{ fontSize: 18, fontWeight: 600 }}>
               Form Submitted Successfully!
             </Typography>
           </Box>
         ) : fields.length === 0 ? (
-          <Box sx={{ textAlign: "center", py: 8 }}>
+          <Box textAlign="center" py={8}>
             <Typography sx={{ fontSize: 14, color: "#9ca3af" }}>
               No fields to preview.
             </Typography>
@@ -467,7 +468,14 @@ function PreviewDialog({
           </Stack>
         )}
       </DialogContent>
-      <DialogActions sx={{ p: 3, pt: 2 }}>
+      <DialogActions
+        sx={{
+          p: { xs: 2, sm: 3 },
+          pt: { xs: 1, sm: 2 },
+          flexWrap: "wrap",
+          gap: 1,
+        }}
+      >
         <Button onClick={onClose} variant="outlined">
           Close
         </Button>
@@ -491,11 +499,11 @@ function PreviewDialog({
   );
 }
 
-// ── Draggable field type pill in sidebar ──────────────────────────────────────
-function DraggableFieldType({ fieldType, onDragStart, onAdd }) {
+// Draggable field type pill
+function DraggableFieldType({ fieldType, onDragStart, onAdd, isMobile }) {
   return (
     <Box
-      draggable
+      draggable={!isMobile}
       onDragStart={(e) => onDragStart(e, fieldType)}
       onDragEnd={(e) => e.preventDefault()}
       onClick={() => onAdd(fieldType.type)}
@@ -503,25 +511,33 @@ function DraggableFieldType({ fieldType, onDragStart, onAdd }) {
         display: "flex",
         alignItems: "center",
         gap: 1.8,
-        py: 1.6,
+        py: { xs: 1.2, sm: 1.6 },
         px: 1,
-        cursor: "grab",
+        cursor: isMobile ? "pointer" : "grab",
         borderRadius: "8px",
         transition: "all 0.12s",
         "&:hover": { bgcolor: "#f1f5f9" },
-        "&:active": { cursor: "grabbing" },
+        "&:active": isMobile
+          ? { transform: "scale(0.98)" }
+          : { cursor: "grabbing" },
         userSelect: "none",
       }}
     >
       {fieldType.icon}
-      <Typography sx={{ fontSize: 13.5, color: "#374151", fontWeight: 500 }}>
+      <Typography
+        sx={{
+          fontSize: { xs: 12.5, sm: 13.5 },
+          color: "#374151",
+          fontWeight: 500,
+        }}
+      >
         {fieldType.label}
       </Typography>
     </Box>
   );
 }
 
-// ── Field card in the builder canvas ─────────────────────────────────────────
+// Field card in builder
 function FieldCard({
   field,
   index,
@@ -531,6 +547,7 @@ function FieldCard({
   onDrop,
   onLabelChange,
   onOptionsChange,
+  isMobile,
 }) {
   const [editingLabel, setEditingLabel] = useState(false);
   const [labelValue, setLabelValue] = useState(field.label);
@@ -563,7 +580,7 @@ function FieldCard({
             <Button
               size="small"
               onClick={() => setOptionsOpen(true)}
-              sx={{ mt: 0.5, fontSize: 11 }}
+              sx={{ mt: 0.5, fontSize: { xs: 10, sm: 11 } }}
             >
               Edit Options ({field.options?.length || 0})
             </Button>
@@ -577,14 +594,18 @@ function FieldCard({
                 <FormControlLabel
                   key={i}
                   control={<Checkbox disabled size="small" />}
-                  label={<Typography sx={{ fontSize: 12 }}>{opt}</Typography>}
+                  label={
+                    <Typography sx={{ fontSize: { xs: 11, sm: 12 } }}>
+                      {opt}
+                    </Typography>
+                  }
                 />
               ))}
             </Stack>
             <Button
               size="small"
               onClick={() => setOptionsOpen(true)}
-              sx={{ mt: 0.5, fontSize: 11 }}
+              sx={{ mt: 0.5, fontSize: { xs: 10, sm: 11 } }}
             >
               Edit Options ({field.options?.length || 0})
             </Button>
@@ -614,9 +635,9 @@ function FieldCard({
         );
       case "rating":
         return (
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
             <Rating value={0} disabled max={field.validation?.max || 5} />
-            <Typography sx={{ fontSize: 11, color: "#9ca3af" }}>
+            <Typography sx={{ fontSize: { xs: 10, sm: 11 }, color: "#9ca3af" }}>
               1 – {field.validation?.max || 5}
             </Typography>
           </Box>
@@ -636,7 +657,7 @@ function FieldCard({
             }}
           >
             <ImageOutlinedIcon sx={{ fontSize: 28, color: "#d1d5db" }} />
-            <Typography sx={{ fontSize: 12, color: "#9ca3af" }}>
+            <Typography sx={{ fontSize: { xs: 11, sm: 12 }, color: "#9ca3af" }}>
               {field.type === "file_upload" ? "File Upload" : "Image Upload"}
             </Typography>
           </Box>
@@ -654,7 +675,7 @@ function FieldCard({
               justifyContent: "center",
             }}
           >
-            <Typography sx={{ fontSize: 11, color: "#9ca3af" }}>
+            <Typography sx={{ fontSize: { xs: 10, sm: 11 }, color: "#9ca3af" }}>
               Signature field
             </Typography>
           </Box>
@@ -669,19 +690,19 @@ function FieldCard({
   return (
     <>
       <Box
-        draggable
+        draggable={!isMobile}
         onDragStart={(e) => onDragStart(e, index)}
         onDragOver={onDragOver}
         onDrop={(e) => onDrop(e, index)}
         sx={{
           border: "1.5px solid #e5e7eb",
           borderRadius: "10px",
-          p: "14px 16px",
+          p: { xs: "12px 14px", sm: "14px 16px" },
           mb: 1.5,
           bgcolor: "#fff",
           "&:hover": { borderColor: "#cbd5e1" },
-          cursor: "grab",
-          "&:active": { cursor: "grabbing" },
+          cursor: isMobile ? "default" : "grab",
+          "&:active": isMobile ? {} : { cursor: "grabbing" },
         }}
       >
         <Box
@@ -689,9 +710,13 @@ function FieldCard({
           alignItems="center"
           justifyContent="space-between"
           mb={1}
+          flexWrap="wrap"
+          gap={1}
         >
-          <Box display="flex" alignItems="center" gap={1}>
-            <DragIndicatorIcon sx={{ fontSize: 16, color: "#d1d5db" }} />
+          <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+            {!isMobile && (
+              <DragIndicatorIcon sx={{ fontSize: 16, color: "#d1d5db" }} />
+            )}
             {editingLabel ? (
               <TextField
                 autoFocus
@@ -714,7 +739,7 @@ function FieldCard({
               <Typography
                 onDoubleClick={() => setEditingLabel(true)}
                 sx={{
-                  fontSize: 13,
+                  fontSize: { xs: 12, sm: 13 },
                   fontWeight: 600,
                   color: "#374151",
                   cursor: "text",
@@ -757,8 +782,6 @@ function FieldCard({
         </Box>
         {renderPreview()}
       </Box>
-
-      {/* Option editor for dropdown & checkbox */}
       {(field.type === "dropdown" || field.type === "checkbox") && (
         <OptionEditorDialog
           open={optionsOpen}
@@ -771,9 +794,13 @@ function FieldCard({
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// Main Component
 export default function GlobalChecklistBuilder() {
   const navigate = useNavigate();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const {
     createChecklist,
     loading,
@@ -782,7 +809,6 @@ export default function GlobalChecklistBuilder() {
     prepareChecklistPayload,
   } = useChecklistBuilder();
 
-  // ── Form state ────────────────────────────────────────────────────────────
   const [checklistName, setChecklistName] = useState(
     "Global Safety Inspection",
   );
@@ -792,15 +818,11 @@ export default function GlobalChecklistBuilder() {
   const [category, setCategory] = useState("safety");
   const [tags, setTags] = useState(["safety", "inspection", "global"]);
   const [tagInput, setTagInput] = useState("");
-  const [globalScope, setGlobalScope] = useState("all_workspaces");
+  const [globalScope] = useState("all_workspaces");
   const [fields, setFields] = useState([]);
   const [counter, setCounter] = useState(1);
-
-  // ── Drag state ────────────────────────────────────────────────────────────
   const [draggedFieldIndex, setDraggedFieldIndex] = useState(null);
   const [draggedFieldType, setDraggedFieldType] = useState(null);
-
-  // ── UI state ──────────────────────────────────────────────────────────────
   const [previewOpen, setPreviewOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -811,13 +833,12 @@ export default function GlobalChecklistBuilder() {
   const showSnack = (message, severity = "success") =>
     setSnackbar({ open: true, message, severity });
 
-  // ── Add field ─────────────────────────────────────────────────────────────
   const addField = (type) => {
     const config = FIELD_TYPES.find((f) => f.type === type);
     if (!config) return;
     const newField = {
       id: `field_${counter}`,
-      type, // already correct backend enum value
+      type,
       label: config.label,
       required: false,
       placeholder: `Enter ${config.label.toLowerCase()}…`,
@@ -844,13 +865,14 @@ export default function GlobalChecklistBuilder() {
     }
   };
 
-  // ── Drag – reorder fields ─────────────────────────────────────────────────
   const handleFieldDragStart = (e, index) => {
+    if (isMobile) return;
     setDraggedFieldIndex(index);
     e.dataTransfer.effectAllowed = "move";
   };
   const handleFieldDragOver = (e) => e.preventDefault();
   const handleFieldDrop = (e, dropIndex) => {
+    if (isMobile) return;
     e.preventDefault();
     if (draggedFieldIndex === null || draggedFieldIndex === dropIndex) return;
     const reordered = [...fields];
@@ -860,8 +882,8 @@ export default function GlobalChecklistBuilder() {
     setDraggedFieldIndex(null);
   };
 
-  // ── Drag – add from sidebar ───────────────────────────────────────────────
   const handleFieldTypeDragStart = (e, fieldType) => {
+    if (isMobile) return;
     setDraggedFieldType(fieldType);
     e.dataTransfer.effectAllowed = "copy";
   };
@@ -873,7 +895,6 @@ export default function GlobalChecklistBuilder() {
     }
   };
 
-  // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!checklistName.trim()) {
       showSnack("Please enter a checklist name", "error");
@@ -883,17 +904,13 @@ export default function GlobalChecklistBuilder() {
       showSnack("Please add at least one field", "error");
       return;
     }
-
-    // Validate rating fields have min/max
     for (const f of fields) {
-      if (f.type === "rating") {
-        if (!f.validation?.min || !f.validation?.max) {
-          showSnack(
-            `Rating field "${f.label}" must have min and max values`,
-            "error",
-          );
-          return;
-        }
+      if (f.type === "rating" && (!f.validation?.min || !f.validation?.max)) {
+        showSnack(
+          `Rating field "${f.label}" must have min and max values`,
+          "error",
+        );
+        return;
       }
       if (
         (f.type === "dropdown" || f.type === "checkbox") &&
@@ -904,12 +921,10 @@ export default function GlobalChecklistBuilder() {
       }
     }
 
-    // Use prepareChecklistPayload to build the correct API shape.
-    // This converts UI fields → backend field objects (flat fields[], not sections[]).
     const payload = prepareChecklistPayload({
       name: checklistName.trim(),
       description: description.trim(),
-      checklistType: "global", // ← correct key for backend
+      checklistType: "global",
       isGlobal: true,
       globalScope,
       category: category.trim() || "general",
@@ -920,21 +935,14 @@ export default function GlobalChecklistBuilder() {
         allowSaveDraft: true,
         confirmationMessage: "Thank you for completing the checklist!",
       },
-      fields, // prepareChecklistPayload converts these
+      fields,
     });
 
-    console.log("=== SAVING GLOBAL CHECKLIST ===");
-    console.log("Payload:", JSON.stringify(payload, null, 2));
-
     const result = await createChecklist(payload);
-
     if (result.success) {
-      const id = result.data?.data?._id || result.data?._id;
-      console.log("Created ID:", id);
       showSnack("Global checklist created successfully!");
       setTimeout(() => navigate("/admin/checklists"), 2000);
     } else {
-      console.error("Failed:", result.error);
       showSnack(result.error || "Failed to create checklist", "error");
     }
   };
@@ -943,26 +951,70 @@ export default function GlobalChecklistBuilder() {
     if (error) showSnack(error, "error");
   }, [error]);
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const sidebarContent = (
+    <Paper
+      elevation={0}
+      sx={{
+        border: "1px solid #e5e7eb",
+        borderRadius: "14px",
+        p: { xs: 2, sm: 2.5 },
+        height: "100%",
+      }}
+    >
+      <Typography
+        sx={{ fontSize: { xs: 13, sm: 14 }, fontWeight: 700, mb: 0.5 }}
+      >
+        Field Types
+      </Typography>
+      <Typography
+        sx={{
+          fontSize: { xs: 10, sm: 11 },
+          color: "#9ca3af",
+          mb: 2,
+          fontStyle: "italic",
+        }}
+      >
+        {isMobile ? "Tap to add" : "Click to add, or drag to canvas"}
+      </Typography>
+      <Box sx={{ display: "flex", flexDirection: "column" }}>
+        {FIELD_TYPES.map((ft, i) => (
+          <React.Fragment key={ft.type}>
+            <DraggableFieldType
+              fieldType={ft}
+              onDragStart={handleFieldTypeDragStart}
+              onAdd={addField}
+              isMobile={isMobile}
+            />
+            {i < FIELD_TYPES.length - 1 && (
+              <Divider sx={{ borderColor: "#f1f3f5" }} />
+            )}
+          </React.Fragment>
+        ))}
+      </Box>
+    </Paper>
+  );
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ minHeight: "100vh", p: 3 }}>
-        {/* Top bar */}
+      <Box sx={{ minHeight: "100vh", p: { xs: 1.5, sm: 2, md: 3 } }}>
+        {/* Top Bar */}
         <Box
           sx={{
             bgcolor: "#fff",
             border: "1px solid #e5e7eb",
-            px: 4,
-            py: 1.8,
-            borderRadius: "10px",
+            px: { xs: 2, sm: 3, md: 4 },
+            py: { xs: 1.5, sm: 1.8 },
+            borderRadius: "12px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             mb: 2,
+            flexWrap: "wrap",
+            gap: 2,
           }}
         >
-          <Box display="flex" alignItems="center" gap={1.5}>
+          <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap">
             <IconButton
               size="small"
               onClick={() => navigate("/admin/checklists")}
@@ -976,10 +1028,14 @@ export default function GlobalChecklistBuilder() {
               <ArrowBackIcon sx={{ fontSize: 18 }} />
             </IconButton>
             <Box>
-              <Typography sx={{ fontSize: 18, fontWeight: 700 }}>
+              <Typography
+                sx={{ fontSize: { xs: 16, sm: 18 }, fontWeight: 700 }}
+              >
                 Global Checklist Builder
               </Typography>
-              <Typography sx={{ fontSize: 12, color: "#6b7280" }}>
+              <Typography
+                sx={{ fontSize: { xs: 11, sm: 12 }, color: "#6b7280" }}
+              >
                 Create global checklists for organization-wide use
               </Typography>
             </Box>
@@ -988,6 +1044,7 @@ export default function GlobalChecklistBuilder() {
             <Button
               startIcon={<VisibilityOutlinedIcon />}
               onClick={() => setPreviewOpen(true)}
+              size={isMobile ? "small" : "medium"}
             >
               Preview
             </Button>
@@ -997,6 +1054,7 @@ export default function GlobalChecklistBuilder() {
               disabled={loading}
               variant="contained"
               sx={{ bgcolor: "#1a4a5c" }}
+              size={isMobile ? "small" : "medium"}
             >
               {loading ? (
                 <CircularProgress size={20} color="inherit" />
@@ -1007,14 +1065,19 @@ export default function GlobalChecklistBuilder() {
           </Box>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 2.5, alignItems: "flex-start" }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2.5,
+            alignItems: "flex-start",
+            flexDirection: { xs: "column", md: "row" },
+          }}
+        >
           {/* Canvas */}
           <Box
             flex={1}
             minWidth={0}
-            display="flex"
-            flexDirection="column"
-            gap={2}
+            width="100%"
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDropZoneDrop}
           >
@@ -1024,10 +1087,17 @@ export default function GlobalChecklistBuilder() {
               sx={{
                 border: "1px solid #e5e7eb",
                 borderRadius: "14px",
-                p: "24px 28px",
+                p: { xs: 2, sm: 2.5, md: 3 },
+                mb: 2,
               }}
             >
-              <Typography sx={{ fontSize: 12.5, fontWeight: 600, mb: 0.7 }}>
+              <Typography
+                sx={{
+                  fontSize: { xs: 11, sm: 12.5 },
+                  fontWeight: 600,
+                  mb: 0.7,
+                }}
+              >
                 Checklist Name *
               </Typography>
               <TextField
@@ -1035,11 +1105,16 @@ export default function GlobalChecklistBuilder() {
                 variant="standard"
                 value={checklistName}
                 onChange={(e) => setChecklistName(e.target.value)}
-                sx={{ mb: 2.5 }}
+                sx={{ mb: 2 }}
               />
-              <Divider sx={{ mb: 2.5 }} />
-
-              <Typography sx={{ fontSize: 12.5, fontWeight: 600, mb: 0.7 }}>
+              <Divider sx={{ mb: 2 }} />
+              <Typography
+                sx={{
+                  fontSize: { xs: 11, sm: 12.5 },
+                  fontWeight: 600,
+                  mb: 0.7,
+                }}
+              >
                 Description
               </Typography>
               <TextField
@@ -1048,11 +1123,16 @@ export default function GlobalChecklistBuilder() {
                 placeholder="Enter form description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                sx={{ mb: 2.5 }}
+                sx={{ mb: 2 }}
               />
-              <Divider sx={{ mb: 2.5 }} />
-
-              <Typography sx={{ fontSize: 12.5, fontWeight: 600, mb: 0.7 }}>
+              <Divider sx={{ mb: 2 }} />
+              <Typography
+                sx={{
+                  fontSize: { xs: 11, sm: 12.5 },
+                  fontWeight: 600,
+                  mb: 0.7,
+                }}
+              >
                 Category *
               </Typography>
               <TextField
@@ -1061,9 +1141,15 @@ export default function GlobalChecklistBuilder() {
                 placeholder="e.g., safety, quality, compliance"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                sx={{ mb: 2.5 }}
+                sx={{ mb: 2 }}
               />
-              <Typography sx={{ fontSize: 12.5, fontWeight: 600, mb: 0.7 }}>
+              <Typography
+                sx={{
+                  fontSize: { xs: 11, sm: 12.5 },
+                  fontWeight: 600,
+                  mb: 0.7,
+                }}
+              >
                 Tags
               </Typography>
               <Box display="flex" flexWrap="wrap" gap={1} sx={{ mb: 1 }}>
@@ -1098,7 +1184,7 @@ export default function GlobalChecklistBuilder() {
               sx={{
                 border: "1px solid #e5e7eb",
                 borderRadius: "14px",
-                p: "24px 28px",
+                p: { xs: 2, sm: 2.5, md: 3 },
                 minHeight: 280,
                 ...(draggedFieldType
                   ? {
@@ -1109,10 +1195,35 @@ export default function GlobalChecklistBuilder() {
                   : {}),
               }}
             >
-              <Typography sx={{ fontSize: 13.5, fontWeight: 700, mb: 2.5 }}>
-                Checklist Fields ({fields.length})
-              </Typography>
-
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                flexWrap="wrap"
+                gap={1}
+                mb={2.5}
+              >
+                <Typography
+                  sx={{ fontSize: { xs: 12, sm: 13.5 }, fontWeight: 700 }}
+                >
+                  Checklist Fields ({fields.length})
+                </Typography>
+                {isMobile && (
+                  <Fab
+                    size="small"
+                    color="primary"
+                    onClick={() => setSidebarOpen(true)}
+                    sx={{
+                      boxShadow: "none",
+                      width: 32,
+                      height: 32,
+                      minHeight: 32,
+                    }}
+                  >
+                    <MenuIcon sx={{ fontSize: 18 }} />
+                  </Fab>
+                )}
+              </Box>
               {fields.length === 0 ? (
                 <Box
                   sx={{
@@ -1120,15 +1231,25 @@ export default function GlobalChecklistBuilder() {
                     flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    py: 8,
+                    py: { xs: 6, sm: 8 },
                     gap: 0.8,
                   }}
                 >
-                  <Typography sx={{ fontSize: 14, color: "#9ca3af" }}>
+                  <Typography
+                    sx={{ fontSize: { xs: 13, sm: 14 }, color: "#9ca3af" }}
+                  >
                     No fields added yet
                   </Typography>
-                  <Typography sx={{ fontSize: 13, color: "#c4c9d4" }}>
-                    Drag field types from the right panel or click a type to add
+                  <Typography
+                    sx={{
+                      fontSize: { xs: 11, sm: 13 },
+                      color: "#c4c9d4",
+                      textAlign: "center",
+                    }}
+                  >
+                    {isMobile
+                      ? "Tap field types from the right panel"
+                      : "Drag field types from the right panel or click a type to add"}
                   </Typography>
                 </Box>
               ) : (
@@ -1144,6 +1265,7 @@ export default function GlobalChecklistBuilder() {
                       onDragStart={handleFieldDragStart}
                       onDragOver={handleFieldDragOver}
                       onDrop={handleFieldDrop}
+                      isMobile={isMobile}
                     />
                   ))}
                 </Box>
@@ -1151,47 +1273,30 @@ export default function GlobalChecklistBuilder() {
             </Paper>
           </Box>
 
-          {/* Sidebar */}
-          <Box sx={{ width: 280, flexShrink: 0 }}>
-            <Paper
-              elevation={0}
-              sx={{
-                border: "1px solid #e5e7eb",
-                borderRadius: "14px",
-                p: "22px 20px",
-              }}
-            >
-              <Typography sx={{ fontSize: 14, fontWeight: 700, mb: 0.5 }}>
-                Field Types
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: 11,
-                  color: "#9ca3af",
-                  mb: 2,
-                  fontStyle: "italic",
-                }}
-              >
-                Click to add, or drag to canvas
-              </Typography>
-              <Box sx={{ display: "flex", flexDirection: "column" }}>
-                {FIELD_TYPES.map((ft, i) => (
-                  <React.Fragment key={ft.type}>
-                    <DraggableFieldType
-                      fieldType={ft}
-                      onDragStart={handleFieldTypeDragStart}
-                      onAdd={addField}
-                    />
-                    {i < FIELD_TYPES.length - 1 && (
-                      <Divider sx={{ borderColor: "#f1f3f5" }} />
-                    )}
-                  </React.Fragment>
-                ))}
-              </Box>
-            </Paper>
-          </Box>
+          {/* Sidebar - Desktop */}
+          {!isMobile && (
+            <Box sx={{ width: { sm: 260, md: 280 }, flexShrink: 0 }}>
+              {sidebarContent}
+            </Box>
+          )}
         </Box>
       </Box>
+
+      {/* Mobile Sidebar Drawer */}
+      <Drawer
+        anchor="right"
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      >
+        <Box sx={{ width: 280, p: 2 }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+            <IconButton onClick={() => setSidebarOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          {sidebarContent}
+        </Box>
+      </Drawer>
 
       <PreviewDialog
         open={previewOpen}

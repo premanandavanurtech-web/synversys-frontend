@@ -1,7 +1,6 @@
-// pages/ChecklistPage.jsx
-// Updated with correct AssignmentModal import and integration
+// pages/ChecklistPage.jsx - Fully Updated with All Features
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -48,6 +47,7 @@ import {
   Snackbar,
   Switch,
   FormControlLabel,
+  Drawer,
 } from "@mui/material";
 import {
   Close as CloseIcon,
@@ -72,22 +72,22 @@ import {
   CheckBox as CheckBoxIcon,
   Article as ArticleIcon,
   RequestPage as RequestPageIcon,
+  Menu as MenuIcon,
+  ContentCopy as ContentCopyIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContexts";
 import { useChecklistBuilder } from "../context/ChecklistBuilderContext";
 import { useRequestChecklist } from "../context/RequestChecklistContext";
 import { useAssignment } from "../context/AssignmentContext";
-import { useTeam } from "../context/TeamContext";
-import { useAsset } from "../context/AssetContext";
 import RequestChecklistModal from "./Requestchecklistmodal";
-import AssignmentModal from "./Assignchecklistmodal"; // ✅ Fixed import path
+import AssignmentModal from "./Assignchecklistmodal";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#0d4a5c",
-      dark: "#092f3a",
+      main: "#0d4258",
+      dark: "#175667",
       light: "#e3f0f4",
       contrastText: "#fff",
     },
@@ -129,15 +129,15 @@ const theme = createTheme({
   },
 });
 
-// ─── Styled ───────────────────────────────────────────────────────────────────
+// ─── Styled Components ────────────────────────────────────────────────────────
 const StyledTab = styled(Tab)(({ theme }) => ({
   borderRadius: 8,
-  padding: "8px 22px",
   minHeight: 40,
-  fontSize: 13,
   fontWeight: 700,
+  fontSize: 13,
   color: theme.palette.text.secondary,
   transition: "all 0.2s ease",
+  padding: "8px 22px",
   "&.Mui-selected": {
     backgroundColor: theme.palette.primary.main,
     color: "#fff",
@@ -191,6 +191,158 @@ const InfoTile = styled(Box)(({ theme }) => ({
   border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
 }));
 
+// ─── Clone Dialog Component ───────────────────────────────────────────────────
+const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
+  const [name, setName] = useState("");
+  const [nameError, setNameError] = useState("");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (open && checklist) {
+      setName(`${checklist.name} (Clone)`);
+      setNameError("");
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [open, checklist]);
+
+  const handleConfirm = () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setNameError("Clone name is required.");
+      return;
+    }
+    if (trimmed.length < 3) {
+      setNameError("Name must be at least 3 characters.");
+      return;
+    }
+    if (trimmed.length > 120) {
+      setNameError("Name must be under 120 characters.");
+      return;
+    }
+    setNameError("");
+    onConfirm(trimmed);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !loading) handleConfirm();
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={!loading ? onClose : undefined}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3, m: { xs: 1, sm: 2 } } }}
+    >
+      <Box
+        sx={{
+          bgcolor: "primary.main",
+          px: 3,
+          pt: 3,
+          pb: 2,
+          borderRadius: "12px 12px 0 0",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
+          <Box>
+            <Typography fontWeight={700} fontSize={18} color="white">
+              Clone Checklist
+            </Typography>
+            <Typography
+              fontSize={13}
+              sx={{ color: alpha("#fff", 0.7), mt: 0.5 }}
+            >
+              Create a copy of an existing checklist
+            </Typography>
+          </Box>
+          <IconButton
+            size="small"
+            onClick={onClose}
+            disabled={loading}
+            sx={{ color: "white", bgcolor: alpha("#fff", 0.1) }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      </Box>
+      <DialogContent sx={{ p: 3 }}>
+        <Stack spacing={3}>
+          <Box
+            sx={{
+              p: 2,
+              bgcolor: alpha(theme.palette.primary.main, 0.04),
+              borderRadius: 2,
+            }}
+          >
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <Avatar
+                sx={{
+                  bgcolor: theme.palette.primary.main,
+                  color: "white",
+                  width: 48,
+                  height: 48,
+                }}
+              >
+                <DescriptionIcon />
+              </Avatar>
+              <Box>
+                <Typography fontWeight={600}>{checklist?.name}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {checklist?.checklistType} ·{" "}
+                  {checklist?.totalFields ?? checklist?.fields?.length ?? 0}{" "}
+                  fields · v{checklist?.version || 1}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+          <TextField
+            inputRef={inputRef}
+            fullWidth
+            label="Clone Name *"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (nameError) setNameError("");
+            }}
+            onKeyDown={handleKeyDown}
+            error={!!nameError}
+            helperText={nameError || `${name.length}/120 characters`}
+            placeholder="Enter a name for the cloned checklist"
+            disabled={loading}
+            autoFocus
+          />
+        </Stack>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 3, gap: 1.5 }}>
+        <Button onClick={onClose} disabled={loading} variant="outlined">
+          Cancel
+        </Button>
+        <Button
+          onClick={handleConfirm}
+          disabled={loading || !name.trim()}
+          variant="contained"
+          startIcon={
+            loading ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : (
+              <ContentCopyIcon />
+            )
+          }
+        >
+          {loading ? "Creating..." : "Create Clone"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (d) =>
   d
@@ -201,7 +353,7 @@ const fmt = (d) =>
       })
     : "—";
 
-// ─── Status / Type Badges ─────────────────────────────────────────────────────
+// ─── Status Badges ────────────────────────────────────────────────────────────
 const STATUS_CFG = {
   pending: {
     color: "warning",
@@ -245,6 +397,7 @@ const STATUS_CFG = {
     label: "Archived",
   },
 };
+
 const StatusBadge = ({ status }) => {
   const cfg = STATUS_CFG[status?.toLowerCase()] || STATUS_CFG.draft;
   return (
@@ -275,6 +428,7 @@ const TYPE_CFG = {
     color: "info",
   },
 };
+
 const TypeBadge = ({ type }) => {
   const cfg = TYPE_CFG[type?.toLowerCase()] || TYPE_CFG.custom;
   return (
@@ -295,6 +449,7 @@ const PRIORITY_CONFIG = {
   high: { label: "High", color: "#d32f2f", bg: "#ffebee" },
   critical: { label: "Critical", color: "#7f1d1d", bg: "#fef2f2" },
 };
+
 const PriorityBadge = ({ priority }) => {
   const cfg =
     PRIORITY_CONFIG[priority?.toLowerCase()] || PRIORITY_CONFIG.medium;
@@ -315,15 +470,8 @@ const PriorityBadge = ({ priority }) => {
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, sub, accent, icon, loading }) => (
-  <Card
-    sx={{
-      height: "100%",
-      border: "1px solid",
-      borderColor: "divider",
-      width: "270px",
-    }}
-  >
-    <CardContent sx={{ p: "16px !important" }}>
+  <Card sx={{ height: "100%", border: "1px solid", borderColor: "divider" , width: "270px" }}>
+    <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
       <Box
         sx={{
           display: "flex",
@@ -340,6 +488,7 @@ const StatCard = ({ label, value, sub, accent, icon, loading }) => (
               textTransform: "uppercase",
               letterSpacing: "0.06em",
               display: "block",
+              fontSize: { xs: 9, sm: 11 },
             }}
           >
             {label}
@@ -351,28 +500,31 @@ const StatCard = ({ label, value, sub, accent, icon, loading }) => (
               variant="h5"
               fontWeight={800}
               color={accent || "primary.main"}
-              sx={{ mt: 0.5, lineHeight: 1.2 }}
+              sx={{ mt: 0.5, lineHeight: 1.2, fontSize: { xs: 20, sm: 24 } }}
             >
               {value ?? "—"}
             </Typography>
           )}
-          {sub && (
-            <Typography
-              variant="caption"
-              color="text.disabled"
-              sx={{ mt: 0.5, display: "block" }}
-            >
-              {sub}
-            </Typography>
-          )}
+          {sub &&
+            (loading ? (
+              <Skeleton width={90} height={13} />
+            ) : (
+              <Typography
+                variant="caption"
+                color="text.disabled"
+                sx={{ mt: 0.5, display: "block", fontSize: { xs: 9, sm: 11 } }}
+              >
+                {sub}
+              </Typography>
+            ))}
         </Box>
         {icon && (
           <Avatar
             sx={{
               bgcolor: alpha(theme.palette.primary.main, 0.08),
               color: "primary.main",
-              width: 40,
-              height: 40,
+              width: { xs: 36, sm: 40 },
+              height: { xs: 36, sm: 40 },
             }}
           >
             {icon}
@@ -385,11 +537,11 @@ const StatCard = ({ label, value, sub, accent, icon, loading }) => (
 
 // ─── EmptyState ───────────────────────────────────────────────────────────────
 const EmptyState = ({ message = "No data found", sub = "", icon }) => (
-  <Box sx={{ py: 8, textAlign: "center" }}>
+  <Box sx={{ py: { xs: 6, sm: 8 }, textAlign: "center" }}>
     <Box
       sx={{
-        width: 72,
-        height: 72,
+        width: { xs: 60, sm: 72 },
+        height: { xs: 60, sm: 72 },
         borderRadius: "50%",
         bgcolor: (t) => alpha(t.palette.primary.main, 0.07),
         display: "flex",
@@ -401,18 +553,27 @@ const EmptyState = ({ message = "No data found", sub = "", icon }) => (
     >
       {icon || (
         <DescriptionIcon
-          sx={{ fontSize: 30, color: "primary.main", opacity: 0.5 }}
+          sx={{
+            fontSize: { xs: 26, sm: 30 },
+            color: "primary.main",
+            opacity: 0.5,
+          }}
         />
       )}
     </Box>
-    <Typography fontWeight={700} color="text.secondary" variant="body1">
+    <Typography
+      fontWeight={700}
+      color="text.secondary"
+      variant="body1"
+      sx={{ fontSize: { xs: 13, sm: 14 } }}
+    >
       {message}
     </Typography>
     {sub && (
       <Typography
         variant="caption"
         color="text.disabled"
-        sx={{ display: "block", mt: 0.75 }}
+        sx={{ display: "block", mt: 0.75, fontSize: { xs: 11, sm: 12 } }}
       >
         {sub}
       </Typography>
@@ -426,13 +587,14 @@ const PaginationComponent = ({ pagination, onPageChange }) => {
   return (
     <Box
       sx={{
-        p: 2,
+        p: { xs: 1.5, sm: 2 },
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        gap: 1.5,
+        gap: 1,
         borderTop: "1px solid",
         borderColor: "divider",
+        flexWrap: "wrap",
       }}
     >
       <Button
@@ -447,14 +609,6 @@ const PaginationComponent = ({ pagination, onPageChange }) => {
       <Typography variant="body2" fontWeight={600} color="text.secondary">
         Page <strong>{pagination.page}</strong> of{" "}
         <strong>{pagination.pages}</strong>
-        <Typography
-          component="span"
-          variant="caption"
-          color="text.disabled"
-          sx={{ ml: 1 }}
-        >
-          ({pagination.total} total)
-        </Typography>
       </Typography>
       <Button
         size="small"
@@ -468,6 +622,185 @@ const PaginationComponent = ({ pagination, onPageChange }) => {
     </Box>
   );
 };
+
+// ─── Mobile Cards ─────────────────────────────────────────────────────────────
+const MobileChecklistCard = ({
+  row,
+  onView,
+  onAssign,
+  onDelete,
+  onClone,
+  isAdmin,
+}) => (
+  <Paper sx={{ p: 2, mb: 1.5, border: "1px solid", borderColor: "divider" }}>
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        mb: 1,
+      }}
+    >
+      <Box sx={{ flex: 1 }}>
+        <Typography fontWeight={700} fontSize={14}>
+          {row.name}
+        </Typography>
+        {row.description && (
+          <Typography
+            variant="caption"
+            color="text.disabled"
+            sx={{ display: "block", mt: 0.25 }}
+          >
+            {row.description}
+          </Typography>
+        )}
+      </Box>
+      <StatusBadge status={row.status} />
+    </Box>
+    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 1.5 }}>
+      <TypeBadge type={row.checklistType} />
+      {row.category && (
+        <Chip
+          label={row.category}
+          size="small"
+          variant="outlined"
+          sx={{ height: 22, fontSize: 11 }}
+        />
+      )}
+      <Chip
+        label={`${row.totalFields ?? row.fields?.length ?? 0} fields`}
+        size="small"
+        sx={{
+          height: 22,
+          fontSize: 11,
+          bgcolor: alpha(theme.palette.primary.main, 0.08),
+          color: "primary.main",
+        }}
+      />
+    </Box>
+    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<VisibilityIcon sx={{ fontSize: 13 }} />}
+        onClick={() => onView(row)}
+      >
+        View
+      </Button>
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<ContentCopyIcon sx={{ fontSize: 13 }} />}
+        onClick={() => onClone(row)}
+      >
+        Clone
+      </Button>
+      {isAdmin && (
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<AssignmentIcon sx={{ fontSize: 13 }} />}
+          onClick={() => onAssign(row)}
+        >
+          Assign
+        </Button>
+      )}
+      {isAdmin && (
+        <Button
+          size="small"
+          variant="outlined"
+          color="error"
+          startIcon={<DeleteIcon sx={{ fontSize: 13 }} />}
+          onClick={() => onDelete(row)}
+        >
+          Delete
+        </Button>
+      )}
+    </Box>
+  </Paper>
+);
+
+const MobileRequestCard = ({ row, onView, onDelete, isSuperAdmin }) => (
+  <Paper
+    sx={{
+      p: 2,
+      mb: 1.5,
+      border: "1px solid",
+      borderColor: "divider",
+      opacity: row.isDeleted ? 0.6 : 1,
+    }}
+  >
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        mb: 1,
+      }}
+    >
+      <Box sx={{ flex: 1 }}>
+        <Typography fontWeight={700} fontSize={14}>
+          {row.checklistName}
+        </Typography>
+        {row.message && (
+          <Typography
+            variant="caption"
+            color="text.disabled"
+            sx={{ display: "block", mt: 0.25 }}
+          >
+            {row.message}
+          </Typography>
+        )}
+      </Box>
+      <StatusBadge status={row.status} />
+    </Box>
+    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 1.5 }}>
+      <PriorityBadge priority={row.urgencyLevel} />
+      {row.category && (
+        <Chip
+          label={row.category}
+          size="small"
+          variant="outlined"
+          sx={{ height: 22, fontSize: 11 }}
+        />
+      )}
+    </Box>
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 1,
+      }}
+    >
+      <Typography variant="caption" color="text.secondary">
+        Submitted: {fmt(row.requestDate || row.createdAt)}
+      </Typography>
+      <Box sx={{ display: "flex", gap: 1 }}>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<VisibilityIcon sx={{ fontSize: 13 }} />}
+          onClick={() => onView(row)}
+        >
+          View
+        </Button>
+        {(isSuperAdmin || !row.isDeleted) && (
+          <Button
+            size="small"
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteIcon sx={{ fontSize: 13 }} />}
+            onClick={() => onDelete(row._id)}
+          >
+            Delete
+          </Button>
+        )}
+      </Box>
+    </Box>
+  </Paper>
+);
 
 // ─── ViewChecklistModal ───────────────────────────────────────────────────────
 const ViewChecklistModal = ({
@@ -491,7 +824,12 @@ const ViewChecklistModal = ({
             }}
           >
             <Box sx={{ flex: 1, pr: 2 }}>
-              <Typography variant="h6" fontWeight={800} color="white">
+              <Typography
+                variant="h6"
+                fontWeight={800}
+                color="white"
+                sx={{ fontSize: { xs: 16, sm: 20 } }}
+              >
                 {checklist.name}
               </Typography>
               <Typography
@@ -537,7 +875,7 @@ const ViewChecklistModal = ({
             </IconButton>
           </Box>
         </ModalHeader>
-        <Box sx={{ flex: 1, overflow: "auto", p: { xs: 2.5, sm: 3 } }}>
+        <Box sx={{ flex: 1, overflow: "auto", p: { xs: 2, sm: 3 } }}>
           <Stack spacing={3}>
             <Grid container spacing={1.5}>
               {[
@@ -705,7 +1043,7 @@ const CreateModal = ({ open, onClose }) => {
   const navigate = useNavigate();
   const OPTIONS = [
     {
-      icon: <DescriptionIcon sx={{ fontSize: 24 }} />,
+      icon: <DescriptionIcon />,
       label: "Custom Checklist",
       desc: "Build a fully custom checklist with drag-and-drop fields",
       path: "/admin/create-checklist/custom",
@@ -713,7 +1051,7 @@ const CreateModal = ({ open, onClose }) => {
       bg: "#e3f0f4",
     },
     {
-      icon: <PublicIcon sx={{ fontSize: 24 }} />,
+      icon: <PublicIcon />,
       label: "Standard Checklist",
       desc: "Submit a standard checklist for super admin approval",
       path: "/admin/create-checklist/global",
@@ -721,7 +1059,7 @@ const CreateModal = ({ open, onClose }) => {
       bg: "#e8f5e9",
     },
     {
-      icon: <FileCopyIcon sx={{ fontSize: 24 }} />,
+      icon: <FileCopyIcon />,
       label: "Import from Excel",
       desc: "Auto-generate checklist fields from an Excel spreadsheet",
       path: "/admin/import-checklist/excel",
@@ -741,12 +1079,21 @@ const CreateModal = ({ open, onClose }) => {
             }}
           >
             <Box>
-              <Typography variant="h6" fontWeight={800} color="white">
+              <Typography
+                variant="h6"
+                fontWeight={800}
+                color="white"
+                sx={{ fontSize: { xs: 16, sm: 20 } }}
+              >
                 Create New Checklist
               </Typography>
               <Typography
                 variant="body2"
-                sx={{ color: alpha("#fff", 0.65), mt: 0.5 }}
+                sx={{
+                  color: alpha("#fff", 0.65),
+                  mt: 0.5,
+                  fontSize: { xs: 12, sm: 14 },
+                }}
               >
                 Choose how to build your checklist
               </Typography>
@@ -765,7 +1112,7 @@ const CreateModal = ({ open, onClose }) => {
             </IconButton>
           </Box>
         </ModalHeader>
-        <Box sx={{ p: 2.5 }}>
+        <Box sx={{ p: { xs: 2, sm: 2.5 } }}>
           <Stack spacing={1.5}>
             {OPTIONS.map((opt) => (
               <Box
@@ -795,21 +1142,25 @@ const CreateModal = ({ open, onClose }) => {
                   sx={{
                     bgcolor: opt.bg,
                     color: opt.color,
-                    width: 48,
-                    height: 48,
+                    width: { xs: 40, sm: 48 },
+                    height: { xs: 40, sm: 48 },
                     borderRadius: 2,
                   }}
                 >
                   {opt.icon}
                 </Avatar>
                 <Box sx={{ flex: 1 }}>
-                  <Typography fontWeight={700} variant="body1">
+                  <Typography
+                    fontWeight={700}
+                    variant="body1"
+                    sx={{ fontSize: { xs: 13, sm: 16 } }}
+                  >
                     {opt.label}
                   </Typography>
                   <Typography
                     variant="caption"
                     color="text.secondary"
-                    sx={{ lineHeight: 1.5 }}
+                    sx={{ lineHeight: 1.5, fontSize: { xs: 11, sm: 12 } }}
                   >
                     {opt.desc}
                   </Typography>
@@ -865,7 +1216,7 @@ const DeleteConfirmDialog = ({
       </Stack>
     </DialogTitle>
     <DialogContent>
-      <DialogContentText sx={{ fontSize: 14 }}>
+      <DialogContentText sx={{ fontSize: { xs: 13, sm: 14 } }}>
         {message || "Are you sure you want to delete this item?"}
       </DialogContentText>
     </DialogContent>
@@ -903,12 +1254,14 @@ const ReviewRequestDialog = ({ open, onClose, request, onReview }) => {
   const [action, setAction] = useState("approved");
   const [rejectionReason, setRejectionReason] = useState("");
   const [reviewing, setReviewing] = useState(false);
+
   useEffect(() => {
     if (open) {
       setAction("approved");
       setRejectionReason("");
     }
   }, [open]);
+
   const handleSubmit = async () => {
     setReviewing(true);
     await onReview(
@@ -919,6 +1272,7 @@ const ReviewRequestDialog = ({ open, onClose, request, onReview }) => {
     setReviewing(false);
     onClose();
   };
+
   return (
     <Dialog
       open={open}
@@ -989,10 +1343,14 @@ export default function ChecklistPage() {
   const isSuperAdmin = userRole === "super_admin" || userRole === "superadmin";
   const isAdmin = userRole === "admin";
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // Contexts
-  const { getAllChecklists, getChecklistById, deleteChecklist } =
-    useChecklistBuilder();
+  const {
+    getAllChecklists,
+    getChecklistById,
+    deleteChecklist,
+    cloneChecklist,
+  } = useChecklistBuilder();
   const {
     getMyRequests,
     getAllRequests,
@@ -1001,10 +1359,7 @@ export default function ChecklistPage() {
     reviewRequest,
   } = useRequestChecklist();
   const { getAssignments } = useAssignment();
-  useTeam(); // keep provider in scope
-  useAsset(); // keep provider in scope
 
-  // ── Checklists state ────────────────────────────────────────────────────────
   const [checklists, setChecklists] = useState([]);
   const [listLoading, setListLoading] = useState(false);
   const [listPagination, setListPagination] = useState({});
@@ -1016,7 +1371,6 @@ export default function ChecklistPage() {
     limit: 10,
   });
 
-  // ── Requests state ──────────────────────────────────────────────────────────
   const [requests, setRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [requestsPagination, setRequestsPagination] = useState({});
@@ -1029,7 +1383,6 @@ export default function ChecklistPage() {
   });
   const [showDeleted, setShowDeleted] = useState(false);
 
-  // ── UI state ────────────────────────────────────────────────────────────────
   const [tab, setTab] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
@@ -1037,74 +1390,74 @@ export default function ChecklistPage() {
   const [viewRequest, setViewRequest] = useState(null);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [loadingView, setLoadingView] = useState(false);
-
-  // ── Assign modal ─────────────────────────────────────────────────────────────
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedChecklist, setSelectedChecklist] = useState(null);
-
-  // ── Delete state ────────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // ── Snackbar ────────────────────────────────────────────────────────────────
+  // Clone modal state
+  const [cloneModalOpen, setCloneModalOpen] = useState(false);
+  const [selectedCloneChecklist, setSelectedCloneChecklist] = useState(null);
+  const [cloneLoading, setCloneLoading] = useState(false);
+
   const [snack, setSnack] = useState({
     open: false,
     msg: "",
     severity: "success",
   });
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
   const showSnack = useCallback(
     (msg, severity = "success") => setSnack({ open: true, msg, severity }),
     [],
   );
 
-  // ── Fetch checklists ────────────────────────────────────────────────────────
+  // Fetch Checklists
   const fetchChecklists = useCallback(async () => {
     setListLoading(true);
     try {
-      const params = { page: listFilters.page, limit: listFilters.limit };
+      const params = { page: listFilters.page, limit: isSmallMobile ? 5 : 10 };
       if (listFilters.search) params.search = listFilters.search;
       if (listFilters.status) params.status = listFilters.status;
       if (listFilters.checklistType)
         params.checklistType = listFilters.checklistType;
       const res = await getAllChecklists(params);
       if (res.success) {
-        const raw = res.data;
-        const list =
-          raw?.checklists ||
-          raw?.data?.checklists ||
-          (Array.isArray(raw) ? raw : []);
+        const data = res.data;
+        const list = data?.checklists || (Array.isArray(data) ? data : []);
         setChecklists(list);
-        setListPagination(raw?.pagination || raw?.data?.pagination || {});
-      } else {
-        showSnack(res.error || "Failed to fetch checklists", "error");
-      }
+        setListPagination(data?.pagination || {});
+      } else showSnack(res.error || "Failed to fetch checklists", "error");
     } catch (err) {
       showSnack(err.message || "Failed to fetch checklists", "error");
     } finally {
       setListLoading(false);
     }
-  }, [getAllChecklists, listFilters, showSnack]);
+  }, [getAllChecklists, listFilters, showSnack, isSmallMobile]);
 
-  // ── Fetch requests ──────────────────────────────────────────────────────────
+  // Fetch Requests
   const fetchRequests = useCallback(async () => {
     setRequestsLoading(true);
     try {
-      const params = { ...requestsFilters };
+      const params = {
+        page: requestsFilters.page,
+        limit: isSmallMobile ? 5 : 10,
+      };
+      if (requestsFilters.search) params.search = requestsFilters.search;
+      if (requestsFilters.status) params.status = requestsFilters.status;
+      if (requestsFilters.urgencyLevel)
+        params.urgencyLevel = requestsFilters.urgencyLevel;
       if (isSuperAdmin && showDeleted) params.includeDeleted = true;
       const result = isSuperAdmin
         ? await getAllRequests(params)
         : await getMyRequests(params);
       if (result?.success) {
-        const list =
-          result.requests || result.data?.requests || result.data || [];
+        const data = result.data;
+        const list = data?.requests || (Array.isArray(data) ? data : []);
         setRequests(Array.isArray(list) ? list : []);
-        setRequestsPagination(
-          result.pagination || result.data?.pagination || {},
-        );
-      } else {
-        showSnack(result?.error || "Failed to fetch requests", "error");
-      }
+        setRequestsPagination(data?.pagination || {});
+      } else showSnack(result?.error || "Failed to fetch requests", "error");
     } catch (err) {
       showSnack(err.message || "Failed to fetch requests", "error");
     } finally {
@@ -1117,37 +1470,27 @@ export default function ChecklistPage() {
     isSuperAdmin,
     showDeleted,
     showSnack,
+    isSmallMobile,
   ]);
 
-  // ── Open assign ─────────────────────────────────────────────────────────────
+  // Handlers
   const openAssign = useCallback((row) => {
     setSelectedChecklist(row);
     setAssignModalOpen(true);
   }, []);
+  const handleAssignSuccess = useCallback(() => {
+    showSnack("Assignments created successfully!");
+    if (typeof getAssignments === "function")
+      getAssignments({ page: 1, limit: 5 }).catch(() => {});
+  }, [getAssignments, showSnack]);
 
-  // ── Handle assign success ────────────────────────────────────────────────────
-  const handleAssignSuccess = useCallback(
-    (data) => {
-      showSnack("Assignments created successfully!");
-      if (typeof getAssignments === "function") {
-        getAssignments({ page: 1, limit: 5 }).catch(() => {});
-      }
-    },
-    [getAssignments, showSnack],
-  );
-
-  // ── View handlers ───────────────────────────────────────────────────────────
   const openViewChecklist = useCallback(
     async (row) => {
       setLoadingView(true);
       const res = await getChecklistById(row._id);
       setLoadingView(false);
-      if (res.success) {
-        const raw = res.data;
-        setViewChecklist(raw?.checklist || raw?.data || raw);
-      } else {
-        showSnack("Failed to load checklist details", "error");
-      }
+      if (res.success) setViewChecklist(res.data);
+      else showSnack("Failed to load checklist details", "error");
     },
     [getChecklistById, showSnack],
   );
@@ -1157,16 +1500,12 @@ export default function ChecklistPage() {
       setLoadingView(true);
       const res = await getRequestById(row._id);
       setLoadingView(false);
-      if (res.success) {
-        setViewRequest(res.data?.request || res.data);
-      } else {
-        showSnack("Failed to load request details", "error");
-      }
+      if (res.success) setViewRequest(res.data);
+      else showSnack("Failed to load request details", "error");
     },
     [getRequestById, showSnack],
   );
 
-  // ── Delete handlers ─────────────────────────────────────────────────────────
   const handleDeleteClick = useCallback((c) => {
     setDeleteTarget(c);
     setDeleteDialogOpen(true);
@@ -1184,7 +1523,6 @@ export default function ChecklistPage() {
     setDeleteTarget(null);
   }, [deleteTarget, deleteChecklist, fetchChecklists, showSnack]);
 
-  // ── Request actions ─────────────────────────────────────────────────────────
   const handleSoftDeleteRequest = useCallback(
     async (id) => {
       const res = await softDeleteRequest(id);
@@ -1204,15 +1542,42 @@ export default function ChecklistPage() {
         showSnack(`Request ${status.replace(/_/g, " ")} successfully`);
         fetchRequests();
         setViewRequest(null);
-      } else {
-        showSnack(res.error || "Failed to review request", "error");
-      }
+      } else showSnack(res.error || "Failed to review request", "error");
       return res;
     },
     [reviewRequest, fetchRequests, showSnack],
   );
 
-  // ── Effects ─────────────────────────────────────────────────────────────────
+  // Clone handlers
+  const openCloneModal = useCallback((row) => {
+    setSelectedCloneChecklist(row);
+    setCloneModalOpen(true);
+  }, []);
+  const handleCloneConfirm = useCallback(
+    async (newName) => {
+      if (!selectedCloneChecklist) return;
+      setCloneLoading(true);
+      try {
+        const res = await cloneChecklist(selectedCloneChecklist._id, {
+          newName,
+        });
+        if (res.success) {
+          showSnack(`"${newName}" created successfully!`);
+          setCloneModalOpen(false);
+          setSelectedCloneChecklist(null);
+          fetchChecklists();
+        } else {
+          showSnack(res.error || "Clone failed. Please try again.", "error");
+        }
+      } catch (err) {
+        showSnack(err.message || "Clone failed.", "error");
+      } finally {
+        setCloneLoading(false);
+      }
+    },
+    [selectedCloneChecklist, cloneChecklist, fetchChecklists, showSnack],
+  );
+
   useEffect(() => {
     fetchChecklists();
   }, [fetchChecklists]);
@@ -1220,7 +1585,6 @@ export default function ChecklistPage() {
     fetchRequests();
   }, [fetchRequests]);
 
-  // ── Derived stats ───────────────────────────────────────────────────────────
   const stats = {
     total: listPagination.total ?? checklists.length,
     active: checklists.filter(
@@ -1246,7 +1610,124 @@ export default function ChecklistPage() {
   const updateReqFilter = (k, v) =>
     setRequestsFilters((p) => ({ ...p, [k]: v, page: 1 }));
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
+  const mobileFilters = (
+    <Box sx={{ p: 2, width: 280 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
+        <Typography fontWeight={700}>Filters</Typography>
+        <IconButton size="small" onClick={() => setMobileDrawerOpen(false)}>
+          <CloseIcon />
+        </IconButton>
+      </Box>
+      <Stack spacing={2}>
+        {tab === 0 ? (
+          <>
+            <TextField
+              size="small"
+              placeholder="Search checklists…"
+              value={listFilters.search}
+              onChange={(e) => updateListFilter("search", e.target.value)}
+              fullWidth
+            />
+            <FormControl size="small" fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={listFilters.status}
+                onChange={(e) => updateListFilter("status", e.target.value)}
+                label="Status"
+              >
+                <MenuItem value="">All Status</MenuItem>
+                <MenuItem value="published">Published</MenuItem>
+                <MenuItem value="draft">Draft</MenuItem>
+                <MenuItem value="archived">Archived</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" fullWidth>
+              <InputLabel>Type</InputLabel>
+              <Select
+                value={listFilters.checklistType}
+                onChange={(e) =>
+                  updateListFilter("checklistType", e.target.value)
+                }
+                label="Type"
+              >
+                <MenuItem value="">All Types</MenuItem>
+                <MenuItem value="custom">Custom</MenuItem>
+                <MenuItem value="global">Global</MenuItem>
+                <MenuItem value="import">Imported</MenuItem>
+              </Select>
+            </FormControl>
+          </>
+        ) : (
+          <>
+            <TextField
+              size="small"
+              placeholder="Search requests…"
+              value={requestsFilters.search}
+              onChange={(e) => updateReqFilter("search", e.target.value)}
+              fullWidth
+            />
+            <FormControl size="small" fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={requestsFilters.status}
+                onChange={(e) => updateReqFilter("status", e.target.value)}
+                label="Status"
+              >
+                <MenuItem value="">All Status</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="approved">Approved</MenuItem>
+                <MenuItem value="rejected">Rejected</MenuItem>
+                <MenuItem value="under_review">Under Review</MenuItem>
+                <MenuItem value="in_progress">In Progress</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" fullWidth>
+              <InputLabel>Urgency</InputLabel>
+              <Select
+                value={requestsFilters.urgencyLevel}
+                onChange={(e) =>
+                  updateReqFilter("urgencyLevel", e.target.value)
+                }
+                label="Urgency"
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="low">Low</MenuItem>
+                <MenuItem value="medium">Medium</MenuItem>
+                <MenuItem value="high">High</MenuItem>
+                <MenuItem value="critical">Critical</MenuItem>
+              </Select>
+            </FormControl>
+          </>
+        )}
+        <Button
+          variant="outlined"
+          onClick={() => {
+            if (tab === 0) {
+              updateListFilter("search", "");
+              updateListFilter("status", "");
+              updateListFilter("checklistType", "");
+            } else {
+              updateReqFilter("search", "");
+              updateReqFilter("status", "");
+              updateReqFilter("urgencyLevel", "");
+            }
+            setMobileDrawerOpen(false);
+          }}
+        >
+          Clear Filters
+        </Button>
+      </Stack>
+    </Box>
+  );
+
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ minHeight: "100vh" }}>
@@ -1283,34 +1764,38 @@ export default function ChecklistPage() {
               </Typography>
             </Box>
             <Stack direction="row" spacing={1} flexWrap="wrap">
-              <Button
-                variant="outlined"
-                startIcon={<FileCopyIcon sx={{ fontSize: 13 }} />}
-                onClick={() => navigate("/admin/checklists/clone")}
-                sx={{ fontSize: 13 }}
-              >
-                Clone Checklist
-              </Button>
+              {(isSuperAdmin || isAdmin) && (
+                <Button
+                  variant="outlined"
+                  startIcon={<ContentCopyIcon sx={{ fontSize: 13 }} />}
+                  onClick={() => navigate("/admin/checklists/clone")}
+                  sx={{ fontSize: { xs: 11, sm: 13 } }}
+                >
+                  Clone
+                </Button>
+              )}
               <Button
                 variant="outlined"
                 startIcon={<RequestPageIcon />}
                 onClick={() => setRequestOpen(true)}
                 sx={{
-                  fontSize: 13,
+                  fontSize: { xs: 11, sm: 13 },
                   borderColor: "primary.main",
                   color: "primary.main",
                 }}
               >
-                Request Checklist
+                Request
               </Button>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setCreateOpen(true)}
-                sx={{ fontSize: 13 }}
-              >
-                Create Checklist
-              </Button>
+              {(isSuperAdmin || isAdmin) && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setCreateOpen(true)}
+                  sx={{ fontSize: { xs: 11, sm: 13 } }}
+                >
+                  Create
+                </Button>
+              )}
             </Stack>
           </Box>
 
@@ -1353,7 +1838,6 @@ export default function ChecklistPage() {
               ))}
             </Grid>
           )}
-
           {tab === 1 && (
             <Grid container spacing={2} sx={{ mb: 3 }}>
               {[
@@ -1452,7 +1936,7 @@ export default function ChecklistPage() {
             </Tabs>
           </Paper>
 
-          {/* Table container */}
+          {/* Table Container */}
           <Paper
             sx={{
               overflow: "hidden",
@@ -1460,7 +1944,7 @@ export default function ChecklistPage() {
               borderColor: "divider",
             }}
           >
-            {/* ── Checklists Tab ────────────────────────────────────────────── */}
+            {/* Tab 0: Checklists */}
             {tab === 0 && (
               <>
                 <Box
@@ -1480,7 +1964,7 @@ export default function ChecklistPage() {
                     placeholder="Search checklists…"
                     value={listFilters.search}
                     onChange={(e) => updateListFilter("search", e.target.value)}
-                    sx={{ minWidth: 200 }}
+                    sx={{ minWidth: { xs: "100%", sm: 200 } }}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -1492,37 +1976,49 @@ export default function ChecklistPage() {
                       ),
                     }}
                   />
-                  <FormControl size="small" sx={{ minWidth: 130 }}>
-                    <InputLabel>Status</InputLabel>
-                    <Select
-                      value={listFilters.status}
-                      onChange={(e) =>
-                        updateListFilter("status", e.target.value)
-                      }
-                      label="Status"
+                  {!isMobile && (
+                    <>
+                      <FormControl size="small" sx={{ minWidth: 130 }}>
+                        <InputLabel>Status</InputLabel>
+                        <Select
+                          value={listFilters.status}
+                          onChange={(e) =>
+                            updateListFilter("status", e.target.value)
+                          }
+                          label="Status"
+                        >
+                          <MenuItem value="">All Status</MenuItem>
+                          <MenuItem value="published">Published</MenuItem>
+                          <MenuItem value="draft">Draft</MenuItem>
+                          <MenuItem value="archived">Archived</MenuItem>
+                          <MenuItem value="pending">Pending</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <FormControl size="small" sx={{ minWidth: 130 }}>
+                        <InputLabel>Type</InputLabel>
+                        <Select
+                          value={listFilters.checklistType}
+                          onChange={(e) =>
+                            updateListFilter("checklistType", e.target.value)
+                          }
+                          label="Type"
+                        >
+                          <MenuItem value="">All Types</MenuItem>
+                          <MenuItem value="custom">Custom</MenuItem>
+                          <MenuItem value="global">Global</MenuItem>
+                          <MenuItem value="import">Imported</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </>
+                  )}
+                  {isMobile && (
+                    <IconButton
+                      size="small"
+                      onClick={() => setMobileDrawerOpen(true)}
                     >
-                      <MenuItem value="">All Status</MenuItem>
-                      <MenuItem value="published">Published</MenuItem>
-                      <MenuItem value="draft">Draft</MenuItem>
-                      <MenuItem value="archived">Archived</MenuItem>
-                      <MenuItem value="pending">Pending</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <FormControl size="small" sx={{ minWidth: 130 }}>
-                    <InputLabel>Type</InputLabel>
-                    <Select
-                      value={listFilters.checklistType}
-                      onChange={(e) =>
-                        updateListFilter("checklistType", e.target.value)
-                      }
-                      label="Type"
-                    >
-                      <MenuItem value="">All Types</MenuItem>
-                      <MenuItem value="custom">Custom</MenuItem>
-                      <MenuItem value="global">Global</MenuItem>
-                      <MenuItem value="import">Imported</MenuItem>
-                    </Select>
-                  </FormControl>
+                      <MenuIcon />
+                    </IconButton>
+                  )}
                   <Tooltip title="Refresh">
                     <IconButton
                       size="small"
@@ -1535,7 +2031,7 @@ export default function ChecklistPage() {
                   <Typography
                     variant="caption"
                     color="text.disabled"
-                    sx={{ ml: "auto" }}
+                    sx={{ ml: "auto", fontSize: { xs: 10, sm: 11 } }}
                   >
                     {listPagination.total ?? checklists.length} result
                     {(listPagination.total ?? checklists.length) !== 1
@@ -1544,183 +2040,222 @@ export default function ChecklistPage() {
                   </Typography>
                 </Box>
 
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        {[
-                          "Name",
-                          "Type",
-                          "Category",
-                          "Fields",
-                          "Version",
-                          "Status",
-                          "Created",
-                          "Actions",
-                        ].map((h) => (
-                          <TH key={h}>{h}</TH>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {listLoading &&
-                        [...Array(5)].map((_, i) => (
-                          <TableRow key={i}>
-                            {[...Array(8)].map((__, j) => (
-                              <TD key={j}>
-                                <Skeleton height={20} />
-                              </TD>
-                            ))}
-                          </TableRow>
-                        ))}
-                      {!listLoading &&
-                        checklists.map((row) => (
-                          <TableRow
-                            key={row._id}
-                            hover
-                            sx={{ "&:hover": { bgcolor: "#f7f9fa" } }}
-                          >
-                            <TD>
-                              <Typography fontWeight={700} variant="body2">
-                                {row.name}
-                              </Typography>
-                              {row.description && (
-                                <Typography
-                                  variant="caption"
-                                  color="text.disabled"
-                                  noWrap
-                                  sx={{ maxWidth: 200, display: "block" }}
-                                >
-                                  {row.description}
-                                </Typography>
-                              )}
-                            </TD>
-                            <TD>
-                              <TypeBadge type={row.checklistType} />
-                            </TD>
-                            <TD>
-                              {row.category ? (
-                                <Chip
-                                  label={row.category}
-                                  size="small"
-                                  variant="outlined"
-                                  sx={{ height: 22, fontSize: 11 }}
-                                />
-                              ) : (
-                                <Typography
-                                  variant="caption"
-                                  color="text.disabled"
-                                >
-                                  —
-                                </Typography>
-                              )}
-                            </TD>
-                            <TD>
-                              <Chip
-                                label={
-                                  row.totalFields ?? row.fields?.length ?? 0
-                                }
-                                size="small"
-                                sx={{
-                                  bgcolor: alpha(
-                                    theme.palette.primary.main,
-                                    0.08,
-                                  ),
-                                  color: "primary.main",
-                                  fontWeight: 700,
-                                }}
-                              />
-                            </TD>
-                            <TD>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                              >
-                                v{row.version || 1}
-                              </Typography>
-                            </TD>
-                            <TD>
-                              <StatusBadge status={row.status} />
-                            </TD>
-                            <TD>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {fmt(row.createdAt)}
-                              </Typography>
-                            </TD>
-                            <TD>
-                              <Stack
-                                direction="row"
-                                spacing={0.75}
-                                flexWrap="wrap"
-                              >
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  startIcon={
-                                    <VisibilityIcon sx={{ fontSize: 13 }} />
-                                  }
-                                  onClick={() => openViewChecklist(row)}
-                                  disabled={loadingView}
-                                  sx={{ fontSize: 12 }}
-                                >
-                                  View
-                                </Button>
-                                {(isSuperAdmin || isAdmin) && (
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    startIcon={
-                                      <AssignmentIcon sx={{ fontSize: 13 }} />
-                                    }
-                                    onClick={() => openAssign(row)}
-                                    sx={{ fontSize: 12 }}
-                                  >
-                                    Assign
-                                  </Button>
-                                )}
-                                {(isSuperAdmin || isAdmin) && (
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    color="error"
-                                    startIcon={
-                                      <DeleteIcon sx={{ fontSize: 13 }} />
-                                    }
-                                    onClick={() => handleDeleteClick(row)}
-                                    sx={{ fontSize: 12 }}
-                                  >
-                                    Delete
-                                  </Button>
-                                )}
-                              </Stack>
-                            </TD>
-                          </TableRow>
-                        ))}
-                      {!listLoading && checklists.length === 0 && (
+                {isMobile ? (
+                  <Box sx={{ p: 2 }}>
+                    {listLoading ? (
+                      [...Array(3)].map((_, i) => (
+                        <Skeleton
+                          key={i}
+                          variant="rounded"
+                          height={120}
+                          sx={{ mb: 1.5 }}
+                        />
+                      ))
+                    ) : checklists.length === 0 ? (
+                      <EmptyState
+                        message="No checklists found"
+                        sub="Create your first checklist to get started"
+                      />
+                    ) : (
+                      checklists.map((row) => (
+                        <MobileChecklistCard
+                          key={row._id}
+                          row={row}
+                          onView={openViewChecklist}
+                          onAssign={openAssign}
+                          onDelete={handleDeleteClick}
+                          onClone={openCloneModal}
+                          isAdmin={isAdmin || isSuperAdmin}
+                        />
+                      ))
+                    )}
+                  </Box>
+                ) : (
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
                         <TableRow>
-                          <TD colSpan={8} align="center" sx={{ py: 6 }}>
-                            <EmptyState
-                              message="No checklists found"
-                              sub="Create your first checklist to get started"
-                              icon={
-                                <ArticleIcon
+                          {[
+                            "Name",
+                            "Type",
+                            "Category",
+                            "Fields",
+                            "Version",
+                            "Status",
+                            "Created",
+                            "Actions",
+                          ].map((h) => (
+                            <TH key={h}>{h}</TH>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {listLoading &&
+                          [...Array(5)].map((_, i) => (
+                            <TableRow key={i}>
+                              {[...Array(8)].map((__, j) => (
+                                <TD key={j}>
+                                  <Skeleton height={20} />
+                                </TD>
+                              ))}
+                            </TableRow>
+                          ))}
+                        {!listLoading &&
+                          checklists.map((row) => (
+                            <TableRow
+                              key={row._id}
+                              hover
+                              sx={{ "&:hover": { bgcolor: "#f7f9fa" } }}
+                            >
+                              <TD>
+                                <Typography fontWeight={700} variant="body2">
+                                  {row.name}
+                                </Typography>
+                                {row.description && (
+                                  <Typography
+                                    variant="caption"
+                                    color="text.disabled"
+                                    noWrap
+                                    sx={{ maxWidth: 200, display: "block" }}
+                                  >
+                                    {row.description}
+                                  </Typography>
+                                )}
+                              </TD>
+                              <TD>
+                                <TypeBadge type={row.checklistType} />
+                              </TD>
+                              <TD>
+                                {row.category ? (
+                                  <Chip
+                                    label={row.category}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ height: 22, fontSize: 11 }}
+                                  />
+                                ) : (
+                                  <Typography
+                                    variant="caption"
+                                    color="text.disabled"
+                                  >
+                                    —
+                                  </Typography>
+                                )}
+                              </TD>
+                              <TD>
+                                <Chip
+                                  label={
+                                    row.totalFields ?? row.fields?.length ?? 0
+                                  }
+                                  size="small"
                                   sx={{
-                                    fontSize: 32,
+                                    bgcolor: alpha(
+                                      theme.palette.primary.main,
+                                      0.08,
+                                    ),
                                     color: "primary.main",
-                                    opacity: 0.4,
+                                    fontWeight: 700,
                                   }}
                                 />
-                              }
-                            />
-                          </TD>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                              </TD>
+                              <TD>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                >
+                                  v{row.version || 1}
+                                </Typography>
+                              </TD>
+                              <TD>
+                                <StatusBadge status={row.status} />
+                              </TD>
+                              <TD>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  {fmt(row.createdAt)}
+                                </Typography>
+                              </TD>
+                              <TD>
+                                <Stack direction="row" spacing={0.75}>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={
+                                      <VisibilityIcon sx={{ fontSize: 13 }} />
+                                    }
+                                    onClick={() => openViewChecklist(row)}
+                                    disabled={loadingView}
+                                    sx={{ fontSize: 12 }}
+                                  >
+                                    View
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={
+                                      <ContentCopyIcon sx={{ fontSize: 13 }} />
+                                    }
+                                    onClick={() => openCloneModal(row)}
+                                    sx={{ fontSize: 12 }}
+                                  >
+                                    Clone
+                                  </Button>
+                                  {(isSuperAdmin || isAdmin) && (
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={
+                                        <AssignmentIcon sx={{ fontSize: 13 }} />
+                                      }
+                                      onClick={() => openAssign(row)}
+                                      sx={{ fontSize: 12 }}
+                                    >
+                                      Assign
+                                    </Button>
+                                  )}
+                                  {(isSuperAdmin || isAdmin) && (
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      color="error"
+                                      startIcon={
+                                        <DeleteIcon sx={{ fontSize: 13 }} />
+                                      }
+                                      onClick={() => handleDeleteClick(row)}
+                                      sx={{ fontSize: 12 }}
+                                    >
+                                      Delete
+                                    </Button>
+                                  )}
+                                </Stack>
+                              </TD>
+                            </TableRow>
+                          ))}
+                        {!listLoading && checklists.length === 0 && (
+                          <TableRow>
+                            <TD colSpan={8} align="center" sx={{ py: 6 }}>
+                              <EmptyState
+                                message="No checklists found"
+                                sub="Create your first checklist to get started"
+                                icon={
+                                  <ArticleIcon
+                                    sx={{
+                                      fontSize: 32,
+                                      color: "primary.main",
+                                      opacity: 0.4,
+                                    }}
+                                  />
+                                }
+                              />
+                            </TD>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
                 <PaginationComponent
                   pagination={listPagination}
                   onPageChange={(p) =>
@@ -1730,7 +2265,7 @@ export default function ChecklistPage() {
               </>
             )}
 
-            {/* ── Requests Tab ─────────────────────────────────────────────── */}
+            {/* Tab 1: Requests */}
             {tab === 1 && (
               <>
                 <Box
@@ -1750,7 +2285,7 @@ export default function ChecklistPage() {
                     placeholder="Search requests…"
                     value={requestsFilters.search}
                     onChange={(e) => updateReqFilter("search", e.target.value)}
-                    sx={{ minWidth: 200 }}
+                    sx={{ minWidth: { xs: "100%", sm: 200 } }}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -1762,39 +2297,43 @@ export default function ChecklistPage() {
                       ),
                     }}
                   />
-                  <FormControl size="small" sx={{ minWidth: 130 }}>
-                    <InputLabel>Status</InputLabel>
-                    <Select
-                      value={requestsFilters.status}
-                      onChange={(e) =>
-                        updateReqFilter("status", e.target.value)
-                      }
-                      label="Status"
-                    >
-                      <MenuItem value="">All Status</MenuItem>
-                      <MenuItem value="pending">Pending</MenuItem>
-                      <MenuItem value="approved">Approved</MenuItem>
-                      <MenuItem value="rejected">Rejected</MenuItem>
-                      <MenuItem value="under_review">Under Review</MenuItem>
-                      <MenuItem value="in_progress">In Progress</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <FormControl size="small" sx={{ minWidth: 120 }}>
-                    <InputLabel>Urgency</InputLabel>
-                    <Select
-                      value={requestsFilters.urgencyLevel}
-                      onChange={(e) =>
-                        updateReqFilter("urgencyLevel", e.target.value)
-                      }
-                      label="Urgency"
-                    >
-                      <MenuItem value="">All</MenuItem>
-                      <MenuItem value="low">Low</MenuItem>
-                      <MenuItem value="medium">Medium</MenuItem>
-                      <MenuItem value="high">High</MenuItem>
-                      <MenuItem value="critical">Critical</MenuItem>
-                    </Select>
-                  </FormControl>
+                  {!isMobile && (
+                    <>
+                      <FormControl size="small" sx={{ minWidth: 130 }}>
+                        <InputLabel>Status</InputLabel>
+                        <Select
+                          value={requestsFilters.status}
+                          onChange={(e) =>
+                            updateReqFilter("status", e.target.value)
+                          }
+                          label="Status"
+                        >
+                          <MenuItem value="">All Status</MenuItem>
+                          <MenuItem value="pending">Pending</MenuItem>
+                          <MenuItem value="approved">Approved</MenuItem>
+                          <MenuItem value="rejected">Rejected</MenuItem>
+                          <MenuItem value="under_review">Under Review</MenuItem>
+                          <MenuItem value="in_progress">In Progress</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <FormControl size="small" sx={{ minWidth: 120 }}>
+                        <InputLabel>Urgency</InputLabel>
+                        <Select
+                          value={requestsFilters.urgencyLevel}
+                          onChange={(e) =>
+                            updateReqFilter("urgencyLevel", e.target.value)
+                          }
+                          label="Urgency"
+                        >
+                          <MenuItem value="">All</MenuItem>
+                          <MenuItem value="low">Low</MenuItem>
+                          <MenuItem value="medium">Medium</MenuItem>
+                          <MenuItem value="high">High</MenuItem>
+                          <MenuItem value="critical">Critical</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </>
+                  )}
                   {isSuperAdmin && (
                     <FormControlLabel
                       control={
@@ -1814,6 +2353,14 @@ export default function ChecklistPage() {
                       }
                     />
                   )}
+                  {isMobile && (
+                    <IconButton
+                      size="small"
+                      onClick={() => setMobileDrawerOpen(true)}
+                    >
+                      <MenuIcon />
+                    </IconButton>
+                  )}
                   <Tooltip title="Refresh">
                     <IconButton
                       size="small"
@@ -1826,7 +2373,7 @@ export default function ChecklistPage() {
                   <Typography
                     variant="caption"
                     color="text.disabled"
-                    sx={{ ml: "auto" }}
+                    sx={{ ml: "auto", fontSize: { xs: 10, sm: 11 } }}
                   >
                     {requestsPagination.total ?? requests.length} result
                     {(requestsPagination.total ?? requests.length) !== 1
@@ -1835,177 +2382,210 @@ export default function ChecklistPage() {
                   </Typography>
                 </Box>
 
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        {[
-                          "Checklist Name",
-                          "Category",
-                          "Urgency",
-                          "Status",
-                          "Submitted",
-                          ...(isSuperAdmin ? ["Requested By"] : []),
-                          "Actions",
-                        ].map((h) => (
-                          <TH key={h}>{h}</TH>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {requestsLoading &&
-                        [...Array(5)].map((_, i) => (
-                          <TableRow key={i}>
-                            {[...Array(6)].map((__, j) => (
-                              <TD key={j}>
-                                <Skeleton height={20} />
-                              </TD>
-                            ))}
-                          </TableRow>
-                        ))}
-                      {!requestsLoading &&
-                        requests.map((row) => (
-                          <TableRow
-                            key={row._id}
-                            hover
-                            sx={{
-                              "&:hover": { bgcolor: "#f7f9fa" },
-                              opacity: row.isDeleted ? 0.6 : 1,
-                            }}
-                          >
-                            <TD>
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 1,
-                                }}
-                              >
-                                {row.isDeleted && (
-                                  <Chip
-                                    label="Deleted"
-                                    size="small"
-                                    color="error"
-                                    sx={{ height: 18, fontSize: 10 }}
-                                  />
-                                )}
-                                <Box>
-                                  <Typography fontWeight={700} variant="body2">
-                                    {row.checklistName}
-                                  </Typography>
-                                  {row.message && (
-                                    <Typography
-                                      variant="caption"
-                                      color="text.disabled"
-                                      noWrap
-                                      sx={{ maxWidth: 180, display: "block" }}
-                                    >
-                                      {row.message}
-                                    </Typography>
-                                  )}
-                                </Box>
-                              </Box>
-                            </TD>
-                            <TD>
-                              {row.category ? (
-                                <Chip
-                                  label={row.category}
-                                  size="small"
-                                  variant="outlined"
-                                  sx={{ height: 22, fontSize: 11 }}
-                                />
-                              ) : (
-                                <Typography
-                                  variant="caption"
-                                  color="text.disabled"
+                {isMobile ? (
+                  <Box sx={{ p: 2 }}>
+                    {requestsLoading ? (
+                      [...Array(3)].map((_, i) => (
+                        <Skeleton
+                          key={i}
+                          variant="rounded"
+                          height={140}
+                          sx={{ mb: 1.5 }}
+                        />
+                      ))
+                    ) : requests.length === 0 ? (
+                      <EmptyState
+                        message="No requests found"
+                        sub='Click "Request" to submit your first request'
+                      />
+                    ) : (
+                      requests.map((row) => (
+                        <MobileRequestCard
+                          key={row._id}
+                          row={row}
+                          onView={openViewRequest}
+                          onDelete={handleSoftDeleteRequest}
+                          isSuperAdmin={isSuperAdmin}
+                        />
+                      ))
+                    )}
+                  </Box>
+                ) : (
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          {[
+                            "Checklist Name",
+                            "Category",
+                            "Urgency",
+                            "Status",
+                            "Submitted",
+                            ...(isSuperAdmin ? ["Requested By"] : []),
+                            "Actions",
+                          ].map((h) => (
+                            <TH key={h}>{h}</TH>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {requestsLoading &&
+                          [...Array(5)].map((_, i) => (
+                            <TableRow key={i}>
+                              {[...Array(7)].map((__, j) => (
+                                <TD key={j}>
+                                  <Skeleton height={20} />
+                                </TD>
+                              ))}
+                            </TableRow>
+                          ))}
+                        {!requestsLoading &&
+                          requests.map((row) => (
+                            <TableRow
+                              key={row._id}
+                              hover
+                              sx={{
+                                "&:hover": { bgcolor: "#f7f9fa" },
+                                opacity: row.isDeleted ? 0.6 : 1,
+                              }}
+                            >
+                              <TD>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
+                                  }}
                                 >
-                                  —
-                                </Typography>
-                              )}
-                            </TD>
-                            <TD>
-                              <PriorityBadge priority={row.urgencyLevel} />
-                            </TD>
-                            <TD>
-                              <StatusBadge status={row.status} />
-                            </TD>
-                            <TD>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {fmt(row.requestDate || row.createdAt)}
-                              </Typography>
-                            </TD>
-                            {isSuperAdmin && (
+                                  {row.isDeleted && (
+                                    <Chip
+                                      label="Deleted"
+                                      size="small"
+                                      color="error"
+                                      sx={{ height: 18, fontSize: 10 }}
+                                    />
+                                  )}
+                                  <Box>
+                                    <Typography
+                                      fontWeight={700}
+                                      variant="body2"
+                                    >
+                                      {row.checklistName}
+                                    </Typography>
+                                    {row.message && (
+                                      <Typography
+                                        variant="caption"
+                                        color="text.disabled"
+                                        noWrap
+                                        sx={{ maxWidth: 180, display: "block" }}
+                                      >
+                                        {row.message}
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                </Box>
+                              </TD>
+                              <TD>
+                                {row.category ? (
+                                  <Chip
+                                    label={row.category}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ height: 22, fontSize: 11 }}
+                                  />
+                                ) : (
+                                  <Typography
+                                    variant="caption"
+                                    color="text.disabled"
+                                  >
+                                    —
+                                  </Typography>
+                                )}
+                              </TD>
+                              <TD>
+                                <PriorityBadge priority={row.urgencyLevel} />
+                              </TD>
+                              <TD>
+                                <StatusBadge status={row.status} />
+                              </TD>
                               <TD>
                                 <Typography
                                   variant="caption"
                                   color="text.secondary"
                                 >
-                                  {row.requestedByName ||
-                                    row.requestedBy?.email ||
-                                    "—"}
+                                  {fmt(row.requestDate || row.createdAt)}
                                 </Typography>
                               </TD>
-                            )}
-                            <TD>
-                              <Stack direction="row" spacing={0.75}>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  startIcon={
-                                    <VisibilityIcon sx={{ fontSize: 13 }} />
-                                  }
-                                  onClick={() => openViewRequest(row)}
-                                  disabled={loadingView}
-                                  sx={{ fontSize: 12 }}
-                                >
-                                  View
-                                </Button>
-                                {(isSuperAdmin || isAdmin) &&
-                                  !row.isDeleted && (
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      color="error"
-                                      startIcon={
-                                        <DeleteIcon sx={{ fontSize: 13 }} />
-                                      }
-                                      onClick={() =>
-                                        handleSoftDeleteRequest(row._id)
-                                      }
-                                      sx={{ fontSize: 12 }}
-                                    >
-                                      Delete
-                                    </Button>
-                                  )}
-                              </Stack>
+                              {isSuperAdmin && (
+                                <TD>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    {row.requestedByName ||
+                                      row.requestedBy?.email ||
+                                      "—"}
+                                  </Typography>
+                                </TD>
+                              )}
+                              <TD>
+                                <Stack direction="row" spacing={0.75}>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={
+                                      <VisibilityIcon sx={{ fontSize: 13 }} />
+                                    }
+                                    onClick={() => openViewRequest(row)}
+                                    disabled={loadingView}
+                                    sx={{ fontSize: 12 }}
+                                  >
+                                    View
+                                  </Button>
+                                  {(isSuperAdmin || isAdmin) &&
+                                    !row.isDeleted && (
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        color="error"
+                                        startIcon={
+                                          <DeleteIcon sx={{ fontSize: 13 }} />
+                                        }
+                                        onClick={() =>
+                                          handleSoftDeleteRequest(row._id)
+                                        }
+                                        sx={{ fontSize: 12 }}
+                                      >
+                                        Delete
+                                      </Button>
+                                    )}
+                                </Stack>
+                              </TD>
+                            </TableRow>
+                          ))}
+                        {!requestsLoading && requests.length === 0 && (
+                          <TableRow>
+                            <TD colSpan={7} align="center" sx={{ py: 6 }}>
+                              <EmptyState
+                                message="No requests found"
+                                sub='Click "Request" to submit your first request'
+                                icon={
+                                  <RequestPageIcon
+                                    sx={{
+                                      fontSize: 32,
+                                      color: "primary.main",
+                                      opacity: 0.4,
+                                    }}
+                                  />
+                                }
+                              />
                             </TD>
                           </TableRow>
-                        ))}
-                      {!requestsLoading && requests.length === 0 && (
-                        <TableRow>
-                          <TD colSpan={7} align="center" sx={{ py: 6 }}>
-                            <EmptyState
-                              message="No requests found"
-                              sub='Click "Request Checklist" to submit your first request'
-                              icon={
-                                <RequestPageIcon
-                                  sx={{
-                                    fontSize: 32,
-                                    color: "primary.main",
-                                    opacity: 0.4,
-                                  }}
-                                />
-                              }
-                            />
-                          </TD>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
                 <PaginationComponent
                   pagination={requestsPagination}
                   onPageChange={(p) =>
@@ -2017,10 +2597,17 @@ export default function ChecklistPage() {
           </Paper>
         </Container>
 
-        {/* ── Modals ──────────────────────────────────────────────────────────── */}
+        {/* Mobile Filter Drawer */}
+        <Drawer
+          anchor="right"
+          open={mobileDrawerOpen}
+          onClose={() => setMobileDrawerOpen(false)}
+        >
+          {mobileFilters}
+        </Drawer>
 
+        {/* Modals */}
         <CreateModal open={createOpen} onClose={() => setCreateOpen(false)} />
-
         <RequestChecklistModal
           open={requestOpen}
           onClose={() => setRequestOpen(false)}
@@ -2030,8 +2617,6 @@ export default function ChecklistPage() {
             fetchRequests();
           }}
         />
-
-        {/* ─── Assignment Modal (Unified) ───────────────────────────────────── */}
         <AssignmentModal
           open={assignModalOpen}
           onClose={() => {
@@ -2042,7 +2627,6 @@ export default function ChecklistPage() {
           mode="assign"
           preselectedChecklist={selectedChecklist}
         />
-
         <ViewChecklistModal
           open={!!viewChecklist}
           onClose={() => setViewChecklist(null)}
@@ -2051,7 +2635,19 @@ export default function ChecklistPage() {
           onDelete={handleDeleteClick}
         />
 
-        {/* View request dialog */}
+        {/* Clone Dialog */}
+        <CloneDialog
+          open={cloneModalOpen}
+          checklist={selectedCloneChecklist}
+          onClose={() => {
+            setCloneModalOpen(false);
+            setSelectedCloneChecklist(null);
+          }}
+          onConfirm={handleCloneConfirm}
+          loading={cloneLoading}
+        />
+
+        {/* View Request Dialog */}
         <Dialog
           open={!!viewRequest}
           onClose={() => setViewRequest(null)}
@@ -2059,7 +2655,9 @@ export default function ChecklistPage() {
           fullWidth
           PaperProps={{ sx: { borderRadius: 3 } }}
         >
-          <DialogTitle sx={{ bgcolor: "#0d4a5c", color: "white" }}>
+          <DialogTitle
+            sx={{ bgcolor: "#0d4a5c", color: "white", p: { xs: 2, sm: 3 } }}
+          >
             <Box
               sx={{
                 display: "flex",
@@ -2068,7 +2666,10 @@ export default function ChecklistPage() {
               }}
             >
               <Box>
-                <Typography fontWeight={700}>
+                <Typography
+                  fontWeight={700}
+                  sx={{ fontSize: { xs: 16, sm: 18 } }}
+                >
                   {viewRequest?.checklistName}
                 </Typography>
                 <Typography
@@ -2088,7 +2689,7 @@ export default function ChecklistPage() {
               </IconButton>
             </Box>
           </DialogTitle>
-          <DialogContent sx={{ p: 3 }}>
+          <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
             <Stack spacing={2}>
               <Grid container spacing={1.5}>
                 <Grid item xs={6} sm={3}>
@@ -2203,7 +2804,14 @@ export default function ChecklistPage() {
                 )}
             </Stack>
           </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <DialogActions
+            sx={{
+              px: { xs: 2, sm: 3 },
+              pb: { xs: 2, sm: 2.5 },
+              gap: 1,
+              flexWrap: "wrap",
+            }}
+          >
             {isSuperAdmin &&
               !["approved", "rejected"].includes(viewRequest?.status) &&
               !viewRequest?.isDeleted && (
@@ -2227,7 +2835,6 @@ export default function ChecklistPage() {
           request={viewRequest}
           onReview={handleReviewRequest}
         />
-
         <DeleteConfirmDialog
           open={deleteDialogOpen}
           onClose={() => {

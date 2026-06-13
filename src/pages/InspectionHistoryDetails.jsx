@@ -553,7 +553,7 @@ export default function InspectionHistoryDetails() {
                           onClick={() => handleImageClick(attachment)}
                         >
                           <img
-                            src={`https://assset-management-backend-4.onrender.com/${attachment.filePath?.replace(/\\/g, "/")}`}
+                            src={`http://localhost:9001/${attachment.filePath?.replace(/\\/g, "/")}`}
                             alt={attachment.originalName}
                             style={{
                               height: 150,
@@ -600,7 +600,7 @@ export default function InspectionHistoryDetails() {
           <DialogContent sx={{ textAlign: "center" }}>
             {selectedImage && (
               <img
-                src={`https://assset-management-backend-4.onrender.com/${selectedImage.filePath?.replace(/\\/g, "/")}`}
+                src={`http://localhost:9001/${selectedImage.filePath?.replace(/\\/g, "/")}`}
                 alt={selectedImage.originalName}
                 style={{ maxWidth: "100%", maxHeight: "70vh", borderRadius: 8 }}
                 onError={(e) => {
