@@ -1,4 +1,4 @@
-// App.jsx - Complete updated version with correct route order
+// App.jsx - Updated with RoleProvider
 import React from "react";
 import {
   BrowserRouter as Router,
@@ -22,6 +22,8 @@ import { AssetRequestProvider } from "./context/AssetRequestContext";
 import TeamAssignmentProvider from "./context/TeamAssignmentContext";
 import { ContactInquiryProvider } from "./context/InquiryContext";
 import { RecycleBinProvider } from "./context/RecycleBinContext";
+import { RoleProvider } from "./context/RoleContext"; // IMPORTANT: Add this import
+import { DepartmentProvider } from "./context/DepartmentContext";
 
 // Import pages
 import Login from "./components/Login";
@@ -48,7 +50,7 @@ import AssetView from "./pages/AssetView";
 import EditAsset from "./pages/EditAsset";
 import CloneAssets from "./pages/CloneAssetList";
 import MyTasks from "./pages/MyTask";
-//import TaskDetails from "./pages/TaskDetails";
+import TaskDetails from "./pages/TaskDetails";
 import InspectionHistory from "./pages/Inspectionhistory";
 import InspectionHistoryDetails from "./pages/InspectionHistoryDetails";
 import MyRequests from "./pages/Myrequests";
@@ -67,6 +69,8 @@ import LocationsManagement from "./pages/LocationsManagement";
 import RecycleBin from "./pages/Recyclebin";
 
 // ==================== APP PROVIDERS ====================
+
+// Add DepartmentProvider inside AppProviders
 const AppProviders = ({ children }) => (
   <AuthProvider>
     <NotificationProvider>
@@ -84,7 +88,14 @@ const AppProviders = ({ children }) => (
                             <TeamAssignmentProvider>
                               <ContactInquiryProvider>
                                 <RecycleBinProvider>
-                                  {children}
+                                  <RoleProvider>
+                                    <DepartmentProvider>
+                                      {" "}
+                                      {/* Add this line */}
+                                      {children}
+                                    </DepartmentProvider>{" "}
+                                    {/* Add this line */}
+                                  </RoleProvider>
                                 </RecycleBinProvider>
                               </ContactInquiryProvider>
                             </TeamAssignmentProvider>
@@ -148,22 +159,12 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   if (!isAuthenticated || !user) {
-    console.log("Not authenticated, redirecting to login");
     return <Navigate to="/login" replace />;
   }
 
   const role = effectiveRole(user.role);
-  console.log(
-    "User role:",
-    user.role,
-    "→ effective:",
-    role,
-    "Allowed roles:",
-    allowedRoles,
-  );
 
   if (!allowedRoles.includes(role)) {
-    console.log("Role not allowed, redirecting based on role");
     if (role === "admin") return <Navigate to="/dashboard" replace />;
     if (role === "team") return <Navigate to="/team" replace />;
     return <Navigate to="/login" replace />;
@@ -196,9 +197,8 @@ export default function App() {
             }
           />
 
-          {/* ==================== TEAM ROUTES (Specific first, then general) ==================== */}
-          {/* Task Details - Specific route with ID parameter */}
-          {/* <Route
+          {/* ==================== TEAM ROUTES ==================== */}
+          <Route
             path="/team/task/:id"
             element={
               <ProtectedRoute allowedRoles={["team"]}>
@@ -207,9 +207,8 @@ export default function App() {
                 </DashboardLayout>
               </ProtectedRoute>
             }
-          /> */}
+          />
 
-          {/* Inspection Details - Specific route with ID parameter */}
           <Route
             path="/team/inspection/:id"
             element={
@@ -221,7 +220,6 @@ export default function App() {
             }
           />
 
-          {/* Inspection History - List view */}
           <Route
             path="/team/history"
             element={
@@ -233,7 +231,6 @@ export default function App() {
             }
           />
 
-          {/* Team Profile */}
           <Route
             path="/team/profile"
             element={
@@ -245,7 +242,6 @@ export default function App() {
             }
           />
 
-          {/* Team Reports */}
           <Route
             path="/team/reports"
             element={
@@ -257,7 +253,6 @@ export default function App() {
             }
           />
 
-          {/* Team My Requests */}
           <Route
             path="/team/my-requests"
             element={
@@ -269,7 +264,6 @@ export default function App() {
             }
           />
 
-          {/* Team Dashboard - General team route (should be last) */}
           <Route
             path="/team"
             element={

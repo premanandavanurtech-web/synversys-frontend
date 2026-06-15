@@ -1,5 +1,5 @@
 // src/pages/InspectionHistoryDetails.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Container,
@@ -8,128 +8,143 @@ import {
   Button,
   IconButton,
   Chip,
-  Avatar,
   Stack,
   CircularProgress,
   Alert,
   Snackbar,
-  Divider,
   Grid,
-  Card,
-  CardContent,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Rating,
-  LinearProgress,
   ImageList,
   ImageListItem,
   ImageListItemBar,
   Dialog,
   DialogTitle,
   DialogContent,
+  Divider,
 } from "@mui/material";
 import { createTheme, ThemeProvider, alpha } from "@mui/material/styles";
 import {
   ArrowBack as ArrowBackIcon,
   CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
   ErrorOutline as ErrorOutlineIcon,
-  Assignment as AssignmentIcon,
-  CalendarMonth as CalendarMonthIcon,
-  FlagOutlined as FlagIcon,
-  ExpandMore as ExpandMoreIcon,
   Download as DownloadIcon,
-  PictureAsPdf as PdfIcon,
-  TableChart as ExcelIcon,
   Print as PrintIcon,
   Close as CloseIcon,
-  Description as DescriptionIcon,
-  Person as PersonIcon,
-  Email as EmailIcon,
-  Schedule as ScheduleIcon,
+  WarningAmber as WarningAmberIcon,
+  PictureAsPdf as PdfIcon,
 } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTeamAssignment } from "../context/TeamAssignmentContext";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 const theme = createTheme({
   palette: {
-    primary: { main: "#0d4a5c" },
+    primary: { main: "#0d3d52" },
     success: { main: "#10b981" },
     warning: { main: "#f59e0b" },
     error: { main: "#ef4444" },
-    info: { main: "#3b82f6" },
   },
-  shape: { borderRadius: 12 },
+  shape: { borderRadius: 10 },
+  typography: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: { root: { textTransform: "none", fontWeight: 600 } },
+    },
+  },
 });
 
-const REVIEW_STATUS_CFG = {
-  pending_review: { label: "Pending Review", color: "#f59e0b", bg: "#fffbeb" },
-  approved: { label: "Approved", color: "#10b981", bg: "#ecfdf5" },
-  rejected: { label: "Rejected", color: "#ef4444", bg: "#fef2f2" },
-  needs_revision: { label: "Needs Revision", color: "#8b5cf6", bg: "#f5f3ff" },
+// ─── Styled section card ──────────────────────────────────────────────────────
+const SectionCard = ({ title, children, sx }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: { xs: 1.5, sm: 2 },
+      borderRadius: 2,
+      border: "1px solid #e2e8f0",
+      backgroundColor: "#ffffff",
+      ...sx,
+    }}
+  >
+    {title && (
+      <Typography
+        sx={{
+          fontWeight: 700,
+          color: "#0d3d52",
+          fontSize: { xs: "0.85rem", sm: "0.9rem" },
+          mb: 1.5,
+        }}
+      >
+        {title}
+      </Typography>
+    )}
+    {children}
+  </Paper>
+);
+
+// ─── Score interpretation ─────────────────────────────────────────────────────
+const getScoreLabel = (score) => {
+  if (score >= 90) return { label: "Excellent", color: "#10b981" };
+  if (score >= 75) return { label: "Good", color: "#10b981" };
+  if (score >= 50) return { label: "Fair", color: "#f59e0b" };
+  return { label: "Poor", color: "#ef4444" };
 };
 
-const ReviewStatusChip = ({ status }) => {
-  const cfg =
-    REVIEW_STATUS_CFG[status?.toLowerCase()] ||
-    REVIEW_STATUS_CFG.pending_review;
-  return (
-    <Chip
-      label={cfg.label}
-      sx={{ bgcolor: cfg.bg, color: cfg.color, fontWeight: 700 }}
-    />
-  );
-};
+// ─── Field row (label / value pair) ───────────────────────────────────────────
+const FieldRow = ({ label, value, valueColor }) => (
+  <Grid item xs={12} sm={6} md={4}>
+    <Typography sx={{ fontSize: "0.7rem", color: "#94a3b8", mb: 0.3 }}>
+      {label}
+    </Typography>
+    <Typography
+      sx={{
+        fontSize: "0.8rem",
+        fontWeight: 600,
+        color: valueColor || "#0f172a",
+        wordBreak: "break-word",
+      }}
+    >
+      {value || "—"}
+    </Typography>
+  </Grid>
+);
 
 export default function InspectionHistoryDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { fetchInspectionById, exportInspection, loading } =
     useTeamAssignment();
+  const printRef = useRef();
 
   const [inspection, setInspection] = useState(null);
   const [assignment, setAssignment] = useState(null);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [exporting, setExporting] = useState(false);
   const [snack, setSnack] = useState({
     open: false,
     msg: "",
     severity: "success",
   });
 
-  const toast = useCallback(
-    (msg, severity = "success") => setSnack({ open: true, msg, severity }),
-    [],
-  );
+  const toast = useCallback((msg, severity = "success") => {
+    setSnack({ open: true, msg, severity });
+  }, []);
 
   useEffect(() => {
-    console.log("InspectionHistoryDetails - URL params:", { id });
-    if (id && id !== "undefined") {
+    if (id && id !== "undefined" && id !== "null") {
       loadInspection();
     } else {
-      console.error("Invalid inspection ID:", id);
       toast("Invalid inspection ID", "error");
       navigate("/team/history");
     }
   }, [id]);
 
   const loadInspection = async () => {
-    if (!id || id === "undefined") {
-      toast("Invalid inspection ID", "error");
-      navigate("/team/history");
-      return;
-    }
-
-    console.log("Loading inspection with ID:", id);
     const result = await fetchInspectionById(id);
-    console.log("Fetch result:", result);
-
     if (result.success) {
       setInspection(result.inspection);
       setAssignment(result.assignment);
@@ -139,21 +154,134 @@ export default function InspectionHistoryDetails() {
     }
   };
 
-  const handleExport = async (format) => {
-    if (!id || id === "undefined") {
-      toast("Invalid inspection ID", "error");
-      return;
-    }
-    const result = await exportInspection(id, format);
-    if (result.success && result.url) {
-      window.open(result.url, "_blank");
-    } else {
-      toast(result.error || "Export failed", "error");
+  // ─── PDF Export using html2canvas + jsPDF ───────────────────────────────────
+  const handleExportPDF = async () => {
+    if (!printRef.current) return;
+
+    setExporting(true);
+    try {
+      const element = printRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        logging: false,
+        useCORS: true,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`inspection-${inspection?.inspectionId || id}.pdf`);
+      toast("PDF exported successfully!", "success");
+    } catch (error) {
+      console.error("PDF export error:", error);
+      toast("Failed to export PDF", "error");
+    } finally {
+      setExporting(false);
     }
   };
 
+  // ─── Print Functionality ────────────────────────────────────────────────────
   const handlePrint = () => {
-    window.print();
+    const printContent = printRef.current;
+    const originalTitle = document.title;
+
+    if (!printContent) return;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast("Please allow pop-ups to print", "error");
+      return;
+    }
+
+    const styles = document.querySelectorAll("link[rel='stylesheet'], style");
+    let stylesHTML = "";
+    styles.forEach((style) => {
+      if (style.tagName === "LINK") {
+        stylesHTML += `<link rel="stylesheet" href="${style.href}">`;
+      } else if (style.tagName === "STYLE") {
+        stylesHTML += `<style>${style.innerHTML}</style>`;
+      }
+    });
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Inspection Report - ${inspection?.inspectionId || "Report"}</title>
+          ${stylesHTML}
+          <style>
+            body {
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+              padding: 20px;
+              margin: 0;
+              background: white;
+            }
+            .no-print {
+              display: none !important;
+            }
+            @media print {
+              body {
+                padding: 0;
+                margin: 0;
+              }
+              .no-print {
+                display: none !important;
+              }
+              .MuiPaper-root {
+                box-shadow: none !important;
+                border: 1px solid #e2e8f0 !important;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            ${printContent.outerHTML}
+          </div>
+          <script>
+            window.onload = () => {
+              window.print();
+              window.onafterprint = () => window.close();
+            };
+          <\/script>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    document.title = originalTitle;
+  };
+
+  // ─── Backend Export ─────────────────────────────────────────────────────────
+  const handleBackendExport = async (format) => {
+    const result = await exportInspection(id, format);
+    if (result.success && result.url) {
+      window.open(result.url, "_blank");
+      toast(`${format.toUpperCase()} exported successfully!`, "success");
+    } else {
+      toast(result.error || "Export failed", "error");
+    }
   };
 
   const handleImageClick = (image) => {
@@ -161,18 +289,26 @@ export default function InspectionHistoryDetails() {
     setImageDialogOpen(true);
   };
 
+  const getImageUrl = (filePath) => {
+    if (!filePath) return "/placeholder-image.png";
+    const normalizedPath = filePath.replace(/\\/g, "/");
+    return `http://localhost:9001/${normalizedPath}`;
+  };
+
   if (loading && !inspection) {
     return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "60vh",
-        }}
-      >
-        <CircularProgress />
-      </Box>
+      <ThemeProvider theme={theme}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "60vh",
+          }}
+        >
+          <CircularProgress sx={{ color: "#0d3d52" }} />
+        </Box>
+      </ThemeProvider>
     );
   }
 
@@ -180,402 +316,529 @@ export default function InspectionHistoryDetails() {
 
   const checklistResponses = inspection.checklistResponses || [];
   const attachments = inspection.attachments || [];
+  const images = inspection.images || [];
+  const allImages = [
+    ...images,
+    ...attachments.filter((a) => a.mimetype?.startsWith("image/")),
+  ];
+
+  const overallScore = Math.round(
+    (Number(inspection.performanceRating || 0) / 5) * 100,
+  );
+  const scoreInfo = getScoreLabel(overallScore);
+
+  const assetName =
+    assignment?.assets?.[0]?.assetName || inspection.assetTag || "—";
+  const assetLocation =
+    assignment?.assetIds?.[0]?.currentLocation ||
+    assignment?.assets?.[0]?.currentLocation ||
+    "—";
+  const assetCategory =
+    checklistResponses?.[0]?.checklistCategory ||
+    assignment?.checklists?.[0]?.category ||
+    "—";
 
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ minHeight: "100vh", bgcolor: "#f8fafc" }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3.5 } }}>
-          {/* Header */}
-          <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-            <Stack
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-              flexWrap="wrap"
-              spacing={2}
-            >
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <IconButton
-                  onClick={() => navigate("/team/history")}
-                  sx={{ bgcolor: alpha("#0d4a5c", 0.08) }}
+        <Container maxWidth="lg" sx={{ py: { xs: 1.5, sm: 2, md: 3 } }}>
+          {/* Header - No Print */}
+          <Box
+            className="no-print"
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: { xs: "flex-start", sm: "center" },
+              flexDirection: { xs: "column", sm: "row" },
+              gap: 1.5,
+              mb: 2,
+            }}
+          >
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <IconButton
+                onClick={() => navigate("/team/history")}
+                sx={{
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 1.5,
+                  bgcolor: "#fff",
+                }}
+              >
+                <ArrowBackIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+              <Box>
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    color: "#0f172a",
+                    fontSize: { xs: "1rem", sm: "1.1rem" },
+                  }}
                 >
-                  <ArrowBackIcon />
-                </IconButton>
-                <Box>
-                  <Typography variant="h6" fontWeight={800}>
-                    {inspection.inspectionId || "Inspection Details"}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Submitted:{" "}
-                    {inspection.submittedAt
-                      ? new Date(inspection.submittedAt).toLocaleString()
-                      : "N/A"}
-                  </Typography>
-                </Box>
-              </Stack>
-              <Stack direction="row" spacing={1}>
-                <ReviewStatusChip status={inspection.reviewStatus} />
-                <Button
-                  size="small"
-                  startIcon={<PdfIcon />}
-                  onClick={() => handleExport("pdf")}
-                  variant="outlined"
-                >
-                  PDF
-                </Button>
-                <Button
-                  size="small"
-                  startIcon={<ExcelIcon />}
-                  onClick={() => handleExport("excel")}
-                  variant="outlined"
-                >
-                  Excel
-                </Button>
-                <Button
-                  size="small"
-                  startIcon={<PrintIcon />}
-                  onClick={handlePrint}
-                  variant="outlined"
-                >
-                  Print
-                </Button>
-              </Stack>
-            </Stack>
-          </Paper>
-
-          {/* Assignment Info */}
-          {assignment && (
-            <Card sx={{ mb: 3, borderRadius: 3 }}>
-              <CardContent>
-                <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-                  Assignment Information
+                  {inspection.inspectionId || "Inspection Details"}
                 </Typography>
-                <Divider sx={{ mb: 2 }} />
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Typography variant="caption" color="text.secondary">
-                      Checklist
-                    </Typography>
-                    <Typography variant="body2" fontWeight={500}>
-                      {assignment.checklists?.[0]?.name ||
-                        inspection.checklistName ||
-                        "—"}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Typography variant="caption" color="text.secondary">
-                      Asset
-                    </Typography>
-                    <Typography variant="body2" fontWeight={500}>
-                      {assignment.assets?.[0]?.tagNumber ||
-                        inspection.assetTag ||
-                        "—"}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Typography variant="caption" color="text.secondary">
-                      Due Date
-                    </Typography>
-                    <Typography variant="body2">
-                      {assignment.dueDate
-                        ? new Date(assignment.dueDate).toLocaleDateString()
-                        : "—"}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Typography variant="caption" color="text.secondary">
-                      Priority
-                    </Typography>
-                    <Chip
-                      label={assignment.priority || "medium"}
-                      size="small"
-                      sx={{ bgcolor: alpha("#f59e0b", 0.1), color: "#f59e0b" }}
-                    />
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          )}
+                <Typography sx={{ fontSize: "0.7rem", color: "#94a3b8" }}>
+                  Submitted:{" "}
+                  {inspection.submittedAt
+                    ? new Date(inspection.submittedAt).toLocaleString()
+                    : "N/A"}
+                </Typography>
+              </Box>
+            </Stack>
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                startIcon={<PdfIcon sx={{ fontSize: 16 }} />}
+                onClick={handleExportPDF}
+                disabled={exporting}
+                variant="outlined"
+                sx={{
+                  borderColor: "#e2e8f0",
+                  color: "#0d3d52",
+                  fontSize: "0.7rem",
+                  py: 0.5,
+                }}
+              >
+                {exporting ? "Generating..." : "Export in PDF"}
+              </Button>
+              <Button
+                size="small"
+                startIcon={<PrintIcon sx={{ fontSize: 16 }} />}
+                onClick={handlePrint}
+                variant="outlined"
+                sx={{
+                  borderColor: "#e2e8f0",
+                  color: "#0d3d52",
+                  fontSize: "0.7rem",
+                  py: 0.5,
+                }}
+              >
+                Print the Data
+              </Button>
+              <Button
+                size="small"
+                startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
+                onClick={() => handleBackendExport("excel")}
+                variant="outlined"
+                sx={{
+                  borderColor: "#e2e8f0",
+                  color: "#0d3d52",
+                  fontSize: "0.7rem",
+                  py: 0.5,
+                }}
+              >
+                Export in Excel
+              </Button>
+            </Stack>
+          </Box>
 
-          <Grid container spacing={3}>
-            {/* Left Column - Stats */}
-            <Grid item xs={12} md={4}>
-              <Card sx={{ borderRadius: 3, mb: 3 }}>
-                <CardContent>
+          {/* Printable Content */}
+          <div ref={printRef}>
+            {/* Top Row: Overall Score + Inspection Summary */}
+            <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
+              <Grid item xs={12} sm={4}>
+                <SectionCard
+                  sx={{
+                    height: "100%",
+                    width:"300px",
+                    textAlign: "center",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                  }}
+                >
                   <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    gutterBottom
+                    sx={{ fontSize: "0.7rem", color: "#94a3b8", mb: 0.5 }}
                   >
-                    Performance Summary
+                    Overall Score
                   </Typography>
-                  <Divider sx={{ my: 1.5 }} />
-                  <Stack spacing={2}>
-                    <Box sx={{ textAlign: "center" }}>
-                      <Typography variant="h3" fontWeight={800} color="primary">
-                        {inspection.performanceRating || 0}
-                      </Typography>
-                      <Typography variant="caption">
-                        Performance Rating
-                      </Typography>
-                      <Rating
-                        value={inspection.performanceRating || 0}
-                        readOnly
-                        precision={0.5}
-                        sx={{ mt: 1 }}
-                      />
-                    </Box>
-                    <Box>
-                      <Typography variant="body2" gutterBottom>
-                        Overall Completion
-                      </Typography>
+                  <Typography
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: { xs: "1.8rem", sm: "2rem" },
+                      color: scoreInfo.color,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {overallScore}%
+                  </Typography>
+                  <Typography
+                    sx={{ fontSize: "0.7rem", color: "#94a3b8", mt: 0.5 }}
+                  >
+                    {scoreInfo.label}
+                  </Typography>
+                </SectionCard>
+              </Grid>
+              <Grid item xs={12} sm={8}>
+                <SectionCard title="Inspection Summary" sx={{ height: "100%"}}>
+                  <Grid container spacing={1}>
+                    <Grid item xs={4} sx={{  width:"260px" }}>
                       <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 2 }}
+                        sx={{
+                          textAlign: "center",
+                          p: 1,
+                          borderRadius: 1.5,
+                          bgcolor: "#f0fdf9",
+                        }}
                       >
-                        <LinearProgress
-                          variant="determinate"
-                          value={inspection.overallCompletionRate || 0}
-                          sx={{ flex: 1, height: 8, borderRadius: 4 }}
+                        <CheckCircleIcon
+                          sx={{ fontSize: 20, color: "#10b981", mb: 0.3 }}
                         />
-                        <Typography variant="body2" fontWeight={700}>
-                          {inspection.overallCompletionRate || 0}%
+                        <Typography
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: { xs: "1.2rem", sm: "1.3rem" },
+                            color: "#10b981",
+                          }}
+                        >
+                          {inspection.itemsPassed || 0}
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: "0.65rem", color: "#94a3b8" }}
+                        >
+                          Passed
                         </Typography>
                       </Box>
-                    </Box>
-                    <Grid container spacing={1}>
-                      <Grid item xs={4}>
-                        <Paper
-                          sx={{ p: 1, textAlign: "center", bgcolor: "#ecfdf5" }}
-                        >
-                          <Typography variant="h6" color="#10b981">
-                            {inspection.itemsPassed || 0}
-                          </Typography>
-                          <Typography variant="caption">Passed</Typography>
-                        </Paper>
-                      </Grid>
-                      <Grid item xs={4}>
-                        <Paper
-                          sx={{ p: 1, textAlign: "center", bgcolor: "#fef2f2" }}
-                        >
-                          <Typography variant="h6" color="#ef4444">
-                            {inspection.itemsFailed || 0}
-                          </Typography>
-                          <Typography variant="caption">Failed</Typography>
-                        </Paper>
-                      </Grid>
-                      <Grid item xs={4}>
-                        <Paper
-                          sx={{ p: 1, textAlign: "center", bgcolor: "#f5f3ff" }}
-                        >
-                          <Typography variant="h6" color="#8b5cf6">
-                            {inspection.itemsNA || 0}
-                          </Typography>
-                          <Typography variant="caption">N/A</Typography>
-                        </Paper>
-                      </Grid>
                     </Grid>
-                  </Stack>
-                </CardContent>
-              </Card>
-
-              <Card sx={{ borderRadius: 3 }}>
-                <CardContent>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    Inspector Information
-                  </Typography>
-                  <Divider sx={{ my: 1.5 }} />
-                  <Stack spacing={1.5}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <PersonIcon sx={{ fontSize: 18, color: "#0d4a5c" }} />
-                      <Typography variant="body2">
-                        {inspection.inspectorName ||
-                          inspection.submittedByName ||
-                          "—"}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <EmailIcon sx={{ fontSize: 18, color: "#0d4a5c" }} />
-                      <Typography variant="body2">
-                        {inspection.submittedByEmail || "—"}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <ScheduleIcon sx={{ fontSize: 18, color: "#0d4a5c" }} />
-                      <Typography variant="body2">
-                        Submitted:{" "}
-                        {inspection.submittedAt
-                          ? new Date(inspection.submittedAt).toLocaleString()
-                          : "—"}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            {/* Right Column - Responses */}
-            <Grid item xs={12} md={8}>
-              <Card sx={{ borderRadius: 3, mb: 3 }}>
-                <CardContent>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    Checklist Responses
-                  </Typography>
-                  <Divider sx={{ my: 1.5 }} />
-
-                  {checklistResponses.length > 0 ? (
-                    checklistResponses.map((checklist, idx) => (
-                      <Accordion key={idx} defaultExpanded>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Stack
-                            direction="row"
-                            alignItems="center"
-                            spacing={2}
-                          >
-                            <DescriptionIcon sx={{ color: "#0d4a5c" }} />
-                            <Typography fontWeight={600}>
-                              {checklist.checklistName}
-                            </Typography>
-                            <Chip
-                              label={`${checklist.completionRate}%`}
-                              size="small"
-                            />
-                          </Stack>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <TableContainer>
-                            <Table size="small">
-                              <TableHead>
-                                <TableRow>
-                                  <TableCell>Question</TableCell>
-                                  <TableCell>Answer</TableCell>
-                                  <TableCell>Status</TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {checklist.responses?.map(
-                                  (response, respIdx) => (
-                                    <TableRow key={respIdx}>
-                                      <TableCell>{response.label}</TableCell>
-                                      <TableCell>
-                                        {response.fieldType === "rating" ? (
-                                          <Rating
-                                            value={
-                                              parseInt(response.value) || 0
-                                            }
-                                            readOnly
-                                            size="small"
-                                          />
-                                        ) : (
-                                          response.value || "—"
-                                        )}
-                                      </TableCell>
-                                      <TableCell>
-                                        {response.isValid ? (
-                                          <CheckCircleIcon
-                                            sx={{
-                                              fontSize: 18,
-                                              color: "#10b981",
-                                            }}
-                                          />
-                                        ) : (
-                                          <ErrorOutlineIcon
-                                            sx={{
-                                              fontSize: 18,
-                                              color: "#ef4444",
-                                            }}
-                                          />
-                                        )}
-                                      </TableCell>
-                                    </TableRow>
-                                  ),
-                                )}
-                              </TableBody>
-                            </Table>
-                          </TableContainer>
-                        </AccordionDetails>
-                      </Accordion>
-                    ))
-                  ) : (
-                    <Typography
-                      color="text.secondary"
-                      sx={{ textAlign: "center", py: 4 }}
-                    >
-                      No responses available
-                    </Typography>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Notes */}
-              {inspection.notes && (
-                <Card sx={{ borderRadius: 3, mb: 3 }}>
-                  <CardContent>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      Inspector Notes
-                    </Typography>
-                    <Divider sx={{ my: 1.5 }} />
-                    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                      {inspection.notes}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Attachments */}
-              {attachments.length > 0 && (
-                <Card sx={{ borderRadius: 3 }}>
-                  <CardContent>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      Attachments
-                    </Typography>
-                    <Divider sx={{ my: 1.5 }} />
-                    <ImageList cols={3} gap={16}>
-                      {attachments.map((attachment, idx) => (
-                        <ImageListItem
-                          key={idx}
-                          sx={{ cursor: "pointer" }}
-                          onClick={() => handleImageClick(attachment)}
+                    <Grid item xs={4} sx={{  width:"260px" }}>
+                      <Box
+                        sx={{
+                          textAlign: "center",
+                          p: 1,
+                          borderRadius: 1.5,
+                          bgcolor: "#fef2f2",
+                        }}
+                      >
+                        <CancelIcon
+                          sx={{ fontSize: 20, color: "#ef4444", mb: 0.3 }}
+                        />
+                        <Typography
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: { xs: "1.2rem", sm: "1.3rem" },
+                            color: "#ef4444",
+                          }}
                         >
-                          <img
-                            src={`http://localhost:9001/${attachment.filePath?.replace(/\\/g, "/")}`}
-                            alt={attachment.originalName}
-                            style={{
-                              height: 150,
-                              objectFit: "cover",
-                              borderRadius: 8,
-                            }}
-                            onError={(e) => {
-                              e.target.src = "/placeholder-image.png";
-                            }}
-                          />
-                          <ImageListItemBar
-                            title={attachment.originalName}
-                            position="bottom"
-                          />
-                        </ImageListItem>
-                      ))}
-                    </ImageList>
-                  </CardContent>
-                </Card>
-              )}
+                          {inspection.itemsFailed || 0}
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: "0.65rem", color: "#94a3b8" }}
+                        >
+                          Failed
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={4} sx={{  width:"260px" }}>
+                      <Box
+                        sx={{
+                          textAlign: "center",
+                          p: 1,
+                          borderRadius: 1.5,
+                          bgcolor: "#f1f5f9",
+                        }}
+                      >
+                        <WarningAmberIcon
+                          sx={{ fontSize: 20, color: "#64748b", mb: 0.3 }}
+                        />
+                        <Typography
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: { xs: "1.2rem", sm: "1.3rem" },
+                            color: "#64748b",
+                          }}
+                        >
+                          {inspection.itemsNA || 0}
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: "0.65rem", color: "#94a3b8" }}
+                        >
+                          N/A
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </SectionCard>
+              </Grid>
             </Grid>
-          </Grid>
+
+            {/* Asset Information */}
+            <SectionCard title="Asset Information" sx={{ mb: 1.5 }}>
+              <Grid container spacing={1}>
+                <FieldRow label="Asset Name" value={assetName} />
+                <FieldRow
+                  label="Inspection Date"
+                  value={
+                    inspection.submittedAt
+                      ? new Date(inspection.submittedAt).toLocaleDateString()
+                      : "—"
+                  }
+                />
+              </Grid>
+            </SectionCard>
+
+            {/* Inspection Details */}
+            <SectionCard title="Inspection Details" sx={{ mb: 1.5 }}>
+              <Grid container spacing={1}>
+                <FieldRow
+                  label="Inspector Name"
+                  value={inspection.inspectorName}
+                />
+                <FieldRow
+                  label="Overall Condition"
+                  value={
+                    inspection.overallCondition
+                      ? inspection.overallCondition.charAt(0).toUpperCase() +
+                        inspection.overallCondition.slice(1)
+                      : "—"
+                  }
+                />
+                <FieldRow
+                  label="Inspection ID"
+                  value={inspection.inspectionId}
+                />
+                <FieldRow
+                  label="Performance Rating"
+                  value={`${inspection.performanceRating || 0}/5`}
+                />
+              </Grid>
+            </SectionCard>
+
+            {/* Checklist Sections */}
+            {checklistResponses.length > 0 ? (
+              checklistResponses.map((checklist, idx) => {
+                const responses = checklist.responses || [];
+                return (
+                  <SectionCard
+                    key={idx}
+                    title={checklist.checklistName}
+                    sx={{ mb: 1.5, p: 0, overflow: "hidden" }}
+                  >
+                    <Box sx={{ p: 0 }}>
+                      {responses.map((response, respIdx) => {
+                        const v = response.value;
+                        const isYesNo =
+                          typeof v === "string" &&
+                          ["yes", "no", "true", "false"].includes(
+                            v.toLowerCase(),
+                          );
+                        const isYes =
+                          isYesNo &&
+                          (v.toLowerCase() === "yes" ||
+                            v.toLowerCase() === "true");
+                        const hasIssue = isYesNo && !isYes;
+
+                        return (
+                          <Box
+                            key={respIdx}
+                            sx={{
+                              px: { xs: 1.5, sm: 2 },
+                              py: 1,
+                              borderBottom:
+                                respIdx !== responses.length - 1
+                                  ? "1px solid #f1f5f9"
+                                  : "none",
+                              bgcolor: hasIssue ? "#fef2f2" : "transparent",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "flex-start",
+                              gap: 1,
+                            }}
+                          >
+                            <Box sx={{ flex: 1 }}>
+                              <Typography
+                                sx={{
+                                  fontSize: "0.8rem",
+                                  fontWeight: 600,
+                                  color: "#0f172a",
+                                }}
+                              >
+                                {response.fieldLabel}
+                              </Typography>
+                              {hasIssue && response.note && (
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.5,
+                                    mt: 0.3,
+                                  }}
+                                >
+                                  <ErrorOutlineIcon
+                                    sx={{ fontSize: 12, color: "#94a3b8" }}
+                                  />
+                                  <Typography
+                                    sx={{
+                                      fontSize: "0.7rem",
+                                      color: "#94a3b8",
+                                    }}
+                                  >
+                                    {response.note}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {!isYesNo && response.fieldType === "rating" && (
+                                <Rating
+                                  value={parseInt(v) || 0}
+                                  readOnly
+                                  size="small"
+                                  sx={{ mt: 0.3 }}
+                                />
+                              )}
+                              {!isYesNo &&
+                                response.fieldType === "checkbox" && (
+                                  <Box
+                                    sx={{
+                                      mt: 0.3,
+                                      display: "flex",
+                                      flexWrap: "wrap",
+                                      gap: 0.5,
+                                    }}
+                                  >
+                                    {v
+                                      ?.split(", ")
+                                      .filter(Boolean)
+                                      .map((item, i) => (
+                                        <Chip
+                                          key={i}
+                                          label={item}
+                                          size="small"
+                                          sx={{
+                                            fontSize: "0.65rem",
+                                            height: 18,
+                                            bgcolor: "#f1f5f9",
+                                            color: "#475569",
+                                          }}
+                                        />
+                                      ))}
+                                  </Box>
+                                )}
+                              {!isYesNo &&
+                                ![
+                                  "rating",
+                                  "checkbox",
+                                  "signature",
+                                  "image_upload",
+                                ].includes(response.fieldType) && (
+                                  <Typography
+                                    sx={{
+                                      fontSize: "0.75rem",
+                                      color: "#475569",
+                                      mt: 0.3,
+                                    }}
+                                  >
+                                    {v || "—"}
+                                  </Typography>
+                                )}
+                              {response.fieldType === "signature" && v && (
+                                <Box
+                                  component="img"
+                                  src={v}
+                                  alt="Signature"
+                                  sx={{
+                                    maxWidth: 150,
+                                    maxHeight: 40,
+                                    border: "1px solid #e2e8f0",
+                                    borderRadius: 1,
+                                    mt: 0.5,
+                                  }}
+                                />
+                              )}
+                            </Box>
+                            {isYesNo && (
+                              <Chip
+                                label={isYes ? "Yes" : "No"}
+                                size="small"
+                                sx={{
+                                  bgcolor: isYes ? "#10b981" : "#ef4444",
+                                  color: "#fff",
+                                  fontWeight: 700,
+                                  fontSize: "0.7rem",
+                                  height: 20,
+                                  flexShrink: 0,
+                                }}
+                              />
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  </SectionCard>
+                );
+              })
+            ) : (
+              <SectionCard sx={{ mb: 1.5, textAlign: "center", py: 3 }}>
+                <Typography sx={{ color: "#94a3b8", fontSize: "0.8rem" }}>
+                  No responses available
+                </Typography>
+              </SectionCard>
+            )}
+
+            {/* Notes */}
+            {inspection.notes && (
+              <SectionCard title="Inspector Notes" sx={{ mb: 1.5 }}>
+                <Typography
+                  sx={{
+                    fontSize: "0.8rem",
+                    color: "#475569",
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {inspection.notes}
+                </Typography>
+              </SectionCard>
+            )}
+
+            {/* Images */}
+            {allImages.length > 0 && (
+              <SectionCard
+                title={`Images (${allImages.length})`}
+                sx={{ mb: 1.5 }}
+              >
+                <ImageList
+                  cols={3}
+                  gap={8}
+                  sx={{
+                    gridTemplateColumns: {
+                      xs: "repeat(2, 1fr) !important",
+                      sm: "repeat(3, 1fr) !important",
+                    },
+                  }}
+                >
+                  {allImages.map((image, idx) => (
+                    <ImageListItem
+                      key={idx}
+                      sx={{
+                        cursor: "pointer",
+                        borderRadius: 1.5,
+                        overflow: "hidden",
+                      }}
+                      onClick={() => handleImageClick(image)}
+                    >
+                      <img
+                        src={getImageUrl(image.filePath)}
+                        alt={image.originalName || `Image ${idx + 1}`}
+                        style={{
+                          height: 100,
+                          objectFit: "cover",
+                          width: "100%",
+                        }}
+                        onError={(e) => {
+                          e.target.src = "/placeholder-image.png";
+                        }}
+                      />
+                      <ImageListItemBar
+                        title={image.originalName || `Image ${idx + 1}`}
+                        position="bottom"
+                        sx={{
+                          "& .MuiImageListItemBar-title": {
+                            fontSize: "0.65rem",
+                          },
+                        }}
+                      />
+                    </ImageListItem>
+                  ))}
+                </ImageList>
+              </SectionCard>
+            )}
+          </div>
         </Container>
 
         {/* Image Dialog */}
@@ -585,23 +848,28 @@ export default function InspectionHistoryDetails() {
           maxWidth="md"
           fullWidth
         >
-          <DialogTitle>
+          <DialogTitle sx={{ py: 1 }}>
             <Stack
               direction="row"
               justifyContent="space-between"
               alignItems="center"
             >
-              <Typography>Attachment Preview</Typography>
-              <IconButton onClick={() => setImageDialogOpen(false)}>
-                <CloseIcon />
+              <Typography sx={{ fontSize: "0.9rem", fontWeight: 700 }}>
+                Image Preview
+              </Typography>
+              <IconButton
+                onClick={() => setImageDialogOpen(false)}
+                size="small"
+              >
+                <CloseIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Stack>
           </DialogTitle>
-          <DialogContent sx={{ textAlign: "center" }}>
+          <DialogContent sx={{ textAlign: "center", p: 2 }}>
             {selectedImage && (
               <img
-                src={`http://localhost:9001/${selectedImage.filePath?.replace(/\\/g, "/")}`}
-                alt={selectedImage.originalName}
+                src={getImageUrl(selectedImage.filePath)}
+                alt={selectedImage.originalName || "Preview"}
                 style={{ maxWidth: "100%", maxHeight: "70vh", borderRadius: 8 }}
                 onError={(e) => {
                   e.target.src = "/placeholder-image.png";
@@ -620,6 +888,7 @@ export default function InspectionHistoryDetails() {
           <Alert
             severity={snack.severity}
             onClose={() => setSnack({ ...snack, open: false })}
+            sx={{ borderRadius: 2, fontSize: "0.75rem" }}
           >
             {snack.msg}
           </Alert>

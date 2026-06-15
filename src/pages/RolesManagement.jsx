@@ -18,58 +18,103 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  FormControlLabel,
+  Switch,
   Alert,
   Snackbar,
   CircularProgress,
   Tooltip,
   Stack,
+  Pagination,
+  InputAdornment,
+  TextField as SearchField,
+  Menu,
+  MenuItem,
+  Checkbox,
+  TableSortLabel,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Security as SecurityIcon,
+  Search as SearchIcon,
+  MoreVert as MoreVertIcon,
+  FileDownload as ExportIcon,
+  Refresh as RefreshIcon,
+  Visibility as ViewIcon,
+  ArrowBack as ArrowBackIcon, // Added back icon
 } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom"; // Added for navigation
+import { useRoles } from "../context/RoleContext";
 import { useAuth } from "../context/AuthContexts";
 
 const RolesManagement = () => {
-  const { authRequest, isSuperAdmin } = useAuth();
-  const [roles, setRoles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate(); // Added for navigation
+  const { user } = useAuth();
+  const {
+    roles,
+    loading,
+    error,
+    pagination,
+    fetchRoles,
+    createRole,
+    updateRole,
+    deleteRole,
+    toggleRoleStatus,
+    exportRoles,
+    clearError,
+    bulkDeleteRoles,
+  } = useRoles();
+
   const [openDialog, setOpenDialog] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    permissions: [],
+    isActive: true,
   });
   const [snack, setSnack] = useState({
     open: false,
     message: "",
     severity: "success",
   });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTimeout, setSearchTimeout] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [selectedRoles, setSelectedRoles] = useState([]);
+  const [orderBy, setOrderBy] = useState("createdAt");
+  const [order, setOrder] = useState("desc");
+  const [activeTab, setActiveTab] = useState(0);
+  const [viewDialog, setViewDialog] = useState(false);
+  const [viewingRole, setViewingRole] = useState(null);
 
-  const fetchRoles = async () => {
-    setLoading(true);
-    try {
-      const response = await authRequest("GET", "/roles");
-      if (response?.success) {
-        setRoles(response.roles || []);
-      }
-    } catch (error) {
-      console.error("Error fetching roles:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isEditable = user?.role === "super_admin" || user?.role === "admin";
+  const primaryColor = "#0d4f63";
 
   useEffect(() => {
-    fetchRoles();
+    fetchRoles({ page: 1, limit: 10 });
   }, []);
+
+  useEffect(() => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    const timeout = setTimeout(() => {
+      fetchRoles({ search: searchTerm, page: 1, limit: pagination.limit });
+    }, 500);
+    setSearchTimeout(timeout);
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
+
+  const showSnackbar = (message, severity = "success") => {
+    setSnack({ open: true, message, severity });
+  };
+
+  const handleGoBack = () => {
+    navigate(-1); // Navigate back to previous page
+  };
 
   const handleOpenDialog = (role = null) => {
     if (role) {
@@ -77,11 +122,11 @@ const RolesManagement = () => {
       setFormData({
         name: role.name,
         description: role.description || "",
-        permissions: role.permissions || [],
+        isActive: role.isActive,
       });
     } else {
       setEditingRole(null);
-      setFormData({ name: "", description: "", permissions: [] });
+      setFormData({ name: "", description: "", isActive: true });
     }
     setOpenDialog(true);
   };
@@ -89,62 +134,169 @@ const RolesManagement = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingRole(null);
-    setFormData({ name: "", description: "", permissions: [] });
+    setFormData({ name: "", description: "", isActive: true });
+  };
+
+  const handleViewRole = (role) => {
+    setViewingRole(role);
+    setViewDialog(true);
   };
 
   const handleSave = async () => {
+    // Validate role name format
+    if (!formData.name.match(/^[a-z_]+$/)) {
+      showSnackbar(
+        "Role name must be lowercase with underscores only (e.g., sales_manager)",
+        "error",
+      );
+      return;
+    }
+
     try {
-      let response;
       if (editingRole) {
-        response = await authRequest(
-          "PUT",
-          `/roles/${editingRole.id}`,
-          formData,
-        );
+        await updateRole(editingRole._id, formData);
+        showSnackbar("Role updated successfully", "success");
       } else {
-        response = await authRequest("POST", "/roles", formData);
+        await createRole(formData);
+        showSnackbar("Role created successfully", "success");
       }
-      if (response?.success) {
-        setSnack({
-          open: true,
-          message: `Role ${editingRole ? "updated" : "created"} successfully`,
-          severity: "success",
-        });
-        fetchRoles();
-        handleCloseDialog();
-      }
-    } catch (error) {
-      setSnack({
-        open: true,
-        message: error.response?.data?.message || "Failed to save role",
-        severity: "error",
-      });
+      handleCloseDialog();
+      // Reset form to empty after successful creation
+      setFormData({ name: "", description: "", isActive: true });
+    } catch (err) {
+      showSnackbar(err.message || "Failed to save role", "error");
     }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this role?")) {
       try {
-        const response = await authRequest("DELETE", `/roles/${id}`);
-        if (response?.success) {
-          setSnack({
-            open: true,
-            message: "Role deleted successfully",
-            severity: "success",
-          });
-          fetchRoles();
-        }
-      } catch (error) {
-        setSnack({
-          open: true,
-          message: error.response?.data?.message || "Failed to delete role",
-          severity: "error",
-        });
+        await deleteRole(id);
+        showSnackbar("Role deleted successfully", "success");
+      } catch (err) {
+        showSnackbar(err.message || "Failed to delete role", "error");
       }
     }
   };
 
-  if (loading) {
+  const handleToggleStatus = async (role) => {
+    try {
+      await toggleRoleStatus(role._id, role.isActive);
+      showSnackbar(
+        `Role ${role.isActive ? "deactivated" : "activated"} successfully`,
+        "success",
+      );
+    } catch (err) {
+      showSnackbar(err.message || "Failed to update role status", "error");
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const result = await exportRoles("csv");
+      if (result?.data) {
+        const blob = new Blob([result.data], { type: "text/csv" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `roles_export_${new Date().toISOString()}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        showSnackbar("Roles exported successfully", "success");
+      } else if (result?.roles) {
+        // Handle JSON export
+        const blob = new Blob([JSON.stringify(result.roles, null, 2)], {
+          type: "application/json",
+        });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `roles_export_${new Date().toISOString()}.json`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        showSnackbar("Roles exported successfully", "success");
+      }
+    } catch (err) {
+      showSnackbar("Failed to export roles", "error");
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchRoles({
+      search: searchTerm,
+      page: pagination.page,
+      limit: pagination.limit,
+    });
+    showSnackbar("Roles refreshed", "info");
+  };
+
+  const handleMenuOpen = (event, role) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedRole(role);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedRole(null);
+  };
+
+  const handleSelectAll = (event) => {
+    const filteredRoleIds = filteredRoles.map((role) => role._id);
+    if (event.target.checked) {
+      setSelectedRoles(filteredRoleIds);
+    } else {
+      setSelectedRoles([]);
+    }
+  };
+
+  const handleSelectRole = (roleId) => {
+    setSelectedRoles((prev) =>
+      prev.includes(roleId)
+        ? prev.filter((id) => id !== roleId)
+        : [...prev, roleId],
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (window.confirm(`Delete ${selectedRoles.length} selected role(s)?`)) {
+      try {
+        await bulkDeleteRoles(selectedRoles);
+        setSelectedRoles([]);
+        showSnackbar(
+          `${selectedRoles.length} role(s) deleted successfully`,
+          "success",
+        );
+      } catch (err) {
+        showSnackbar("Failed to delete selected roles", "error");
+      }
+    }
+  };
+
+  const handleSort = (property) => {
+    const isAsc = orderBy === property && order === "asc";
+    setOrder(isAsc ? "desc" : "asc");
+    setOrderBy(property);
+  };
+
+  const sortedRoles = [...roles].sort((a, b) => {
+    if (order === "asc") {
+      return a[orderBy]?.toString().localeCompare(b[orderBy]?.toString());
+    }
+    return b[orderBy]?.toString().localeCompare(a[orderBy]?.toString());
+  });
+
+  const filteredRoles =
+    activeTab === 0
+      ? sortedRoles
+      : sortedRoles.filter((role) => role.isActive === (activeTab === 1));
+
+  const stats = {
+    total: pagination.total || roles.length,
+    active: roles.filter((r) => r.isActive).length,
+    inactive: roles.filter((r) => !r.isActive).length,
+  };
+
+  if (loading && roles.length === 0) {
     return (
       <Box
         sx={{
@@ -154,115 +306,427 @@ const RolesManagement = () => {
           height: "60vh",
         }}
       >
-        <CircularProgress />
+        <CircularProgress sx={{ color: primaryColor }} />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Paper sx={{ p: 3 }}>
+    <Box sx={{ p: 3, minHeight: "100vh" }}>
+      {/* Header with Back Button */}
+      <Box sx={{ mb: 4, display: "flex", alignItems: "center", gap: 2 }}>
+        {/* Back Button */}
+        <Tooltip title="Go Back" arrow>
+          <IconButton
+            onClick={handleGoBack}
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: "10px",
+              bgcolor: "#f5f5f5",
+              color: primaryColor,
+              "&:hover": {
+                bgcolor: "#e0e0e0",
+              },
+            }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
+        </Tooltip>
+        <Box>
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 700,
+              color: primaryColor,
+              mb: 0.5,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
+            <SecurityIcon sx={{ fontSize: 28 }} />
+            Roles Management
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#666" }}>
+            Manage user roles and permissions for your organization
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* Stats Cards */}
+      <Box sx={{ display: "flex", gap: 3, mb: 3, flexWrap: "wrap" }}>
+        <Paper
+          sx={{
+            p: 2,
+            flex: 1,
+            minWidth: 150,
+            borderLeft: `4px solid ${primaryColor}`,
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#666",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+              fontWeight: 700,
+            }}
+          >
+            Total Roles
+          </Typography>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 700, color: primaryColor }}
+          >
+            {stats.total}
+          </Typography>
+        </Paper>
+        <Paper
+          sx={{ p: 2, flex: 1, minWidth: 150, borderLeft: "4px solid #4caf50" }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#666",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+              fontWeight: 700,
+            }}
+          >
+            Active
+          </Typography>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: "#4caf50" }}>
+            {stats.active}
+          </Typography>
+        </Paper>
+        <Paper
+          sx={{ p: 2, flex: 1, minWidth: 150, borderLeft: "4px solid #f44336" }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#666",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+              fontWeight: 700,
+            }}
+          >
+            Inactive
+          </Typography>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: "#f44336" }}>
+            {stats.inactive}
+          </Typography>
+        </Paper>
+      </Box>
+
+      {/* Main Card */}
+      <Paper sx={{ borderRadius: 2, overflow: "hidden" }}>
+        {/* Toolbar */}
         <Box
           sx={{
+            p: 2,
+            borderBottom: 1,
+            borderColor: "#e0e0e0",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            mb: 3,
+            flexWrap: "wrap",
+            gap: 2,
           }}
         >
-          <Typography variant="h5" fontWeight={700}>
-            <SecurityIcon sx={{ mr: 1, verticalAlign: "middle" }} />
-            Roles Management
-          </Typography>
-          {isSuperAdmin && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-            >
-              Add Role
-            </Button>
-          )}
+          <Tabs
+            value={activeTab}
+            onChange={(e, v) => setActiveTab(v)}
+            sx={{ minHeight: 36 }}
+          >
+            <Tab label="All" sx={{ textTransform: "none", minHeight: 36 }} />
+            <Tab label="Active" sx={{ textTransform: "none", minHeight: 36 }} />
+            <Tab
+              label="Inactive"
+              sx={{ textTransform: "none", minHeight: 36 }}
+            />
+          </Tabs>
+
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+            <SearchField
+              placeholder="Search roles..."
+              size="small"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              sx={{ width: 250 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" sx={{ color: "#999" }} />
+                  </InputAdornment>
+                ),
+                sx: { bgcolor: "#fafafa" },
+              }}
+            />
+            <Tooltip title="Export">
+              <IconButton onClick={handleExport} size="small">
+                <ExportIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Refresh">
+              <IconButton onClick={handleRefresh} size="small">
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+            {isEditable && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenDialog()}
+                sx={{
+                  bgcolor: primaryColor,
+                  "&:hover": { bgcolor: "#0a3640" },
+                  textTransform: "none",
+                }}
+                size="small"
+              >
+                Add Role
+              </Button>
+            )}
+          </Box>
         </Box>
 
+        {/* Bulk Actions Bar */}
+        {selectedRoles.length > 0 && (
+          <Box
+            sx={{
+              p: 1.5,
+              bgcolor: "#e8f5e9",
+              borderBottom: 1,
+              borderColor: "#e0e0e0",
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
+            <Typography variant="body2" sx={{ color: primaryColor }}>
+              {selectedRoles.length} selected
+            </Typography>
+            <Button
+              size="small"
+              color="error"
+              onClick={handleBulkDelete}
+              variant="outlined"
+              sx={{ textTransform: "none" }}
+            >
+              Delete Selected
+            </Button>
+          </Box>
+        )}
+
+        {/* Table */}
         <TableContainer>
-          <Table>
+          <Table size="small">
             <TableHead>
-              <TableRow>
-                <TableCell>Role Name</TableCell>
+              <TableRow sx={{ bgcolor: "#fafafa" }}>
+                <TableCell padding="checkbox" sx={{ width: 40 }}>
+                  <Checkbox
+                    checked={
+                      selectedRoles.length === filteredRoles.length &&
+                      filteredRoles.length > 0
+                    }
+                    indeterminate={
+                      selectedRoles.length > 0 &&
+                      selectedRoles.length < filteredRoles.length
+                    }
+                    onChange={handleSelectAll}
+                    size="small"
+                  />
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={orderBy === "name"}
+                    direction={orderBy === "name" ? order : "asc"}
+                    onClick={() => handleSort("name")}
+                  >
+                    Role
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Description</TableCell>
-                <TableCell>Permissions</TableCell>
-                {isSuperAdmin && <TableCell align="center">Actions</TableCell>}
+                <TableCell align="center">Status</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {roles.map((role) => (
-                <TableRow key={role.id || role._id}>
-                  <TableCell>
-                    <Chip label={role.name} color="primary" size="small" />
+              {filteredRoles.map((role) => (
+                <TableRow
+                  key={role._id}
+                  hover
+                  sx={{ "&:hover": { bgcolor: "#f9f9f9" } }}
+                >
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={selectedRoles.includes(role._id)}
+                      onChange={() => handleSelectRole(role._id)}
+                      size="small"
+                    />
                   </TableCell>
-                  <TableCell>{role.description || "—"}</TableCell>
                   <TableCell>
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                      {role.permissions?.slice(0, 3).map((perm, idx) => (
-                        <Chip
-                          key={idx}
-                          label={perm}
+                    <Typography
+                      variant="body2"
+                      fontWeight={500}
+                      sx={{ color: primaryColor }}
+                    >
+                      {role.displayName || role.name}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "#666", maxWidth: 300 }}
+                    >
+                      {role.description || "—"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Chip
+                      label={role.isActive ? "Active" : "Inactive"}
+                      size="small"
+                      sx={{
+                        bgcolor: role.isActive ? "#e8f5e9" : "#eeeeee",
+                        color: role.isActive ? "#2e7d32" : "#757575",
+                        fontSize: "11px",
+                        height: 24,
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      justifyContent="flex-end"
+                    >
+                      <Tooltip title="View">
+                        <IconButton
                           size="small"
-                          variant="outlined"
-                        />
-                      ))}
-                      {role.permissions?.length > 3 && (
-                        <Chip
-                          label={`+${role.permissions.length - 3}`}
-                          size="small"
-                        />
+                          onClick={() => handleViewRole(role)}
+                        >
+                          <ViewIcon fontSize="small" sx={{ color: "#666" }} />
+                        </IconButton>
+                      </Tooltip>
+                      {isEditable && (
+                        <>
+                          <Tooltip title="Edit">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleOpenDialog(role)}
+                            >
+                              <EditIcon
+                                fontSize="small"
+                                sx={{ color: "#666" }}
+                              />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDelete(role._id)}
+                              disabled={role.memberCount > 0}
+                            >
+                              <DeleteIcon
+                                fontSize="small"
+                                sx={{
+                                  color:
+                                    role.memberCount > 0 ? "#ccc" : "#f44336",
+                                }}
+                              />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="More">
+                            <IconButton
+                              size="small"
+                              onClick={(e) => handleMenuOpen(e, role)}
+                            >
+                              <MoreVertIcon
+                                fontSize="small"
+                                sx={{ color: "#666" }}
+                              />
+                            </IconButton>
+                          </Tooltip>
+                        </>
                       )}
                     </Stack>
                   </TableCell>
-                  {isSuperAdmin && (
-                    <TableCell align="center">
-                      <Tooltip title="Edit">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleOpenDialog(role)}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDelete(role.id || role._id)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  )}
                 </TableRow>
               ))}
+              {filteredRoles.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                    <Typography variant="body2" sx={{ color: "#999" }}>
+                      No roles found
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
+
+        {/* Pagination */}
+        {pagination.pages > 1 && (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "flex-end",
+              p: 2,
+              borderTop: 1,
+              borderColor: "#e0e0e0",
+            }}
+          >
+            <Pagination
+              count={pagination.pages}
+              page={pagination.page}
+              onChange={(e, page) =>
+                fetchRoles({
+                  page,
+                  search: searchTerm,
+                  limit: pagination.limit,
+                })
+              }
+              size="small"
+              sx={{
+                "& .MuiPaginationItem-root.Mui-selected": {
+                  bgcolor: primaryColor,
+                  color: "white",
+                  "&:hover": { bgcolor: "#0a3640" },
+                },
+              }}
+            />
+          </Box>
+        )}
       </Paper>
 
+      {/* Add/Edit Dialog */}
       <Dialog
         open={openDialog}
         onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>{editingRole ? "Edit Role" : "Add New Role"}</DialogTitle>
+        <DialogTitle sx={{ color: primaryColor, fontWeight: 600, pb: 1 }}>
+          {editingRole ? "Edit Role" : "New Role"}
+        </DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
             label="Role Name"
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => {
+              const value = e.target.value.toLowerCase().replace(/\s+/g, "_");
+              setFormData({ ...formData, name: value });
+            }}
             margin="normal"
             required
+            size="small"
+            placeholder="e.g., sales_manager"
+            helperText="Use lowercase and underscores only (e.g., sales_manager)"
+            error={formData.name && !formData.name.match(/^[a-z_]+$/)}
           />
           <TextField
             fullWidth
@@ -274,20 +738,186 @@ const RolesManagement = () => {
             margin="normal"
             multiline
             rows={2}
+            size="small"
+            placeholder="Brief description of this role"
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.isActive}
+                onChange={(e) =>
+                  setFormData({ ...formData, isActive: e.target.checked })
+                }
+                size="small"
+                sx={{
+                  "& .MuiSwitch-thumb": {
+                    bgcolor: formData.isActive ? primaryColor : undefined,
+                  },
+                }}
+              />
+            }
+            label="Active"
+            sx={{ mt: 1 }}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={handleCloseDialog}
+            sx={{ textTransform: "none", color: "#666" }}
+          >
+            Cancel
+          </Button>
           <Button
             onClick={handleSave}
             variant="contained"
-            disabled={!formData.name}
+            disabled={!formData.name || !formData.name.match(/^[a-z_]+$/)}
+            sx={{
+              bgcolor: primaryColor,
+              "&:hover": { bgcolor: "#0a3640" },
+              textTransform: "none",
+            }}
           >
-            Save
+            {editingRole ? "Save Changes" : "Create Role"}
           </Button>
         </DialogActions>
       </Dialog>
 
+      {/* View Details Dialog */}
+      <Dialog
+        open={viewDialog}
+        onClose={() => setViewDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: primaryColor, fontWeight: 600, pb: 0 }}>
+          Role Details
+        </DialogTitle>
+        <DialogContent>
+          {viewingRole && (
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{ color: "#999", textTransform: "uppercase" }}
+                >
+                  Role Name
+                </Typography>
+                <Typography
+                  variant="body1"
+                  fontWeight={500}
+                  sx={{ color: primaryColor }}
+                >
+                  {viewingRole.displayName || viewingRole.name}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{ color: "#999", textTransform: "uppercase" }}
+                >
+                  Description
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#666" }}>
+                  {viewingRole.description || "No description provided"}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{ color: "#999", textTransform: "uppercase" }}
+                >
+                  Status
+                </Typography>
+                <Chip
+                  label={viewingRole.isActive ? "Active" : "Inactive"}
+                  size="small"
+                  sx={{
+                    mt: 0.5,
+                    bgcolor: viewingRole.isActive ? "#e8f5e9" : "#eeeeee",
+                    color: viewingRole.isActive ? "#2e7d32" : "#757575",
+                  }}
+                />
+              </Box>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{ color: "#999", textTransform: "uppercase" }}
+                >
+                  Member Count
+                </Typography>
+                <Typography variant="body1" fontWeight={500}>
+                  {viewingRole.memberCount || 0}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{ color: "#999", textTransform: "uppercase" }}
+                >
+                  Created At
+                </Typography>
+                <Typography variant="body2">
+                  {new Date(viewingRole.createdAt).toLocaleString()}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{ color: "#999", textTransform: "uppercase" }}
+                >
+                  Last Updated
+                </Typography>
+                <Typography variant="body2">
+                  {new Date(viewingRole.updatedAt).toLocaleString()}
+                </Typography>
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setViewDialog(false)}
+            sx={{ textTransform: "none", color: primaryColor }}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem
+          onClick={() => {
+            handleToggleStatus(selectedRole);
+            handleMenuClose();
+          }}
+        >
+          {selectedRole?.isActive ? "Deactivate" : "Activate"}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleOpenDialog(selectedRole);
+            handleMenuClose();
+          }}
+        >
+          Edit
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleDelete(selectedRole?._id);
+            handleMenuClose();
+          }}
+          sx={{ color: "#f44336" }}
+        >
+          Delete
+        </MenuItem>
+      </Menu>
+
+      {/* Snackbar */}
       <Snackbar
         open={snack.open}
         autoHideDuration={4000}
@@ -297,10 +927,25 @@ const RolesManagement = () => {
         <Alert
           severity={snack.severity}
           onClose={() => setSnack({ ...snack, open: false })}
+          sx={{ borderRadius: 2 }}
         >
           {snack.message}
         </Alert>
       </Snackbar>
+
+      {/* Error Alert */}
+      {error && (
+        <Snackbar
+          open={!!error}
+          autoHideDuration={6000}
+          onClose={clearError}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          <Alert severity="error" onClose={clearError} sx={{ borderRadius: 2 }}>
+            {error}
+          </Alert>
+        </Snackbar>
+      )}
     </Box>
   );
 };

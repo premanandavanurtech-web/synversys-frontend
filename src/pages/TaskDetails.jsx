@@ -1,0 +1,1565 @@
+// src/pages/TaskDetails.jsx
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  Box,
+  Container,
+  Typography,
+  Paper,
+  Button,
+  IconButton,
+  TextField,
+  Chip,
+  Stack,
+  CircularProgress,
+  Alert,
+  Snackbar,
+  Grid,
+  LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControlLabel,
+  FormControl,
+  Select,
+  MenuItem,
+  Rating,
+  Checkbox,
+  Tooltip,
+  Fade,
+  FormGroup,
+  FormHelperText,
+  ImageList,
+  ImageListItem,
+} from "@mui/material";
+import {
+  createTheme,
+  ThemeProvider,
+  styled,
+} from "@mui/material/styles";
+import {
+  ArrowBack as ArrowBackIcon,
+  Send as SendIcon,
+  Close as CloseIcon,
+  CloudUpload as CloudUploadIcon,
+  CheckCircleOutline as CheckCircleOutlineIcon,
+  Description as DescriptionIcon,
+  Draw as DrawIcon,
+  Assignment as AssignmentIcon,
+  LocationOn as LocationIcon,
+  Category as CategoryIcon,
+  CalendarToday as CalendarIcon,
+  CheckCircle as CheckCircleIcon,
+  Warning as WarningIcon,
+  Save as SaveIcon,
+} from "@mui/icons-material";
+import { useNavigate, useParams } from "react-router-dom";
+import { useTeamAssignment } from "../context/TeamAssignmentContext";
+import { useAuth } from "../context/AuthContexts";
+
+// ─── Theme (simplified, neutral) ───────────────────────────────────────────────
+const theme = createTheme({
+  palette: {
+    primary: { main: "#111827", contrastText: "#fff" },
+    secondary: { main: "#2563EB" },
+    success: { main: "#16A34A" },
+    warning: { main: "#D97706" },
+    error: { main: "#DC2626" },
+    background: { default: "#FFFFFF", paper: "#FFFFFF" },
+    text: { primary: "#111827", secondary: "#6B7280" },
+    divider: "#E5E7EB",
+  },
+  shape: { borderRadius: 8 },
+  typography: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    h5: { fontWeight: 700 },
+    h6: { fontWeight: 700 },
+    body2: { fontSize: "0.85rem" },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: { textTransform: "none", fontWeight: 600, borderRadius: 6 },
+      },
+    },
+    MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },
+    MuiTextField: { defaultProps: { size: "small" } },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: 6,
+          fontSize: "0.875rem",
+          "& fieldset": { borderColor: "#D1D5DB" },
+          "&:hover fieldset": { borderColor: "#9CA3AF" },
+          "&.Mui-focused fieldset": { borderColor: "#111827" },
+        },
+      },
+    },
+  },
+});
+
+// ─── Config (neutral labels, single accent) ──────────────────────────────────
+const STATUS_CFG = {
+  pending: { label: "Pending" },
+  in_progress: { label: "In Progress" },
+  submitted: { label: "Submitted" },
+  completed: { label: "Completed" },
+  approved: { label: "Approved" },
+  rejected: { label: "Rejected" },
+};
+
+const PRIORITY_CFG = {
+  low: { label: "Low" },
+  medium: { label: "Medium" },
+  high: { label: "High" },
+  critical: { label: "Critical" },
+};
+
+// ─── Styled ──────────────────────────────────────────────────────────────────
+const SectionCard = styled(Paper)({
+  borderRadius: 8,
+  border: "1px solid #E5E7EB",
+  marginBottom: 20,
+  overflow: "hidden",
+});
+
+const SectionHeader = styled(Box)({
+  padding: "14px 20px",
+  borderBottom: "1px solid #E5E7EB",
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+});
+
+const FieldWrapper = styled(Box)({
+  padding: "18px 20px",
+  "&:not(:last-child)": { borderBottom: "1px solid #F3F4F6" },
+});
+
+const InfoPill = ({ icon: Icon, label, value }) => (
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 1.25,
+      p: 1.5,
+      border: "1px solid #E5E7EB",
+      borderRadius: 1.5,
+    }}
+  >
+    <Icon sx={{ fontSize: 18, color: "#6B7280", mt: 0.2 }} />
+    <Box>
+      <Typography
+        sx={{
+          fontSize: "0.68rem",
+          fontWeight: 600,
+          color: "#9CA3AF",
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          mb: 0.3,
+        }}
+      >
+        {label}
+      </Typography>
+      <Typography sx={{ fontSize: "0.83rem", fontWeight: 600, color: "#111827" }}>
+        {value || "—"}
+      </Typography>
+    </Box>
+  </Box>
+);
+
+// ─── Signature Canvas ─────────────────────────────────────────────────────────
+function SignatureCanvas({ value, onChange }) {
+  const canvasRef = useRef(null);
+  const drawing = useRef(false);
+  const lastPos = useRef(null);
+
+  const getPos = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    ctx.strokeStyle = "#111827";
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    const onTouchStart = (e) => {
+      e.preventDefault();
+      drawing.current = true;
+      lastPos.current = getPos(e, canvas);
+    };
+
+    const onTouchMove = (e) => {
+      if (!drawing.current) return;
+      e.preventDefault();
+      const pos = getPos(e, canvas);
+      ctx.beginPath();
+      ctx.moveTo(lastPos.current.x, lastPos.current.y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      lastPos.current = pos;
+    };
+
+    const onTouchEnd = () => {
+      if (!drawing.current) return;
+      drawing.current = false;
+      onChange(canvas.toDataURL());
+    };
+
+    canvas.addEventListener("touchstart", onTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+    canvas.addEventListener("touchend", onTouchEnd, { passive: false });
+
+    return () => {
+      canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("touchmove", onTouchMove);
+      canvas.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [onChange]);
+
+  const onMouseDown = (e) => {
+    drawing.current = true;
+    lastPos.current = getPos(e, canvasRef.current);
+  };
+
+  const onMouseMove = (e) => {
+    if (!drawing.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const pos = getPos(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(lastPos.current.x, lastPos.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    lastPos.current = pos;
+  };
+
+  const onMouseUp = () => {
+    if (!drawing.current) return;
+    drawing.current = false;
+    onChange(canvasRef.current.toDataURL());
+  };
+
+  const clearSig = () => {
+    const canvas = canvasRef.current;
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    onChange("");
+  };
+
+  return (
+    <Box sx={{ mt: 1.5 }}>
+      <Box
+        sx={{
+          position: "relative",
+          border: "1px dashed #D1D5DB",
+          borderRadius: 1.5,
+          p: 1,
+          overflow: "hidden",
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          width={600}
+          height={130}
+          style={{
+            display: "block",
+            width: "100%",
+            height: 130,
+            cursor: "crosshair",
+            touchAction: "none",
+          }}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseUp}
+        />
+        {!value && (
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              pointerEvents: "none",
+              gap: 0.75,
+            }}
+          >
+            <DrawIcon sx={{ fontSize: 22, color: "#D1D5DB" }} />
+            <Typography sx={{ fontSize: "0.75rem", color: "#9CA3AF" }}>
+              Draw your signature
+            </Typography>
+          </Box>
+        )}
+      </Box>
+      {value && (
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 0.75 }}>
+          <Button
+            size="small"
+            onClick={clearSig}
+            sx={{
+              color: "#DC2626",
+              fontSize: "0.75rem",
+              p: 0,
+              fontWeight: 600,
+              "&:hover": { bgcolor: "transparent", textDecoration: "underline" },
+            }}
+          >
+            Clear signature
+          </Button>
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+// ─── Image Upload Field ───────────────────────────────────────────────────────
+function ImageUploadField({ fieldId, value, onChange, fieldLabel }) {
+  const [previews, setPreviews] = useState([]);
+
+  const handleFiles = (e) => {
+    const files = Array.from(e.target.files || []);
+    const newPrev = files.map((f) => ({
+      file: f,
+      url: URL.createObjectURL(f),
+      name: f.name,
+    }));
+    setPreviews((p) => [...p, ...newPrev]);
+    onChange(fieldId, [...(Array.isArray(value) ? value : []), ...files]);
+    e.target.value = "";
+  };
+
+  const remove = (idx) => {
+    URL.revokeObjectURL(previews[idx].url);
+    const next = previews.filter((_, i) => i !== idx);
+    setPreviews(next);
+    onChange(fieldId, next.map((p) => p.file));
+  };
+
+  return (
+    <Box sx={{ mt: 1.5 }}>
+      <Box
+        component="label"
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 3,
+          border: "1px dashed #D1D5DB",
+          borderRadius: 1.5,
+          cursor: "pointer",
+          transition: "all 0.15s",
+          "&:hover": { borderColor: "#9CA3AF" },
+        }}
+      >
+        <CloudUploadIcon sx={{ fontSize: 24, color: "#9CA3AF", mb: 0.75 }} />
+        <Typography sx={{ fontSize: "0.82rem", fontWeight: 600, color: "#6B7280", mb: 0.25 }}>
+          {fieldLabel ? (
+            <>Upload images for <Box component="span" sx={{ color: "#2563EB" }}>{fieldLabel}</Box></>
+          ) : (
+            <>Drag & drop or <Box component="span" sx={{ color: "#2563EB" }}>browse files</Box></>
+          )}
+        </Typography>
+        <Typography sx={{ fontSize: "0.7rem", color: "#9CA3AF" }}>
+          JPG, PNG, WEBP — max 10 MB each
+        </Typography>
+        <input type="file" multiple hidden accept="image/*" onChange={handleFiles} />
+      </Box>
+      {previews.length > 0 && (
+        <ImageList cols={4} gap={8} sx={{ mt: 1.5 }}>
+          {previews.map((img, idx) => (
+            <ImageListItem
+              key={idx}
+              sx={{
+                position: "relative",
+                borderRadius: 1.5,
+                overflow: "hidden",
+                border: "1px solid #E5E7EB",
+              }}
+            >
+              <img
+                src={img.url}
+                alt={img.name}
+                style={{ height: 88, objectFit: "cover", width: "100%" }}
+              />
+              <IconButton
+                size="small"
+                onClick={() => remove(idx)}
+                sx={{
+                  position: "absolute",
+                  top: 3,
+                  right: 3,
+                  bgcolor: "rgba(17,24,39,0.6)",
+                  "&:hover": { bgcolor: "rgba(17,24,39,0.8)" },
+                  width: 22,
+                  height: 22,
+                }}
+              >
+                <CloseIcon sx={{ fontSize: 12, color: "#fff" }} />
+              </IconButton>
+            </ImageListItem>
+          ))}
+        </ImageList>
+      )}
+    </Box>
+  );
+}
+
+// ─── Field Renderer ─────────────────────────────────────────────────────────
+function FieldRenderer({ field, value, onChange }) {
+  const fieldId = field._id;
+  const inputSx = { mt: 1.25 };
+
+  switch (field.type) {
+    case "text_input":
+      return (
+        <TextField
+          fullWidth
+          value={value || ""}
+          onChange={(e) => onChange(fieldId, e.target.value)}
+          placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}…`}
+          required={field.required}
+          sx={inputSx}
+        />
+      );
+
+    case "text_area":
+      return (
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          value={value || ""}
+          onChange={(e) => onChange(fieldId, e.target.value)}
+          placeholder={field.placeholder || "Enter detailed notes…"}
+          required={field.required}
+          sx={inputSx}
+        />
+      );
+
+    case "dropdown":
+      return (
+        <FormControl fullWidth sx={{ mt: 1.25 }} size="small" required={field.required}>
+          <Select
+            value={value || ""}
+            onChange={(e) => onChange(fieldId, e.target.value)}
+            displayEmpty
+          >
+            <MenuItem value="" disabled>
+              Select an option
+            </MenuItem>
+            {field.options?.map((opt, i) => (
+              <MenuItem key={i} value={opt}>
+                {opt}
+              </MenuItem>
+            ))}
+          </Select>
+          {field.required && !value && (
+            <FormHelperText error>This field is required</FormHelperText>
+          )}
+        </FormControl>
+      );
+
+    case "checkbox": {
+      const isMulti = Array.isArray(field.options) && field.options.length > 0;
+      if (isMulti) {
+        const selected = Array.isArray(value) ? value : [];
+        return (
+          <FormGroup sx={{ mt: 1.25 }}>
+            {field.options.map((opt, i) => (
+              <FormControlLabel
+                key={i}
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={selected.includes(opt)}
+                    onChange={(e) => {
+                      const next = e.target.checked
+                        ? [...selected, opt]
+                        : selected.filter((v) => v !== opt);
+                      onChange(fieldId, next);
+                    }}
+                  />
+                }
+                label={<Typography sx={{ fontSize: "0.83rem" }}>{opt}</Typography>}
+              />
+            ))}
+          </FormGroup>
+        );
+      }
+      return (
+        <FormControlLabel
+          sx={{ mt: 1.25 }}
+          control={
+            <Checkbox
+              size="small"
+              checked={value === true}
+              onChange={(e) => onChange(fieldId, e.target.checked)}
+            />
+          }
+          label={<Typography sx={{ fontSize: "0.83rem" }}>{field.label}</Typography>}
+        />
+      );
+    }
+
+    case "date":
+      return (
+        <TextField
+          fullWidth
+          type="date"
+          value={value || ""}
+          onChange={(e) => onChange(fieldId, e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          required={field.required}
+          sx={inputSx}
+        />
+      );
+
+    case "number":
+      return (
+        <TextField
+          fullWidth
+          type="number"
+          value={value || ""}
+          onChange={(e) => onChange(fieldId, e.target.value)}
+          placeholder={field.placeholder || "Enter a number"}
+          inputProps={{ min: field.min, max: field.max }}
+          required={field.required}
+          sx={inputSx}
+        />
+      );
+
+    case "rating": {
+      const max = field.validation?.max || 5;
+      return (
+        <Box sx={{ mt: 1.5 }}>
+          <Rating
+            value={parseInt(value) || 0}
+            onChange={(_, v) => onChange(fieldId, v)}
+            max={max}
+            size="large"
+          />
+          {value ? (
+            <Typography sx={{ fontSize: "0.72rem", color: "#9CA3AF", mt: 0.3 }}>
+              {value} / {max}
+            </Typography>
+          ) : (
+            field.required && (
+              <FormHelperText error>Rating required (1–{max})</FormHelperText>
+            )
+          )}
+        </Box>
+      );
+    }
+
+    case "image_upload":
+      return (
+        <ImageUploadField
+          fieldId={fieldId}
+          value={value}
+          onChange={onChange}
+          fieldLabel={field.label}
+        />
+      );
+
+    case "signature":
+      return <SignatureCanvas value={value} onChange={(v) => onChange(fieldId, v)} />;
+
+    default:
+      return (
+        <TextField
+          fullWidth
+          multiline
+          rows={2}
+          value={value || ""}
+          onChange={(e) => onChange(fieldId, e.target.value)}
+          placeholder="Enter your response…"
+          sx={inputSx}
+        />
+      );
+  }
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+function serializeFieldValue(field, value) {
+  if (value === undefined || value === null) return null;
+  if (field.type === "image_upload") {
+    return Array.isArray(value) ? `${value.length} image(s) uploaded` : null;
+  }
+  if (field.type === "checkbox" && Array.isArray(value)) {
+    return value.join(", ");
+  }
+  if (field.type === "signature") {
+    return value || null;
+  }
+  return value;
+}
+
+function getFieldTypeName(fieldType) {
+  const map = {
+    text_input: "text",
+    text_area: "text",
+    dropdown: "text",
+    checkbox: "text",
+    date: "text",
+    number: "number",
+    rating: "number",
+    image_upload: "image",
+    signature: "text",
+  };
+  return map[fieldType] || "text";
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export default function TaskDetails() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const { user } = useAuth();
+  const {
+    fetchTaskById,
+    submitAssignment,
+    submitting: contextSubmitting,
+    loading: contextLoading,
+  } = useTeamAssignment();
+  const mountedRef = useRef(true);
+
+  const [task, setTask] = useState(null);
+  const [responses, setResponses] = useState({});
+  const [notes, setNotes] = useState("");
+  const [attachments, setAttachments] = useState([]);
+  const [attachPreviews, setAttachPreviews] = useState([]);
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [localSubmitting, setLocalSubmitting] = useState(false);
+  const [localLoading, setLocalLoading] = useState(true);
+  const [validationErrors, setValidationErrors] = useState({});
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  const [submissionInfo, setSubmissionInfo] = useState(null);
+  const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const toast = useCallback((msg, severity = "success") => {
+    setSnack({ open: true, msg, severity });
+  }, []);
+
+  const checkIfAlreadySubmitted = useCallback(
+    (taskData) => {
+      if (
+        taskData.status === "submitted" ||
+        taskData.status === "approved" ||
+        taskData.status === "completed"
+      ) {
+        return true;
+      }
+
+      const currentMember = taskData.assignedToTeamMembers?.find(
+        (member) =>
+          member.userId?.toString() === user?._id?.toString() ||
+          member.userId === user?._id ||
+          member.email === user?.email,
+      );
+
+      if (currentMember && currentMember.status === "completed") {
+        return true;
+      }
+
+      if (taskData.totalSubmissions > 0 && taskData.myStatus === "completed") {
+        return true;
+      }
+
+      return false;
+    },
+    [user],
+  );
+
+  const loadTask = useCallback(async () => {
+    if (!id || id === "undefined" || id === "null") {
+      toast("Invalid task ID", "error");
+      navigate("/team");
+      return;
+    }
+
+    setLocalLoading(true);
+    const result = await fetchTaskById(id);
+    if (!mountedRef.current) return;
+    setLocalLoading(false);
+
+    if (result.success && result.task) {
+      const t = result.task;
+      setTask(t);
+
+      const submitted = checkIfAlreadySubmitted(t);
+      setAlreadySubmitted(submitted);
+
+      if (submitted) {
+        setSubmissionInfo({
+          status: t.status,
+          completedAt: t.completedAt || t.updatedAt,
+          message:
+            t.status === "approved"
+              ? "This inspection has been approved."
+              : t.status === "submitted"
+                ? "This inspection has been submitted and is pending review."
+                : "This inspection has already been completed.",
+        });
+      }
+
+      const existing = {};
+      (t.checklistData || []).forEach((cl) => {
+        (cl.responses || []).forEach((r) => {
+          existing[r.fieldId] = r.value;
+        });
+      });
+      setResponses(existing);
+      if (t.notes) setNotes(t.notes);
+    } else {
+      toast(result.error || "Failed to load task", "error");
+      navigate("/team");
+    }
+  }, [id, fetchTaskById, toast, navigate, checkIfAlreadySubmitted]);
+
+  useEffect(() => {
+    loadTask();
+  }, [id]);
+
+  const handleResponseChange = useCallback((fieldId, value) => {
+    setResponses((prev) => ({ ...prev, [fieldId]: value }));
+    setValidationErrors((prev) => {
+      if (!prev[fieldId]) return prev;
+      const next = { ...prev };
+      delete next[fieldId];
+      return next;
+    });
+  }, []);
+
+  const handleAttachFiles = (e) => {
+    const files = Array.from(e.target.files || []);
+    setAttachments((prev) => [...prev, ...files]);
+    setAttachPreviews((prev) => [
+      ...prev,
+      ...files.map((f) => ({ name: f.name, size: f.size })),
+    ]);
+    e.target.value = "";
+  };
+
+  const removeAttach = (idx) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== idx));
+    setAttachPreviews((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const validateRequiredFields = () => {
+    const fields = getFields();
+    const errors = {};
+
+    fields
+      .filter((f) => f.required)
+      .forEach((field) => {
+        const v = responses[field._id];
+        let valid = false;
+
+        switch (field.type) {
+          case "checkbox":
+            valid = Array.isArray(v) && v.length > 0;
+            break;
+          case "rating":
+            valid = v !== undefined && v !== null && Number(v) > 0;
+            break;
+          case "image_upload":
+            valid = Array.isArray(v) && v.length > 0;
+            break;
+          case "signature":
+            valid = typeof v === "string" && v.trim().length > 0;
+            break;
+          default:
+            valid = v !== undefined && v !== null && v !== "";
+        }
+
+        if (!valid) errors[field._id] = `${field.label} is required`;
+      });
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const getChecklist = () =>
+    task?.checklistIds?.[0] ||
+    task?.checklists?.[0] ||
+    task?.checklistData?.[0] ||
+    {};
+
+  const getFields = () => getChecklist().fields || [];
+
+  const buildResponsesPayload = () => {
+    const checklist = getChecklist();
+    const fields = checklist.fields || [];
+
+    const checklistEntries =
+      task?.checklistIds ||
+      task?.checklists ||
+      (checklist._id ? [checklist] : []);
+
+    return checklistEntries.map((cl) => {
+      const clId = cl._id || cl.checklistId || "";
+      const clFields = cl.fields || fields;
+
+      return {
+        checklistId: clId,
+        responses: clFields.map((field) => ({
+          fieldId: field._id,
+          fieldLabel: field.label,
+          fieldType: getFieldTypeName(field.type),
+          value: serializeFieldValue(field, responses[field._id]),
+        })),
+      };
+    });
+  };
+
+  const computeMetrics = () => {
+    const fields = getFields();
+    let passed = 0,
+      failed = 0,
+      na = 0;
+
+    fields.forEach((field) => {
+      const v = responses[field._id];
+      const hasValue =
+        v !== undefined &&
+        v !== null &&
+        v !== "" &&
+        !(Array.isArray(v) && v.length === 0);
+
+      if (hasValue) {
+        passed++;
+      } else if (field.required) {
+        failed++;
+      } else {
+        na++;
+      }
+    });
+
+    const total = passed + failed + na || 1;
+    const performanceRating = parseFloat(((passed / total) * 5).toFixed(1));
+
+    return { passed, failed, na, performanceRating };
+  };
+
+  const handleSaveDraft = () => {
+    if (alreadySubmitted) {
+      toast("Cannot save draft - inspection already submitted", "warning");
+      return;
+    }
+
+    try {
+      const draftData = {
+        id,
+        responses,
+        notes,
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(`draft_${id}`, JSON.stringify(draftData));
+      toast("Draft saved!", "success");
+    } catch {
+      toast("Could not save draft", "warning");
+    }
+  };
+
+  useEffect(() => {
+    if (!task?._id || alreadySubmitted) return;
+    try {
+      const raw = localStorage.getItem(`draft_${task._id}`);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (Object.keys(responses).length === 0 && draft.responses) {
+          setResponses(draft.responses);
+          if (draft.notes) setNotes(draft.notes);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [task, alreadySubmitted]);
+
+  const handleSubmit = async () => {
+    if (alreadySubmitted) {
+      toast(
+        "This inspection has already been submitted. You cannot submit it again.",
+        "error",
+      );
+      setSubmitDialogOpen(false);
+      return;
+    }
+
+    if (!id || id === "undefined") {
+      toast("Invalid assignment ID", "error");
+      return;
+    }
+
+    if (!validateRequiredFields()) {
+      toast("Please complete all required fields before submitting", "error");
+      setSubmitDialogOpen(false);
+      return;
+    }
+
+    setLocalSubmitting(true);
+
+    try {
+      const formData = new FormData();
+
+      const responsesPayload = buildResponsesPayload();
+      formData.append("responses", JSON.stringify(responsesPayload));
+
+      if (notes.trim()) formData.append("notes", notes.trim());
+
+      formData.append("inspectorName", user?.name || user?.fullName || "Team Member");
+      if (user?.email) formData.append("inspectorEmail", user.email);
+
+      formData.append("overallCondition", "good");
+
+      const { passed, failed, na, performanceRating } = computeMetrics();
+      formData.append("itemsPassed", String(passed));
+      formData.append("itemsFailed", String(failed));
+      formData.append("itemsNA", String(na));
+      formData.append("performanceRating", String(performanceRating));
+
+      const fields = getFields();
+      fields.forEach((field) => {
+        if (field.type === "image_upload") {
+          const imageFiles = responses[field._id];
+          if (Array.isArray(imageFiles)) {
+            imageFiles.forEach((file) => {
+              if (file instanceof File) {
+                formData.append("images", file);
+              }
+            });
+          }
+        }
+      });
+
+      attachments.forEach((file) => {
+        formData.append("attachments", file);
+      });
+
+      const result = await submitAssignment(id, formData);
+
+      if (result.success) {
+        try {
+          localStorage.removeItem(`draft_${id}`);
+        } catch {
+          // ignore
+        }
+
+        toast("Inspection submitted successfully!", "success");
+        setSubmitDialogOpen(false);
+        setAlreadySubmitted(true);
+
+        setTimeout(() => navigate("/team"), 2000);
+      } else {
+        if (
+          result.error &&
+          (result.error.toLowerCase().includes("already") ||
+            result.error.toLowerCase().includes("completed") ||
+            result.error.toLowerCase().includes("submitted"))
+        ) {
+          setAlreadySubmitted(true);
+          toast("This inspection has already been submitted.", "error");
+        } else {
+          throw new Error(result.error || "Submission failed");
+        }
+      }
+    } catch (err) {
+      console.error("[TaskDetails] Submission error:", err);
+      toast(err.message || "Failed to submit inspection. Please try again.", "error");
+    } finally {
+      if (mountedRef.current) setLocalSubmitting(false);
+    }
+  };
+
+  const checklist = getChecklist();
+  const fields = getFields();
+  const assetDetail = task?.assetIds?.[0] || {};
+  const assetSummary = task?.assets?.[0] || {};
+
+  const statusKey = (task?.status || "pending").toLowerCase();
+  const priorityKey = (task?.priority || "medium").toLowerCase();
+  const statusCfg = STATUS_CFG[statusKey] || STATUS_CFG.pending;
+  const priorityCfg = PRIORITY_CFG[priorityKey] || PRIORITY_CFG.medium;
+
+  const requiredFields = fields.filter((f) => f.required);
+  const answeredRequired = requiredFields.filter((f) => {
+    const v = responses[f._id];
+    if (f.type === "checkbox") return Array.isArray(v) && v.length > 0;
+    if (f.type === "rating") return v !== undefined && v !== null && Number(v) > 0;
+    if (f.type === "image_upload") return Array.isArray(v) && v.length > 0;
+    if (f.type === "signature") return typeof v === "string" && v.trim().length > 0;
+    return v !== undefined && v !== null && v !== "";
+  });
+  const progressPct = requiredFields.length
+    ? Math.round((answeredRequired.length / requiredFields.length) * 100)
+    : 0;
+
+  const isSubmitting = localSubmitting || contextSubmitting;
+  const isLoading = localLoading || contextLoading;
+
+  // ── Already Submitted View ──────────────────────────────────────────────────
+  if (!isLoading && alreadySubmitted && task) {
+    return (
+      <ThemeProvider theme={theme}>
+        <Box sx={{ minHeight: "100vh" }}>
+          <Box sx={{ borderBottom: "1px solid #E5E7EB" }}>
+            <Container maxWidth="lg" sx={{ py: 3 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <Tooltip title="Back to tasks">
+                  <IconButton
+                    onClick={() => navigate("/team")}
+                    sx={{ border: "1px solid #E5E7EB", borderRadius: 1.5 }}
+                  >
+                    <ArrowBackIcon sx={{ fontSize: 19 }} />
+                  </IconButton>
+                </Tooltip>
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    sx={{
+                      fontSize: "0.68rem",
+                      fontWeight: 600,
+                      color: "#9CA3AF",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      mb: 0.4,
+                    }}
+                  >
+                    Inspection Task
+                  </Typography>
+                  <Typography variant="h6">{checklist.name || "Assignment"}</Typography>
+                </Box>
+              </Box>
+            </Container>
+          </Box>
+
+          <Container maxWidth="lg" sx={{ py: 8 }}>
+            <Paper
+              variant="outlined"
+              sx={{ textAlign: "center", py: 8, px: 4, borderRadius: 2 }}
+            >
+              <CheckCircleOutlineIcon sx={{ fontSize: 56, color: "#16A34A", mb: 2 }} />
+              <Typography variant="h5" sx={{ mb: 1 }}>
+                Inspection Already Submitted
+              </Typography>
+              <Typography sx={{ color: "#6B7280", mb: 3, maxWidth: 400, mx: "auto" }}>
+                {submissionInfo?.message ||
+                  "This inspection has already been submitted and cannot be modified."}
+              </Typography>
+              {submissionInfo?.completedAt && (
+                <Typography variant="caption" sx={{ color: "#9CA3AF", display: "block", mb: 3 }}>
+                  Submitted on: {new Date(submissionInfo.completedAt).toLocaleString()}
+                </Typography>
+              )}
+              <Button variant="contained" onClick={() => navigate("/team")}>
+                Back to My Tasks
+              </Button>
+            </Paper>
+          </Container>
+        </Box>
+      </ThemeProvider>
+    );
+  }
+
+  // ── Loading state ───────────────────────────────────────────────────────────
+  if (isLoading && !task) {
+    return (
+      <ThemeProvider theme={theme}>
+        <Box
+          sx={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Box sx={{ textAlign: "center" }}>
+            <CircularProgress size={32} thickness={3} />
+            <Typography sx={{ mt: 2, fontSize: "0.85rem", color: "#9CA3AF" }}>
+              Loading assignment…
+            </Typography>
+          </Box>
+        </Box>
+      </ThemeProvider>
+    );
+  }
+
+  if (!task) return null;
+
+  const assetName = assetDetail.assetName || assetSummary.assetName || "—";
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Box sx={{ minHeight: "100vh" }}>
+        {/* ── Header ── */}
+        <Box sx={{ borderBottom: "1px solid #E5E7EB" }}>
+          <Container maxWidth="lg" sx={{ py: 3 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2.5 }}>
+              <Tooltip title="Back to tasks">
+                <IconButton
+                  onClick={() => navigate("/team")}
+                  sx={{ border: "1px solid #E5E7EB", borderRadius: 1.5 }}
+                >
+                  <ArrowBackIcon sx={{ fontSize: 19 }} />
+                </IconButton>
+              </Tooltip>
+
+              <Box sx={{ flex: 1 }}>
+                <Typography
+                  sx={{
+                    fontSize: "0.68rem",
+                    fontWeight: 600,
+                    color: "#9CA3AF",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.1em",
+                    mb: 0.4,
+                  }}
+                >
+                  Inspection Task
+                </Typography>
+                <Typography variant="h6">{checklist.name || "Assignment"}</Typography>
+                <Typography sx={{ fontSize: "0.78rem", color: "#9CA3AF", mt: 0.2 }}>
+                  {assetName} · Ref #{task._id?.slice(-8)}
+                </Typography>
+              </Box>
+
+              <Stack direction="row" spacing={1}>
+                <Chip
+                  label={statusCfg.label}
+                  size="small"
+                  variant="outlined"
+                  sx={{ fontWeight: 600, fontSize: "0.72rem" }}
+                />
+                <Chip
+                  label={priorityCfg.label}
+                  size="small"
+                  variant="outlined"
+                  sx={{ fontWeight: 600, fontSize: "0.72rem", color: "#6B7280" }}
+                />
+              </Stack>
+            </Box>
+
+            <Box sx={{ border: "1px solid #E5E7EB", borderRadius: 1.5, p: 2 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 1.25,
+                }}
+              >
+                <Typography sx={{ fontSize: "0.78rem", fontWeight: 600, color: "#6B7280" }}>
+                  Checklist Progress
+                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Typography sx={{ fontSize: "0.75rem", color: "#9CA3AF" }}>
+                    {answeredRequired.length}/{requiredFields.length} required
+                  </Typography>
+                  <Typography sx={{ fontSize: "1rem", fontWeight: 700 }}>
+                    {progressPct}%
+                  </Typography>
+                </Box>
+              </Box>
+              <LinearProgress
+                variant="determinate"
+                value={progressPct}
+                sx={{
+                  height: 6,
+                  borderRadius: 3,
+                  bgcolor: "#E5E7EB",
+                  "& .MuiLinearProgress-bar": { borderRadius: 3 },
+                }}
+              />
+            </Box>
+          </Container>
+        </Box>
+
+        {/* ── Body ── */}
+        <Container maxWidth="lg" sx={{ py: 3.5 }}>
+          {Object.keys(validationErrors).length > 0 && (
+            <Alert
+              severity="warning"
+              icon={<WarningIcon />}
+              onClose={() => setValidationErrors({})}
+              sx={{ mb: 3, borderRadius: 1.5, fontWeight: 600 }}
+            >
+              Please complete all required fields marked with *
+            </Alert>
+          )}
+
+          {/* Asset Information */}
+          <SectionCard elevation={0}>
+            <SectionHeader>
+              <AssignmentIcon sx={{ fontSize: 18, color: "#6B7280" }} />
+              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
+                Asset Information
+              </Typography>
+            </SectionHeader>
+            <Box sx={{ p: 2.5 }}>
+              <Grid container spacing={1.75}>
+                <Grid item xs={12} sm={6} md={3} sx={{ width:"260px"}}>
+                  <InfoPill icon={AssignmentIcon} label="Asset" value={assetName} />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3} sx={{ width:"260px"}}>
+                  <InfoPill
+                    icon={LocationIcon}
+                    label="Location"
+                    value={assetDetail.currentLocation || assetDetail.location}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3} sx={{ width:"260px"}}>
+                  <InfoPill
+                    icon={CategoryIcon}
+                    label="Category"
+                    value={
+                      checklist.category
+                        ? checklist.category.charAt(0).toUpperCase() + checklist.category.slice(1)
+                        : null
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3} sx={{ width:"260px"}}>
+                  <InfoPill
+                    icon={CalendarIcon}
+                    label="Due Date"
+                    value={task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "Not specified"}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          </SectionCard>
+
+          {/* Checklist Fields */}
+          <SectionCard elevation={0}>
+            <SectionHeader>
+              <CheckCircleIcon sx={{ fontSize: 18, color: "#6B7280" }} />
+              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
+                {checklist.name || "Inspection Fields"}
+              </Typography>
+              {fields.length > 0 && (
+                <Chip
+                  label={`${fields.length} field${fields.length !== 1 ? "s" : ""}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ ml: "auto", fontWeight: 600, fontSize: "0.7rem", height: 22 }}
+                />
+              )}
+            </SectionHeader>
+
+            {fields.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 8 }}>
+                <AssignmentIcon sx={{ fontSize: 40, color: "#D1D5DB", display: "block", mx: "auto", mb: 1.5 }} />
+                <Typography sx={{ fontSize: "0.85rem", color: "#9CA3AF" }}>
+                  No fields found for this checklist.
+                </Typography>
+              </Box>
+            ) : (
+              fields.map((field, idx) => (
+                <Fade in key={field._id} timeout={100 + idx * 25}>
+                  <FieldWrapper
+                    sx={
+                      validationErrors[field._id]
+                        ? { borderLeft: "3px solid #DC2626" }
+                        : {}
+                    }
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.3 }}>
+                      <Typography sx={{ fontSize: "0.84rem", fontWeight: 700 }}>
+                        {field.label}
+                      </Typography>
+                      {field.required ? (
+                        <Box
+                          component="span"
+                          sx={{ color: "#DC2626", fontSize: "0.9rem", lineHeight: 1, fontWeight: 700 }}
+                        >
+                          *
+                        </Box>
+                      ) : (
+                        <Chip
+                          label="Optional"
+                          size="small"
+                          variant="outlined"
+                          sx={{ height: 16, fontSize: "0.63rem", color: "#9CA3AF", ml: 0.5 }}
+                        />
+                      )}
+                    </Box>
+
+                    {field.description && (
+                      <Typography sx={{ fontSize: "0.75rem", color: "#9CA3AF", mb: 0.25 }}>
+                        {field.description}
+                      </Typography>
+                    )}
+
+                    <FieldRenderer
+                      field={field}
+                      value={responses[field._id] ?? ""}
+                      onChange={handleResponseChange}
+                    />
+
+                    {validationErrors[field._id] && (
+                      <FormHelperText error sx={{ mt: 0.75, fontSize: "0.75rem" }}>
+                        {validationErrors[field._id]}
+                      </FormHelperText>
+                    )}
+                  </FieldWrapper>
+                </Fade>
+              ))
+            )}
+          </SectionCard>
+
+          {/* Additional Notes */}
+          <SectionCard elevation={0}>
+            <SectionHeader>
+              <DescriptionIcon sx={{ fontSize: 18, color: "#6B7280" }} />
+              <Box>
+                <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
+                  Additional Notes
+                </Typography>
+                <Typography sx={{ fontSize: "0.7rem", color: "#9CA3AF" }}>
+                  Optional comments or observations
+                </Typography>
+              </Box>
+            </SectionHeader>
+            <Box sx={{ p: 2.5 }}>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add any additional comments or observations about the inspection…"
+              />
+            </Box>
+          </SectionCard>
+
+          {/* Supporting Documents */}
+          <SectionCard elevation={0}>
+            <SectionHeader>
+              <CloudUploadIcon sx={{ fontSize: 18, color: "#6B7280" }} />
+              <Box>
+                <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
+                  Supporting Documents
+                </Typography>
+                <Typography sx={{ fontSize: "0.7rem", color: "#9CA3AF" }}>
+                  PDF, DOC, DOCX or images — uploaded as attachments
+                </Typography>
+              </Box>
+            </SectionHeader>
+            <Box sx={{ p: 2.5 }}>
+              <Box
+                component="label"
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  p: 3,
+                  border: "1px dashed #D1D5DB",
+                  borderRadius: 1.5,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  "&:hover": { borderColor: "#9CA3AF" },
+                }}
+              >
+                <CloudUploadIcon sx={{ fontSize: 24, color: "#9CA3AF", mb: 0.75 }} />
+                <Typography sx={{ fontSize: "0.82rem", fontWeight: 600, color: "#6B7280", mb: 0.25 }}>
+                  Click to upload or drag & drop
+                </Typography>
+                <Typography sx={{ fontSize: "0.7rem", color: "#9CA3AF" }}>
+                  PDF, DOC, DOCX, images — up to 10 MB each
+                </Typography>
+                <input
+                  type="file"
+                  multiple
+                  hidden
+                  onChange={handleAttachFiles}
+                  accept="image/*,.pdf,.doc,.docx"
+                />
+              </Box>
+
+              {attachPreviews.length > 0 && (
+                <Stack spacing={1} sx={{ mt: 2 }}>
+                  {attachPreviews.map((f, idx) => (
+                    <Box
+                      key={idx}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        px: 1.75,
+                        py: 1.25,
+                        border: "1px solid #E5E7EB",
+                        borderRadius: 1.5,
+                      }}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, overflow: "hidden" }}>
+                        <DescriptionIcon sx={{ fontSize: 18, color: "#6B7280" }} />
+                        <Box sx={{ overflow: "hidden" }}>
+                          <Typography sx={{ fontSize: "0.8rem", fontWeight: 600 }} noWrap>
+                            {f.name}
+                          </Typography>
+                          <Typography sx={{ fontSize: "0.68rem", color: "#9CA3AF" }}>
+                            {(f.size / 1024).toFixed(1)} KB
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <IconButton
+                        size="small"
+                        onClick={() => removeAttach(idx)}
+                        sx={{ color: "#DC2626", borderRadius: 1.5 }}
+                      >
+                        <CloseIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+            </Box>
+          </SectionCard>
+
+          {/* Action Buttons */}
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5, pb: 4 }}>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => setSubmitDialogOpen(true)}
+              disabled={isSubmitting || alreadySubmitted}
+              startIcon={
+                isSubmitting ? (
+                  <CircularProgress size={15} color="inherit" />
+                ) : (
+                  <SendIcon sx={{ fontSize: 17 }} />
+                )
+              }
+              sx={{ px: 4, py: 1.1, boxShadow: "none" , background:"#0c3d67" , borderRadius: 2 }}
+            >
+              {alreadySubmitted
+                ? "Already Submitted"
+                : isSubmitting
+                  ? "Submitting…"
+                  : "Submit Inspection"}
+            </Button>
+          </Box>
+        </Container>
+
+        {/* Submit Confirmation Dialog */}
+        <Dialog
+          open={submitDialogOpen}
+          onClose={() => !isSubmitting && setSubmitDialogOpen(false)}
+          maxWidth="xs"
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 2, border: "1px solid #E5E7EB" } }}
+        >
+          <DialogTitle sx={{ pt: 3, pb: 1.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <CheckCircleOutlineIcon sx={{ color: "#16A34A", fontSize: 26 }} />
+              <Box>
+                <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>
+                  Ready to submit?
+                </Typography>
+                <Typography sx={{ fontSize: "0.72rem", color: "#9CA3AF", fontWeight: 400 }}>
+                  Review before confirming
+                </Typography>
+              </Box>
+            </Box>
+          </DialogTitle>
+
+          <DialogContent sx={{ pb: 0 }}>
+            <Typography sx={{ fontSize: "0.84rem", color: "#6B7280", lineHeight: 1.6 }}>
+              You're about to submit this inspection. Once submitted, changes require admin approval to revise.
+            </Typography>
+
+            <Alert severity="warning" icon={<WarningIcon sx={{ fontSize: 17 }} />} sx={{ mt: 2, borderRadius: 1.5 }}>
+              This action cannot be undone without administrator approval.
+            </Alert>
+
+            <Box sx={{ mt: 2, p: 2, border: "1px solid #E5E7EB", borderRadius: 1.5 }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                <Typography sx={{ fontSize: "0.75rem", fontWeight: 600, color: "#6B7280" }}>
+                  Required fields
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    color: progressPct === 100 ? "#16A34A" : "#D97706",
+                  }}
+                >
+                  {progressPct}% complete
+                </Typography>
+              </Box>
+              <LinearProgress
+                variant="determinate"
+                value={progressPct}
+                sx={{
+                  height: 5,
+                  borderRadius: 3,
+                  bgcolor: "#E5E7EB",
+                  "& .MuiLinearProgress-bar": {
+                    borderRadius: 3,
+                    bgcolor: progressPct === 100 ? "#16A34A" : "#D97706",
+                  },
+                }}
+              />
+              <Typography sx={{ fontSize: "0.7rem", color: "#9CA3AF", mt: 0.75 }}>
+                {answeredRequired.length} of {requiredFields.length} required fields answered
+              </Typography>
+            </Box>
+          </DialogContent>
+
+          <DialogActions sx={{ px: 3, py: 2.5, gap: 1 }}>
+            <Button
+              onClick={() => setSubmitDialogOpen(false)}
+              disabled={isSubmitting}
+              variant="outlined"
+              sx={{ flex: 1, borderColor: "#D1D5DB", color: "#043468" }}
+            >
+              Keep Editing
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              variant="contained"
+              disabled={isSubmitting}
+              startIcon={isSubmitting ? <CircularProgress size={13} color="inherit" /> : null}
+              sx={{ flex: 2, boxShadow: "none" }}
+            >
+              {isSubmitting ? "Submitting…" : "Confirm & Submit"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Toast */}
+        <Snackbar
+          open={snack.open}
+          autoHideDuration={6000}
+          onClose={() => setSnack((s) => ({ ...s, open: false }))}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        >
+          <Alert
+            severity={snack.severity}
+            onClose={() => setSnack((s) => ({ ...s, open: false }))}
+            sx={{ borderRadius: 1.5, fontWeight: 600 }}
+          >
+            {snack.msg}
+          </Alert>
+        </Snackbar>
+      </Box>
+    </ThemeProvider>
+  );
+}

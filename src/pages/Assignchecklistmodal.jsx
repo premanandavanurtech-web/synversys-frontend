@@ -1,7 +1,13 @@
 // components/modals/AssignmentModal.jsx
 // Fixed version — all bugs resolved
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Dialog,
   DialogContent,
@@ -52,9 +58,9 @@ const BORDER = "#d0e4ea";
 const API_BASE_URL = "http://localhost:9001/api/v1";
 
 const PRIORITIES = [
-  { value: "low",      label: "Low",      color: "#4caf50" },
-  { value: "medium",   label: "Medium",   color: "#ff9800" },
-  { value: "high",     label: "High",     color: "#f44336" },
+  { value: "low", label: "Low", color: "#4caf50" },
+  { value: "medium", label: "Medium", color: "#ff9800" },
+  { value: "high", label: "High", color: "#f44336" },
   { value: "critical", label: "Critical", color: "#9c27b0" },
 ];
 
@@ -97,15 +103,12 @@ const SectionLabel = ({ Icon, label, count }) => (
 );
 
 // ── SearchableMultiSelect ─────────────────────────────────────────────────────
-// FIX: toggleAll rewritten to batch all id changes in a single setState call,
-//      avoiding the race condition where rapid individual onToggle calls cancel each other.
-// FIX: multiple=false now correctly hides the "select all" row.
 const SearchableMultiSelect = ({
   label,
   items = [],
   selected = [],
-  onToggle,       // (id: string) => void  — still used for single-item clicks
-  onSetSelected,  // (ids: string[]) => void — NEW: used by toggleAll for batch updates
+  onToggle,
+  onSetSelected,
   loading = false,
   error = null,
   onRetry,
@@ -129,19 +132,20 @@ const SearchableMultiSelect = ({
     );
   }, [items, query, renderPrimary, renderSecondary]);
 
-  // FIX: derive allSelected from current `selected` prop, not from stale closure
-  const filteredIds = useMemo(() => filtered.map((i) => i._id || i.id), [filtered]);
+  const filteredIds = useMemo(
+    () => filtered.map((i) => i._id || i.id),
+    [filtered],
+  );
   const allSelected =
-    multiple && filteredIds.length > 0 && filteredIds.every((id) => selected.includes(id));
+    multiple &&
+    filteredIds.length > 0 &&
+    filteredIds.every((id) => selected.includes(id));
 
-  // FIX: batch toggle — one setState call, no cascading onToggle loops
   const toggleAll = useCallback(() => {
     if (!multiple || !onSetSelected) return;
     if (allSelected) {
-      // Deselect all filtered items while keeping any outside the filtered set
       onSetSelected(selected.filter((id) => !filteredIds.includes(id)));
     } else {
-      // Add all filtered ids not already selected
       const toAdd = filteredIds.filter((id) => !selected.includes(id));
       onSetSelected([...selected, ...toAdd]);
     }
@@ -151,7 +155,10 @@ const SearchableMultiSelect = ({
     return (
       <Box>
         <SectionLabel Icon={Icon} label={label} count={selected.length} />
-        <Paper variant="outlined" sx={{ p: 2, border: `1.5px solid ${BORDER}` }}>
+        <Paper
+          variant="outlined"
+          sx={{ p: 2, border: `1.5px solid ${BORDER}` }}
+        >
           <Stack spacing={1}>
             {[1, 2, 3].map((k) => (
               <Skeleton key={k} variant="rounded" height={50} />
@@ -168,13 +175,23 @@ const SearchableMultiSelect = ({
         <SectionLabel Icon={Icon} label={label} count={selected.length} />
         <Paper
           variant="outlined"
-          sx={{ p: 2, border: `1.5px solid ${BORDER}`, bgcolor: "#fff5f5", textAlign: "center" }}
+          sx={{
+            p: 2,
+            border: `1.5px solid ${BORDER}`,
+            bgcolor: "#fff5f5",
+            textAlign: "center",
+          }}
         >
           <ErrorIcon sx={{ color: "#f44336", fontSize: 40, mb: 1 }} />
           <Typography variant="body2" color="error" gutterBottom>
             Failed to load {label.toLowerCase()}
           </Typography>
-          <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
+            mb={1}
+          >
             {error}
           </Typography>
           {onRetry && (
@@ -192,10 +209,15 @@ const SearchableMultiSelect = ({
       <SectionLabel Icon={Icon} label={label} count={selected.length} />
       <Paper
         variant="outlined"
-        sx={{ border: `1.5px solid ${BORDER}`, borderRadius: 2, overflow: "hidden" }}
+        sx={{
+          border: `1.5px solid ${BORDER}`,
+          borderRadius: 2,
+          overflow: "hidden",
+        }}
       >
-        {/* Search box */}
-        <Box sx={{ p: 1, borderBottom: `1px solid ${BORDER}`, bgcolor: BG_LIGHT }}>
+        <Box
+          sx={{ p: 1, borderBottom: `1px solid ${BORDER}`, bgcolor: BG_LIGHT }}
+        >
           <TextField
             fullWidth
             size="small"
@@ -210,12 +232,15 @@ const SearchableMultiSelect = ({
               ),
             }}
             sx={{
-              "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: 1.5, fontSize: 13 },
+              "& .MuiOutlinedInput-root": {
+                bgcolor: "#fff",
+                borderRadius: 1.5,
+                fontSize: 13,
+              },
             }}
           />
         </Box>
 
-        {/* Select-all row — only shown when multiple=true and there is more than one filtered item */}
         {multiple && filteredIds.length > 1 && (
           <Box
             onClick={toggleAll}
@@ -237,16 +262,26 @@ const SearchableMultiSelect = ({
                 selected.some((id) => filteredIds.includes(id)) && !allSelected
               }
               onChange={toggleAll}
-              onClick={(e) => e.stopPropagation()} // prevent double-fire from parent Box click
-              sx={{ p: 0.5, mr: 1, color: PRIMARY, "&.Mui-checked": { color: PRIMARY } }}
+              onClick={(e) => e.stopPropagation()}
+              sx={{
+                p: 0.5,
+                mr: 1,
+                color: PRIMARY,
+                "&.Mui-checked": { color: PRIMARY },
+              }}
             />
-            <Typography variant="caption" color="text.secondary" fontWeight={500}>
-              {allSelected ? "Deselect all" : `Select all (${filteredIds.length})`}
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              fontWeight={500}
+            >
+              {allSelected
+                ? "Deselect all"
+                : `Select all (${filteredIds.length})`}
             </Typography>
           </Box>
         )}
 
-        {/* Item list */}
         <List dense disablePadding sx={{ maxHeight, overflowY: "auto" }}>
           {filtered.length === 0 ? (
             <ListItem sx={{ justifyContent: "center", py: 3 }}>
@@ -277,7 +312,12 @@ const SearchableMultiSelect = ({
                     checked={checked}
                     onChange={() => onToggle(id)}
                     onClick={(e) => e.stopPropagation()}
-                    sx={{ p: 0.5, mr: 1, color: PRIMARY, "&.Mui-checked": { color: PRIMARY } }}
+                    sx={{
+                      p: 0.5,
+                      mr: 1,
+                      color: PRIMARY,
+                      "&.Mui-checked": { color: PRIMARY },
+                    }}
                   />
                   {renderAvatar && (
                     <ListItemAvatar sx={{ minWidth: 36 }}>
@@ -286,20 +326,30 @@ const SearchableMultiSelect = ({
                   )}
                   <ListItemText
                     primary={
-                      <Typography variant="body2" fontWeight={checked ? 600 : 400} noWrap>
+                      <Typography
+                        variant="body2"
+                        fontWeight={checked ? 600 : 400}
+                        noWrap
+                      >
                         {renderPrimary(item)}
                       </Typography>
                     }
                     secondary={
                       renderSecondary && (
-                        <Typography variant="caption" color="text.secondary" noWrap>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          noWrap
+                        >
                           {renderSecondary(item)}
                         </Typography>
                       )
                     }
                   />
                   {checked && (
-                    <CheckCircleIcon sx={{ fontSize: 16, color: PRIMARY, ml: 0.5 }} />
+                    <CheckCircleIcon
+                      sx={{ fontSize: 16, color: PRIMARY, ml: 0.5 }}
+                    />
                   )}
                 </ListItem>
               );
@@ -312,7 +362,12 @@ const SearchableMultiSelect = ({
 };
 
 // ── SelectedChips ─────────────────────────────────────────────────────────────
-const SelectedChips = ({ ids = [], items = [], labelKey = "name", onRemove }) => {
+const SelectedChips = ({
+  ids = [],
+  items = [],
+  labelKey = "name",
+  onRemove,
+}) => {
   if (!ids.length) return null;
   return (
     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
@@ -329,7 +384,10 @@ const SelectedChips = ({ ids = [], items = [], labelKey = "name", onRemove }) =>
               bgcolor: PRIMARY,
               color: "#fff",
               fontSize: 11,
-              "& .MuiChip-deleteIcon": { color: "rgba(255,255,255,0.7)", fontSize: 14 },
+              "& .MuiChip-deleteIcon": {
+                color: "rgba(255,255,255,0.7)",
+                fontSize: 14,
+              },
             }}
           />
         );
@@ -339,14 +397,15 @@ const SelectedChips = ({ ids = [], items = [], labelKey = "name", onRemove }) =>
 };
 
 // ── Step indicator ────────────────────────────────────────────────────────────
-// FIX: only allow clicking on already-completed steps (idx < step), validated by parent.
 const StepIndicator = ({ steps, step, onStepClick }) => (
   <Box sx={{ display: "flex", alignItems: "center" }}>
     {steps.map((label, idx) => (
       <React.Fragment key={idx}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
           <Box
-            onClick={() => { if (idx < step) onStepClick(idx); }}
+            onClick={() => {
+              if (idx < step) onStepClick(idx);
+            }}
             sx={{
               width: 26,
               height: 26,
@@ -367,14 +426,21 @@ const StepIndicator = ({ steps, step, onStepClick }) => (
           <Typography
             variant="caption"
             fontWeight={idx === step ? 700 : 400}
-            color={idx === step ? PRIMARY : idx < step ? "#4caf50" : "text.secondary"}
+            color={
+              idx === step ? PRIMARY : idx < step ? "#4caf50" : "text.secondary"
+            }
           >
             {label}
           </Typography>
         </Box>
         {idx < steps.length - 1 && (
           <Box
-            sx={{ flex: 1, height: 2, mx: 1, bgcolor: idx < step ? "#4caf50" : BORDER }}
+            sx={{
+              flex: 1,
+              height: 2,
+              mx: 1,
+              bgcolor: idx < step ? "#4caf50" : BORDER,
+            }}
           />
         )}
       </React.Fragment>
@@ -403,46 +469,46 @@ const AssignmentModal = ({
     clearAssign,
   } = useAssignment();
 
-  const { assets, getAllAssets, loading: assetsLoading, error: assetsError } = useAsset();
+  const {
+    assets,
+    getAllAssets,
+    loading: assetsLoading,
+    error: assetsError,
+  } = useAsset();
 
-  // ── Role flags ────────────────────────────────────────────────────────────
   const isSuperAdmin = user?.role === "super_admin";
   const isAdmin = user?.role === "admin";
 
-  // ── Local data state ──────────────────────────────────────────────────────
-  const [checklists, setChecklists]           = useState([]);
-  const [recipients, setRecipients]           = useState([]);
+  const [checklists, setChecklists] = useState([]);
+  const [recipients, setRecipients] = useState([]);
   const [checklistsLoading, setChecklistsLoading] = useState(false);
-  const [checklistsError, setChecklistsError]     = useState(null);
+  const [checklistsError, setChecklistsError] = useState(null);
   const [recipientsLoading, setRecipientsLoading] = useState(false);
-  const [recipientsError, setRecipientsError]     = useState(null);
-  const [assetsFetchError, setAssetsFetchError]   = useState(null);
+  const [recipientsError, setRecipientsError] = useState(null);
+  const [assetsFetchError, setAssetsFetchError] = useState(null);
 
-  // ── Selection state ───────────────────────────────────────────────────────
-  // FIX: stabilise the initial checklist ids with a ref so the useMemo doesn't
-  //      fire on every render when the caller passes a literal array `[]`.
   const preselectedChecklistsRef = useRef(preselectedChecklists);
-  useEffect(() => { preselectedChecklistsRef.current = preselectedChecklists; }, [preselectedChecklists]);
+  useEffect(() => {
+    preselectedChecklistsRef.current = preselectedChecklists;
+  }, [preselectedChecklists]);
 
   const initialChecklistIds = useMemo(() => {
-    if (preselectedChecklistsRef.current.length > 0) return preselectedChecklistsRef.current;
+    if (preselectedChecklistsRef.current.length > 0)
+      return preselectedChecklistsRef.current;
     if (preselectedChecklist?._id) return [preselectedChecklist._id];
     return [];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preselectedChecklist?._id]);
 
-  const [step, setStep]               = useState(0);
+  const [step, setStep] = useState(0);
   const [selChecklists, setSelChecklists] = useState(initialChecklistIds);
-  const [selAssets, setSelAssets]         = useState([]);
-  const [selRecips, setSelRecips]         = useState([]);
-  const [dueDate, setDueDate]             = useState(tomorrow());
-  const [priority, setPriority]           = useState("medium");
-  const [notes, setNotes]                 = useState("");
-  const [submitError, setSubmitError]     = useState("");
-  const [submitting, setSubmitting]       = useState(false);
+  const [selAssets, setSelAssets] = useState([]);
+  const [selRecips, setSelRecips] = useState([]);
+  const [dueDate, setDueDate] = useState(tomorrow());
+  const [priority, setPriority] = useState("medium");
+  const [notes, setNotes] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  // ── Stable auth headers ───────────────────────────────────────────────────
-  // FIX: unified token key lookup order; keep consistent with what the app stores
   const getAuthHeaders = useCallback(() => {
     const accessToken =
       token ||
@@ -455,15 +521,12 @@ const AssignmentModal = ({
     };
   }, [token]);
 
-  // ── Data loaders ──────────────────────────────────────────────────────────
-
   const loadChecklists = useCallback(async () => {
     setChecklistsLoading(true);
     setChecklistsError(null);
     try {
       const response = await axios.get(`${API_BASE_URL}/checklists`, {
         headers: getAuthHeaders(),
-        // FIX: actually filter for published status as intended
         params: { status: "published" },
       });
 
@@ -471,20 +534,20 @@ const AssignmentModal = ({
         const checklistData = response.data.checklists || [];
         setChecklists(
           checklistData.map((c) => ({
-            _id:            c._id,
-            id:             c._id,
-            name:           c.name || "Untitled Checklist",
-            title:          c.name,
-            description:    c.description || "",
-            checklistType:  c.checklistType || "custom",
-            fields:         c.fields || [],
-            status:         c.status,
-            category:       c.category,
-            tags:           c.tags,
-            version:        c.version,
+            _id: c._id,
+            id: c._id,
+            name: c.name || "Untitled Checklist",
+            title: c.name,
+            description: c.description || "",
+            checklistType: c.checklistType || "custom",
+            fields: c.fields || [],
+            status: c.status,
+            category: c.category,
+            tags: c.tags,
+            version: c.version,
             submissionCount: c.submissionCount || 0,
-            totalFields:    c.totalFields || c.fields?.length || 0,
-            createdAt:      c.createdAt,
+            totalFields: c.totalFields || c.fields?.length || 0,
+            createdAt: c.createdAt,
           })),
         );
       } else {
@@ -492,7 +555,11 @@ const AssignmentModal = ({
       }
     } catch (err) {
       console.error("[AssignmentModal] loadChecklists:", err);
-      setChecklistsError(err.response?.data?.message || err.message || "Failed to load checklists");
+      setChecklistsError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to load checklists",
+      );
       setChecklists([]);
     } finally {
       setChecklistsLoading(false);
@@ -503,19 +570,21 @@ const AssignmentModal = ({
     setRecipientsLoading(true);
     setRecipientsError(null);
     try {
-      const response = await axios.get(`${API_BASE_URL}/clients`, { headers: getAuthHeaders() });
+      const response = await axios.get(`${API_BASE_URL}/clients`, {
+        headers: getAuthHeaders(),
+      });
       if (response.data?.success) {
         setRecipients(
           (response.data.clients || []).map((c) => ({
-            _id:            c._id,
-            id:             c._id,
-            name:           c.customerName || c.name || "Unknown",
-            email:          c.email,
-            role:           "admin",
-            status:         c.status,
+            _id: c._id,
+            id: c._id,
+            name: c.customerName || c.name || "Unknown",
+            email: c.email,
+            role: "admin",
+            status: c.status,
             membershipPlan: c.membershipPlan,
-            phone:          c.phone,
-            initials:       initials(c.customerName || c.name || ""),
+            phone: c.phone,
+            initials: initials(c.customerName || c.name || ""),
           })),
         );
       } else {
@@ -523,7 +592,9 @@ const AssignmentModal = ({
       }
     } catch (err) {
       console.error("[AssignmentModal] loadAdmins:", err);
-      setRecipientsError(err.response?.data?.message || err.message || "Failed to load admins");
+      setRecipientsError(
+        err.response?.data?.message || err.message || "Failed to load admins",
+      );
       setRecipients([]);
     } finally {
       setRecipientsLoading(false);
@@ -534,20 +605,22 @@ const AssignmentModal = ({
     setRecipientsLoading(true);
     setRecipientsError(null);
     try {
-      const response = await axios.get(`${API_BASE_URL}/team`, { headers: getAuthHeaders() });
+      const response = await axios.get(`${API_BASE_URL}/team`, {
+        headers: getAuthHeaders(),
+      });
       if (response.data?.success) {
         setRecipients(
           (response.data.members || []).map((m) => ({
-            _id:       m.id,
-            id:        m.id,
-            name:      `${m.firstName || ""} ${m.lastName || ""}`.trim() || m.email,
+            _id: m.id,
+            id: m.id,
+            name: `${m.firstName || ""} ${m.lastName || ""}`.trim() || m.email,
             firstName: m.firstName,
-            lastName:  m.lastName,
-            email:     m.email,
-            role:      m.teamRoleDisplay || m.teamRole || "team",
+            lastName: m.lastName,
+            email: m.email,
+            role: m.teamRoleDisplay || m.teamRole || "team",
             department: m.department,
-            location:  m.location,
-            status:    m.status,
+            location: m.location,
+            status: m.status,
             initials:
               (m.firstName?.[0] || "") + (m.lastName?.[0] || "") ||
               m.email?.[0]?.toUpperCase() ||
@@ -555,11 +628,17 @@ const AssignmentModal = ({
           })),
         );
       } else {
-        throw new Error(response.data?.message || "Failed to load team members");
+        throw new Error(
+          response.data?.message || "Failed to load team members",
+        );
       }
     } catch (err) {
       console.error("[AssignmentModal] loadTeamMembers:", err);
-      setRecipientsError(err.response?.data?.message || err.message || "Failed to load team members");
+      setRecipientsError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to load team members",
+      );
       setRecipients([]);
     } finally {
       setRecipientsLoading(false);
@@ -576,14 +655,14 @@ const AssignmentModal = ({
     setAssetsFetchError(null);
     try {
       const res = await getAllAssets({ limit: 200 });
-      if (!res?.success) setAssetsFetchError(res?.message || "Failed to load assets");
+      if (!res?.success)
+        setAssetsFetchError(res?.message || "Failed to load assets");
     } catch (err) {
       console.error("[AssignmentModal] loadAssets:", err);
       setAssetsFetchError(err.message || "Failed to load assets");
     }
   }, [getAllAssets, isAdmin]);
 
-  // ── Open / reset ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
 
@@ -602,38 +681,42 @@ const AssignmentModal = ({
     Promise.all(fetches).catch((e) =>
       console.error("[AssignmentModal] parallel fetch error:", e),
     );
-  }, [open]); // intentionally only on open change — loaders are stable callbacks
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
-  // ── Toggle helpers ────────────────────────────────────────────────────────
-  // FIX: stable callbacks — no new function reference on every render
   const toggleChecklist = useCallback(
-    (id) => setSelChecklists((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]),
+    (id) =>
+      setSelChecklists((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      ),
     [],
   );
   const toggleAsset = useCallback(
-    (id) => setSelAssets((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]),
+    (id) =>
+      setSelAssets((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      ),
     [],
   );
-  // FIX: super-admin is single-select — toggling the same id deselects, toggling a new id replaces
   const toggleRecipSingle = useCallback(
     (id) => setSelRecips((prev) => (prev[0] === id ? [] : [id])),
     [],
   );
   const toggleRecipMulti = useCallback(
-    (id) => setSelRecips((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]),
+    (id) =>
+      setSelRecips((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      ),
     [],
   );
 
-  // ── Navigation guards ─────────────────────────────────────────────────────
   const canGoStep1 = isSuperAdmin
     ? selChecklists.length > 0
     : selChecklists.length > 0 || selAssets.length > 0;
 
   const canGoStep2 = selRecips.length > 0;
-  const canSubmit  = !!dueDate && !!priority;
+  const canSubmit = !!dueDate && !!priority;
 
-  // ── Submit ────────────────────────────────────────────────────────────────
+  // FIXED: Proper reassignment payload structure
   const handleSubmit = async () => {
     setSubmitError("");
     setSubmitting(true);
@@ -641,26 +724,46 @@ const AssignmentModal = ({
       let result;
 
       if (mode === "reassign") {
+        // REASSIGNMENT MODE - Use correct field names for API
         if (isSuperAdmin) {
+          // FIX: API expects newAdminId, not adminId
           result = await reassignToAdmin(assignmentId, {
-            adminId: selRecips[0], dueDate, priority, notes,
+            newAdminId: selRecips[0], // Changed from adminId to newAdminId
+            dueDate,
+            priority,
+            notes,
+            reason: notes || "Reassignment requested", // Reason is required by API
           });
         } else {
+          // FIX: API expects newTeamMemberIds, not teamMemberIds
           result = await reassignToTeam(assignmentId, {
-            teamMemberIds: selRecips, dueDate, priority, notes,
+            newTeamMemberIds: selRecips, // Changed from teamMemberIds to newTeamMemberIds
+            dueDate,
+            priority,
+            notes,
+            reason: notes || "Reassignment requested", // Reason is required by API
+            newChecklistIds: selChecklists.length ? selChecklists : undefined,
+            newAssetIds: selAssets.length ? selAssets : undefined,
           });
         }
       } else {
+        // NEW ASSIGNMENT MODE
         if (isSuperAdmin) {
           result = await assignToAdmin({
-            checklistIds: selChecklists, adminId: selRecips[0], dueDate, priority, notes,
+            checklistIds: selChecklists,
+            adminId: selRecips[0],
+            dueDate,
+            priority,
+            notes,
           });
         } else {
           result = await assignToTeam({
             checklistIds: selChecklists.length ? selChecklists : undefined,
-            assetIds:     selAssets.length     ? selAssets     : undefined,
+            assetIds: selAssets.length ? selAssets : undefined,
             teamMemberIds: selRecips,
-            dueDate, priority, notes,
+            dueDate,
+            priority,
+            notes,
           });
         }
       }
@@ -672,18 +775,17 @@ const AssignmentModal = ({
         setSubmitError(result?.error || "Assignment failed. Please try again.");
       }
     } catch (err) {
+      console.error("Submit error:", err);
       setSubmitError(err.message || "Unexpected error");
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ── Step labels ───────────────────────────────────────────────────────────
   const steps = isSuperAdmin
     ? ["Select Checklists", "Select Admin", "Details"]
     : ["Select Items", "Select Team Members", "Details"];
 
-  // ── Step 0: items ─────────────────────────────────────────────────────────
   const renderStep0 = () => (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       <SearchableMultiSelect
@@ -699,13 +801,15 @@ const AssignmentModal = ({
         renderPrimary={(c) => c.name || "Untitled"}
         renderSecondary={(c) => {
           const parts = [];
-          if (c.checklistType)   parts.push(c.checklistType);
-          if (c.totalFields)     parts.push(`${c.totalFields} fields`);
+          if (c.checklistType) parts.push(c.checklistType);
+          if (c.totalFields) parts.push(`${c.totalFields} fields`);
           if (c.submissionCount) parts.push(`${c.submissionCount} submissions`);
           return parts.join(" · ") || "No details";
         }}
         renderAvatar={(c) => (
-          <Avatar sx={{ width: 28, height: 28, bgcolor: PRIMARY, fontSize: 11 }}>
+          <Avatar
+            sx={{ width: 28, height: 28, bgcolor: PRIMARY, fontSize: 11 }}
+          >
             {initials(c.name || "C")}
           </Avatar>
         )}
@@ -730,7 +834,9 @@ const AssignmentModal = ({
               .join(" · ") || "—"
           }
           renderAvatar={() => (
-            <Avatar sx={{ width: 28, height: 28, bgcolor: "#607d8b", fontSize: 11 }}>
+            <Avatar
+              sx={{ width: 28, height: 28, bgcolor: "#607d8b", fontSize: 11 }}
+            >
               <InventoryIcon sx={{ fontSize: 14 }} />
             </Avatar>
           )}
@@ -762,16 +868,13 @@ const AssignmentModal = ({
     </Box>
   );
 
-  // ── Step 1: recipients ────────────────────────────────────────────────────
   const renderStep1 = () => (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <SearchableMultiSelect
         label={isSuperAdmin ? "Admins" : "Team Members"}
         items={recipients}
         selected={selRecips}
-        // FIX: correct single-select handler for super_admin, multi for admin
         onToggle={isSuperAdmin ? toggleRecipSingle : toggleRecipMulti}
-        // FIX: batch setter only passed for multi-select (super_admin has no "select all")
         onSetSelected={isSuperAdmin ? undefined : setSelRecips}
         multiple={!isSuperAdmin}
         loading={recipientsLoading}
@@ -782,10 +885,14 @@ const AssignmentModal = ({
         renderSecondary={(m) =>
           isSuperAdmin
             ? [m.email, m.membershipPlan, m.status].filter(Boolean).join(" · ")
-            : [m.role, m.department, m.location, m.email].filter(Boolean).join(" · ")
+            : [m.role, m.department, m.location, m.email]
+                .filter(Boolean)
+                .join(" · ")
         }
         renderAvatar={(m) => (
-          <Avatar sx={{ width: 28, height: 28, bgcolor: PRIMARY, fontSize: 11 }}>
+          <Avatar
+            sx={{ width: 28, height: 28, bgcolor: PRIMARY, fontSize: 11 }}
+          >
             {m.initials || initials(m.name || "")}
           </Avatar>
         )}
@@ -809,19 +916,23 @@ const AssignmentModal = ({
             ids={selRecips}
             items={recipients}
             labelKey="name"
-            onRemove={(id) => setSelRecips((prev) => prev.filter((x) => x !== id))}
+            onRemove={(id) =>
+              setSelRecips((prev) => prev.filter((x) => x !== id))
+            }
           />
         </Paper>
       )}
     </Box>
   );
 
-  // ── Step 2: details ───────────────────────────────────────────────────────
   const renderStep2 = () => (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Box>
         <Typography
-          variant="body2" fontWeight={600} color={PRIMARY} mb={0.5}
+          variant="body2"
+          fontWeight={600}
+          color={PRIMARY}
+          mb={0.5}
           sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
         >
           <ScheduleIcon sx={{ fontSize: 16 }} /> Due Date *
@@ -839,7 +950,10 @@ const AssignmentModal = ({
 
       <Box>
         <Typography
-          variant="body2" fontWeight={600} color={PRIMARY} mb={0.5}
+          variant="body2"
+          fontWeight={600}
+          color={PRIMARY}
+          mb={0.5}
           sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
         >
           <FlagIcon sx={{ fontSize: 16 }} /> Priority *
@@ -850,19 +964,33 @@ const AssignmentModal = ({
               key={p.value}
               onClick={() => setPriority(p.value)}
               sx={{
-                px: 2, py: 0.8, borderRadius: 2, cursor: "pointer",
+                px: 2,
+                py: 0.8,
+                borderRadius: 2,
+                cursor: "pointer",
                 border: `2px solid ${priority === p.value ? p.color : BORDER}`,
                 bgcolor: priority === p.value ? `${p.color}18` : "#fff",
-                display: "flex", alignItems: "center", gap: 0.5,
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
                 transition: "all 0.15s",
                 "&:hover": { borderColor: p.color, bgcolor: `${p.color}10` },
               }}
             >
-              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: p.color }} />
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  bgcolor: p.color,
+                }}
+              />
               <Typography
                 variant="caption"
                 fontWeight={priority === p.value ? 700 : 400}
-                sx={{ color: priority === p.value ? p.color : "text.secondary" }}
+                sx={{
+                  color: priority === p.value ? p.color : "text.secondary",
+                }}
               >
                 {p.label}
               </Typography>
@@ -873,7 +1001,10 @@ const AssignmentModal = ({
 
       <Box>
         <Typography
-          variant="body2" fontWeight={600} color={PRIMARY} mb={0.5}
+          variant="body2"
+          fontWeight={600}
+          color={PRIMARY}
+          mb={0.5}
           sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
         >
           <NotesIcon sx={{ fontSize: 16 }} /> Notes (optional)
@@ -889,20 +1020,38 @@ const AssignmentModal = ({
           inputProps={{ maxLength: 500 }}
           sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
         />
-        <Typography variant="caption" color="text.secondary" align="right" display="block">
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          align="right"
+          display="block"
+        >
           {notes.length}/500
         </Typography>
       </Box>
 
-      {/* Summary */}
-      <Paper sx={{ p: 2, bgcolor: BG_LIGHT, borderRadius: 2, border: `1px solid ${BORDER}` }}>
-        <Typography variant="caption" color={PRIMARY} fontWeight={700} display="block" mb={1}>
+      <Paper
+        sx={{
+          p: 2,
+          bgcolor: BG_LIGHT,
+          borderRadius: 2,
+          border: `1px solid ${BORDER}`,
+        }}
+      >
+        <Typography
+          variant="caption"
+          color={PRIMARY}
+          fontWeight={700}
+          display="block"
+          mb={1}
+        >
           Assignment Summary
         </Typography>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
           {selChecklists.length > 0 && (
             <Typography variant="caption" color="text.secondary">
-              📋 {selChecklists.length} checklist{selChecklists.length > 1 ? "s" : ""}
+              📋 {selChecklists.length} checklist
+              {selChecklists.length > 1 ? "s" : ""}
             </Typography>
           )}
           {selAssets.length > 0 && (
@@ -917,7 +1066,8 @@ const AssignmentModal = ({
             📅 Due: {dueDate}
           </Typography>
           <Typography
-            variant="caption" color="text.secondary"
+            variant="caption"
+            color="text.secondary"
             sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
           >
             🚩 Priority:{" "}
@@ -937,7 +1087,6 @@ const AssignmentModal = ({
     </Box>
   );
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Dialog
       open={open}
@@ -954,12 +1103,15 @@ const AssignmentModal = ({
         },
       }}
     >
-      {/* Header */}
       <Box
         sx={{
           bgcolor: PRIMARY,
-          px: 3, py: 2, flexShrink: 0,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
+          px: 3,
+          py: 2,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
@@ -968,7 +1120,10 @@ const AssignmentModal = ({
             <Typography variant="subtitle1" fontWeight={700} color="#fff">
               {mode === "reassign" ? "Reassign" : "New Assignment"}
             </Typography>
-            <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.75)" }}>
+            <Typography
+              variant="caption"
+              sx={{ color: "rgba(255,255,255,0.75)" }}
+            >
               Step {step + 1} of 3 — {steps[step]}
             </Typography>
           </Box>
@@ -978,17 +1133,19 @@ const AssignmentModal = ({
         </IconButton>
       </Box>
 
-      {/* Step indicator */}
       <Box
         sx={{
-          px: 3, pt: 2, pb: 1, flexShrink: 0,
-          bgcolor: BG_LIGHT, borderBottom: `1px solid ${BORDER}`,
+          px: 3,
+          pt: 2,
+          pb: 1,
+          flexShrink: 0,
+          bgcolor: BG_LIGHT,
+          borderBottom: `1px solid ${BORDER}`,
         }}
       >
         <StepIndicator steps={steps} step={step} onStepClick={setStep} />
       </Box>
 
-      {/* Content */}
       <DialogContent sx={{ flex: 1, overflowY: "auto", px: 3, py: 2.5 }}>
         {(submitError || assignError) && (
           <Alert
@@ -1005,19 +1162,28 @@ const AssignmentModal = ({
         {step === 2 && renderStep2()}
       </DialogContent>
 
-      {/* Footer */}
       <Box
         sx={{
-          px: 3, py: 2, flexShrink: 0,
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          borderTop: `1px solid ${BORDER}`, bgcolor: "#fafafa",
+          px: 3,
+          py: 2,
+          flexShrink: 0,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderTop: `1px solid ${BORDER}`,
+          bgcolor: "#fafafa",
         }}
       >
         <Button
           onClick={() => (step === 0 ? onClose() : setStep((s) => s - 1))}
           variant="outlined"
           size="small"
-          sx={{ borderColor: BORDER, color: "text.secondary", borderRadius: 2, textTransform: "none" }}
+          sx={{
+            borderColor: BORDER,
+            color: "text.secondary",
+            borderRadius: 2,
+            textTransform: "none",
+          }}
         >
           {step === 0 ? "Cancel" : "Back"}
         </Button>
@@ -1029,8 +1195,11 @@ const AssignmentModal = ({
             size="small"
             disabled={step === 0 ? !canGoStep1 : !canGoStep2}
             sx={{
-              bgcolor: PRIMARY, borderRadius: 2, textTransform: "none",
-              fontWeight: 600, px: 3,
+              bgcolor: PRIMARY,
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 600,
+              px: 3,
               "&:hover": { bgcolor: PRIMARY_L },
               "&.Mui-disabled": { bgcolor: "#b0c4cc", color: "#fff" },
             }}
@@ -1044,20 +1213,27 @@ const AssignmentModal = ({
             size="small"
             disabled={!canSubmit || submitting || assignLoading}
             startIcon={
-              submitting || assignLoading
-                ? <CircularProgress size={14} sx={{ color: "#fff" }} />
-                : <CheckCircleIcon />
+              submitting || assignLoading ? (
+                <CircularProgress size={14} sx={{ color: "#fff" }} />
+              ) : (
+                <CheckCircleIcon />
+              )
             }
             sx={{
-              bgcolor: PRIMARY, borderRadius: 2, textTransform: "none",
-              fontWeight: 600, px: 3,
+              bgcolor: PRIMARY,
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 600,
+              px: 3,
               "&:hover": { bgcolor: PRIMARY_L },
               "&.Mui-disabled": { bgcolor: "#b0c4cc", color: "#fff" },
             }}
           >
             {submitting || assignLoading
               ? "Assigning…"
-              : mode === "reassign" ? "Reassign" : "Assign Now"}
+              : mode === "reassign"
+                ? "Reassign"
+                : "Assign Now"}
           </Button>
         )}
       </Box>

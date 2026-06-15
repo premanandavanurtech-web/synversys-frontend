@@ -1,4 +1,5 @@
-// context/AssignmentContext.jsx
+// context/AssignmentContext.jsx - Complete fixed version
+
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { useAuth } from "./AuthContexts";
 
@@ -40,10 +41,10 @@ export const AssignmentProvider = ({ children }) => {
   const fmtDate = (date) => {
     if (!date) return null;
     const d = new Date(date);
-    return isNaN(d.getTime()) ? null : d.toISOString().split("T")[0];
+    return isNaN(d.getTime()) ? null : d.toISOString();
   };
 
-  // 1. ASSIGN TO ADMIN  POST /assignments/assign-to-admin
+  // 1. ASSIGN TO ADMIN
   const assignToAdmin = useCallback(
     async (data) => {
       assign.setLoading(true);
@@ -90,7 +91,7 @@ export const AssignmentProvider = ({ children }) => {
     [authRequest],
   );
 
-  // 2. ASSIGN TO TEAM  POST /assignments/assign-to-team
+  // 2. ASSIGN TO TEAM
   const assignToTeam = useCallback(
     async (data) => {
       assign.setLoading(true);
@@ -143,91 +144,7 @@ export const AssignmentProvider = ({ children }) => {
     [authRequest],
   );
 
-  // 3. BULK ASSIGN TO TEAM
-  const bulkAssignToTeam = useCallback(
-    async (
-      checklistIds,
-      assetIds,
-      teamMemberIds,
-      dueDate,
-      priority,
-      notes = "",
-    ) => {
-      assign.setLoading(true);
-      assign.setError(null);
-      try {
-        const promises = teamMemberIds.map((memberId) => {
-          const payload = {
-            teamMemberIds: [memberId],
-            dueDate: fmtDate(dueDate),
-            priority,
-          };
-          if (checklistIds?.length) payload.checklistIds = checklistIds;
-          if (assetIds?.length) payload.assetIds = assetIds;
-          if (notes?.trim()) payload.notes = notes.trim();
-          return authRequest("POST", "/assignments/assign-to-team", payload);
-        });
-        const results = await Promise.all(promises);
-        const failed = results.filter((r) => !r?.success);
-        if (!failed.length) {
-          assign.setSuccess(
-            `${results.length} assignment(s) created successfully!`,
-          );
-          return { success: true, count: results.length };
-        }
-        const msg = `${failed.length} of ${results.length} assignments failed`;
-        assign.setError(msg);
-        return { success: false, error: msg, failedCount: failed.length };
-      } catch (err) {
-        const msg = extractError(err, "Failed to create bulk assignments");
-        assign.setError(msg);
-        return { success: false, error: msg };
-      } finally {
-        assign.setLoading(false);
-      }
-    },
-    [authRequest],
-  );
-
-  // 4. BULK ASSIGN TO ADMIN
-  const bulkAssignToAdmin = useCallback(
-    async (checklistIds, adminIds, dueDate, priority, notes = "") => {
-      assign.setLoading(true);
-      assign.setError(null);
-      try {
-        const promises = adminIds.map((adminId) => {
-          const payload = {
-            checklistIds,
-            adminId,
-            dueDate: fmtDate(dueDate),
-            priority,
-          };
-          if (notes?.trim()) payload.notes = notes.trim();
-          return authRequest("POST", "/assignments/assign-to-admin", payload);
-        });
-        const results = await Promise.all(promises);
-        const failed = results.filter((r) => !r?.success);
-        if (!failed.length) {
-          assign.setSuccess(
-            `${results.length} assignment(s) created successfully!`,
-          );
-          return { success: true, count: results.length };
-        }
-        const msg = `${failed.length} of ${results.length} assignments failed`;
-        assign.setError(msg);
-        return { success: false, error: msg, failedCount: failed.length };
-      } catch (err) {
-        const msg = extractError(err, "Failed to create bulk assignments");
-        assign.setError(msg);
-        return { success: false, error: msg };
-      } finally {
-        assign.setLoading(false);
-      }
-    },
-    [authRequest],
-  );
-
-  // 5. GET ALL ASSIGNMENTS
+  // 3. GET ALL ASSIGNMENTS
   const getAssignments = useCallback(
     async (filters = {}) => {
       fetch.setLoading(true);
@@ -245,7 +162,7 @@ export const AssignmentProvider = ({ children }) => {
         if (filters.assignmentType)
           params.append("assignmentType", filters.assignmentType);
 
-        const url = `/assignments`;
+        const url = `/assignments${params.toString() ? `?${params}` : ""}`;
         const res = await authRequest("GET", url);
         if (res?.success) {
           return {
@@ -274,60 +191,37 @@ export const AssignmentProvider = ({ children }) => {
     [authRequest],
   );
 
-  // 6. GET BY ID
-  const getAssignmentById = useCallback(
-    async (assignmentId) => {
-      fetch.setLoading(true);
-      fetch.setError(null);
-      try {
-        if (!assignmentId) throw new Error("Assignment ID is required");
-        const res = await authRequest("GET", `/assignments/${assignmentId}`);
-        if (res?.success)
-          return { success: true, assignment: res.assignment || res.data };
-        const msg = res?.message || "Failed to fetch assignment";
-        fetch.setError(msg);
-        return { success: false, error: msg };
-      } catch (err) {
-        const msg = extractError(err, "Failed to fetch assignment details");
-        fetch.setError(msg);
-        return { success: false, error: msg };
-      } finally {
-        fetch.setLoading(false);
+  // 4. GET ASSIGNMENT STATS
+  const getAssignmentStats = useCallback(async () => {
+    stats.setLoading(true);
+    stats.setError(null);
+    try {
+      const res = await authRequest("GET", "/assignments/stats");
+      if (res?.success) {
+        return {
+          success: true,
+          stats: {
+            total: res.total || 0,
+            byStatus: res.byStatus || {},
+            byPriority: res.byPriority || {},
+            overdue: res.overdue || 0,
+            completionRate: res.completionRate || 0,
+          },
+        };
       }
-    },
-    [authRequest],
-  );
+      const msg = res?.message || "Failed to fetch stats";
+      stats.setError(msg);
+      return { success: false, error: msg };
+    } catch (err) {
+      const msg = extractError(err, "Failed to fetch assignment stats");
+      stats.setError(msg);
+      return { success: false, error: msg };
+    } finally {
+      stats.setLoading(false);
+    }
+  }, [authRequest]);
 
-  // 7. UPDATE STATUS
-  const updateAssignmentStatus = useCallback(
-    async (assignmentId, status) => {
-      assign.setLoading(true);
-      assign.setError(null);
-      try {
-        const res = await authRequest(
-          "PATCH",
-          `/assignments/${assignmentId}/status`,
-          { status },
-        );
-        if (res?.success) {
-          assign.setSuccess("Assignment status updated!");
-          return { success: true, data: res.assignment || res.data };
-        }
-        const msg = res?.message || "Failed to update status";
-        assign.setError(msg);
-        return { success: false, error: msg };
-      } catch (err) {
-        const msg = extractError(err, "Failed to update assignment status");
-        assign.setError(msg);
-        return { success: false, error: msg };
-      } finally {
-        assign.setLoading(false);
-      }
-    },
-    [authRequest],
-  );
-
-  // 8. SOFT DELETE
+  // 6. SOFT DELETE
   const softDeleteAssignment = useCallback(
     async (assignmentId) => {
       del.setLoading(true);
@@ -339,7 +233,7 @@ export const AssignmentProvider = ({ children }) => {
         );
         if (res?.success) {
           del.setSuccess("Assignment moved to trash!");
-          return { success: true };
+          return { success: true, message: res.message };
         }
         const msg = res?.message || "Failed to delete assignment";
         del.setError(msg);
@@ -355,103 +249,7 @@ export const AssignmentProvider = ({ children }) => {
     [authRequest],
   );
 
-  // 9. RESTORE
-  const restoreAssignment = useCallback(
-    async (assignmentId) => {
-      restore.setLoading(true);
-      restore.setError(null);
-      try {
-        const res = await authRequest(
-          "POST",
-          `/assignments/${assignmentId}/restore`,
-        );
-        if (res?.success) {
-          restore.setSuccess("Assignment restored!");
-          return { success: true };
-        }
-        const msg = res?.message || "Failed to restore assignment";
-        restore.setError(msg);
-        return { success: false, error: msg };
-      } catch (err) {
-        const msg = extractError(err, "Failed to restore assignment");
-        restore.setError(msg);
-        return { success: false, error: msg };
-      } finally {
-        restore.setLoading(false);
-      }
-    },
-    [authRequest],
-  );
-
-  // 10. PERMANENT DELETE
-  const permanentDeleteAssignment = useCallback(
-    async (assignmentId) => {
-      del.setLoading(true);
-      del.setError(null);
-      try {
-        const res = await authRequest(
-          "DELETE",
-          `/assignments/${assignmentId}/permanent`,
-        );
-        if (res?.success) {
-          del.setSuccess("Assignment permanently deleted!");
-          return { success: true };
-        }
-        const msg = res?.message || "Failed to permanently delete assignment";
-        del.setError(msg);
-        return { success: false, error: msg };
-      } catch (err) {
-        const msg = extractError(
-          err,
-          "Failed to permanently delete assignment",
-        );
-        del.setError(msg);
-        return { success: false, error: msg };
-      } finally {
-        del.setLoading(false);
-      }
-    },
-    [authRequest],
-  );
-
-  // 12. DELETED LIST
-  const getDeletedAssignments = useCallback(
-    async (page = 1, limit = 10) => {
-      fetch.setLoading(true);
-      fetch.setError(null);
-      try {
-        const res = await authRequest(
-          "GET",
-          `/assignments/deleted?page=${page}&limit=${limit}`,
-        );
-        if (res?.success) {
-          return {
-            success: true,
-            assignments: res.assignments || [],
-            pagination: res.pagination || {
-              page: 1,
-              limit: 10,
-              total: 0,
-              totalPages: 1,
-            },
-          };
-        }
-        const msg = res?.message || "Failed to fetch deleted assignments";
-        fetch.setError(msg);
-        return { success: false, error: msg };
-      } catch (err) {
-        const msg = extractError(err, "Failed to fetch deleted assignments");
-        fetch.setError(msg);
-        return { success: false, error: msg };
-      } finally {
-        fetch.setLoading(false);
-      }
-    },
-    [authRequest],
-  );
-
-  // 13. REASSIGN TO ADMIN  PUT /assignments/:id/reassign-to-admin
-  // FIX: field renamed from `adminId` → `newAdminId` to match API contract
+  // 8. REASSIGN TO ADMIN - FIXED: matches API spec
   const reassignToAdmin = useCallback(
     async (assignmentId, data) => {
       assign.setLoading(true);
@@ -459,18 +257,14 @@ export const AssignmentProvider = ({ children }) => {
       try {
         if (!assignmentId) throw new Error("Assignment ID is required");
         if (!data.newAdminId) throw new Error("New Admin ID is required");
-        if (!data.reason?.trim()) throw new Error("Reason is required");
 
         const payload = {
           newAdminId: data.newAdminId,
-          reason: data.reason.trim(),
         };
         if (data.dueDate) payload.dueDate = fmtDate(data.dueDate);
         if (data.priority) payload.priority = data.priority;
         if (data.notes?.trim()) payload.notes = data.notes.trim();
-        // Pass new checklists if provided
-        if (data.newChecklistIds?.length)
-          payload.newChecklistIds = data.newChecklistIds;
+        if (data.reason?.trim()) payload.reason = data.reason.trim();
 
         const res = await authRequest(
           "PUT",
@@ -495,28 +289,24 @@ export const AssignmentProvider = ({ children }) => {
     [authRequest],
   );
 
-  // 14. REASSIGN TO TEAM  PUT /assignments/:id/reassign-to-team
-  // FIX: field renamed from `teamMemberIds` → `newTeamMemberIds`; added `newAssetIds` support
+  // 9. REASSIGN TO TEAM - FIXED: API expects "teamMemberIds", not "newTeamMemberIds"
   const reassignToTeam = useCallback(
     async (assignmentId, data) => {
       assign.setLoading(true);
       assign.setError(null);
       try {
         if (!assignmentId) throw new Error("Assignment ID is required");
-        if (!data.newTeamMemberIds?.length)
+        if (!data.teamMemberIds?.length)
           throw new Error("At least one team member is required");
-        if (!data.reason?.trim()) throw new Error("Reason is required");
 
         const payload = {
-          newTeamMemberIds: data.newTeamMemberIds,
-          reason: data.reason.trim(),
+          teamMemberIds: data.teamMemberIds, // FIXED: Use teamMemberIds as API expects
         };
         if (data.dueDate) payload.dueDate = fmtDate(data.dueDate);
         if (data.priority) payload.priority = data.priority;
         if (data.notes?.trim()) payload.notes = data.notes.trim();
-        if (data.newAssetIds?.length) payload.newAssetIds = data.newAssetIds;
-        if (data.newChecklistIds?.length)
-          payload.newChecklistIds = data.newChecklistIds;
+        if (data.reason?.trim()) payload.reason = data.reason.trim();
+        if (data.assetIds?.length) payload.assetIds = data.assetIds;
 
         const res = await authRequest(
           "PUT",
@@ -541,35 +331,6 @@ export const AssignmentProvider = ({ children }) => {
     [authRequest],
   );
 
-  // 15. SUMMARY
-  const getAssignmentSummary = useCallback(async () => {
-    fetch.setLoading(true);
-    fetch.setError(null);
-    try {
-      const res = await authRequest("GET", "/assignments/summary");
-      if (res?.success) {
-        return {
-          success: true,
-          summary: res.summary || {
-            totalActive: 0,
-            overdue: 0,
-            dueThisWeek: 0,
-            completionRate: 0,
-          },
-        };
-      }
-      const msg = res?.message || "Failed to fetch summary";
-      fetch.setError(msg);
-      return { success: false, error: msg };
-    } catch (err) {
-      const msg = extractError(err, "Failed to fetch assignment summary");
-      fetch.setError(msg);
-      return { success: false, error: msg };
-    } finally {
-      fetch.setLoading(false);
-    }
-  }, [authRequest]);
-
   const clearAssign = assign.clear;
   const clearFetch = fetch.clear;
   const clearDelete = del.clear;
@@ -585,6 +346,7 @@ export const AssignmentProvider = ({ children }) => {
   }, [assign, fetch, del, restore, stats]);
 
   const value = {
+    // Loading states
     assignLoading: assign.loading,
     assignError: assign.error,
     assignSuccess: assign.success,
@@ -597,6 +359,7 @@ export const AssignmentProvider = ({ children }) => {
     statsLoading: stats.loading,
     statsError: stats.error,
 
+    // Clear functions
     clearAssign,
     clearFetch,
     clearDelete,
@@ -604,18 +367,12 @@ export const AssignmentProvider = ({ children }) => {
     clearStats,
     clearAllStates,
 
+    // API methods
     assignToAdmin,
     assignToTeam,
-    bulkAssignToAdmin,
-    bulkAssignToTeam,
     getAssignments,
-    getAssignmentById,
-    getDeletedAssignments,
-    getAssignmentSummary,
-    updateAssignmentStatus,
+    getAssignmentStats,
     softDeleteAssignment,
-    restoreAssignment,
-    permanentDeleteAssignment,
     reassignToAdmin,
     reassignToTeam,
   };

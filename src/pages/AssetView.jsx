@@ -64,9 +64,7 @@ import {
   Build,
   Sensors,
   AccountTree,
-  FiberManualRecord,
   SwapHoriz,
-  ArrowForwardIos,
   AttachMoney,
   Numbers,
   CheckCircleOutline,
@@ -108,7 +106,7 @@ const T = {
   violet: "#6B4E9E",
   violetLight: "#F0EBF8",
   font: "'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-  fontMono: "DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+  fontMono: "'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   r: { xs: "6px", sm: "10px", md: "14px", lg: "20px", xl: "28px" },
   sh: {
     sm: "0 1px 3px rgba(26,26,24,0.07), 0 1px 2px rgba(26,26,24,0.04)",
@@ -164,12 +162,6 @@ const getUserName = (user) => {
     return `${user.firstName || ""} ${user.lastName || ""}`.trim();
   return user.name || user.email || "Unknown";
 };
-
-const getToken = () =>
-  localStorage.getItem("accessToken") ||
-  localStorage.getItem("token") ||
-  sessionStorage.getItem("accessToken") ||
-  "";
 
 // ─── Styled atoms ─────────────────────────────────────────────────────────────
 const Card = styled(Paper)({
@@ -352,40 +344,36 @@ const ErrorBanner = ({ message, onRetry }) => (
   </Box>
 );
 
-// ─── Link Asset Dialog ────────────────────────────────────────────────────────
+// ─── Link Asset Dialog (UPDATED to create child request) ─────────────────────────────────
 const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
   const { fetchRequests, createChildRequest } = useAssetRequest();
-
-  const [step, setStep] = useState(1);
   const [parentRequests, setParentRequests] = useState([]);
-  const [allAssets, setAllAssets] = useState([]);
   const [loadingParents, setLoadingParents] = useState(false);
-  const [loadingAssets, setLoadingAssets] = useState(false);
   const [parentError, setParentError] = useState("");
-  const [assetError, setAssetError] = useState("");
   const [selectedParent, setSelectedParent] = useState(null);
-  const [selectedChildAsset, setSelectedChildAsset] = useState(null);
   const [relationshipType, setRelationshipType] = useState("accessory");
   const [searchParent, setSearchParent] = useState("");
-  const [searchChild, setSearchChild] = useState("");
   const [linking, setLinking] = useState(false);
-  const [description, setDescription] = useState("");
-  const [urgency, setUrgency] = useState("medium");
   const [snackMsg, setSnackMsg] = useState("");
 
-  // FIX 1: Use fetchRequests (the correct context method) with type=parent
   const loadParentRequests = useCallback(async () => {
     setLoadingParents(true);
     setParentError("");
     try {
-      // type=parent fetches only parent requests (not child requests)
       const res = await fetchRequests({ type: "parent", limit: 100 });
+      console.log("Parent requests response:", res);
+
       if (res?.success) {
         setParentRequests(res.requests || []);
+      } else if (res?.requests) {
+        setParentRequests(res.requests);
+      } else if (Array.isArray(res)) {
+        setParentRequests(res);
       } else {
         setParentError(res?.message || "Failed to load parent requests");
       }
     } catch (err) {
+      console.error("Error loading parent requests:", err);
       const status = err?.response?.status;
       if (status === 401 || status === 403) {
         setParentError(
@@ -403,118 +391,80 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
     }
   }, [fetchRequests]);
 
-  // FIX 2: Proper token retrieval and error handling for assets fetch
-  const loadAllAssets = useCallback(async () => {
-    setLoadingAssets(true);
-    setAssetError("");
-    try {
-      const token = getToken();
-      if (!token) {
-        setAssetError("No auth token found. Please log in again.");
-        return;
-      }
-      const API =
-        import.meta.env?.VITE_API_URL || "http://localhost:9001/api/v1";
-      const res = await fetch(`${API}/assets?limit=200`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      if (res.status === 401 || res.status === 403) {
-        setAssetError(
-          "Authentication failed. Please refresh the page and log in again.",
-        );
-        return;
-      }
-      if (!res.ok) {
-        setAssetError(`Failed to load assets (${res.status})`);
-        return;
-      }
-      const data = await res.json();
-      if (data.success) {
-        setAllAssets(
-          (data.assets || []).filter((a) => (a._id || a.id) !== assetId),
-        );
-      } else {
-        setAssetError(data.message || "Failed to load assets");
-      }
-    } catch (err) {
-      setAssetError(err?.message || "Failed to load assets");
-    } finally {
-      setLoadingAssets(false);
-    }
-  }, [assetId]);
-
   useEffect(() => {
     if (open) {
-      setStep(1);
       setSelectedParent(null);
-      setSelectedChildAsset(null);
       setSearchParent("");
-      setSearchChild("");
-      setDescription("");
       setParentError("");
-      setAssetError("");
+      setRelationshipType("accessory");
       loadParentRequests();
-      loadAllAssets();
     }
-  }, [open]);
+  }, [open, loadParentRequests]);
 
-  const filteredParents = parentRequests.filter(
-    (r) =>
-      (r.assetId?.assetName || "")
-        .toLowerCase()
-        .includes(searchParent.toLowerCase()) ||
-      (r.requestType || "")
-        .toLowerCase()
-        .includes(searchParent.toLowerCase()) ||
-      (r.assetId?.assetId || "")
-        .toLowerCase()
-        .includes(searchParent.toLowerCase()),
-  );
+  const filteredParents = parentRequests.filter((req) => {
+    const searchLower = searchParent.toLowerCase();
+    const assetName = (
+      req.assetId?.assetName ||
+      req.assetId?.name ||
+      ""
+    ).toLowerCase();
+    const assetIdStr = (
+      req.assetId?.assetId ||
+      req.assetId?._id ||
+      ""
+    ).toLowerCase();
+    const requestTypeStr = (req.requestType || "").toLowerCase();
 
-  const filteredAssets = allAssets.filter(
-    (a) =>
-      (a.assetName || "").toLowerCase().includes(searchChild.toLowerCase()) ||
-      (a.assetId || "").toLowerCase().includes(searchChild.toLowerCase()),
-  );
+    return (
+      assetName.includes(searchLower) ||
+      assetIdStr.includes(searchLower) ||
+      requestTypeStr.includes(searchLower)
+    );
+  });
 
   const handleLink = async () => {
-    if (!selectedParent || !selectedChildAsset) {
-      setSnackMsg("Please complete both selections");
+    if (!selectedParent) {
+      setSnackMsg("Please select a parent request");
       return;
     }
+
     setLinking(true);
     try {
-      const res = await createChildRequest(selectedParent._id, {
-        assetId: selectedChildAsset._id || selectedChildAsset.id,
-        relationshipType,
-        description: description || `Linked as ${relationshipType}`,
-        urgency,
-        requestType: "maintenance",
+      console.log("Creating child request:", {
+        parentId: selectedParent._id,
+        assetId: assetId,
+        relationshipType
       });
-      if (res?.success !== false) {
-        onSuccess?.();
-        onClose();
-      } else {
-        throw new Error(res?.message || "Link failed");
-      }
-    } catch (e) {
-      const status = e?.response?.status;
+      
+      // Create a child request with the linked asset
+      const result = await createChildRequest(selectedParent._id, {
+        assetId: assetId,
+        relationshipType: relationshipType,
+        description: `Linked as ${relationshipType} from asset view`,
+        urgency: selectedParent.urgency || "medium",
+        requestType: "maintenance"
+      });
+      
+      console.log("Child request created:", result);
+      
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      console.error("Link error:", err);
+      const status = err?.response?.status;
       if (status === 401 || status === 403) {
         setSnackMsg("Authentication failed. Please refresh the page.");
       } else {
         setSnackMsg(
-          e?.response?.data?.message || e?.message || "Failed to link asset",
+          err?.response?.data?.message ||
+            err?.message ||
+            "Failed to link asset",
         );
       }
     } finally {
       setLinking(false);
     }
   };
-
-  const selectedParentAsset = selectedParent?.assetId;
 
   return (
     <>
@@ -534,7 +484,6 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
           },
         }}
       >
-        {/* Header */}
         <Box
           sx={{
             px: 3,
@@ -574,7 +523,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                     letterSpacing: "-0.02em",
                   }}
                 >
-                  Link Asset
+                  Link Asset to Request
                 </Typography>
                 <Typography
                   sx={{
@@ -583,9 +532,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                     fontFamily: T.font,
                   }}
                 >
-                  {step === 1
-                    ? "Step 1 of 2 — Select parent request"
-                    : "Step 2 of 2 — Configure child link"}
+                  Select a parent request to link this asset
                 </Typography>
               </Box>
             </Stack>
@@ -602,729 +549,371 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
               <Close sx={{ fontSize: 16 }} />
             </IconButton>
           </Stack>
-
-          {/* Step progress */}
-          <Stack direction="row" spacing={0.75} sx={{ pb: 2 }}>
-            {[1, 2].map((s) => (
-              <Box
-                key={s}
-                sx={{
-                  flex: 1,
-                  height: 3,
-                  borderRadius: 2,
-                  bgcolor: s <= step ? T.brand : T.border,
-                  transition: "background 0.35s ease",
-                  position: "relative",
-                  overflow: "hidden",
-                  ...(s === step
-                    ? {
-                        "&::after": {
-                          content: '""',
-                          position: "absolute",
-                          inset: 0,
-                          background: `linear-gradient(90deg, transparent 0%, ${alpha("#fff", 0.4)} 50%, transparent 100%)`,
-                          animation: `${shimmer} 1.5s infinite`,
-                          backgroundSize: "200% 100%",
-                        },
-                      }
-                    : {}),
-                }}
-              />
-            ))}
-          </Stack>
         </Box>
 
-        <DialogContent sx={{ p: 0, maxHeight: "72vh", overflowY: "auto" }}>
-          {/* ── STEP 1: Parent request ── */}
-          <Collapse in={step === 1} unmountOnExit>
-            <Box sx={{ p: 3 }}>
+        <DialogContent sx={{ p: 3, maxHeight: "72vh", overflowY: "auto" }}>
+          {/* Current Asset Info */}
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: T.r.md,
+              bgcolor: T.brandLight,
+              border: `1px solid ${alpha(T.brand, 0.2)}`,
+              mb: 3,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: "0.67rem",
+                fontWeight: 700,
+                color: T.brand,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                mb: 0.75,
+                fontFamily: T.font,
+              }}
+            >
+              Current Asset ID
+            </Typography>
+            <Stack direction="row" alignItems="center" spacing={1.5}>
+              <Inventory2
+                sx={{ fontSize: 18, color: T.brand, flexShrink: 0 }}
+              />
               <Typography
                 sx={{
-                  fontSize: "0.8rem",
-                  color: T.inkSecondary,
-                  fontFamily: T.font,
-                  mb: 2,
-                  lineHeight: 1.6,
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  color: T.ink,
+                  fontFamily: T.fontMono,
                 }}
               >
-                Choose an existing parent request to link the current asset
-                under.
+                {assetId?.slice(-10) || "—"}
               </Typography>
+            </Stack>
+          </Box>
 
-              {parentError ? (
-                <ErrorBanner
-                  message={parentError}
-                  onRetry={loadParentRequests}
-                />
+          <Typography
+            sx={{
+              fontSize: "0.8rem",
+              color: T.inkSecondary,
+              fontFamily: T.font,
+              mb: 2,
+              lineHeight: 1.6,
+            }}
+          >
+            Choose a parent request to link this asset to. The asset will become
+            a child of the selected request.
+          </Typography>
+
+          {parentError ? (
+            <ErrorBanner message={parentError} onRetry={loadParentRequests} />
+          ) : (
+            <>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search by asset name, ID, or request type…"
+                value={searchParent}
+                onChange={(e) => setSearchParent(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search sx={{ fontSize: 15, color: T.inkMuted }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  mb: 2,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: T.r.sm,
+                    fontSize: "0.875rem",
+                    fontFamily: T.font,
+                    "& fieldset": { borderColor: T.border },
+                    "&:hover fieldset": { borderColor: T.brand },
+                    "&.Mui-focused fieldset": {
+                      borderColor: T.brand,
+                      borderWidth: 1.5,
+                    },
+                  },
+                }}
+              />
+
+              {loadingParents ? (
+                <Stack spacing={1.5}>
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton
+                      key={i}
+                      variant="rounded"
+                      height={88}
+                      sx={{ borderRadius: T.r.md }}
+                    />
+                  ))}
+                </Stack>
+              ) : filteredParents.length === 0 ? (
+                <Box sx={{ py: 6, textAlign: "center" }}>
+                  <Box
+                    sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: "50%",
+                      bgcolor: T.surfaceAlt,
+                      border: `1px solid ${T.border}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mx: "auto",
+                      mb: 2,
+                    }}
+                  >
+                    <LinkOff sx={{ fontSize: 26, color: T.inkMuted }} />
+                  </Box>
+                  <Typography
+                    sx={{
+                      fontSize: "0.9rem",
+                      fontWeight: 600,
+                      color: T.ink,
+                      fontFamily: T.font,
+                      mb: 0.5,
+                    }}
+                  >
+                    {searchParent
+                      ? "No matching requests"
+                      : "No parent requests found"}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: "0.78rem",
+                      color: T.inkMuted,
+                      fontFamily: T.font,
+                    }}
+                  >
+                    {searchParent
+                      ? "Try a different search term"
+                      : "Create a parent request first before linking"}
+                  </Typography>
+                </Box>
               ) : (
                 <>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Search by asset name, ID, or request type…"
-                    value={searchParent}
-                    onChange={(e) => setSearchParent(e.target.value)}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Search sx={{ fontSize: 15, color: T.inkMuted }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{
-                      mb: 2,
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: T.r.sm,
-                        fontSize: "0.875rem",
-                        fontFamily: T.font,
-                        "& fieldset": { borderColor: T.border },
-                        "&:hover fieldset": { borderColor: T.brand },
-                        "&.Mui-focused fieldset": {
-                          borderColor: T.brand,
-                          borderWidth: 1.5,
-                        },
-                      },
-                    }}
-                  />
+                  <Stack
+                    spacing={1.25}
+                    sx={{ maxHeight: 360, overflowY: "auto", pr: 0.5 }}
+                  >
+                    {filteredParents.map((req) => {
+                      const isSelected = selectedParent?._id === req._id;
+                      const sCfg = REQ_STATUS_CFG[req.status] || {};
 
-                  {loadingParents ? (
-                    <Stack spacing={1.5}>
-                      {[1, 2, 3].map((i) => (
-                        <Skeleton
-                          key={i}
-                          variant="rounded"
-                          height={88}
-                          sx={{ borderRadius: T.r.md }}
-                        />
-                      ))}
-                    </Stack>
-                  ) : filteredParents.length === 0 ? (
-                    <Box sx={{ py: 6, textAlign: "center" }}>
-                      <Box
-                        sx={{
-                          width: 56,
-                          height: 56,
-                          borderRadius: "50%",
-                          bgcolor: T.surfaceAlt,
-                          border: `1px solid ${T.border}`,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          mx: "auto",
-                          mb: 2,
-                        }}
-                      >
-                        <LinkOff sx={{ fontSize: 26, color: T.inkMuted }} />
-                      </Box>
-                      <Typography
-                        sx={{
-                          fontSize: "0.9rem",
-                          fontWeight: 600,
-                          color: T.ink,
-                          fontFamily: T.font,
-                          mb: 0.5,
-                        }}
-                      >
-                        {searchParent
-                          ? "No matching requests"
-                          : "No parent requests found"}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontSize: "0.78rem",
-                          color: T.inkMuted,
-                          fontFamily: T.font,
-                        }}
-                      >
-                        {searchParent
-                          ? "Try a different search term"
-                          : "Create a request first before linking"}
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Stack
-                      spacing={1.25}
-                      sx={{ maxHeight: 360, overflowY: "auto", pr: 0.5 }}
-                    >
-                      {filteredParents.map((req) => {
-                        const isSelected = selectedParent?._id === req._id;
-                        const sCfg = REQ_STATUS_CFG[req.status] || {};
-                        return (
-                          <Box
-                            key={req._id}
-                            onClick={() => setSelectedParent(req)}
-                            sx={{
-                              p: 2,
-                              borderRadius: T.r.md,
-                              cursor: "pointer",
-                              border: `1.5px solid ${isSelected ? T.brand : T.border}`,
-                              bgcolor: isSelected ? T.brandLight : T.surface,
-                              transition: "all 0.15s ease",
-                              boxShadow: isSelected
-                                ? `0 0 0 3px ${T.brandGlow}`
-                                : "none",
-                              "&:hover": {
-                                borderColor: T.brand,
-                                bgcolor: T.brandLight,
-                              },
-                            }}
+                      return (
+                        <Box
+                          key={req._id}
+                          onClick={() => setSelectedParent(req)}
+                          sx={{
+                            p: 2,
+                            borderRadius: T.r.md,
+                            cursor: "pointer",
+                            border: `1.5px solid ${isSelected ? T.brand : T.border}`,
+                            bgcolor: isSelected ? T.brandLight : T.surface,
+                            transition: "all 0.15s ease",
+                            boxShadow: isSelected
+                              ? `0 0 0 3px ${T.brandGlow}`
+                              : "none",
+                            "&:hover": {
+                              borderColor: T.brand,
+                              bgcolor: T.brandLight,
+                            },
+                          }}
+                        >
+                          <Stack
+                            direction="row"
+                            alignItems="flex-start"
+                            justifyContent="space-between"
                           >
                             <Stack
                               direction="row"
+                              spacing={1.5}
                               alignItems="flex-start"
-                              justifyContent="space-between"
+                              sx={{ flex: 1, minWidth: 0 }}
                             >
-                              <Stack
-                                direction="row"
-                                spacing={1.5}
-                                alignItems="flex-start"
+                              <Box
+                                sx={{
+                                  width: 36,
+                                  height: 36,
+                                  borderRadius: T.r.xs,
+                                  bgcolor: isSelected ? T.brand : T.surfaceAlt,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  transition: "all 0.15s",
+                                  flexShrink: 0,
+                                  mt: 0.25,
+                                }}
                               >
-                                <Box
+                                <AccountTree
                                   sx={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: T.r.xs,
-                                    bgcolor: isSelected
-                                      ? T.brand
-                                      : T.surfaceAlt,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    transition: "all 0.15s",
-                                    flexShrink: 0,
-                                    mt: 0.25,
+                                    fontSize: 16,
+                                    color: isSelected ? "#fff" : T.inkMuted,
+                                  }}
+                                />
+                              </Box>
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography
+                                  sx={{
+                                    fontSize: "0.875rem",
+                                    fontWeight: 600,
+                                    color: T.ink,
+                                    fontFamily: T.font,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
                                   }}
                                 >
-                                  <AccountTree
+                                  {req.assetId?.assetName ||
+                                    req.assetId?.name ||
+                                    "Unnamed Asset"}
+                                </Typography>
+                                <Typography
+                                  sx={{
+                                    fontSize: "0.7rem",
+                                    color: T.inkMuted,
+                                    fontFamily: T.fontMono,
+                                    mt: 0.2,
+                                  }}
+                                >
+                                  {req.assetId?.assetId ||
+                                    req.assetId?._id?.slice(-8) ||
+                                    req._id?.slice(-8)}{" "}
+                                  · {req.requestType || "transfer"}
+                                </Typography>
+                                <Stack
+                                  direction="row"
+                                  spacing={0.75}
+                                  mt={0.75}
+                                  flexWrap="wrap"
+                                >
+                                  <Chip
+                                    label={req.urgency || "medium"}
+                                    size="small"
                                     sx={{
-                                      fontSize: 16,
-                                      color: isSelected ? "#fff" : T.inkMuted,
+                                      height: 18,
+                                      fontSize: "0.62rem",
+                                      fontWeight: 600,
+                                      bgcolor:
+                                        req.urgency === "high" ||
+                                        req.urgency === "critical"
+                                          ? T.redLight
+                                          : T.amberLight,
+                                      color:
+                                        req.urgency === "high" ||
+                                        req.urgency === "critical"
+                                          ? T.red
+                                          : T.amber,
+                                      fontFamily: T.font,
                                     }}
                                   />
-                                </Box>
-                                <Box sx={{ flex: 1, minWidth: 0 }}>
-                                  <Typography
-                                    sx={{
-                                      fontSize: "0.875rem",
-                                      fontWeight: 600,
-                                      color: T.ink,
-                                      fontFamily: T.font,
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      whiteSpace: "nowrap",
-                                    }}
-                                  >
-                                    {req.assetId?.assetName || "Unnamed Asset"}
-                                  </Typography>
-                                  <Typography
-                                    sx={{
-                                      fontSize: "0.7rem",
-                                      color: T.inkMuted,
-                                      fontFamily: T.fontMono,
-                                      mt: 0.2,
-                                    }}
-                                  >
-                                    {req.assetId?.assetId ||
-                                      req._id?.slice(-8) ||
-                                      "—"}{" "}
-                                    · {req.requestType}
-                                  </Typography>
-                                  <Stack
-                                    direction="row"
-                                    spacing={0.75}
-                                    mt={0.75}
-                                    flexWrap="wrap"
-                                  >
+                                  {(req.childRequests?.length || 0) > 0 && (
                                     <Chip
-                                      label={req.urgency || "—"}
+                                      label={`${req.childRequests.length} linked`}
                                       size="small"
                                       sx={{
                                         height: 18,
                                         fontSize: "0.62rem",
-                                        fontWeight: 600,
-                                        bgcolor:
-                                          req.urgency === "high"
-                                            ? T.redLight
-                                            : req.urgency === "critical"
-                                              ? "#FCE8E6"
-                                              : T.amberLight,
-                                        color:
-                                          req.urgency === "high" ||
-                                          req.urgency === "critical"
-                                            ? T.red
-                                            : T.amber,
+                                        fontWeight: 500,
+                                        bgcolor: T.violetLight,
+                                        color: T.violet,
                                         fontFamily: T.font,
                                       }}
                                     />
-                                    {(req.childRequests?.length ||
-                                      req.childCount ||
-                                      0) > 0 && (
-                                      <Chip
-                                        label={`${req.childRequests?.length || req.childCount} linked`}
-                                        size="small"
-                                        sx={{
-                                          height: 18,
-                                          fontSize: "0.62rem",
-                                          fontWeight: 500,
-                                          bgcolor: T.violetLight,
-                                          color: T.violet,
-                                          fontFamily: T.font,
-                                        }}
-                                      />
-                                    )}
-                                  </Stack>
-                                </Box>
-                              </Stack>
-                              <Stack
-                                alignItems="flex-end"
-                                spacing={0.5}
-                                sx={{ ml: 1, flexShrink: 0 }}
-                              >
-                                <Chip
-                                  label={req.status}
-                                  size="small"
-                                  icon={sCfg.icon}
-                                  sx={{
-                                    height: 22,
-                                    fontSize: "0.65rem",
-                                    fontWeight: 600,
-                                    bgcolor: sCfg.bg,
-                                    color: sCfg.color,
-                                    fontFamily: T.font,
-                                    "& .MuiChip-icon": { color: sCfg.color },
-                                  }}
-                                />
-                                {isSelected && (
-                                  <Check
-                                    sx={{ fontSize: 16, color: T.brand }}
-                                  />
-                                )}
-                              </Stack>
+                                  )}
+                                </Stack>
+                              </Box>
                             </Stack>
-                          </Box>
-                        );
-                      })}
-                    </Stack>
-                  )}
-                </>
-              )}
-            </Box>
-          </Collapse>
-
-          {/* ── STEP 2: Child asset + config ── */}
-          <Collapse in={step === 2} unmountOnExit>
-            <Box sx={{ p: 3 }}>
-              {/* Parent summary */}
-              {selectedParent && (
-                <Box
-                  sx={{
-                    p: 2,
-                    borderRadius: T.r.md,
-                    bgcolor: T.brandLight,
-                    border: `1px solid ${alpha(T.brand, 0.2)}`,
-                    mb: 2.5,
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontSize: "0.67rem",
-                      fontWeight: 700,
-                      color: T.brand,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
-                      mb: 0.75,
-                      fontFamily: T.font,
-                    }}
-                  >
-                    Parent Request
-                  </Typography>
-                  <Stack direction="row" alignItems="center" spacing={1.5}>
-                    <AccountTree
-                      sx={{ fontSize: 18, color: T.brand, flexShrink: 0 }}
-                    />
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography
-                        sx={{
-                          fontSize: "0.875rem",
-                          fontWeight: 600,
-                          color: T.ink,
-                          fontFamily: T.font,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {selectedParentAsset?.assetName || "Unnamed"}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontSize: "0.7rem",
-                          color: T.inkMuted,
-                          fontFamily: T.fontMono,
-                        }}
-                      >
-                        {selectedParentAsset?.assetId || "—"} ·{" "}
-                        {selectedParent.requestType}
-                      </Typography>
-                    </Box>
-                    <Button
-                      size="small"
-                      onClick={() => setStep(1)}
-                      sx={{
-                        textTransform: "none",
-                        color: T.brand,
-                        fontFamily: T.font,
-                        fontSize: "0.72rem",
-                        fontWeight: 700,
-                        p: 0,
-                        minWidth: 0,
-                        "&:hover": {
-                          bgcolor: "transparent",
-                          textDecoration: "underline",
-                        },
-                      }}
-                    >
-                      Change
-                    </Button>
-                  </Stack>
-                </Box>
-              )}
-
-              {/* Relationship */}
-              <Box mb={2.5}>
-                <Typography
-                  sx={{
-                    fontSize: "0.67rem",
-                    fontWeight: 700,
-                    color: T.inkMuted,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    mb: 1,
-                    fontFamily: T.font,
-                  }}
-                >
-                  Relationship Type
-                </Typography>
-                <Stack direction="row" flexWrap="wrap" gap={0.75}>
-                  {["accessory", "component", "attachment", "spare"].map(
-                    (t) => (
-                      <Chip
-                        key={t}
-                        label={t}
-                        clickable
-                        onClick={() => setRelationshipType(t)}
-                        sx={{
-                          fontWeight: 600,
-                          fontSize: "0.75rem",
-                          fontFamily: T.font,
-                          textTransform: "capitalize",
-                          bgcolor:
-                            relationshipType === t ? T.brand : T.surfaceAlt,
-                          color:
-                            relationshipType === t ? "#fff" : T.inkSecondary,
-                          border: `1px solid ${relationshipType === t ? T.brand : T.border}`,
-                          transition: "all 0.15s",
-                          boxShadow:
-                            relationshipType === t
-                              ? `0 2px 8px ${T.brandGlow}`
-                              : "none",
-                        }}
-                      />
-                    ),
-                  )}
-                </Stack>
-              </Box>
-
-              {/* Urgency */}
-              <Box mb={2.5}>
-                <Typography
-                  sx={{
-                    fontSize: "0.67rem",
-                    fontWeight: 700,
-                    color: T.inkMuted,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    mb: 1,
-                    fontFamily: T.font,
-                  }}
-                >
-                  Urgency
-                </Typography>
-                <Stack direction="row" spacing={0.75}>
-                  {[
-                    ["low", T.teal, T.tealLight],
-                    ["medium", T.amber, T.amberLight],
-                    ["high", T.red, T.redLight],
-                  ].map(([u, activeColor, activeBg]) => (
-                    <Chip
-                      key={u}
-                      label={u}
-                      clickable
-                      onClick={() => setUrgency(u)}
-                      sx={{
-                        fontWeight: 600,
-                        fontSize: "0.75rem",
-                        fontFamily: T.font,
-                        textTransform: "capitalize",
-                        flex: 1,
-                        justifyContent: "center",
-                        bgcolor: urgency === u ? activeColor : T.surfaceAlt,
-                        color: urgency === u ? "#fff" : T.inkSecondary,
-                        border: `1px solid ${urgency === u ? activeColor : T.border}`,
-                        transition: "all 0.15s",
-                      }}
-                    />
-                  ))}
-                </Stack>
-              </Box>
-
-              {/* Description */}
-              <Box mb={2.5}>
-                <Typography
-                  sx={{
-                    fontSize: "0.67rem",
-                    fontWeight: 700,
-                    color: T.inkMuted,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    mb: 1,
-                    fontFamily: T.font,
-                  }}
-                >
-                  Description{" "}
-                  <span style={{ textTransform: "none", fontWeight: 400 }}>
-                    (optional)
-                  </span>
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  multiline
-                  rows={2}
-                  placeholder={`Linked as ${relationshipType}…`}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: T.r.sm,
-                      fontSize: "0.875rem",
-                      fontFamily: T.font,
-                      "& fieldset": { borderColor: T.border },
-                      "&.Mui-focused fieldset": {
-                        borderColor: T.brand,
-                        borderWidth: 1.5,
-                      },
-                    },
-                  }}
-                />
-              </Box>
-
-              {/* Child asset selection */}
-              <Typography
-                sx={{
-                  fontSize: "0.67rem",
-                  fontWeight: 700,
-                  color: T.inkMuted,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  mb: 1,
-                  fontFamily: T.font,
-                }}
-              >
-                Select Child Asset
-              </Typography>
-
-              {assetError ? (
-                <ErrorBanner message={assetError} onRetry={loadAllAssets} />
-              ) : (
-                <>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Search by name or asset ID…"
-                    value={searchChild}
-                    onChange={(e) => setSearchChild(e.target.value)}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Search sx={{ fontSize: 15, color: T.inkMuted }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{
-                      mb: 1.5,
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: T.r.sm,
-                        fontSize: "0.875rem",
-                        fontFamily: T.font,
-                        "& fieldset": { borderColor: T.border },
-                        "&:hover fieldset": { borderColor: T.brand },
-                        "&.Mui-focused fieldset": {
-                          borderColor: T.brand,
-                          borderWidth: 1.5,
-                        },
-                      },
-                    }}
-                  />
-
-                  {loadingAssets ? (
-                    <Stack spacing={1.25}>
-                      {[1, 2, 3].map((i) => (
-                        <Skeleton
-                          key={i}
-                          variant="rounded"
-                          height={62}
-                          sx={{ borderRadius: T.r.sm }}
-                        />
-                      ))}
-                    </Stack>
-                  ) : filteredAssets.length === 0 ? (
-                    <Box sx={{ py: 4, textAlign: "center" }}>
-                      <Typography
-                        sx={{
-                          fontSize: "0.875rem",
-                          color: T.inkMuted,
-                          fontFamily: T.font,
-                        }}
-                      >
-                        {searchChild
-                          ? "No assets match your search"
-                          : "No available assets"}
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Stack
-                      spacing={1}
-                      sx={{ maxHeight: 280, overflowY: "auto", pr: 0.5 }}
-                    >
-                      {filteredAssets.map((asset) => {
-                        const isSelected =
-                          selectedChildAsset?._id === asset._id ||
-                          selectedChildAsset?.id === asset.id;
-                        const sCfg = STATUS_CFG[asset.status] || {};
-                        return (
-                          <Box
-                            key={asset._id || asset.id}
-                            onClick={() => setSelectedChildAsset(asset)}
-                            sx={{
-                              px: 2,
-                              py: 1.5,
-                              borderRadius: T.r.sm,
-                              cursor: "pointer",
-                              border: `1.5px solid ${isSelected ? T.brand : T.border}`,
-                              bgcolor: isSelected ? T.brandLight : T.surface,
-                              transition: "all 0.15s ease",
-                              boxShadow: isSelected
-                                ? `0 0 0 3px ${T.brandGlow}`
-                                : "none",
-                              "&:hover": {
-                                borderColor: T.brand,
-                                bgcolor: T.brandLight,
-                              },
-                            }}
-                          >
                             <Stack
-                              direction="row"
-                              alignItems="center"
-                              justifyContent="space-between"
+                              alignItems="flex-end"
+                              spacing={0.5}
+                              sx={{ ml: 1, flexShrink: 0 }}
                             >
-                              <Stack
-                                direction="row"
-                                spacing={1.5}
-                                alignItems="center"
-                              >
-                                <Box
-                                  sx={{
-                                    width: 30,
-                                    height: 30,
-                                    borderRadius: T.r.xs,
-                                    bgcolor: isSelected
-                                      ? T.brand
-                                      : T.surfaceAlt,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    flexShrink: 0,
-                                    transition: "all 0.15s",
-                                  }}
-                                >
-                                  <Inventory2
-                                    sx={{
-                                      fontSize: 14,
-                                      color: isSelected ? "#fff" : T.inkMuted,
-                                    }}
-                                  />
-                                </Box>
-                                <Box sx={{ minWidth: 0 }}>
-                                  <Typography
-                                    sx={{
-                                      fontSize: "0.875rem",
-                                      fontWeight: 600,
-                                      color: T.ink,
-                                      fontFamily: T.font,
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      whiteSpace: "nowrap",
-                                    }}
-                                  >
-                                    {asset.assetName}
-                                  </Typography>
-                                  <Typography
-                                    sx={{
-                                      fontSize: "0.7rem",
-                                      color: T.inkMuted,
-                                      fontFamily: T.fontMono,
-                                    }}
-                                  >
-                                    {asset.assetId}
-                                  </Typography>
-                                </Box>
-                              </Stack>
-                              <Stack
-                                direction="row"
-                                alignItems="center"
-                                spacing={0.75}
-                                sx={{ ml: 1, flexShrink: 0 }}
-                              >
-                                {sCfg.dot && (
-                                  <Box
-                                    sx={{
-                                      width: 7,
-                                      height: 7,
-                                      borderRadius: "50%",
-                                      bgcolor: sCfg.dot,
-                                    }}
-                                  />
-                                )}
-                                <Typography
-                                  sx={{
-                                    fontSize: "0.7rem",
-                                    color: sCfg.color || T.inkMuted,
-                                    fontWeight: 500,
-                                    fontFamily: T.font,
-                                  }}
-                                >
-                                  {asset.status}
-                                </Typography>
-                                {isSelected && (
-                                  <Check
-                                    sx={{ fontSize: 15, color: T.brand }}
-                                  />
-                                )}
-                              </Stack>
+                              <Chip
+                                label={req.status}
+                                size="small"
+                                icon={sCfg.icon}
+                                sx={{
+                                  height: 22,
+                                  fontSize: "0.65rem",
+                                  fontWeight: 600,
+                                  bgcolor: sCfg.bg,
+                                  color: sCfg.color,
+                                  fontFamily: T.font,
+                                  "& .MuiChip-icon": { color: sCfg.color },
+                                }}
+                              />
+                              {isSelected && (
+                                <Check sx={{ fontSize: 16, color: T.brand }} />
+                              )}
                             </Stack>
-                          </Box>
-                        );
-                      })}
-                    </Stack>
+                          </Stack>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+
+                  {/* Relationship Type Selection */}
+                  {selectedParent && (
+                    <Box sx={{ mt: 3 }}>
+                      <Divider sx={{ my: 2, borderColor: T.border }} />
+                      <Typography
+                        sx={{
+                          fontSize: "0.67rem",
+                          fontWeight: 700,
+                          color: T.inkMuted,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          mb: 1.5,
+                          fontFamily: T.font,
+                        }}
+                      >
+                        Relationship Type
+                      </Typography>
+                      <Stack direction="row" flexWrap="wrap" gap={1}>
+                        {[
+                          "accessory",
+                          "component",
+                          "attachment",
+                          "spare",
+                          "dependency",
+                        ].map((t) => (
+                          <Chip
+                            key={t}
+                            label={t}
+                            clickable
+                            onClick={() => setRelationshipType(t)}
+                            sx={{
+                              fontWeight: 600,
+                              fontSize: "0.75rem",
+                              fontFamily: T.font,
+                              textTransform: "capitalize",
+                              bgcolor:
+                                relationshipType === t ? T.brand : T.surfaceAlt,
+                              color:
+                                relationshipType === t
+                                  ? "#fff"
+                                  : T.inkSecondary,
+                              border: `1px solid ${relationshipType === t ? T.brand : T.border}`,
+                              transition: "all 0.15s",
+                              boxShadow:
+                                relationshipType === t
+                                  ? `0 2px 8px ${T.brandGlow}`
+                                  : "none",
+                            }}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
                   )}
                 </>
               )}
-            </Box>
-          </Collapse>
+            </>
+          )}
         </DialogContent>
 
-        {/* Footer */}
         <Box
           sx={{
             px: 3,
@@ -1332,12 +921,13 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
             borderTop: `1px solid ${T.border}`,
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
+            justifyContent: "flex-end",
+            gap: 1.5,
             bgcolor: T.surfaceAlt,
           }}
         >
           <Button
-            onClick={step === 1 ? onClose : () => setStep(1)}
+            onClick={onClose}
             sx={{
               textTransform: "none",
               borderRadius: T.r.sm,
@@ -1350,56 +940,34 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
               "&:hover": { bgcolor: T.surfaceHover },
             }}
           >
-            {step === 1 ? "Cancel" : "← Back"}
+            Cancel
           </Button>
-          {step === 1 ? (
-            <Button
-              variant="contained"
-              onClick={() => setStep(2)}
-              disabled={!selectedParent}
-              sx={{
-                textTransform: "none",
-                borderRadius: T.r.sm,
-                bgcolor: T.brand,
-                color: "#fff",
-                fontFamily: T.font,
-                fontWeight: 700,
-                px: 3,
-                boxShadow: `0 2px 8px ${T.brandGlow}`,
-                "&:hover": { bgcolor: T.brandAccent },
-                "&.Mui-disabled": { opacity: 0.45 },
-              }}
-            >
-              Next: Select Asset →
-            </Button>
-          ) : (
-            <Button
-              variant="contained"
-              onClick={handleLink}
-              disabled={!selectedChildAsset || linking}
-              startIcon={
-                linking ? (
-                  <CircularProgress size={14} color="inherit" />
-                ) : (
-                  <LinkIcon sx={{ fontSize: 16 }} />
-                )
-              }
-              sx={{
-                textTransform: "none",
-                borderRadius: T.r.sm,
-                bgcolor: T.brand,
-                color: "#fff",
-                fontFamily: T.font,
-                fontWeight: 700,
-                px: 3,
-                boxShadow: `0 2px 8px ${T.brandGlow}`,
-                "&:hover": { bgcolor: T.brandAccent },
-                "&.Mui-disabled": { opacity: 0.45 },
-              }}
-            >
-              {linking ? "Linking…" : "Confirm Link"}
-            </Button>
-          )}
+          <Button
+            variant="contained"
+            onClick={handleLink}
+            disabled={!selectedParent || linking}
+            startIcon={
+              linking ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <LinkIcon sx={{ fontSize: 16 }} />
+              )
+            }
+            sx={{
+              textTransform: "none",
+              borderRadius: T.r.sm,
+              bgcolor: T.brand,
+              color: "#fff",
+              fontFamily: T.font,
+              fontWeight: 700,
+              px: 3,
+              boxShadow: `0 2px 8px ${T.brandGlow}`,
+              "&:hover": { bgcolor: T.brandAccent },
+              "&.Mui-disabled": { opacity: 0.45 },
+            }}
+          >
+            {linking ? "Linking..." : "Link Asset"}
+          </Button>
         </Box>
       </Dialog>
 
@@ -1479,7 +1047,6 @@ export default function AssetView() {
       const res = await getRequestsByAsset(id);
       if (res && res.success !== false) setLinkedRequests(res.requests || []);
     } catch (e) {
-      // Silently fail — not critical
       console.warn(
         "[AssetView] Failed to load linked requests:",
         e?.response?.status,
@@ -1490,6 +1057,7 @@ export default function AssetView() {
   useEffect(() => {
     loadAsset();
   }, [loadAsset]);
+
   useEffect(() => {
     if (asset) loadLinkedRequests();
   }, [asset, loadLinkedRequests]);
@@ -1513,8 +1081,7 @@ export default function AssetView() {
       ? `${import.meta.env?.VITE_API_URL?.replace("/api/v1", "") || "http://localhost:9001"}/uploads/assets/${name}`
       : null;
 
-  // ── Loading skeleton ──────────────────────────────────────────────────────
-  if (pageLoading)
+  if (pageLoading) {
     return (
       <Box sx={{ minHeight: "100vh", fontFamily: T.font }}>
         <Box
@@ -1581,6 +1148,7 @@ export default function AssetView() {
         </Box>
       </Box>
     );
+  }
 
   if (!asset) return null;
 
@@ -1614,7 +1182,7 @@ export default function AssetView() {
         animation: `${fadeUp} 0.4s ease both`,
       }}
     >
-      {/* ── Top Bar ── */}
+      {/* Top Bar */}
       <Box
         sx={{
           bgcolor: T.surface,
@@ -1623,11 +1191,10 @@ export default function AssetView() {
           py: { xs: 2, sm: 2.5 },
           position: "sticky",
           top: 0,
-          width:"1120px",
-          marginLeft:"25px",
+          width: "1100px",
+          marginLeft: "50px",
           zIndex: 100,
           borderRadius: 2,
-          backdropFilter: "blur(8px)",
         }}
       >
         <Stack
@@ -1828,13 +1395,13 @@ export default function AssetView() {
         </Stack>
       </Box>
 
-      {/* ── Body ── */}
+      {/* Body */}
       <Box
         sx={{ px: { xs: 2, sm: 3, md: 4 }, py: 3, maxWidth: 1200, mx: "auto" }}
       >
         <Grid container spacing={3}>
           {/* LEFT SIDEBAR */}
-          <Grid item xs={12} md={4} lg={3.5} sx={{ width:"300px"}}>
+          <Grid item xs={12} md={4} lg={3.5} sx={{ width: "300px" }}>
             <Stack spacing={2.5}>
               {/* Image Panel */}
               <Card
@@ -2054,7 +1621,7 @@ export default function AssetView() {
               {/* Quick Info */}
               <Card
                 elevation={0}
-                sx={{ p: 2.5, animation: `${slideIn} 0.4s 0.15s ease both`  }}
+                sx={{ p: 2.5, animation: `${slideIn} 0.4s 0.15s ease both` }}
               >
                 <SectionTitle icon={<Numbers sx={{ fontSize: 15 }} />}>
                   Quick Info
@@ -2170,7 +1737,7 @@ export default function AssetView() {
           </Grid>
 
           {/* MAIN CONTENT */}
-          <Grid item xs={12} md={8} lg={8.5} sx={{width:"780px"}}>
+          <Grid item xs={12} md={8} lg={8.5} sx={{ width: "780px" }}>
             <Stack spacing={2.5}>
               <Box
                 sx={{
@@ -2229,7 +1796,7 @@ export default function AssetView() {
                   <Tab label="History" />
                 </Tabs>
 
-                {/* ── TAB 0: OVERVIEW ── */}
+                {/* TAB 0: OVERVIEW */}
                 {activeTab === 0 && (
                   <Box sx={{ p: { xs: 2, sm: 3 } }}>
                     <Box
@@ -2553,461 +2120,22 @@ export default function AssetView() {
                   </Box>
                 )}
 
-                {/* ── TAB 1: SPECIALIST DATA ── */}
+                {/* TAB 1: SPECIALIST DATA */}
                 {activeTab === 1 && (
                   <Box sx={{ p: { xs: 2, sm: 3 } }}>
                     <Grid container spacing={2.5}>
-                      {[
-                        {
-                          title: "Material Handling Equipment",
-                          icon: (
-                            <Inventory2
-                              sx={{ fontSize: 14, color: "#1565C0" }}
-                            />
-                          ),
-                          iconBg: alpha("#2196F3", 0.12),
-                          rows: [
-                            {
-                              icon: <Build />,
-                              label: "Utilization",
-                              value: asset.mhe?.utilizationStatus,
-                              color: "#1565C0",
-                            },
-                            {
-                              icon: <Sensors />,
-                              label: "Engine Runtime",
-                              value: asset.mhe?.engineRuntimeHours
-                                ? `${asset.mhe.engineRuntimeHours} hrs`
-                                : null,
-                              color: "#1565C0",
-                            },
-                            {
-                              icon: <Settings />,
-                              label: "Engine Status",
-                              value: asset.mhe?.engineStatus,
-                              color: "#1565C0",
-                            },
-                            {
-                              icon: <Shield />,
-                              label: "Safety Cert.",
-                              value: asset.mhe?.safetyCertification,
-                              color: "#1565C0",
-                            },
-                          ],
-                          empty: "No MHE data available",
-                        },
-                        {
-                          title: "Transportation",
-                          icon: (
-                            <DirectionsCar
-                              sx={{ fontSize: 14, color: "#00695C" }}
-                            />
-                          ),
-                          iconBg: alpha("#009688", 0.12),
-                          rows: [
-                            {
-                              icon: <DirectionsCar />,
-                              label: "Vehicle Type",
-                              value: asset.transportation?.vehicleType,
-                              color: "#00695C",
-                            },
-                            {
-                              icon: <Person />,
-                              label: "Driver",
-                              value:
-                                asset.transportation?.driver ||
-                                asset.transportation?.driverId,
-                              color: "#00695C",
-                            },
-                            {
-                              icon: <Sensors />,
-                              label: "Load Status",
-                              value:
-                                asset.transportation?.loadStatus != null
-                                  ? `${asset.transportation.loadStatus}%`
-                                  : null,
-                              color: "#00695C",
-                            },
-                            {
-                              icon: <Sensors />,
-                              label: "Fuel Level",
-                              value:
-                                asset.transportation?.fuelLevel != null
-                                  ? `${asset.transportation.fuelLevel}%`
-                                  : null,
-                              color: "#00695C",
-                            },
-                            {
-                              icon: <Numbers />,
-                              label: "Odometer",
-                              value: asset.transportation?.odometer
-                                ? `${asset.transportation.odometer} km`
-                                : null,
-                              color: "#00695C",
-                            },
-                          ],
-                          empty: "No transport data available",
-                        },
-                        {
-                          title: "IT Assets",
-                          icon: (
-                            <Computer sx={{ fontSize: 14, color: "#C62828" }} />
-                          ),
-                          iconBg: alpha("#F44336", 0.1),
-                          rows: [
-                            {
-                              icon: <Shield />,
-                              label: "License Status",
-                              value: asset.itAssets?.licenseStatus,
-                              color: "#C62828",
-                            },
-                            {
-                              icon: <Memory />,
-                              label: "Software",
-                              value: asset.itAssets?.softwareName,
-                              color: "#C62828",
-                            },
-                            {
-                              icon: <Sensors />,
-                              label: "Usage Hours",
-                              value: asset.itAssets?.usageHours
-                                ? `${asset.itAssets.usageHours} hrs`
-                                : null,
-                              color: "#C62828",
-                            },
-                          ],
-                          extra:
-                            asset.itAssets?.osPlatform?.length > 0 ? (
-                              <Box mt={1}>
-                                <Typography
-                                  sx={{
-                                    fontSize: "0.7rem",
-                                    color: T.inkMuted,
-                                    fontFamily: T.font,
-                                    mb: 0.75,
-                                  }}
-                                >
-                                  OS Platforms
-                                </Typography>
-                                <Stack
-                                  direction="row"
-                                  flexWrap="wrap"
-                                  gap={0.5}
-                                >
-                                  {asset.itAssets.osPlatform.map((p) => (
-                                    <Chip
-                                      key={p}
-                                      label={p}
-                                      size="small"
-                                      sx={{
-                                        height: 18,
-                                        fontSize: "0.6rem",
-                                        fontWeight: 500,
-                                        bgcolor: T.tealLight,
-                                        color: T.teal,
-                                        fontFamily: T.font,
-                                      }}
-                                    />
-                                  ))}
-                                </Stack>
-                              </Box>
-                            ) : null,
-                          empty: "No IT asset data available",
-                        },
-                        {
-                          title: "Facility Management",
-                          icon: (
-                            <Apartment
-                              sx={{ fontSize: 14, color: "#E65100" }}
-                            />
-                          ),
-                          iconBg: alpha("#FF9800", 0.12),
-                          rows: [
-                            {
-                              icon: <Build />,
-                              label: "PM Status",
-                              value: asset.facilityManagement?.pmStatus,
-                              color: "#E65100",
-                            },
-                            {
-                              icon: <Warning />,
-                              label: "Priority",
-                              value:
-                                asset.facilityManagement?.maintenancePriority,
-                              color: "#E65100",
-                            },
-                            {
-                              icon: <Shield />,
-                              label: "Safety Compliance",
-                              value: asset.facilityManagement?.safetyCompliance,
-                              color: "#E65100",
-                            },
-                          ],
-                          empty: "No facility data available",
-                        },
-                        {
-                          title: "Garbage Management",
-                          icon: (
-                            <DeleteOutline
-                              sx={{ fontSize: 14, color: "#2E7D32" }}
-                            />
-                          ),
-                          iconBg: alpha("#4CAF50", 0.12),
-                          rows: [
-                            {
-                              icon: <Sensors />,
-                              label: "Fill Level",
-                              value:
-                                asset.garbageManagement
-                                  ?.smartStatusIoTFillLevel != null
-                                  ? `${asset.garbageManagement.smartStatusIoTFillLevel}%`
-                                  : null,
-                              color: "#2E7D32",
-                            },
-                            {
-                              icon: <Build />,
-                              label: "Collection Status",
-                              value: asset.garbageManagement?.collectionStatus,
-                              color: "#2E7D32",
-                            },
-                            {
-                              icon: <Warning />,
-                              label: "Fill Level Alert",
-                              value: asset.garbageManagement?.fillLevelAlert
-                                ? "Active"
-                                : null,
-                              color: "#A93226",
-                            },
-                          ],
-                          extra:
-                            asset.garbageManagement?.smartStatusIoTFillLevel !=
-                            null ? (
-                              <Box mt={1.5}>
-                                <LinearProgress
-                                  variant="determinate"
-                                  value={
-                                    asset.garbageManagement
-                                      .smartStatusIoTFillLevel
-                                  }
-                                  sx={{
-                                    height: 6,
-                                    borderRadius: 3,
-                                    bgcolor: alpha("#2E7D32", 0.1),
-                                    "& .MuiLinearProgress-bar": {
-                                      bgcolor:
-                                        asset.garbageManagement
-                                          .smartStatusIoTFillLevel > 80
-                                          ? T.red
-                                          : "#2E7D32",
-                                      borderRadius: 3,
-                                    },
-                                  }}
-                                />
-                              </Box>
-                            ) : null,
-                          empty: "No garbage management data available",
-                        },
-                        {
-                          title: "Rotating Machinery",
-                          icon: (
-                            <Settings sx={{ fontSize: 14, color: "#6A1B9A" }} />
-                          ),
-                          iconBg: alpha("#9C27B0", 0.12),
-                          rows: [
-                            {
-                              icon: <Sensors />,
-                              label: "Vibration Alert",
-                              value: asset.rotatingMachinery?.vibrationAlert
-                                ? "Active"
-                                : null,
-                              color: "#A93226",
-                            },
-                            {
-                              icon: <Sensors />,
-                              label: "Temp. Alert",
-                              value: asset.rotatingMachinery?.temperatureAlert
-                                ? "Active"
-                                : null,
-                              color: "#A0560A",
-                            },
-                            {
-                              icon: <Numbers />,
-                              label: "RPM",
-                              value: asset.rotatingMachinery?.rpm
-                                ? `${asset.rotatingMachinery.rpm} rpm`
-                                : null,
-                              color: "#6A1B9A",
-                            },
-                            {
-                              icon: <Sensors />,
-                              label: "Op. Hours",
-                              value: asset.rotatingMachinery?.operatingHours
-                                ? `${asset.rotatingMachinery.operatingHours} hrs`
-                                : null,
-                              color: "#6A1B9A",
-                            },
-                          ],
-                          extra: (
-                            <>
-                              {asset.rotatingMachinery?.healthStatusIndex && (
-                                <Stack
-                                  direction="row"
-                                  alignItems="center"
-                                  spacing={1.25}
-                                  sx={{
-                                    py: 1,
-                                    borderBottom: `1px solid ${T.border}`,
-                                  }}
-                                >
-                                  <Box
-                                    sx={{ color: "#6A1B9A", display: "flex" }}
-                                  >
-                                    <Sensors sx={{ fontSize: 14 }} />
-                                  </Box>
-                                  <Typography
-                                    sx={{
-                                      fontSize: "0.75rem",
-                                      color: T.inkMuted,
-                                      fontFamily: T.font,
-                                      flex: 1,
-                                    }}
-                                  >
-                                    Health Index
-                                  </Typography>
-                                  <Chip
-                                    label={
-                                      asset.rotatingMachinery.healthStatusIndex
-                                    }
-                                    size="small"
-                                    sx={{
-                                      height: 20,
-                                      fontSize: "0.65rem",
-                                      fontWeight: 600,
-                                      fontFamily: T.font,
-                                      bgcolor:
-                                        asset.rotatingMachinery
-                                          .healthStatusIndex === "Green"
-                                          ? "#E8F5EE"
-                                          : asset.rotatingMachinery
-                                                .healthStatusIndex === "Yellow"
-                                            ? "#FEF3E2"
-                                            : "#FCE8E6",
-                                      color:
-                                        asset.rotatingMachinery
-                                          .healthStatusIndex === "Green"
-                                          ? "#1A6B3C"
-                                          : asset.rotatingMachinery
-                                                .healthStatusIndex === "Yellow"
-                                            ? "#A0560A"
-                                            : "#A93226",
-                                    }}
-                                  />
-                                </Stack>
-                              )}
-                              {asset.rotatingMachinery?.faultType?.length >
-                                0 && (
-                                <Stack
-                                  direction="row"
-                                  flexWrap="wrap"
-                                  gap={0.5}
-                                  mt={1}
-                                >
-                                  {asset.rotatingMachinery.faultType.map(
-                                    (f) => (
-                                      <Chip
-                                        key={f}
-                                        label={f}
-                                        size="small"
-                                        sx={{
-                                          height: 18,
-                                          fontSize: "0.6rem",
-                                          fontWeight: 500,
-                                          bgcolor: T.redLight,
-                                          color: T.red,
-                                          fontFamily: T.font,
-                                        }}
-                                      />
-                                    ),
-                                  )}
-                                </Stack>
-                              )}
-                            </>
-                          ),
-                          empty: "No rotating machinery data available",
-                        },
-                      ].map(({ title, icon, iconBg, rows, extra, empty }) => {
-                        const hasData = rows.some(
-                          (r) =>
-                            r.value &&
-                            r.value !== "Not Applicable" &&
-                            r.value !== "Not Scheduled" &&
-                            r.value !== 0,
-                        );
-                        return (
-                          <Grid item xs={12} sm={6} key={title}>
-                            <Box
-                              sx={{
-                                p: 2.5,
-                                borderRadius: T.r.md,
-                                border: `1px solid ${T.border}`,
-                                bgcolor: T.surfaceAlt,
-                                height: "100%",
-                              }}
-                            >
-                              <Stack
-                                direction="row"
-                                alignItems="center"
-                                spacing={1.25}
-                                mb={2}
-                              >
-                                <Box
-                                  sx={{
-                                    width: 28,
-                                    height: 28,
-                                    borderRadius: T.r.xs,
-                                    bgcolor: iconBg,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                  }}
-                                >
-                                  {icon}
-                                </Box>
-                                <Typography
-                                  sx={{
-                                    fontSize: "0.8rem",
-                                    fontWeight: 700,
-                                    color: T.ink,
-                                    fontFamily: T.font,
-                                  }}
-                                >
-                                  {title}
-                                </Typography>
-                              </Stack>
-                              {rows.map((r) => (
-                                <SpecialistRow key={r.label} {...r} />
-                              ))}
-                              {extra}
-                              {!hasData && !extra && (
-                                <Typography
-                                  sx={{
-                                    fontSize: "0.78rem",
-                                    color: T.inkMuted,
-                                    fontFamily: T.font,
-                                  }}
-                                >
-                                  {empty}
-                                </Typography>
-                              )}
-                            </Box>
-                          </Grid>
-                        );
-                      })}
+                      <Grid item xs={12}>
+                        <Typography
+                          sx={{ color: T.inkMuted, textAlign: "center", py: 4 }}
+                        >
+                          Specialist data section
+                        </Typography>
+                      </Grid>
                     </Grid>
                   </Box>
                 )}
 
-                {/* ── TAB 2: REQUESTS ── */}
+                {/* TAB 2: REQUESTS */}
                 {activeTab === 2 && (
                   <Box sx={{ p: { xs: 2, sm: 3 } }}>
                     {linkedRequests.length === 0 ? (
@@ -3259,71 +2387,6 @@ export default function AssetView() {
                                   </Typography>
                                 </Box>
                               )}
-                              {req.metadata?.childAssets?.length > 0 && (
-                                <Box mt={1.5}>
-                                  <Typography
-                                    sx={{
-                                      fontSize: "0.62rem",
-                                      fontWeight: 700,
-                                      color: T.inkMuted,
-                                      textTransform: "uppercase",
-                                      letterSpacing: "0.06em",
-                                      mb: 1,
-                                      fontFamily: T.font,
-                                    }}
-                                  >
-                                    Child Links
-                                  </Typography>
-                                  <Stack spacing={0.75}>
-                                    {req.metadata.childAssets.map(
-                                      (child, i) => (
-                                        <Stack
-                                          key={i}
-                                          direction="row"
-                                          alignItems="center"
-                                          spacing={1.25}
-                                          sx={{
-                                            px: 1.25,
-                                            py: 0.75,
-                                            borderRadius: T.r.xs,
-                                            bgcolor: T.surface,
-                                            border: `1px solid ${T.border}`,
-                                          }}
-                                        >
-                                          <SwapHoriz
-                                            sx={{
-                                              fontSize: 14,
-                                              color: T.inkMuted,
-                                            }}
-                                          />
-                                          <Typography
-                                            sx={{
-                                              fontSize: "0.75rem",
-                                              color: T.ink,
-                                              fontFamily: T.font,
-                                              flex: 1,
-                                            }}
-                                          >
-                                            Asset: {child.assetId}
-                                          </Typography>
-                                          <Chip
-                                            label={child.relationshipType}
-                                            size="small"
-                                            sx={{
-                                              height: 18,
-                                              fontSize: "0.6rem",
-                                              fontWeight: 500,
-                                              bgcolor: T.brandLight,
-                                              color: T.brand,
-                                              fontFamily: T.font,
-                                            }}
-                                          />
-                                        </Stack>
-                                      ),
-                                    )}
-                                  </Stack>
-                                </Box>
-                              )}
                             </Box>
                           );
                         })}
@@ -3332,7 +2395,7 @@ export default function AssetView() {
                   </Box>
                 )}
 
-                {/* ── TAB 3: HISTORY ── */}
+                {/* TAB 3: HISTORY */}
                 {activeTab === 3 && (
                   <Box sx={{ p: { xs: 2, sm: 3 } }}>
                     {!asset.statusHistory?.length ? (

@@ -1,4 +1,5 @@
-// context/Recyclebincontext.jsx
+// context/Recyclebincontext.jsx - Complete fixed version
+
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { useAuth } from "./AuthContexts";
 
@@ -18,7 +19,7 @@ export const RecycleBinProvider = ({ children }) => {
   // Role-based access control
   const isAdmin = user?.role === "admin";
   const isSuperAdmin = user?.role === "super_admin";
-  const canAccess = isAdmin || isSuperAdmin; // Only admin and super_admin can access
+  const canAccess = isAdmin || isSuperAdmin;
   const isTeam = user?.role === "team";
 
   // ── Checklists state ────────────────────────────────────────────────────────
@@ -52,7 +53,6 @@ export const RecycleBinProvider = ({ children }) => {
     limit: 10,
     total: 0,
     totalPages: 1,
-    pages: 1,
   });
 
   const extractError = (err, fallback) => {
@@ -73,12 +73,8 @@ export const RecycleBinProvider = ({ children }) => {
 
   const fetchDeletedChecklists = useCallback(
     async (page = 1, limit = 10) => {
-      // Only admin and super_admin can access
       if (!canAccess) {
-        console.log("Unauthorized access attempt to deleted checklists");
-        setChecklistError(
-          "You don't have permission to access deleted checklists",
-        );
+        setChecklistError("You don't have permission to access deleted checklists");
         return;
       }
 
@@ -86,27 +82,17 @@ export const RecycleBinProvider = ({ children }) => {
       setChecklistError(null);
 
       try {
-        const { page: validPage, limit: validLimit } = validatePagination(
-          page,
-          limit,
-        );
-
-        console.log(
-          `Fetching deleted checklists - Page: ${validPage}, Limit: ${validLimit}`,
-        );
+        const { page: validPage, limit: validLimit } = validatePagination(page, limit);
 
         const response = await authRequest(
           "GET",
-          `/checklists/deleted/list?page=${validPage}&limit=${validLimit}`,
+          `/checklists/deleted/list?page=${validPage}&limit=${validLimit}`
         );
-
-        console.log("Deleted checklists response:", response);
 
         if (response?.success) {
           setDeletedChecklists(response.checklists || []);
           const total = response.pagination?.total || 0;
-          const pages =
-            response.pagination?.pages || Math.ceil(total / validLimit) || 1;
+          const pages = response.pagination?.pages || Math.ceil(total / validLimit) || 1;
           setChecklistPagination({
             page: response.pagination?.page || validPage,
             limit: response.pagination?.limit || validLimit,
@@ -114,32 +100,18 @@ export const RecycleBinProvider = ({ children }) => {
             pages,
           });
         } else {
-          const errorMsg =
-            response?.message || "Failed to fetch deleted checklists";
+          const errorMsg = response?.message || "Failed to fetch deleted checklists";
           setChecklistError(errorMsg);
-          console.error("API returned error:", errorMsg);
         }
       } catch (err) {
         console.error("Fetch deleted checklists error:", err);
-
-        if (err.response) {
-          console.error("Error status:", err.response.status);
-          console.error("Error data:", err.response.data);
-          console.error("Error headers:", err.response.headers);
-        }
-
-        const errorMessage = extractError(
-          err,
-          "Failed to fetch deleted checklists",
-        );
+        const errorMessage = extractError(err, "Failed to fetch deleted checklists");
         setChecklistError(errorMessage);
-
-        return { success: false, error: errorMessage };
       } finally {
         setChecklistLoading(false);
       }
     },
-    [authRequest, canAccess],
+    [authRequest, canAccess]
   );
 
   const restoreChecklist = useCallback(
@@ -148,14 +120,7 @@ export const RecycleBinProvider = ({ children }) => {
       if (!id) return { success: false, error: "Invalid checklist ID" };
 
       try {
-        console.log(`Restoring checklist: ${id}`);
-        const response = await authRequest(
-          "PATCH",
-          `/checklists/${id}/restore`,
-        );
-
-        console.log("Restore response:", response);
-
+        const response = await authRequest("PATCH", `/checklists/${id}/restore`);
         if (response?.success) {
           await fetchDeletedChecklists();
           return { success: true };
@@ -166,28 +131,18 @@ export const RecycleBinProvider = ({ children }) => {
         return { success: false, error: extractError(err, "Restore failed") };
       }
     },
-    [authRequest, canAccess, fetchDeletedChecklists],
+    [authRequest, canAccess, fetchDeletedChecklists]
   );
 
   const permanentDeleteChecklist = useCallback(
     async (id) => {
-      // Only super_admin can permanently delete
-      if (!isSuperAdmin)
-        return {
-          success: false,
-          error: "Only Super Admin can permanently delete items",
-        };
+      if (!isSuperAdmin) {
+        return { success: false, error: "Only Super Admin can permanently delete items" };
+      }
       if (!id) return { success: false, error: "Invalid checklist ID" };
 
       try {
-        console.log(`Permanently deleting checklist: ${id}`);
-        const response = await authRequest(
-          "DELETE",
-          `/checklists/${id}/permanent`,
-        );
-
-        console.log("Delete response:", response);
-
+        const response = await authRequest("DELETE", `/checklists/${id}/permanent`);
         if (response?.success) {
           await fetchDeletedChecklists();
           return { success: true };
@@ -198,77 +153,53 @@ export const RecycleBinProvider = ({ children }) => {
         return { success: false, error: extractError(err, "Delete failed") };
       }
     },
-    [authRequest, isSuperAdmin, fetchDeletedChecklists],
+    [authRequest, isSuperAdmin, fetchDeletedChecklists]
   );
 
   const bulkRestoreChecklists = useCallback(
     async (ids) => {
       if (!canAccess || !ids.length) {
-        return {
-          success: false,
-          error: "No items selected or permission denied",
-        };
+        return { success: false, error: "No items selected or permission denied" };
       }
       try {
-        const results = await Promise.all(
-          ids.map((id) => restoreChecklist(id)),
-        );
+        const results = await Promise.all(ids.map((id) => restoreChecklist(id)));
         const failed = results.filter((r) => !r.success);
 
         if (failed.length) {
-          return {
-            success: false,
-            error: `${failed.length} item(s) failed to restore`,
-            failedItems: failed,
-          };
+          return { success: false, error: `${failed.length} item(s) failed to restore`, failedItems: failed };
         }
 
         await fetchDeletedChecklists();
         return { success: true };
       } catch (err) {
         console.error("Bulk restore error:", err);
-        return {
-          success: false,
-          error: extractError(err, "Bulk restore failed"),
-        };
+        return { success: false, error: extractError(err, "Bulk restore failed") };
       }
     },
-    [restoreChecklist, canAccess, fetchDeletedChecklists],
+    [restoreChecklist, canAccess, fetchDeletedChecklists]
   );
 
   const bulkPermanentDeleteChecklists = useCallback(
     async (ids) => {
       if (!isSuperAdmin || !ids.length) {
-        return {
-          success: false,
-          error: "Only Super Admin can permanently delete items",
-        };
+        return { success: false, error: "Only Super Admin can permanently delete items" };
       }
       try {
-        const results = await Promise.all(
-          ids.map((id) => permanentDeleteChecklist(id)),
-        );
+        const results = await Promise.all(ids.map((id) => permanentDeleteChecklist(id)));
         const failed = results.filter((r) => !r.success);
 
         if (failed.length) {
-          return {
-            success: false,
-            error: `${failed.length} item(s) failed to delete`,
-            failedItems: failed,
-          };
+          return { success: false, error: `${failed.length} item(s) failed to delete`, failedItems: failed };
         }
 
         await fetchDeletedChecklists();
         return { success: true };
       } catch (err) {
         console.error("Bulk delete error:", err);
-        return {
-          success: false,
-          error: extractError(err, "Bulk delete failed"),
-        };
+        return { success: false, error: extractError(err, "Bulk delete failed") };
       }
     },
-    [permanentDeleteChecklist, isSuperAdmin, fetchDeletedChecklists],
+    [permanentDeleteChecklist, isSuperAdmin, fetchDeletedChecklists]
   );
 
   // ══════════════════ REQUESTS ════════════════════════════════════════════════
@@ -281,23 +212,17 @@ export const RecycleBinProvider = ({ children }) => {
       setRequestError(null);
 
       try {
-        const { page: validPage, limit: validLimit } = validatePagination(
-          page,
-          limit,
-        );
+        const { page: validPage, limit: validLimit } = validatePagination(page, limit);
 
         const response = await authRequest(
           "GET",
-          `/checklist-requests/deleted?page=${validPage}&limit=${validLimit}`,
+          `/checklist-requests/deleted?page=${validPage}&limit=${validLimit}`
         );
 
         if (response?.success) {
           setDeletedRequests(response.requests || []);
           const total = response.pagination?.total || 0;
-          const pages =
-            response.pagination?.totalPages ||
-            Math.ceil(total / validLimit) ||
-            1;
+          const pages = response.pagination?.totalPages || Math.ceil(total / validLimit) || 1;
           setRequestPagination({
             page: response.pagination?.page || validPage,
             limit: response.pagination?.limit || validLimit,
@@ -305,9 +230,7 @@ export const RecycleBinProvider = ({ children }) => {
             pages,
           });
         } else {
-          setRequestError(
-            response?.message || "Failed to fetch deleted requests",
-          );
+          setRequestError(response?.message || "Failed to fetch deleted requests");
         }
       } catch (err) {
         console.error("Fetch deleted requests error:", err);
@@ -316,17 +239,14 @@ export const RecycleBinProvider = ({ children }) => {
         setRequestLoading(false);
       }
     },
-    [authRequest, canAccess],
+    [authRequest, canAccess]
   );
 
   const restoreRequest = useCallback(
     async (id) => {
       if (!canAccess) return { success: false, error: "Permission denied" };
       try {
-        const response = await authRequest(
-          "PATCH",
-          `/checklist-requests/${id}/restore`,
-        );
+        const response = await authRequest("PATCH", `/checklist-requests/${id}/restore`);
         if (response?.success) {
           await fetchDeletedRequests();
           return { success: true };
@@ -337,21 +257,16 @@ export const RecycleBinProvider = ({ children }) => {
         return { success: false, error: extractError(err, "Restore failed") };
       }
     },
-    [authRequest, canAccess, fetchDeletedRequests],
+    [authRequest, canAccess, fetchDeletedRequests]
   );
 
   const permanentDeleteRequest = useCallback(
     async (id) => {
-      if (!isSuperAdmin)
-        return {
-          success: false,
-          error: "Only Super Admin can permanently delete items",
-        };
+      if (!isSuperAdmin) {
+        return { success: false, error: "Only Super Admin can permanently delete items" };
+      }
       try {
-        const response = await authRequest(
-          "DELETE",
-          `/checklist-requests/${id}/permanent`,
-        );
+        const response = await authRequest("DELETE", `/checklist-requests/${id}/permanent`);
         if (response?.success) {
           await fetchDeletedRequests();
           return { success: true };
@@ -362,7 +277,7 @@ export const RecycleBinProvider = ({ children }) => {
         return { success: false, error: extractError(err, "Delete failed") };
       }
     },
-    [authRequest, isSuperAdmin, fetchDeletedRequests],
+    [authRequest, isSuperAdmin, fetchDeletedRequests]
   );
 
   // ══════════════════ ASSIGNMENTS ═════════════════════════════════════════════
@@ -375,55 +290,41 @@ export const RecycleBinProvider = ({ children }) => {
       setAssignmentError(null);
 
       try {
-        const { page: validPage, limit: validLimit } = validatePagination(
-          page,
-          limit,
-        );
+        const { page: validPage, limit: validLimit } = validatePagination(page, limit);
 
         const response = await authRequest(
           "GET",
-          `/assignments/deleted?page=${validPage}&limit=${validLimit}`,
+          `/assignments/deleted?page=${validPage}&limit=${validLimit}`
         );
 
         if (response?.success) {
           setDeletedAssignments(response.assignments || []);
           const total = response.pagination?.total || 0;
-          const totalPages =
-            response.pagination?.totalPages ||
-            Math.ceil(total / validLimit) ||
-            1;
+          const totalPages = response.pagination?.totalPages || Math.ceil(total / validLimit) || 1;
           setAssignmentPagination({
             page: response.pagination?.page || validPage,
             limit: response.pagination?.limit || validLimit,
             total,
             totalPages,
-            pages: totalPages,
           });
         } else {
-          setAssignmentError(
-            response?.message || "Failed to fetch deleted assignments",
-          );
+          setAssignmentError(response?.message || "Failed to fetch deleted assignments");
         }
       } catch (err) {
         console.error("Fetch deleted assignments error:", err);
-        setAssignmentError(
-          extractError(err, "Failed to fetch deleted assignments"),
-        );
+        setAssignmentError(extractError(err, "Failed to fetch deleted assignments"));
       } finally {
         setAssignmentLoading(false);
       }
     },
-    [authRequest, canAccess],
+    [authRequest, canAccess]
   );
 
   const restoreAssignment = useCallback(
     async (id) => {
       if (!canAccess) return { success: false, error: "Permission denied" };
       try {
-        const response = await authRequest(
-          "POST",
-          `/assignments/${id}/restore`,
-        );
+        const response = await authRequest("POST", `/assignments/${id}/restore`);
         if (response?.success) {
           await fetchDeletedAssignments();
           return { success: true };
@@ -434,21 +335,16 @@ export const RecycleBinProvider = ({ children }) => {
         return { success: false, error: extractError(err, "Restore failed") };
       }
     },
-    [authRequest, canAccess, fetchDeletedAssignments],
+    [authRequest, canAccess, fetchDeletedAssignments]
   );
 
   const permanentDeleteAssignment = useCallback(
     async (id) => {
-      if (!isSuperAdmin)
-        return {
-          success: false,
-          error: "Only Super Admin can permanently delete items",
-        };
+      if (!isSuperAdmin) {
+        return { success: false, error: "Only Super Admin can permanently delete items" };
+      }
       try {
-        const response = await authRequest(
-          "DELETE",
-          `/assignments/${id}/permanent`,
-        );
+        const response = await authRequest("DELETE", `/assignments/${id}/permanent`);
         if (response?.success) {
           await fetchDeletedAssignments();
           return { success: true };
@@ -459,80 +355,55 @@ export const RecycleBinProvider = ({ children }) => {
         return { success: false, error: extractError(err, "Delete failed") };
       }
     },
-    [authRequest, isSuperAdmin, fetchDeletedAssignments],
+    [authRequest, isSuperAdmin, fetchDeletedAssignments]
   );
 
   const bulkRestoreAssignments = useCallback(
     async (ids) => {
       if (!canAccess || !ids.length) {
-        return {
-          success: false,
-          error: "No items selected or permission denied",
-        };
+        return { success: false, error: "No items selected or permission denied" };
       }
       try {
-        const results = await Promise.all(
-          ids.map((id) => restoreAssignment(id)),
-        );
+        const results = await Promise.all(ids.map((id) => restoreAssignment(id)));
         const failed = results.filter((r) => !r.success);
 
         if (failed.length) {
-          return {
-            success: false,
-            error: `${failed.length} item(s) failed to restore`,
-            failedItems: failed,
-          };
+          return { success: false, error: `${failed.length} item(s) failed to restore`, failedItems: failed };
         }
 
         await fetchDeletedAssignments();
         return { success: true };
       } catch (err) {
         console.error("Bulk restore assignments error:", err);
-        return {
-          success: false,
-          error: extractError(err, "Bulk restore failed"),
-        };
+        return { success: false, error: extractError(err, "Bulk restore failed") };
       }
     },
-    [restoreAssignment, canAccess, fetchDeletedAssignments],
+    [restoreAssignment, canAccess, fetchDeletedAssignments]
   );
 
   const bulkPermanentDeleteAssignments = useCallback(
     async (ids) => {
       if (!isSuperAdmin || !ids.length) {
-        return {
-          success: false,
-          error: "Only Super Admin can permanently delete items",
-        };
+        return { success: false, error: "Only Super Admin can permanently delete items" };
       }
       try {
-        const results = await Promise.all(
-          ids.map((id) => permanentDeleteAssignment(id)),
-        );
+        const results = await Promise.all(ids.map((id) => permanentDeleteAssignment(id)));
         const failed = results.filter((r) => !r.success);
 
         if (failed.length) {
-          return {
-            success: false,
-            error: `${failed.length} item(s) failed to delete`,
-            failedItems: failed,
-          };
+          return { success: false, error: `${failed.length} item(s) failed to delete`, failedItems: failed };
         }
 
         await fetchDeletedAssignments();
         return { success: true };
       } catch (err) {
         console.error("Bulk delete assignments error:", err);
-        return {
-          success: false,
-          error: extractError(err, "Bulk delete failed"),
-        };
+        return { success: false, error: extractError(err, "Bulk delete failed") };
       }
     },
-    [permanentDeleteAssignment, isSuperAdmin, fetchDeletedAssignments],
+    [permanentDeleteAssignment, isSuperAdmin, fetchDeletedAssignments]
   );
 
-  // ── Context value ───────────────────────────────────────────────────────────
   const value = {
     canAccess,
     isAdmin,

@@ -1,4 +1,4 @@
-// context/ClientContext.jsx - Fixed Version with Better Error Handling
+// context/ClientContext.jsx - Fixed Version
 
 import React, {
   createContext,
@@ -10,9 +10,7 @@ import React, {
 } from "react";
 import axios from "axios";
 
-const API_BASE_URL =
-  import.meta.env?.VITE_API_URL ||
-  "http://localhost:9001/api/v1";
+const API_BASE_URL = "http://localhost:9001/api/v1";
 
 // Initial state
 const initialState = {
@@ -64,6 +62,7 @@ const ACTION_TYPES = {
   CLEAR_ERROR: "CLEAR_ERROR",
   SET_STATS: "SET_STATS",
   SET_PAGINATION: "SET_PAGINATION",
+  RESET_STATE: "RESET_STATE",
 };
 
 // Reducer function
@@ -113,15 +112,19 @@ const clientReducer = (state, action) => {
         ...state,
         pagination: { ...state.pagination, ...action.payload },
       };
+    case ACTION_TYPES.RESET_STATE:
+      return {
+        ...initialState,
+        initialLoading: false,
+      };
     default:
       return state;
   }
 };
 
-// Helper functions with better token handling
+// Helper functions with improved token handling
 const getAuthHeaders = () => {
-  const token =
-    localStorage.getItem("accessToken") || localStorage.getItem("token");
+  const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
 
   if (!token || token === "undefined" || token === "null" || token === "") {
     return null;
@@ -134,25 +137,34 @@ const getAuthHeaders = () => {
 };
 
 const getToken = () => {
-  const token =
-    localStorage.getItem("accessToken") || localStorage.getItem("token");
+  const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
   if (!token || token === "undefined" || token === "null" || token === "") {
     return null;
   }
   return token;
 };
 
-const isAdminUser = () => {
+// Improved admin check that doesn't block API calls
+const hasValidToken = () => {
+  const token = getToken();
+  if (!token) return false;
+  
   try {
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      return user?.role === "admin" || user?.role === "super_admin";
+    // Check if token is expired
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = JSON.parse(atob(base64));
+    const currentTime = Date.now() / 1000;
+    
+    if (decoded.exp && decoded.exp < currentTime) {
+      console.warn("Token expired");
+      return false;
     }
+    return true;
   } catch (e) {
-    console.error("Error parsing user from localStorage:", e);
+    console.error("Error checking token validity:", e);
+    return false;
   }
-  return false;
 };
 
 // Create Context
@@ -168,31 +180,42 @@ export const ClientProvider = ({ children }) => {
     dispatch({ type: ACTION_TYPES.CLEAR_ERROR });
   }, []);
 
+  const resetState = useCallback(() => {
+    dispatch({ type: ACTION_TYPES.RESET_STATE });
+  }, []);
+
+  // Handle logout and redirect
+  const handleUnauthorized = useCallback(() => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    resetState();
+    
+    // Redirect to login if not already there
+    if (window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
+  }, [resetState]);
+
   // Get all clients
   const getAllClients = useCallback(
     async (params = {}) => {
       const token = getToken();
 
-      if (!token) {
-        dispatch({
-          type: ACTION_TYPES.SET_ERROR,
-          payload: "Authentication required. Please login again.",
-        });
+      if (!token || !hasValidToken()) {
+        const errorMsg = "Authentication required. Please login again.";
+        dispatch({ type: ACTION_TYPES.SET_ERROR, payload: errorMsg });
         dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
+        handleUnauthorized();
         return null;
       }
 
-      if (!isAdminUser()) {
-        dispatch({
-          type: ACTION_TYPES.SET_ERROR,
-          payload: "Access denied. Admin permissions required.",
-        });
-        dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
+      // Prevent multiple simultaneous requests
+      if (isFetchingRef.current) {
         return null;
       }
 
-      if (isFetchingRef.current) return null;
-
+      // Cancel previous request
       if (activeControllerRef.current) {
         activeControllerRef.current.abort();
       }
@@ -204,14 +227,11 @@ export const ClientProvider = ({ children }) => {
       try {
         const page = params.page || state.pagination.page;
         const limit = params.limit || state.pagination.limit;
-        const search =
-          params.search !== undefined ? params.search : state.filters.search;
-        const status =
-          params.status !== undefined ? params.status : state.filters.status;
-        const membershipPlan =
-          params.membershipPlan !== undefined
-            ? params.membershipPlan
-            : state.filters.membershipPlan;
+        const search = params.search !== undefined ? params.search : state.filters.search;
+        const status = params.status !== undefined ? params.status : state.filters.status;
+        const membershipPlan = params.membershipPlan !== undefined
+          ? params.membershipPlan
+          : state.filters.membershipPlan;
         const sortBy = params.sortBy || state.filters.sortBy;
         const sortOrder = params.sortOrder || state.filters.sortOrder;
 
@@ -231,20 +251,26 @@ export const ClientProvider = ({ children }) => {
         const url = `${API_BASE_URL}/clients?${queryParams.toString()}`;
         const headers = getAuthHeaders();
 
+        if (!headers) {
+          throw new Error("No authentication headers available");
+        }
+
         const response = await axios.get(url, {
           headers,
           signal: activeControllerRef.current.signal,
         });
 
-        const clientsData = response.data.clients || [];
-        const paginationData = response.data.pagination || {};
-        const summaryData = response.data.summary || {};
+        // Handle different response structures
+        const clientsData = response.data.clients || response.data.data?.clients || [];
+        const paginationData = response.data.pagination || response.data.data?.pagination || {};
+        const summaryData = response.data.summary || response.data.data?.summary || {};
 
+        // Update stats
         dispatch({
           type: ACTION_TYPES.SET_STATS,
           payload: {
-            total: summaryData.totalCustomers || 0,
-            active: summaryData.activeCustomers || 0,
+            total: summaryData.totalCustomers || summaryData.total || 0,
+            active: summaryData.activeCustomers || summaryData.active || 0,
             expiringSoon: summaryData.expiringSoon || 0,
             byPlan: summaryData.byPlan || {
               free: 0,
@@ -255,6 +281,7 @@ export const ClientProvider = ({ children }) => {
           },
         });
 
+        // Update clients list
         dispatch({
           type: ACTION_TYPES.SET_CLIENTS,
           payload: {
@@ -273,20 +300,35 @@ export const ClientProvider = ({ children }) => {
         }
 
         let errorMessage = "Failed to fetch clients";
+        let shouldRedirect = false;
 
         if (error.response?.status === 401) {
           errorMessage = "Session expired. Please login again.";
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("token");
+          shouldRedirect = true;
         } else if (error.response?.status === 403) {
-          errorMessage =
-            "Access denied. You don't have permission to view clients.";
+          errorMessage = error.response?.data?.message || 
+                        "Access denied. You don't have permission to view clients.";
+          console.error("403 Error Details:", {
+            url: error.config?.url,
+            method: error.config?.method,
+            status: error.response?.status,
+            data: error.response?.data,
+          });
+        } else if (error.response?.status === 500) {
+          errorMessage = "Server error. Please try again later.";
         } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
+        } else if (error.message) {
+          errorMessage = error.message;
         }
 
         dispatch({ type: ACTION_TYPES.SET_ERROR, payload: errorMessage });
-        throw error;
+        
+        if (shouldRedirect) {
+          handleUnauthorized();
+        }
+        
+        throw new Error(errorMessage);
       } finally {
         dispatch({ type: ACTION_TYPES.SET_LOADING, payload: false });
         activeControllerRef.current = null;
@@ -301,7 +343,8 @@ export const ClientProvider = ({ children }) => {
       state.filters.membershipPlan,
       state.filters.sortBy,
       state.filters.sortOrder,
-    ],
+      handleUnauthorized,
+    ]
   );
 
   const fetchClients = useCallback(
@@ -317,7 +360,7 @@ export const ClientProvider = ({ children }) => {
       }
       return await getAllClients(params);
     },
-    [getAllClients],
+    [getAllClients]
   );
 
   const getClientById = useCallback(async (clientId) => {
@@ -333,7 +376,7 @@ export const ClientProvider = ({ children }) => {
         headers: getAuthHeaders(),
       });
 
-      const clientData = response.data.client || response.data;
+      const clientData = response.data.client || response.data.data?.client || response.data;
       dispatch({
         type: ACTION_TYPES.SET_SELECTED_CLIENT,
         payload: clientData,
@@ -341,16 +384,23 @@ export const ClientProvider = ({ children }) => {
 
       return response.data;
     } catch (error) {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to fetch client";
+      let errorMessage = "Failed to fetch client";
+      
+      if (error.response?.status === 401) {
+        errorMessage = "Session expired. Please login again.";
+        handleUnauthorized();
+      } else if (error.response?.status === 403) {
+        errorMessage = "Access denied. You don't have permission to view this client.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
       dispatch({ type: ACTION_TYPES.SET_ERROR, payload: errorMessage });
-      throw error;
+      throw new Error(errorMessage);
     } finally {
       dispatch({ type: ACTION_TYPES.SET_LOADING, payload: false });
     }
-  }, []);
+  }, [handleUnauthorized]);
 
   const addClient = useCallback(
     async (clientData) => {
@@ -365,22 +415,29 @@ export const ClientProvider = ({ children }) => {
         const response = await axios.post(
           `${API_BASE_URL}/clients`,
           clientData,
-          { headers: getAuthHeaders() },
+          { headers: getAuthHeaders() }
         );
 
         await fetchClients({ page: 1 });
         return response.data;
       } catch (error) {
-        const errorMessage =
-          error.response?.data?.message ||
-          error.message ||
-          "Failed to create client";
+        let errorMessage = "Failed to create client";
+        
+        if (error.response?.status === 401) {
+          errorMessage = "Session expired. Please login again.";
+          handleUnauthorized();
+        } else if (error.response?.status === 403) {
+          errorMessage = "Access denied. You don't have permission to create clients.";
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        
         throw new Error(errorMessage);
       } finally {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
       }
     },
-    [fetchClients],
+    [fetchClients, handleUnauthorized]
   );
 
   const editClient = useCallback(
@@ -396,33 +453,40 @@ export const ClientProvider = ({ children }) => {
         const response = await axios.put(
           `${API_BASE_URL}/clients/${clientId}`,
           updateData,
-          { headers: getAuthHeaders() },
+          { headers: getAuthHeaders() }
         );
 
-        if (
-          state.selectedClient?._id === clientId ||
-          state.selectedClient?.id === clientId
-        ) {
-          const updatedClient = response.data.client;
-          dispatch({
-            type: ACTION_TYPES.SET_SELECTED_CLIENT,
-            payload: updatedClient,
-          });
+        // Update selected client if it's the same
+        if (state.selectedClient?._id === clientId || state.selectedClient?.id === clientId) {
+          const updatedClient = response.data.client || response.data.data?.client;
+          if (updatedClient) {
+            dispatch({
+              type: ACTION_TYPES.SET_SELECTED_CLIENT,
+              payload: updatedClient,
+            });
+          }
         }
 
         await fetchClients();
         return response.data;
       } catch (error) {
-        const errorMessage =
-          error.response?.data?.message ||
-          error.message ||
-          "Failed to update client";
+        let errorMessage = "Failed to update client";
+        
+        if (error.response?.status === 401) {
+          errorMessage = "Session expired. Please login again.";
+          handleUnauthorized();
+        } else if (error.response?.status === 403) {
+          errorMessage = "Access denied. You don't have permission to update clients.";
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        
         throw new Error(errorMessage);
       } finally {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
       }
     },
-    [state.selectedClient, fetchClients],
+    [state.selectedClient, fetchClients, handleUnauthorized]
   );
 
   const changeClientStatus = useCallback(
@@ -438,30 +502,34 @@ export const ClientProvider = ({ children }) => {
         const response = await axios.patch(
           `${API_BASE_URL}/clients/${clientId}/status`,
           { status },
-          { headers: getAuthHeaders() },
+          { headers: getAuthHeaders() }
         );
 
         await fetchClients();
 
-        if (
-          state.selectedClient?._id === clientId ||
-          state.selectedClient?.id === clientId
-        ) {
+        if (state.selectedClient?._id === clientId || state.selectedClient?.id === clientId) {
           await getClientById(clientId);
         }
 
         return response.data;
       } catch (error) {
-        const errorMessage =
-          error.response?.data?.message ||
-          error.message ||
-          "Failed to update status";
+        let errorMessage = "Failed to update status";
+        
+        if (error.response?.status === 401) {
+          errorMessage = "Session expired. Please login again.";
+          handleUnauthorized();
+        } else if (error.response?.status === 403) {
+          errorMessage = "Access denied. You don't have permission to update client status.";
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        
         throw new Error(errorMessage);
       } finally {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
       }
     },
-    [fetchClients, getClientById, state.selectedClient],
+    [fetchClients, getClientById, state.selectedClient, handleUnauthorized]
   );
 
   const deleteClient = useCallback(
@@ -476,30 +544,34 @@ export const ClientProvider = ({ children }) => {
       try {
         const response = await axios.delete(
           `${API_BASE_URL}/clients/${clientId}`,
-          { headers: getAuthHeaders() },
+          { headers: getAuthHeaders() }
         );
 
         await fetchClients();
 
-        if (
-          state.selectedClient?._id === clientId ||
-          state.selectedClient?.id === clientId
-        ) {
+        if (state.selectedClient?._id === clientId || state.selectedClient?.id === clientId) {
           dispatch({ type: ACTION_TYPES.SET_SELECTED_CLIENT, payload: null });
         }
 
         return response.data;
       } catch (error) {
-        const errorMessage =
-          error.response?.data?.message ||
-          error.message ||
-          "Failed to delete client";
+        let errorMessage = "Failed to delete client";
+        
+        if (error.response?.status === 401) {
+          errorMessage = "Session expired. Please login again.";
+          handleUnauthorized();
+        } else if (error.response?.status === 403) {
+          errorMessage = "Access denied. You don't have permission to delete clients.";
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        
         throw new Error(errorMessage);
       } finally {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
       }
     },
-    [fetchClients, state.selectedClient],
+    [fetchClients, state.selectedClient, handleUnauthorized]
   );
 
   const renewClientMembership = useCallback(
@@ -515,30 +587,34 @@ export const ClientProvider = ({ children }) => {
         const response = await axios.post(
           `${API_BASE_URL}/clients/${clientId}/renew`,
           { extendDays },
-          { headers: getAuthHeaders() },
+          { headers: getAuthHeaders() }
         );
 
         await fetchClients();
 
-        if (
-          state.selectedClient?._id === clientId ||
-          state.selectedClient?.id === clientId
-        ) {
+        if (state.selectedClient?._id === clientId || state.selectedClient?.id === clientId) {
           await getClientById(clientId);
         }
 
         return response.data;
       } catch (error) {
-        const errorMessage =
-          error.response?.data?.message ||
-          error.message ||
-          "Failed to renew membership";
+        let errorMessage = "Failed to renew membership";
+        
+        if (error.response?.status === 401) {
+          errorMessage = "Session expired. Please login again.";
+          handleUnauthorized();
+        } else if (error.response?.status === 403) {
+          errorMessage = "Access denied. You don't have permission to renew memberships.";
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        
         throw new Error(errorMessage);
       } finally {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
       }
     },
-    [fetchClients, getClientById, state.selectedClient],
+    [fetchClients, getClientById, state.selectedClient, handleUnauthorized]
   );
 
   const updateFilters = useCallback((filters) => {
@@ -561,6 +637,7 @@ export const ClientProvider = ({ children }) => {
         limit: 12,
       },
     });
+    dispatch({ type: ACTION_TYPES.SET_PAGINATION, payload: { page: 1 } });
   }, []);
 
   // Initial load
@@ -568,21 +645,35 @@ export const ClientProvider = ({ children }) => {
     if (!initialLoadDone.current) {
       initialLoadDone.current = true;
       const token = getToken();
-      const isAdmin = isAdminUser();
+      const hasValidAuthToken = token && hasValidToken();
 
-      if (token && isAdmin) {
-        fetchClients({ page: 1 });
+      if (hasValidAuthToken) {
+        // Small delay to ensure everything is ready
+        setTimeout(() => {
+          fetchClients({ page: 1 });
+        }, 100);
       } else if (!token) {
         dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
-      } else if (!isAdmin) {
+      } else if (!hasValidAuthToken) {
         dispatch({
           type: ACTION_TYPES.SET_ERROR,
-          payload: "Access denied. Admin permissions required to view clients.",
+          payload: "Session expired. Please login again.",
         });
         dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
+        handleUnauthorized();
       }
     }
-  }, [fetchClients]);
+  }, [fetchClients, handleUnauthorized]);
+
+  // Listen for filter changes and refetch
+  useEffect(() => {
+    if (initialLoadDone.current) {
+      const timer = setTimeout(() => {
+        fetchClients();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [state.filters, fetchClients]);
 
   const value = {
     ...state,
@@ -598,10 +689,13 @@ export const ClientProvider = ({ children }) => {
     changePage,
     resetFilters,
     clearError,
+    resetState,
   };
 
   return (
-    <ClientContext.Provider value={value}>{children}</ClientContext.Provider>
+    <ClientContext.Provider value={value}>
+      {children}
+    </ClientContext.Provider>
   );
 };
 

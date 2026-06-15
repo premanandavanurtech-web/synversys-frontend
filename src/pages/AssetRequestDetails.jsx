@@ -1,4 +1,9 @@
 // pages/AssetRequestDetails.jsx
+// ─── Changes ──────────────────────────────────────────────────────────────────
+// • Child Request & Link Asset buttons shown to ALL users (not admin-only)
+// • LinkAssetDialog replaced with Autocomplete asset picker (no raw ID input)
+// • AssetContext used to fetch & display asset list in link dialog
+// ─────────────────────────────────────────────────────────────────────────────
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
@@ -28,6 +33,7 @@ import {
   MenuItem,
   useMediaQuery,
   useTheme,
+  Autocomplete,
 } from "@mui/material";
 import { styled, keyframes } from "@mui/material/styles";
 import { useParams, useNavigate } from "react-router-dom";
@@ -54,6 +60,7 @@ import {
 } from "@mui/icons-material";
 import { useAssetRequest } from "../context/AssetRequestContext";
 import { useAuth } from "../context/AuthContexts";
+import { useAsset } from "../context/AssetContext";
 
 // ─── Animations ────────────────────────────────────────────────────────────────
 const fadeUp = keyframes`
@@ -103,8 +110,8 @@ const TopBar = styled(Box)(({ theme }) => ({
   gap: 12,
   position: "sticky",
   top: 0,
-  width:"1100px",
-  marginLeft:"26px",
+  width: "1100px",
+  marginLeft: "26px",
   borderRadius: "12px",
   zIndex: 200,
   [theme.breakpoints.down("sm")]: { padding: "10px 12px" },
@@ -291,6 +298,16 @@ const UrgencyChip = ({ urgency }) => {
   );
 };
 
+const assetStatusColor = (s) =>
+  ({
+    Available: C.green,
+    "In Use": C.blue,
+    "In Maintenance": C.amber,
+    Retired: C.red,
+    Lost: C.red,
+    Disposed: C.textMuted,
+  })[s] || C.textMuted;
+
 // ─── Copyable ID ───────────────────────────────────────────────────────────────
 const CopyId = ({ id }) => {
   const [copied, setCopied] = useState(false);
@@ -367,6 +384,133 @@ const TDot = ({ color, label, date, active }) => (
     </Box>
   </Stack>
 );
+
+// ─── Asset Autocomplete component ──────────────────────────────────────────────
+function AssetAutocomplete({ value, onChange, assets, loading }) {
+  return (
+    <Box>
+      <Typography
+        variant="caption"
+        fontWeight={700}
+        color={C.textSub}
+        sx={{ display: "block", mb: 0.75 }}
+      >
+        Select Asset *
+      </Typography>
+      <Autocomplete
+        value={value}
+        onChange={onChange}
+        options={assets}
+        loading={loading}
+        getOptionLabel={(option) => {
+          if (!option) return "";
+          const name = option.name || option.assetName || "Unnamed";
+          const tag = option.assetTag || option.serialNumber || "";
+          return tag ? `${name} (${tag})` : name;
+        }}
+        isOptionEqualToValue={(option, val) => {
+          if (!option || !val) return false;
+          return (option._id || option.id) === (val._id || val.id);
+        }}
+        renderOption={(props, option) => {
+          const name = option.name || option.assetName || "Unnamed";
+          const tag = option.assetTag || option.serialNumber || "";
+          const sc = assetStatusColor(option.status);
+          return (
+            <Box component="li" {...props} key={option._id || option.id}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  width: "100%",
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.5,
+                    bgcolor: "#f1f5f9",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Inventory2 sx={{ fontSize: 16, color: C.textMuted }} />
+                </Box>
+                <Box flex={1}>
+                  <Typography variant="body2" fontWeight={600}>
+                    {name}
+                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    {tag && (
+                      <Typography variant="caption" color="textSecondary">
+                        {tag}
+                      </Typography>
+                    )}
+                    <Chip
+                      label={option.status || "Unknown"}
+                      size="small"
+                      sx={{
+                        height: 18,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: sc,
+                        bgcolor: `${sc}18`,
+                        border: `1px solid ${sc}28`,
+                      }}
+                    />
+                  </Stack>
+                </Box>
+              </Box>
+            </Box>
+          );
+        }}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            size="small"
+            placeholder="Search by name, tag, or serial…"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                bgcolor: "#f8fafc",
+              },
+            }}
+          />
+        )}
+        sx={{ width: "100%" }}
+      />
+      {value && (
+        <Box
+          sx={{
+            mt: 1,
+            px: 1.5,
+            py: 0.75,
+            borderRadius: 2,
+            bgcolor: C.greenBg,
+            border: `1px solid ${C.green}28`,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <CheckCircle sx={{ fontSize: 14, color: C.green }} />
+          <Typography variant="caption" fontWeight={600} color={C.green}>
+            Selected: {value.name || value.assetName || "Unnamed"}
+            <span
+              style={{ fontSize: 10, marginLeft: 8, fontFamily: "monospace" }}
+            >
+              (ID: {(value._id || value.id)?.slice(-8)})
+            </span>
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
+}
 
 // ─── Dialogs ───────────────────────────────────────────────────────────────────
 function ApproveDialog({ open, onClose, onSubmit, submitting }) {
@@ -627,285 +771,13 @@ function CompleteDialog({ open, onClose, onSubmit, submitting }) {
   );
 }
 
-function LinkAssetDialog({ open, onClose, onSubmit, submitting }) {
-  const [assetId, setAssetId] = useState("");
-  const [rel, setRel] = useState("accessory");
-  const [err, setErr] = useState("");
-  useEffect(() => {
-    if (open) {
-      setAssetId("");
-      setErr("");
-    }
-  }, [open]);
-  const handle = () => {
-    if (!assetId.trim()) {
-      setErr("Asset ID is required");
-      return;
-    }
-    setErr("");
-    onSubmit(assetId.trim(), rel);
-  };
-  return (
-    <Dialog
-      open={open}
-      onClose={() => !submitting && onClose()}
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{ sx: { borderRadius: 3 } }}
-    >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
-        <Stack direction="row" alignItems="center" spacing={1.5}>
-          <Box
-            sx={{
-              width: 34,
-              height: 34,
-              borderRadius: 2,
-              bgcolor: C.greenBg,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <LinkIcon sx={{ color: C.green, fontSize: 18 }} />
-          </Box>
-          Link Asset
-        </Stack>
-      </DialogTitle>
-      <Divider />
-      <DialogContent sx={{ pt: 2 }}>
-        {err && (
-          <Alert severity="error" sx={{ mb: 1.5, borderRadius: 2 }}>
-            {err}
-          </Alert>
-        )}
-        <Stack spacing={2.5}>
-          <TextField
-            fullWidth
-            size="small"
-            label="Child Asset ID *"
-            value={assetId}
-            onChange={(e) => {
-              setAssetId(e.target.value);
-              setErr("");
-            }}
-            placeholder="Enter the MongoDB _id"
-            helperText="Find the asset ID on the Assets page"
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2,
-                fontFamily: "monospace",
-              },
-            }}
-          />
-          <FormControl fullWidth size="small">
-            <InputLabel>Relationship Type</InputLabel>
-            <Select
-              value={rel}
-              onChange={(e) => setRel(e.target.value)}
-              label="Relationship Type"
-              sx={{ borderRadius: 2 }}
-            >
-              {["accessory", "component", "spare", "dependency"].map((r) => (
-                <MenuItem
-                  key={r}
-                  value={r}
-                  sx={{ textTransform: "capitalize" }}
-                >
-                  {r}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-        <Button
-          onClick={onClose}
-          disabled={submitting}
-          sx={{ borderRadius: 2, textTransform: "none" }}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handle}
-          disabled={submitting}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 600,
-            bgcolor: C.green,
-            "&:hover": { bgcolor: "#047857" },
-          }}
-        >
-          {submitting ? (
-            <CircularProgress size={17} sx={{ color: "#fff" }} />
-          ) : (
-            "Link Asset"
-          )}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-function CreateChildDialog({ open, onClose, onSubmit, submitting, parentId }) {
-  const [form, setForm] = useState({
-    requestType: "maintenance",
-    description: "",
-    urgency: "medium",
-  });
-  useEffect(() => {
-    if (open)
-      setForm({
-        requestType: "maintenance",
-        description: "",
-        urgency: "medium",
-      });
-  }, [open]);
-  return (
-    <Dialog
-      open={open}
-      onClose={() => !submitting && onClose()}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{ sx: { borderRadius: 3 } }}
-    >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
-        <Stack direction="row" alignItems="center" spacing={1.5}>
-          <Box
-            sx={{
-              width: 34,
-              height: 34,
-              borderRadius: 2,
-              bgcolor: C.blueBg,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <AccountTree sx={{ color: C.blue, fontSize: 18 }} />
-          </Box>
-          Add Child Request
-        </Stack>
-      </DialogTitle>
-      <Divider />
-      <DialogContent sx={{ pt: 2 }}>
-        <Alert severity="info" sx={{ mb: 2, borderRadius: 2, fontSize: 12.5 }}>
-          Parent:{" "}
-          <code style={{ fontFamily: "monospace", fontSize: 12 }}>
-            …{parentId?.slice(-12)}
-          </code>
-        </Alert>
-        <Stack spacing={2.5}>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Request Type</InputLabel>
-              <Select
-                value={form.requestType}
-                label="Request Type"
-                sx={{ borderRadius: 2 }}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, requestType: e.target.value }))
-                }
-              >
-                {["transfer", "maintenance", "repair", "checkout", "other"].map(
-                  (t) => (
-                    <MenuItem
-                      key={t}
-                      value={t}
-                      sx={{ textTransform: "capitalize" }}
-                    >
-                      {t}
-                    </MenuItem>
-                  ),
-                )}
-              </Select>
-            </FormControl>
-            <FormControl fullWidth size="small">
-              <InputLabel>Urgency</InputLabel>
-              <Select
-                value={form.urgency}
-                label="Urgency"
-                sx={{ borderRadius: 2 }}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, urgency: e.target.value }))
-                }
-              >
-                {["low", "medium", "high", "critical"].map((u) => (
-                  <MenuItem
-                    key={u}
-                    value={u}
-                    sx={{ textTransform: "capitalize" }}
-                  >
-                    {u}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Stack>
-          <TextField
-            fullWidth
-            multiline
-            rows={3}
-            size="small"
-            label="Description"
-            value={form.description}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, description: e.target.value }))
-            }
-            placeholder="Describe this child task…"
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-        <Button
-          onClick={onClose}
-          disabled={submitting}
-          sx={{ borderRadius: 2, textTransform: "none" }}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => onSubmit(form)}
-          disabled={submitting}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 600,
-            bgcolor: C.blue,
-            "&:hover": { bgcolor: "#1d4ed8" },
-          }}
-        >
-          {submitting ? (
-            <CircularProgress size={17} sx={{ color: "#fff" }} />
-          ) : (
-            "Create Child"
-          )}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-// ─── FIXED: extract request data from any response shape ──────────────────────
+// ─── Extract request data helper ───────────────────────────────────────────────
 function extractRequestData(responseData) {
   if (!responseData) return null;
-
-  // Case 1: _id at top level (your actual API — fields flat alongside success/message)
   if (responseData._id) return responseData;
-
-  // Case 2: Nested in data.request
   if (responseData?.data?.request?._id) return responseData.data.request;
-
-  // Case 3: Nested in data directly
   if (responseData?.data?._id) return responseData.data;
-
-  // Case 4: Nested in request property
   if (responseData?.request?._id) return responseData.request;
-
   return null;
 }
 
@@ -967,27 +839,16 @@ export default function AssetRequestDetails() {
     }
   };
 
-  // ── FIXED fetch: raw API response goes through extractRequestData ─────────────
   const fetchRequest = useCallback(async () => {
     setInitialLoading(true);
     setPageError(null);
     try {
-      // getRequestById may return either the raw axios res.data OR already-extracted data
-      // depending on context version — we handle both safely
       const raw = await getRequestById(id);
-      console.log("getRequestById returned:", raw);
-
-      // Try extracting in case context returned raw res.data
       const req = extractRequestData(raw) ?? raw;
-
-      if (!req?._id) {
+      if (!req?._id)
         throw new Error("Request not found or invalid data structure received");
-      }
-
-      console.log("Final request object:", req);
       setRequest(req);
     } catch (err) {
-      console.error("Fetch error:", err);
       const msg =
         err?.response?.data?.message ||
         err?.message ||
@@ -1003,7 +864,6 @@ export default function AssetRequestDetails() {
     if (id) fetchRequest();
   }, [fetchRequest, id]);
 
-  // ── Action handlers ───────────────────────────────────────────────────────────
   const handleApprove = async (approvalNotes) => {
     setSubmitting(true);
     try {
@@ -1080,7 +940,6 @@ export default function AssetRequestDetails() {
     }
   };
 
-  // ── Derived state ─────────────────────────────────────────────────────────────
   const statusLower = request?.status?.toLowerCase();
   const isPending = statusLower === "pending";
   const isApproved = statusLower === "approved";
@@ -1090,11 +949,9 @@ export default function AssetRequestDetails() {
     (userIsAdmin ||
       request?.requestedBy?._id === user?._id ||
       request?.requestedBy?._id === user?.id);
-
   const requesterEmail = request?.requestedBy?.email || "";
   const requesterInitial = requesterEmail.charAt(0).toUpperCase() || "?";
   const requesterName = requesterEmail.split("@")[0] || "Unknown User";
-
   const assetName =
     request?.assetId?.name ||
     request?.assetId?.assetName ||
@@ -1103,7 +960,6 @@ export default function AssetRequestDetails() {
     request?.assetId?._id ||
     (typeof request?.assetId === "string" ? request.assetId : "—");
 
-  // ── Loading skeleton ──────────────────────────────────────────────────────────
   if (initialLoading) {
     return (
       <PageWrap>
@@ -1146,7 +1002,6 @@ export default function AssetRequestDetails() {
     );
   }
 
-  // ── Error state ───────────────────────────────────────────────────────────────
   if (pageError) {
     return (
       <PageWrap>
@@ -1194,7 +1049,6 @@ export default function AssetRequestDetails() {
 
   if (!request) return null;
 
-  // ── Main render ───────────────────────────────────────────────────────────────
   return (
     <>
       {/* ── Top Bar ── */}
@@ -1261,56 +1115,6 @@ export default function AssetRequestDetails() {
         </Stack>
 
         <Stack direction="row" spacing={0.75} flexShrink={0} flexWrap="wrap">
-          {userIsAdmin && (
-            <>
-              <Tooltip title="Add Child Request">
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => setChildOpen(true)}
-                  startIcon={
-                    !isMobile ? (
-                      <AccountTree sx={{ fontSize: 15 }} />
-                    ) : undefined
-                  }
-                  sx={{
-                    borderRadius: 2.5,
-                    textTransform: "none",
-                    fontWeight: 600,
-                    fontSize: 11,
-                    borderColor: C.blue,
-                    color: C.blue,
-                    "&:hover": { borderColor: C.blue, bgcolor: C.blueBg },
-                    minWidth: isMobile ? 36 : undefined,
-                  }}
-                >
-                  {isMobile ? <AccountTree sx={{ fontSize: 16 }} /> : "Child"}
-                </Button>
-              </Tooltip>
-              <Tooltip title="Link Asset">
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => setLinkOpen(true)}
-                  startIcon={
-                    !isMobile ? <LinkIcon sx={{ fontSize: 15 }} /> : undefined
-                  }
-                  sx={{
-                    borderRadius: 2.5,
-                    textTransform: "none",
-                    fontWeight: 600,
-                    fontSize: 11,
-                    borderColor: C.green,
-                    color: C.green,
-                    "&:hover": { borderColor: C.green, bgcolor: C.greenBg },
-                    minWidth: isMobile ? 36 : undefined,
-                  }}
-                >
-                  {isMobile ? <LinkIcon sx={{ fontSize: 16 }} /> : "Link Asset"}
-                </Button>
-              </Tooltip>
-            </>
-          )}
           {canComplete && (
             <Button
               variant="outlined"
@@ -1377,7 +1181,7 @@ export default function AssetRequestDetails() {
       <ContentWrap>
         <Grid container spacing={2}>
           {/* ── Left column ── */}
-          <Grid item xs={12} md={8} sx={{ width:"600px"}}>
+          <Grid item xs={12} md={8} sx={{ width: "600px" }}>
             {/* Requester card */}
             <SectionCard>
               <Box
@@ -1533,8 +1337,6 @@ export default function AssetRequestDetails() {
                   {request.description || "No description provided"}
                 </Typography>
               </InfoRow>
-
-              {/* Approval notes */}
               {request.metadata?.approvalNotes && (
                 <InfoRow label="Approval Notes">
                   <Paper
@@ -1553,8 +1355,6 @@ export default function AssetRequestDetails() {
                   </Paper>
                 </InfoRow>
               )}
-
-              {/* Rejection reason */}
               {request.rejectionReason && (
                 <InfoRow label="Rejection Reason">
                   <Paper
@@ -1587,8 +1387,6 @@ export default function AssetRequestDetails() {
                   </Paper>
                 </InfoRow>
               )}
-
-              {/* Completion notes */}
               {request.completionNotes && (
                 <InfoRow label="Completion Notes" noBorder>
                   <Paper
@@ -1645,24 +1443,23 @@ export default function AssetRequestDetails() {
                     <Typography sx={{ fontSize: 12.5, color: C.textMuted }}>
                       No assets linked yet
                     </Typography>
-                    {userIsAdmin && (
-                      <Button
-                        size="small"
-                        startIcon={<LinkIcon sx={{ fontSize: 13 }} />}
-                        onClick={() => setLinkOpen(true)}
-                        sx={{
-                          mt: 1.25,
-                          borderRadius: 2,
-                          textTransform: "none",
-                          fontSize: 11.5,
-                          color: C.green,
-                          border: `1px solid ${C.green}`,
-                          "&:hover": { bgcolor: C.greenBg },
-                        }}
-                      >
-                        Link an Asset
-                      </Button>
-                    )}
+                    {/* Link button available to ALL users */}
+                    <Button
+                      size="small"
+                      startIcon={<LinkIcon sx={{ fontSize: 13 }} />}
+                      onClick={() => setLinkOpen(true)}
+                      sx={{
+                        mt: 1.25,
+                        borderRadius: 2,
+                        textTransform: "none",
+                        fontSize: 11.5,
+                        color: C.green,
+                        border: `1px solid ${C.green}`,
+                        "&:hover": { bgcolor: C.greenBg },
+                      }}
+                    >
+                      Link an Asset
+                    </Button>
                   </Box>
                 ) : (
                   request.metadata.childAssets.map((asset, idx) => (
@@ -1769,24 +1566,23 @@ export default function AssetRequestDetails() {
                     <Typography sx={{ fontSize: 12.5, color: C.textMuted }}>
                       No child requests yet
                     </Typography>
-                    {userIsAdmin && (
-                      <Button
-                        size="small"
-                        startIcon={<AccountTree sx={{ fontSize: 13 }} />}
-                        onClick={() => setChildOpen(true)}
-                        sx={{
-                          mt: 1.25,
-                          borderRadius: 2,
-                          textTransform: "none",
-                          fontSize: 11.5,
-                          color: C.blue,
-                          border: `1px solid ${C.blue}`,
-                          "&:hover": { bgcolor: C.blueBg },
-                        }}
-                      >
-                        Add Child Request
-                      </Button>
-                    )}
+                    {/* Child button available to ALL users */}
+                    <Button
+                      size="small"
+                      startIcon={<AccountTree sx={{ fontSize: 13 }} />}
+                      onClick={() => setChildOpen(true)}
+                      sx={{
+                        mt: 1.25,
+                        borderRadius: 2,
+                        textTransform: "none",
+                        fontSize: 11.5,
+                        color: C.blue,
+                        border: `1px solid ${C.blue}`,
+                        "&:hover": { bgcolor: C.blueBg },
+                      }}
+                    >
+                      Add Child Request
+                    </Button>
                   </Box>
                 ) : (
                   request.childRequests.map((child, idx) => {
@@ -1875,7 +1671,7 @@ export default function AssetRequestDetails() {
           </Grid>
 
           {/* ── Sidebar ── */}
-          <Grid item xs={12} md={4} sx={{ width:"485px"}}>
+          <Grid item xs={12} md={4} sx={{ width: "485px" }}>
             {/* Timeline */}
             <SectionCard>
               <SectionHead>
@@ -2134,21 +1930,6 @@ export default function AssetRequestDetails() {
         onSubmit={handleComplete}
         submitting={submitting}
       />
-      <LinkAssetDialog
-        open={linkOpen}
-        onClose={() => setLinkOpen(false)}
-        onSubmit={handleLink}
-        submitting={submitting}
-      />
-      <CreateChildDialog
-        open={childOpen}
-        onClose={() => setChildOpen(false)}
-        onSubmit={handleCreateChild}
-        submitting={submitting}
-        parentId={id}
-      />
-
-      {/* ── Snackbar ── */}
       <Snackbar
         open={snack.open}
         autoHideDuration={4000}

@@ -1,4 +1,5 @@
-
+// src/pages/AssetManagement.jsx
+// ── Pixel-faithful recreation of the screenshot ──────────────────────────────
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -13,9 +14,7 @@ import {
   MenuItem,
   FormControl,
   Button,
-  Chip,
   Grid,
-  Avatar,
   Table,
   TableBody,
   TableCell,
@@ -28,21 +27,18 @@ import {
   Pagination,
   Skeleton,
   Alert,
-  AlertTitle,
   Snackbar,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogContentText,
   DialogActions,
   CircularProgress,
-  Divider,
+  LinearProgress,
+  Collapse,
+  Badge,
   alpha,
   useMediaQuery,
   useTheme,
-  Collapse,
-  Badge,
-  LinearProgress,
 } from "@mui/material";
 import {
   Search,
@@ -52,533 +48,237 @@ import {
   Add,
   GridView,
   ViewList,
-  CheckCircle,
-  SearchOff,
-  Cancel,
-  Warning,
   AssignmentTurnedIn,
-  Schedule,
-  Settings,
   Close,
   ClearAll,
   FileDownload,
-  Block,
-  Info,
   Delete,
   Refresh,
   Category,
-  Layers,
   Edit,
   FilterList,
-  TrendingUp,
   ErrorOutline,
   Inbox,
-  KeyboardArrowRight,
+  SearchOff,
 } from "@mui/icons-material";
 import { useAsset } from "../context/AssetContext";
 import { useAuth } from "../context/AuthContexts";
 
-// ── Design System — refined industrial editorial ──────────────────────────────
-const DS = {
-  // Neutral foundation
-  ink: "#111318",
-  inkMid: "#23282F",
-  inkLight: "#3A4250",
-  slate: "#64748B",
-  slateLight: "#94A3B8",
-  line: "#E2E8F0",
-  lineLight: "#F1F5F9",
-  canvas: "#F8FAFC",
-  white: "#FFFFFF",
-
-  // Brand — deep teal
-  brand: "#0E4F63",
-  brandDark: "#093A4A",
-  brandLight: "#EBF6FA",
-  brandMid: "#B3DCE8",
-  brandAccent: "#0D9DBF",
-
-  // Semantic
-  success: "#0D6E4E",
-  successBg: "#ECFDF5",
-  successBorder: "#A7F3D0",
-  warning: "#92400E",
-  warningBg: "#FFFBEB",
-  warningBorder: "#FCD34D",
-  error: "#991B1B",
-  errorBg: "#FEF2F2",
-  errorBorder: "#FCA5A5",
-  purple: "#5B21B6",
-  purpleBg: "#F5F3FF",
-  purpleBorder: "#C4B5FD",
-  info: "#075985",
-  infoBg: "#EFF6FF",
-  infoBorder: "#BFDBFE",
-  neutral: "#374151",
-  neutralBg: "#F9FAFB",
-  neutralBorder: "#D1D5DB",
-
-  // Elevation
-  shadow: "0 1px 2px rgba(17,19,24,0.06)",
-  shadowSm: "0 1px 3px rgba(17,19,24,0.08), 0 1px 2px rgba(17,19,24,0.04)",
-  shadowMd: "0 4px 12px rgba(17,19,24,0.08), 0 2px 4px rgba(17,19,24,0.04)",
-  shadowLg: "0 12px 28px rgba(17,19,24,0.10), 0 4px 8px rgba(17,19,24,0.06)",
-
-  // Typography
-  font: "'Sora', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
-  mono: "'Sora', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
-
-  // Radius
-  r: { xs: "3px", sm: "6px", md: "10px", lg: "14px", xl: "18px" },
+// ── Design tokens matching the screenshot ────────────────────────────────────
+const T = {
+  pageBg: "#f0f4f7",
+  surface: "#ffffff",
+  border: "#e4e9ee",
+  text: {
+    primary: "#0d2b35",
+    secondary: "#4a5568",
+    muted: "#94a3b8",
+    label: "#6b7280",
+  },
+  brand: "#0d4f63",
+  brandDark: "#093a4a",
+  brandLight: "#e8f4f8",
+  error: "#dc2626",
+  errorBg: "#fef2f2",
+  success: "#0f766e",
+  successBg: "#f0fdf4",
+  warning: "#b45309",
+  warningBg: "#fffbeb",
+  radius: {
+    card: "14px",
+    pill: "999px",
+    input: "10px",
+    btn: "10px",
+    dialog: "16px",
+  },
+  shadow: "0 1px 4px rgba(0,0,0,0.06)",
+  shadowCard: "0 2px 8px rgba(0,0,0,0.06)",
+  shadowMd: "0 4px 16px rgba(0,0,0,0.10)",
 };
 
-// ── Status config ─────────────────────────────────────────────────────────────
+// ── Status pill config — matches screenshot pill shapes ───────────────────────
 const STATUS_CFG = {
-  Active: {
-    bg: DS.successBg,
-    color: DS.success,
-    border: DS.successBorder,
-    dot: DS.success,
-  },
-  "In Maintenance": {
-    bg: DS.purpleBg,
-    color: DS.purple,
-    border: DS.purpleBorder,
-    dot: DS.purple,
-  },
-  Retired: {
-    bg: DS.neutralBg,
-    color: DS.neutral,
-    border: DS.neutralBorder,
-    dot: DS.slateLight,
-  },
-  "In Transit": {
-    bg: DS.warningBg,
-    color: DS.warning,
-    border: DS.warningBorder,
-    dot: DS.warning,
-  },
-  Reserved: {
-    bg: DS.infoBg,
-    color: DS.info,
-    border: DS.infoBorder,
-    dot: DS.info,
-  },
-  "Under Repair": {
-    bg: DS.errorBg,
-    color: DS.error,
-    border: DS.errorBorder,
-    dot: DS.error,
-  },
-  Decommissioned: {
-    bg: DS.neutralBg,
-    color: DS.neutral,
-    border: DS.neutralBorder,
-    dot: DS.slateLight,
-  },
+  Operational: { bg: "#0d4f63", color: "#ffffff" },
+  Active: { bg: "#0d4f63", color: "#ffffff" },
+  "Under Inspection": { bg: "#b8dce8", color: "#0d4f63" },
+  "Under Review": { bg: "#374151", color: "#ffffff" },
+  Maintenance: { bg: "#dc2626", color: "#ffffff" },
+  "In Maintenance": { bg: "#dc2626", color: "#ffffff" },
+  Retired: { bg: "#6b7280", color: "#ffffff" },
+  Decommissioned: { bg: "#6b7280", color: "#ffffff" },
+  "Under Repair": { bg: "#b45309", color: "#ffffff" },
+  Reserved: { bg: "#4f46e5", color: "#ffffff" },
+  "In Transit": { bg: "#0369a1", color: "#ffffff" },
 };
 
-// ── Reusable atoms ────────────────────────────────────────────────────────────
-const StatusBadge = ({ status }) => {
-  const cfg = STATUS_CFG[status] || {
-    bg: DS.neutralBg,
-    color: DS.neutral,
-    border: DS.neutralBorder,
-    dot: DS.slateLight,
-  };
+const StatusPill = ({ status = "" }) => {
+  const cfg = STATUS_CFG[status] || { bg: "#6b7280", color: "#fff" };
   return (
-    <Stack
-      direction="row"
-      alignItems="center"
-      spacing={0.5}
+    <Box
       sx={{
         display: "inline-flex",
-        px: "7px",
-        py: "3px",
-        borderRadius: DS.r.xs,
+        alignItems: "center",
+        px: 1.75,
+        py: 0.6,
+        borderRadius: T.radius.pill,
         bgcolor: cfg.bg,
-        border: `1px solid ${cfg.border}`,
+        color: cfg.color,
+        fontSize: "0.75rem",
+        fontWeight: 600,
+        whiteSpace: "nowrap",
+        lineHeight: 1.4,
       }}
     >
-      <Box
-        sx={{
-          width: 5,
-          height: 5,
-          borderRadius: "50%",
-          bgcolor: cfg.dot,
-          flexShrink: 0,
-        }}
-      />
-      <Typography
-        sx={{
-          fontSize: "0.65rem",
-          fontWeight: 700,
-          color: cfg.color,
-          letterSpacing: "0.04em",
-          lineHeight: 1,
-          fontFamily: DS.font,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {status || "—"}
-      </Typography>
-    </Stack>
+      {status || "Unknown"}
+    </Box>
   );
 };
 
-const HealthMeter = ({ score = 0 }) => {
-  const color = score >= 70 ? DS.success : score >= 40 ? DS.warning : DS.error;
-  return (
-    <Stack direction="row" alignItems="center" spacing={1}>
-      <Box
-        sx={{
-          width: 52,
-          height: 2,
-          borderRadius: 8,
-          bgcolor: DS.lineLight,
-          overflow: "hidden",
-          flexShrink: 0,
-        }}
-      >
-        <Box
-          sx={{
-            width: `${score}%`,
-            height: "100%",
-            bgcolor: color,
-            borderRadius: 8,
-          }}
-        />
-      </Box>
-      <Typography
-        sx={{
-          fontSize: "0.68rem",
-          fontWeight: 700,
-          color,
-          fontFamily: DS.mono,
-          minWidth: 26,
-        }}
-      >
-        {score}%
-      </Typography>
-    </Stack>
-  );
-};
-
-// ── Metric Card ───────────────────────────────────────────────────────────────
-const MetricCard = ({ label, value, icon, sub, onClick, accent }) => {
-  const ac = accent || DS.brand;
-  return (
-    <Paper
-      elevation={0}
-      onClick={onClick}
-      sx={{
-        p: "14px 18px",
-        borderRadius: DS.r.md,
-        border: `1px solid ${DS.line}`,
-        bgcolor: DS.white,
-        flex: 1,
-        mr:1,
-        minWidth: 130,
-        cursor: onClick ? "pointer" : "default",
-        transition: "all 0.18s ease",
-        boxShadow: DS.shadow,
-        "&:hover": onClick
-          ? {
-              boxShadow: DS.shadowMd,
-              borderColor: alpha(ac, 0.35),
-              transform: "translateY(-1px)",
-            }
-          : {},
-      }}
-    >
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="flex-start"
-        mb={0.75}
-      >
-        <Typography
-          sx={{
-            fontSize: "1.5rem",
-            fontWeight: 800,
-            color: DS.ink,
-            lineHeight: 1,
-            letterSpacing: "-0.04em",
-            fontFamily: DS.font,
-          }}
-        >
-          {value ?? "—"}
-        </Typography>
-        <Box
-          sx={{
-            width: 30,
-            height: 30,
-            borderRadius: DS.r.sm,
-            bgcolor: alpha(ac, 0.09),
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: ac,
-          }}
-        >
-          {icon}
-        </Box>
-      </Stack>
-      <Typography
-        sx={{
-          fontSize: "0.68rem",
-          fontWeight: 700,
-          color: DS.slateLight,
-          letterSpacing: "0.07em",
-          textTransform: "uppercase",
-          fontFamily: DS.font,
-        }}
-      >
-        {label}
-      </Typography>
-      {sub && (
-        <Typography
-          sx={{
-            fontSize: "0.66rem",
-            color: DS.slateLight,
-            mt: 0.25,
-            fontFamily: DS.font,
-          }}
-        >
-          {sub}
-        </Typography>
-      )}
-    </Paper>
-  );
-};
-
-// ── Asset Grid Card ───────────────────────────────────────────────────────────
+// ── Asset Card — matches screenshot cards exactly ────────────────────────────
 const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
   const canClone = !asset.isClone && asset.canBeCloned !== false;
-  const statusCfg = STATUS_CFG[asset.status] || {};
+
+  const formatDate = (d) => {
+    if (!d) return "—";
+    try {
+      return new Date(d).toISOString().split("T")[0];
+    } catch {
+      return "—";
+    }
+  };
+
+  const lastInspection =
+    asset.inspectionSystems?.amcInspection?.lastInspectionDate ||
+    asset.inspectionSystems?.camcInspection?.lastInspectionDate ||
+    asset.acquisitionDate ||
+    null;
+
+  const nextDue =
+    asset.inspectionSystems?.amcInspection?.nextDueDate ||
+    asset.inspectionSystems?.camcInspection?.nextDueDate ||
+    asset.warrantyExpiry ||
+    null;
+
+  const category = asset.assetCategoryId?.name || asset.assetCategory || "—";
 
   return (
-    <Paper
-      elevation={0}
+    <Box
+      onClick={() => onView(asset)}
       sx={{
-        border: `1px solid ${DS.line}`,
-        borderRadius: DS.r.lg,
-        bgcolor: DS.white,
+        bgcolor: T.surface,
+        borderRadius: T.radius.card,
+        border: `1px solid ${T.border}`,
+        boxShadow: T.shadowCard,
+        width: "355px",
         cursor: "pointer",
-        transition: "all 0.18s ease",
-        boxShadow: DS.shadow,
+        transition: "box-shadow 0.18s, transform 0.18s",
         overflow: "hidden",
-        width:"360px",
         display: "flex",
         flexDirection: "column",
         "&:hover": {
-          boxShadow: DS.shadowMd,
-          borderColor: alpha(DS.brand, 0.28),
+          boxShadow: T.shadowMd,
           transform: "translateY(-2px)",
         },
       }}
-      onClick={() => onView(asset)}
     >
-      {/* Status stripe */}
-      <Box
-        sx={{ height: 2.5, bgcolor: statusCfg.dot || DS.line, flexShrink: 0 }}
-      />
-
-      <Box
-        sx={{
-          p: "14px 16px",
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        {/* Header */}
+      <Box sx={{ p: 2.5, flex: 1 }}>
+        {/* Name + Status */}
         <Stack
           direction="row"
           justifyContent="space-between"
           alignItems="flex-start"
           mb={1}
         >
-          <Box sx={{ flex: 1, pr: 1, minWidth: 0 }}>
-            <Typography
-              sx={{
-                fontWeight: 700,
-                fontSize: "0.8375rem",
-                color: DS.ink,
-                lineHeight: 1.3,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                fontFamily: DS.font,
-              }}
-            >
-              {asset.assetName}
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: "0.65rem",
-                color: DS.slateLight,
-                fontFamily: DS.mono,
-                mt: 0.2,
-              }}
-            >
-              {asset.assetId || asset._id?.slice(-8).toUpperCase()}
-            </Typography>
-          </Box>
-          <Stack
-            direction="row"
-            alignItems="center"
-            spacing={0.5}
-            flexShrink={0}
+          <Typography
+            fontWeight={700}
+            fontSize="1rem"
+            color={T.text.primary}
+            sx={{ lineHeight: 1.3, pr: 1, flex: 1 }}
           >
-            {asset.isClone && (
-              <Box
-                sx={{
-                  px: "5px",
-                  py: "2px",
-                  borderRadius: DS.r.xs,
-                  bgcolor: DS.infoBg,
-                  border: `1px solid ${DS.infoBorder}`,
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: "0.58rem",
-                    fontWeight: 800,
-                    color: DS.info,
-                    letterSpacing: "0.06em",
-                  }}
-                >
-                  CLONE
-                </Typography>
-              </Box>
-            )}
-            <StatusBadge status={asset.status} />
-          </Stack>
+            {asset.assetName}
+          </Typography>
+          <StatusPill status={asset.status} />
         </Stack>
 
         {/* Location */}
-        {asset.currentLocation && (
-          <Stack direction="row" alignItems="center" spacing={0.4} mb={1}>
-            <LocationOn sx={{ fontSize: 10, color: DS.slateLight }} />
-            <Typography
-              sx={{ fontSize: "0.7rem", color: DS.slate, fontFamily: DS.font }}
-            >
-              {asset.currentLocation}
-            </Typography>
-          </Stack>
-        )}
+        <Stack direction="row" alignItems="center" spacing={0.5} mb={2.5}>
+          <LocationOn sx={{ fontSize: 13, color: T.text.muted }} />
+          <Typography fontSize="0.8rem" color={T.text.secondary}>
+            {asset.currentLocation || "—"}
+          </Typography>
+        </Stack>
 
-        <Divider sx={{ borderColor: DS.lineLight, my: 1 }} />
+        {/* Divider */}
+        <Box sx={{ borderTop: `1px solid ${T.border}`, mb: 1.75 }} />
 
-        {/* Details */}
-        <Stack spacing={0.6} sx={{ flex: 1 }}>
-          {[
-            {
-              label: "Category",
-              value: asset.assetCategoryId?.name || asset.assetCategory,
-            },
-            { label: "Condition", value: asset.assetCondition },
-            {
-              label: "Cost",
-              value: asset.purchaseCost
-                ? `₹${Number(asset.purchaseCost).toLocaleString("en-IN")}`
-                : null,
-            },
-          ].map(({ label, value }) => (
-            <Stack
-              key={label}
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-            >
-              <Typography
-                sx={{
-                  fontSize: "0.68rem",
-                  color: DS.slateLight,
-                  fontFamily: DS.font,
-                }}
-              >
-                {label}
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: "0.7rem",
-                  fontWeight: 600,
-                  color: DS.inkLight,
-                  fontFamily: DS.font,
-                  maxWidth: "58%",
-                  textAlign: "right",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {value || "—"}
-              </Typography>
-            </Stack>
-          ))}
+        {/* Label-value rows */}
+        {[
+          { label: "Category:", value: category },
+          { label: "Tag Number:", value: asset.tagNumber },
+          { label: "Purchase Cost:", value: asset.purchaseCost },
+          { label: "status::", value: asset.status },
+          { label: "Last Inspection:", value: formatDate(asset.createdAt) },
+        ].map(({ label, value, highlight }) => (
           <Stack
+            key={label}
             direction="row"
             justifyContent="space-between"
             alignItems="center"
+            mb={0.85}
           >
-            <Typography
-              sx={{
-                fontSize: "0.68rem",
-                color: DS.slateLight,
-                fontFamily: DS.font,
-              }}
-            >
-              Health
+            <Typography fontSize="0.8rem" color={T.text.label}>
+              {label}
             </Typography>
-            <HealthMeter score={asset.healthScore || 0} />
+            <Typography
+              fontSize="0.8rem"
+              fontWeight={600}
+              color={highlight ? T.brand : T.text.primary}
+            >
+              {value}
+            </Typography>
           </Stack>
-        </Stack>
+        ))}
+      </Box>
 
-        {/* Actions */}
+      {/* Action row — only shown on hover via parent, hidden by default like the design */}
+      {(isAdmin || canClone) && (
         <Stack
           direction="row"
           spacing={0.5}
-          sx={{ mt: 1.25, pt: 1, borderTop: `1px solid ${DS.lineLight}` }}
+          sx={{
+            px: 2,
+            pb: 1.5,
+            borderTop: `1px solid ${T.border}`,
+            pt: 1,
+          }}
           onClick={(e) => e.stopPropagation()}
         >
-          <Tooltip title={canClone ? "Clone asset" : "Cannot clone a clone"}>
-            <span>
+          {canClone && (
+            <Tooltip title="Clone asset">
               <IconButton
                 size="small"
-                disabled={!canClone}
-                onClick={() => canClone && onClone(asset)}
+                onClick={() => onClone(asset)}
                 sx={{
-                  borderRadius: DS.r.sm,
-                  width: 26,
-                  height: 26,
-                  bgcolor: canClone ? DS.brandLight : DS.lineLight,
-                  "&:hover": { bgcolor: canClone ? DS.brandMid : DS.lineLight },
+                  borderRadius: "8px",
+                  bgcolor: T.brandLight,
+                  "&:hover": { bgcolor: "#cfe8f3" },
                 }}
               >
-                <ContentCopy
-                  sx={{
-                    fontSize: 11,
-                    color: canClone ? DS.brand : DS.slateLight,
-                  }}
-                />
+                <ContentCopy sx={{ fontSize: 13, color: T.brand }} />
               </IconButton>
-            </span>
-          </Tooltip>
+            </Tooltip>
+          )}
           <Tooltip title="Edit">
             <IconButton
               size="small"
               onClick={() => onEdit(asset)}
               sx={{
-                borderRadius: DS.r.sm,
-                width: 26,
-                height: 26,
-                bgcolor: DS.brandLight,
-                "&:hover": { bgcolor: DS.brandMid },
+                borderRadius: "8px",
+                bgcolor: T.brandLight,
+                "&:hover": { bgcolor: "#cfe8f3" },
               }}
             >
-              <Edit sx={{ fontSize: 11, color: DS.brand }} />
+              <Edit sx={{ fontSize: 13, color: T.brand }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="View details">
@@ -586,14 +286,12 @@ const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
               size="small"
               onClick={() => onView(asset)}
               sx={{
-                borderRadius: DS.r.sm,
-                width: 26,
-                height: 26,
-                bgcolor: DS.lineLight,
-                "&:hover": { bgcolor: DS.line },
+                borderRadius: "8px",
+                bgcolor: "#f1f5f9",
+                "&:hover": { bgcolor: "#e2e8f0" },
               }}
             >
-              <Visibility sx={{ fontSize: 11, color: DS.slate }} />
+              <Visibility sx={{ fontSize: 13, color: T.text.secondary }} />
             </IconButton>
           </Tooltip>
           {isAdmin && (
@@ -602,242 +300,125 @@ const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
                 size="small"
                 onClick={() => onDelete(asset)}
                 sx={{
-                  borderRadius: DS.r.sm,
-                  width: 26,
-                  height: 26,
                   ml: "auto !important",
-                  bgcolor: alpha(DS.error, 0.06),
-                  "&:hover": { bgcolor: alpha(DS.error, 0.12) },
+                  borderRadius: "8px",
+                  bgcolor: "#fef2f2",
+                  "&:hover": { bgcolor: "#fee2e2" },
                 }}
               >
-                <Delete sx={{ fontSize: 11, color: DS.error }} />
+                <Delete sx={{ fontSize: 13, color: T.error }} />
               </IconButton>
             </Tooltip>
           )}
         </Stack>
-      </Box>
-    </Paper>
+      )}
+    </Box>
   );
 };
 
-// ── Shared button sx ──────────────────────────────────────────────────────────
-const primaryBtn = {
-  bgcolor: DS.brand,
-  color: DS.white,
-  textTransform: "none",
-  borderRadius: DS.r.md,
-  boxShadow: "none",
-  fontWeight: 600,
-  fontSize: "0.8rem",
-  fontFamily: DS.font,
-  px: 2,
-  "&:hover": { bgcolor: DS.brandDark, boxShadow: "none" },
-};
-const outlineBtn = {
-  textTransform: "none",
-  borderRadius: DS.r.md,
-  borderColor: DS.line,
-  color: DS.slate,
-  fontWeight: 600,
-  fontSize: "0.8rem",
-  fontFamily: DS.font,
-  "&:hover": { borderColor: DS.slateLight, bgcolor: DS.canvas },
-};
-
-// ── Empty State ───────────────────────────────────────────────────────────────
-const EmptyState = ({ hasFilters, onClear, onAdd, isAdmin }) => (
-  <Paper
-    elevation={0}
+// ── Empty state ───────────────────────────────────────────────────────────────
+const EmptyState = ({ hasFilters, onClear, onAdd }) => (
+  <Box
     sx={{
       textAlign: "center",
-      py: { xs: 8, sm: 12 },
-      px: 3,
-      borderRadius: DS.r.lg,
-      border: `1px dashed ${DS.line}`,
-      bgcolor: DS.white,
+      py: 12,
+      bgcolor: T.surface,
+      borderRadius: T.radius.card,
+      border: `1px solid ${T.border}`,
     }}
   >
-    <Box
-      sx={{
-        width: 52,
-        height: 52,
-        borderRadius: "50%",
-        bgcolor: DS.lineLight,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        mx: "auto",
-        mb: 2,
-      }}
-    >
-      {hasFilters ? (
-        <SearchOff sx={{ fontSize: 24, color: DS.slateLight }} />
-      ) : (
-        <Inbox sx={{ fontSize: 24, color: DS.slateLight }} />
-      )}
-    </Box>
-    <Typography
-      sx={{
-        fontWeight: 700,
-        fontSize: "0.9375rem",
-        color: DS.ink,
-        mb: 0.5,
-        fontFamily: DS.font,
-      }}
-    >
+    {hasFilters ? (
+      <SearchOff sx={{ fontSize: 40, color: T.text.muted, mb: 1.5 }} />
+    ) : (
+      <Inbox sx={{ fontSize: 40, color: T.text.muted, mb: 1.5 }} />
+    )}
+    <Typography fontWeight={700} color={T.text.primary} mb={0.5}>
       {hasFilters ? "No assets match your filters" : "No assets yet"}
     </Typography>
-    <Typography
-      sx={{
-        fontSize: "0.8rem",
-        color: DS.slateLight,
-        mb: 3,
-        fontFamily: DS.font,
-        maxWidth: 320,
-        mx: "auto",
-      }}
-    >
+    <Typography fontSize="0.82rem" color={T.text.muted} mb={3}>
       {hasFilters
-        ? "Try adjusting your search or filter criteria to find what you're looking for."
-        : "Get started by registering your first asset. All tracked assets will appear here."}
+        ? "Try adjusting your search or filters"
+        : "Add your first asset to get started"}
     </Typography>
-    <Stack
-      direction="row"
-      spacing={1.5}
-      justifyContent="center"
-      flexWrap="wrap"
-    >
+    <Stack direction="row" spacing={1.5} justifyContent="center">
       {hasFilters && (
         <Button
           variant="outlined"
           onClick={onClear}
-          sx={outlineBtn}
           startIcon={<ClearAll sx={{ fontSize: 14 }} />}
+          sx={{
+            textTransform: "none",
+            borderRadius: T.radius.btn,
+            borderColor: T.border,
+            color: T.text.secondary,
+            fontSize: "0.82rem",
+          }}
         >
           Clear filters
         </Button>
       )}
-      {(!hasFilters || isAdmin) && (
-        <Button
-          variant="contained"
-          onClick={onAdd}
-          sx={primaryBtn}
-          startIcon={<Add sx={{ fontSize: 14 }} />}
-        >
-          Add Asset
-        </Button>
-      )}
+      <Button
+        variant="contained"
+        onClick={onAdd}
+        startIcon={<Add sx={{ fontSize: 14 }} />}
+        sx={{
+          textTransform: "none",
+          borderRadius: T.radius.btn,
+          bgcolor: T.brand,
+          "&:hover": { bgcolor: T.brandDark },
+          fontSize: "0.82rem",
+        }}
+      >
+        Add Asset
+      </Button>
     </Stack>
-  </Paper>
+  </Box>
 );
 
-// ── Error State ───────────────────────────────────────────────────────────────
-const ErrorState = ({ message, onRetry }) => (
-  <Paper
-    elevation={0}
-    sx={{
-      textAlign: "center",
-      py: { xs: 8, sm: 12 },
-      px: 3,
-      borderRadius: DS.r.lg,
-      border: `1px solid ${DS.errorBorder}`,
-      bgcolor: DS.errorBg,
-    }}
-  >
-    <Box
-      sx={{
-        width: 52,
-        height: 52,
-        borderRadius: "50%",
-        bgcolor: alpha(DS.error, 0.1),
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        mx: "auto",
-        mb: 2,
-      }}
-    >
-      <ErrorOutline sx={{ fontSize: 26, color: DS.error }} />
-    </Box>
-    <Typography
-      sx={{
-        fontWeight: 700,
-        fontSize: "0.9375rem",
-        color: DS.ink,
-        mb: 0.5,
-        fontFamily: DS.font,
-      }}
-    >
-      Failed to load assets
-    </Typography>
-    <Typography
-      sx={{
-        fontSize: "0.8rem",
-        color: DS.slate,
-        mb: 3,
-        fontFamily: DS.font,
-        maxWidth: 360,
-        mx: "auto",
-      }}
-    >
-      {message ||
-        "Something went wrong while fetching data. Check your connection and try again."}
-    </Typography>
-    <Button
-      variant="contained"
-      onClick={onRetry}
-      sx={primaryBtn}
-      startIcon={<Refresh sx={{ fontSize: 14 }} />}
-    >
-      Retry
-    </Button>
-  </Paper>
-);
-
-// ── Skeleton grid / table ─────────────────────────────────────────────────────
-const GridSkeleton = () => (
-  <Grid container spacing={2}>
-    {Array(8)
-      .fill(null)
-      .map((_, i) => (
-        <Grid item xs={12} sm={6} md={4} lg={3} key={i}>
-          <Skeleton
-            variant="rounded"
-            height={290}
-            sx={{ borderRadius: DS.r.lg }}
-          />
-        </Grid>
-      ))}
-  </Grid>
-);
-
+// ── Table skeleton ────────────────────────────────────────────────────────────
 const TableSkeleton = () =>
   Array(6)
     .fill(null)
     .map((_, i) => (
       <TableRow key={i}>
-        {Array(8)
+        {Array(7)
           .fill(null)
           .map((_, j) => (
-            <TableCell
-              key={j}
-              sx={{ borderBottom: `1px solid ${DS.lineLight}` }}
-            >
+            <TableCell key={j}>
               <Skeleton height={16} />
             </TableCell>
           ))}
       </TableRow>
     ));
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main Page
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Shared button styles ──────────────────────────────────────────────────────
+const primaryBtn = {
+  bgcolor: T.brand,
+  color: "#fff",
+  textTransform: "none",
+  borderRadius: T.radius.btn,
+  boxShadow: "none",
+  fontWeight: 600,
+  fontSize: "0.82rem",
+  px: 2,
+  "&:hover": { bgcolor: T.brandDark, boxShadow: "none" },
+};
+const ghostBtn = {
+  textTransform: "none",
+  borderRadius: T.radius.pill,
+  borderColor: T.border,
+  color: T.text.secondary,
+  fontWeight: 500,
+  fontSize: "0.82rem",
+  "&:hover": { bgcolor: "#f8fafc", borderColor: "#cbd5e1" },
+};
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function AssetManagement() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user } = useAuth();
-
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isTeam = user?.role === "team";
 
@@ -845,7 +426,7 @@ export default function AssetManagement() {
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null); // FIX 4: dedicated error state
+  const [fetchError, setFetchError] = useState(null);
   const [assets, setAssets] = useState([]);
   const [categories, setCategories] = useState([]);
   const [pagination, setPagination] = useState({
@@ -860,7 +441,6 @@ export default function AssetManagement() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [conditionFilter, setConditionFilter] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(12);
   const [orderBy, setOrderBy] = useState("createdAt");
@@ -873,18 +453,15 @@ export default function AssetManagement() {
   const [cloneName, setCloneName] = useState("");
   const [cloneLocation, setCloneLocation] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
-  // FIX 7+8: dialog-level error instead of always closing dialog on error
   const [dialogError, setDialogError] = useState("");
-
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
   });
+
   const toast = (msg, sev = "success") =>
     setSnackbar({ open: true, message: msg, severity: sev });
-
-  // FIX 5: persist categories across pages
   const allCategoriesRef = useRef(new Map());
 
   // ── Debounce search ────────────────────────────────────────────────────────
@@ -896,10 +473,10 @@ export default function AssetManagement() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // ── Fetch assets ───────────────────────────────────────────────────────────
+  // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchAssets = useCallback(async () => {
     setLoading(true);
-    setFetchError(null); // FIX 4: clear previous error before refetch
+    setFetchError(null);
     try {
       const filters = {
         page: page + 1,
@@ -910,15 +487,11 @@ export default function AssetManagement() {
       if (debouncedSearch) filters.search = debouncedSearch;
       if (categoryFilter) filters.category = categoryFilter;
       if (statusFilter) filters.status = statusFilter;
-      if (conditionFilter) filters.condition = conditionFilter;
 
       const data = await getAllAssets(filters);
-
-      // getAllAssets returns null for aborted requests — don't update state
       if (!data) return;
 
       setAssets(data.assets || []);
-
       const pag = data.pagination || {};
       setPagination({
         total: pag.total || 0,
@@ -927,7 +500,6 @@ export default function AssetManagement() {
         limit: pag.limit || rowsPerPage,
       });
 
-      // FIX 5: accumulate category map across pages so filter list stays stable
       (data.assets || []).forEach((a) => {
         if (a.assetCategoryId?._id && a.assetCategoryId?.name) {
           allCategoriesRef.current.set(a.assetCategoryId._id, {
@@ -938,14 +510,10 @@ export default function AssetManagement() {
       });
       setCategories([...allCategoriesRef.current.values()]);
     } catch (err) {
-      // FIX 2: surface the actual error message
       const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "Unexpected error — please try again.";
+        err?.response?.data?.message || err?.message || "Unexpected error";
       setFetchError(msg);
-      setAssets([]); // clear stale data so empty-state renders correctly
+      setAssets([]);
     } finally {
       setLoading(false);
     }
@@ -958,35 +526,30 @@ export default function AssetManagement() {
     debouncedSearch,
     categoryFilter,
     statusFilter,
-    conditionFilter,
   ]);
 
   useEffect(() => {
     fetchAssets();
   }, [fetchAssets]);
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
   const clearFilters = () => {
     setCategoryFilter("");
     setStatusFilter("");
-    setConditionFilter("");
     setSearch("");
     setDebouncedSearch("");
     setPage(0);
     setShowFilters(false);
   };
 
-  // FIX 10: reset page on sort
   const handleSort = (col) => {
     setOrder(orderBy === col && order === "asc" ? "desc" : "asc");
     setOrderBy(col);
     setPage(0);
   };
-
-  const handleViewAsset = (asset) =>
-    navigate(`/admin/assets/view/${asset.id || asset._id}`);
-  const handleEditAsset = (asset) =>
-    navigate(`/admin/assets/edit/${asset.id || asset._id}`);
+  const handleViewAsset = (a) =>
+    navigate(`/admin/assets/view/${a.id || a._id}`);
+  const handleEditAsset = (a) =>
+    navigate(`/admin/assets/edit/${a.id || a._id}`);
 
   const openCloneDialog = (asset) => {
     if (asset.isClone) {
@@ -1000,7 +563,6 @@ export default function AssetManagement() {
     setCloneOpen(true);
   };
 
-  // FIX 7: show error inside dialog, don't close on failure
   const handleCloneConfirm = async () => {
     if (!cloneName.trim()) {
       setDialogError("Clone name is required.");
@@ -1018,18 +580,14 @@ export default function AssetManagement() {
       fetchAssets();
       navigate("/admin/assets/clone");
     } catch (err) {
-      // FIX 7: don't close — show message inside dialog
       setDialogError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Clone failed. Please try again.",
+        err?.response?.data?.message || err?.message || "Clone failed.",
       );
     } finally {
       setActionLoading(false);
     }
   };
 
-  // FIX 8: show error inside dialog, don't close on failure
   const handleDeleteConfirm = async () => {
     setActionLoading(true);
     setDialogError("");
@@ -1040,156 +598,73 @@ export default function AssetManagement() {
       fetchAssets();
     } catch (err) {
       setDialogError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Delete failed. Please try again.",
+        err?.response?.data?.message || err?.message || "Delete failed.",
       );
     } finally {
       setActionLoading(false);
     }
   };
 
-  // ── Derived values ─────────────────────────────────────────────────────────
-  const hasFilters = !!(
-    categoryFilter ||
-    statusFilter ||
-    conditionFilter ||
-    debouncedSearch
-  );
-  const activeFilterCount = [
-    categoryFilter,
-    statusFilter,
-    conditionFilter,
-  ].filter(Boolean).length;
+  const hasFilters = !!(categoryFilter || statusFilter || debouncedSearch);
   const stats = assetStats || {};
 
-  // ── Input styles ───────────────────────────────────────────────────────────
-  const fieldSx = {
-    "& .MuiOutlinedInput-root": {
-      borderRadius: DS.r.md,
-      fontSize: "0.8rem",
-      fontFamily: DS.font,
-      bgcolor: DS.white,
-      "& fieldset": { borderColor: DS.line },
-      "&:hover fieldset": { borderColor: DS.slateLight },
-      "&.Mui-focused fieldset": { borderColor: DS.brand, borderWidth: "1.5px" },
-    },
-    "& .MuiInputBase-input": { py: "8.5px", px: "12px" },
-  };
-
-  const selectSx = {
-    borderRadius: DS.r.md,
-    fontSize: "0.8rem",
-    fontFamily: DS.font,
-    "& .MuiOutlinedInput-notchedOutline": { borderColor: DS.line },
-    "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: DS.slateLight },
-    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-      borderColor: DS.brand,
-      borderWidth: "1.5px",
-    },
-    "& .MuiSelect-select": { py: "8.5px", px: "12px" },
-  };
-
   const headCellSx = {
-    bgcolor: DS.canvas,
+    bgcolor: "#f8fafc",
     fontWeight: 700,
     fontSize: "0.65rem",
-    color: DS.slateLight,
+    color: T.text.muted,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    borderBottom: `1.5px solid ${DS.line}`,
-    fontFamily: DS.font,
+    borderBottom: `1.5px solid ${T.border}`,
     whiteSpace: "nowrap",
     py: 1.5,
   };
-
   const cellSx = {
     py: "11px",
     fontSize: "0.8rem",
-    fontFamily: DS.font,
-    borderBottom: `1px solid ${DS.lineLight}`,
-    color: DS.inkLight,
+    borderBottom: `1px solid #f1f5f9`,
+    color: T.text.secondary,
   };
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: DS.canvas, fontFamily: DS.font }}>
-      {/* ── Page Header ───────────────────────────────────────────────────── */}
-      {/* FIX 1: removed hardcoded width:"1170px" and ml:4 */}
-      <Box
-        sx={{
-          px: { xs: 2, sm: 3, md: 4 },
-          pt: { xs: 2, sm: 2.5 },
-          pb: { xs: 1.5, sm: 2 },
-          bgcolor: DS.white,
-          width:"1120px",
-          marginLeft:"30px",
-          borderBottom: `1px solid ${DS.line}`,
-          boxShadow: DS.shadow,
-          borderRadius: 2,
-        }}
-      >
-        {/* Title + Actions */}
+    <Box sx={{ minHeight: "100vh" }}>
+      {/* ── Page Header ── */}
+      <Box sx={{ px: { xs: 2, md: 4 }, pt: 3, pb: 2.5 }}>
         <Stack
           direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
           alignItems={{ xs: "flex-start", sm: "center" }}
           spacing={2}
-          mb={2}
         >
+          {/* Title */}
           <Box>
-            <Stack direction="row" alignItems="center" spacing={1.5} mb={0.25}>
-              <Typography
-                sx={{
-                  fontSize: { xs: "1.1rem", sm: "1.35rem" },
-                  fontWeight: 800,
-                  color: DS.ink,
-                  letterSpacing: "-0.035em",
-                  fontFamily: DS.font,
-                  lineHeight: 1,
-                }}
-              >
-                Asset Management
-              </Typography>
-              {isTeam && (
-                <Chip
-                  label="Team View"
-                  size="small"
-                  sx={{
-                    height: 19,
-                    fontSize: "0.6rem",
-                    fontWeight: 700,
-                    bgcolor: DS.brandLight,
-                    color: DS.brand,
-                    fontFamily: DS.font,
-                  }}
-                />
-              )}
-            </Stack>
             <Typography
-              sx={{
-                fontSize: "0.75rem",
-                color: DS.slateLight,
-                fontFamily: DS.font,
-              }}
+              fontWeight={800}
+              fontSize={{ xs: "1.3rem", md: "1.5rem" }}
+              color={T.text.primary}
+              lineHeight={1.2}
             >
-              {stats.totalAssets ?? pagination.total} assets tracked &amp;
-              monitored
+              Asset Management
+            </Typography>
+            <Typography fontSize="0.82rem" color={T.text.secondary} mt={0.4}>
+              Track and manage your assets and equipment
             </Typography>
           </Box>
 
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {/* Action buttons — matching screenshot: My Asset Requests, Clone Asset, + Add Asset */}
+          <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap>
             <Button
               variant="outlined"
-              onClick={() => navigate("/admin/assets/clone")}
-              startIcon={!isMobile && <ContentCopy sx={{ fontSize: 14 }} />}
-              sx={{ ...primaryBtn, px: { xs: 1.5, sm: 2 } }}
+              onClick={() => navigate("/admin/asset-requests")}
+              startIcon={<Visibility sx={{ fontSize: 15 }} />}
+              sx={{
+                ...ghostBtn,
+                px: 2,
+                py: 0.9,
+              }}
             >
-              {isMobile ? (
-                <ContentCopy sx={{ fontSize: 15 }} />
-              ) : (
-                "Clone Assets"
-              )}
+              {!isMobile && "My Asset Requests"}
             </Button>
             {isAdmin && (
               <Button
@@ -1202,393 +677,285 @@ export default function AssetManagement() {
               </Button>
             )}
             <Button
-              variant="outlined"
-              onClick={() => navigate("/admin/asset-requests")}
-              sx={{ ...primaryBtn, px: { xs: 1.5, sm: 2 } }}
+              variant="contained"
+              onClick={() => navigate("/admin/assets/clone")}
+              startIcon={<ContentCopy sx={{ fontSize: 14 }} />}
+              sx={{ ...primaryBtn, py: 0.9 }}
             >
-              {isMobile ? (
-                <AssignmentTurnedIn sx={{ fontSize: 15 }} />
-              ) : (
-                "Requests"
-              )}
+              {!isMobile && "Clone Asset"}
             </Button>
             <Button
               variant="contained"
-              startIcon={<Add sx={{ fontSize: 15 }} />}
               onClick={() => navigate("/admin/assets/add")}
-              sx={{ ...primaryBtn, px: { xs: 1.5, sm: 2.5 } }}
+              startIcon={<Add sx={{ fontSize: 15 }} />}
+              sx={{ ...primaryBtn, py: 0.9 }}
             >
               {!isMobile && "Add Asset"}
             </Button>
           </Stack>
         </Stack>
-
-        {/* Metric cards */}
-        <Stack
-          direction="row"
-          spacing={1.5}
-          sx={{
-            flexWrap: { xs: "wrap", md: "nowrap" },
-            gap: { xs: 1.5, md: 0 },
-          }}
-          useFlexGap
-        >
-          <MetricCard
-            label="Total Assets"
-            value={stats.totalAssets ?? pagination.total}
-            icon={<Layers sx={{ fontSize: 15 }} />}
-            sub={
-              stats.totalPurchaseCost
-                ? `₹${(stats.totalPurchaseCost / 100000).toFixed(1)}L`
-                : undefined
-            }
-          />
-          <MetricCard
-            label="Cloned"
-            value={stats.clonedAssets ?? "—"}
-            icon={<ContentCopy sx={{ fontSize: 15 }} />}
-            onClick={() => navigate("/admin/assets/clone")}
-            accent={DS.info}
-          />
-          <MetricCard
-            label="Assigned"
-            value={stats.assignedAssets ?? "—"}
-            icon={<AssignmentTurnedIn sx={{ fontSize: 15 }} />}
-            accent={DS.warning}
-          />
-          {isAdmin && (
-            <MetricCard
-              label="Categories"
-              value={categories.length || "—"}
-              icon={<Category sx={{ fontSize: 15 }} />}
-              onClick={() => navigate("/admin/asset-categories")}
-              accent={DS.purple}
-            />
-          )}
-        </Stack>
       </Box>
 
-      {/* ── Main Content ───────────────────────────────────────────────────── */}
-      <Box sx={{ px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2, sm: 2.5 } }}>
-        {/* Search & Filter Bar */}
+      {/* ── Search / Filter bar ── */}
+      <Box sx={{ px: { xs: 2, md: 4 }, pb: 2.5 }}>
         <Paper
           elevation={0}
           sx={{
-            borderRadius: DS.r.lg,
-            border: `1px solid ${DS.line}`,
-            p: { xs: 1.5, sm: 2 },
-            mb: 2.5,
-            bgcolor: DS.white,
-            boxShadow: DS.shadow,
+            borderRadius: T.radius.card,
+            border: `1px solid ${T.border}`,
+            p: 1.5,
+            bgcolor: T.surface,
+            boxShadow: T.shadow,
           }}
         >
           <Stack
             direction={{ xs: "column", md: "row" }}
-            spacing={1.5}
+            spacing={1.25}
             alignItems={{ md: "center" }}
           >
+            {/* Search */}
             <TextField
               fullWidth
               size="small"
-              placeholder="Search by name, asset ID or tag…"
+              placeholder="Search assets..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              sx={{ flex: 2, ...fieldSx }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Search sx={{ fontSize: 15, color: DS.slateLight }} />
+                    <Search sx={{ fontSize: 17, color: T.text.muted }} />
                   </InputAdornment>
                 ),
                 endAdornment: search && (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setSearch("")}>
-                      <Close sx={{ fontSize: 13 }} />
-                    </IconButton>
-                  </InputAdornment>
+                  <IconButton size="small" onClick={() => setSearch("")}>
+                    <Close sx={{ fontSize: 14 }} />
+                  </IconButton>
                 ),
+                sx: {
+                  borderRadius: T.radius.input,
+                  fontSize: "0.85rem",
+                  bgcolor: "#f8fafc",
+                  "& fieldset": { borderColor: T.border },
+                  "&:hover fieldset": { borderColor: "#cbd5e1" },
+                  "&.Mui-focused fieldset": { borderColor: T.brand },
+                },
               }}
             />
 
-            <Stack
-              direction="row"
-              spacing={1}
-              flexShrink={0}
-              flexWrap="wrap"
-              useFlexGap
-            >
-              <Button
-                variant="contained"
-                onClick={() => {
+            {/* Category dropdown */}
+            <FormControl size="small" sx={{ minWidth: 160, flexShrink: 0 }}>
+              <Select
+                value={categoryFilter}
+                onChange={(e) => {
+                  setCategoryFilter(e.target.value);
                   setPage(0);
-                  fetchAssets();
                 }}
-                sx={{ ...primaryBtn, minWidth: 80 }}
+                displayEmpty
+                sx={{
+                  borderRadius: T.radius.input,
+                  fontSize: "0.85rem",
+                  bgcolor: "#f8fafc",
+                  "& fieldset": { borderColor: T.border },
+                  "&:hover fieldset": { borderColor: "#cbd5e1" },
+                  "& .MuiSelect-select": { py: "8.5px" },
+                }}
               >
-                Search
-              </Button>
-
-              <Badge
-                badgeContent={activeFilterCount}
-                color="primary"
-                overlap="circular"
-              >
-                <Button
-                  variant="outlined"
-                  startIcon={<FilterList sx={{ fontSize: 13 }} />}
-                  onClick={() => setShowFilters(!showFilters)}
-                  sx={{
-                    ...outlineBtn,
-                    borderColor: showFilters ? DS.brand : DS.line,
-                    color: showFilters ? DS.brand : DS.slate,
-                  }}
+                <MenuItem
+                  value=""
+                  sx={{ fontSize: "0.85rem", color: T.text.secondary }}
                 >
-                  {!isMobile && "Filters"}
-                </Button>
-              </Badge>
-
-              {hasFilters && (
-                <Button
-                  onClick={clearFilters}
-                  startIcon={<ClearAll sx={{ fontSize: 13 }} />}
-                  sx={{
-                    ...outlineBtn,
-                    color: DS.error,
-                    borderColor: alpha(DS.error, 0.3),
-                  }}
-                >
-                  {!isMobile && "Clear"}
-                </Button>
-              )}
-
-              {/* View toggle */}
-              <Stack direction="row" spacing={0.5}>
-                {[
-                  { mode: "grid", Icon: GridView },
-                  { mode: "list", Icon: ViewList },
-                ].map(({ mode, Icon }) => (
-                  <Tooltip key={mode} title={`${mode} view`}>
-                    <IconButton
-                      size="small"
-                      onClick={() => setViewMode(mode)}
-                      sx={{
-                        borderRadius: DS.r.sm,
-                        width: 32,
-                        height: 32,
-                        bgcolor: viewMode === mode ? DS.brand : DS.lineLight,
-                        color: viewMode === mode ? DS.white : DS.slate,
-                        border: `1px solid ${viewMode === mode ? DS.brand : DS.line}`,
-                        "&:hover": {
-                          bgcolor: viewMode === mode ? DS.brandDark : DS.line,
-                        },
-                      }}
-                    >
-                      <Icon sx={{ fontSize: 15 }} />
-                    </IconButton>
-                  </Tooltip>
-                ))}
-              </Stack>
-
-              {/* Utility */}
-              {[
-                {
-                  icon: <Refresh sx={{ fontSize: 14 }} />,
-                  tip: "Refresh",
-                  fn: fetchAssets,
-                },
-                {
-                  icon: <FileDownload sx={{ fontSize: 14 }} />,
-                  tip: "Export CSV",
-                  fn: () => toast("Export initiated", "info"),
-                },
-              ].map(({ icon, tip, fn }) => (
-                <Tooltip key={tip} title={tip}>
-                  <IconButton
-                    size="small"
-                    onClick={fn}
-                    sx={{
-                      borderRadius: DS.r.sm,
-                      width: 32,
-                      height: 32,
-                      bgcolor: DS.lineLight,
-                      border: `1px solid ${DS.line}`,
-                      "&:hover": { bgcolor: DS.line },
-                    }}
+                  Category ▾
+                </MenuItem>
+                {categories.map((c) => (
+                  <MenuItem
+                    key={c._id}
+                    value={c.name}
+                    sx={{ fontSize: "0.85rem" }}
                   >
-                    {icon}
-                  </IconButton>
-                </Tooltip>
+                    {c.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Status dropdown */}
+            <FormControl size="small" sx={{ minWidth: 150, flexShrink: 0 }}>
+              <Select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(0);
+                }}
+                displayEmpty
+                sx={{
+                  borderRadius: T.radius.input,
+                  fontSize: "0.85rem",
+                  bgcolor: "#f8fafc",
+                  "& fieldset": { borderColor: T.border },
+                  "&:hover fieldset": { borderColor: "#cbd5e1" },
+                  "& .MuiSelect-select": { py: "8.5px" },
+                }}
+              >
+                <MenuItem
+                  value=""
+                  sx={{ fontSize: "0.85rem", color: T.text.secondary }}
+                >
+                  Status ▾
+                </MenuItem>
+                {Object.keys(STATUS_CFG).map((s) => (
+                  <MenuItem key={s} value={s} sx={{ fontSize: "0.85rem" }}>
+                    {s}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Grid / List toggle */}
+            <Stack direction="row" spacing={0.5} flexShrink={0}>
+              {[
+                { mode: "grid", Icon: GridView },
+                { mode: "list", Icon: ViewList },
+              ].map(({ mode, Icon }) => (
+                <IconButton
+                  key={mode}
+                  size="small"
+                  onClick={() => setViewMode(mode)}
+                  sx={{
+                    borderRadius: "8px",
+                    width: 34,
+                    height: 34,
+                    bgcolor: viewMode === mode ? T.brand : "#f1f5f9",
+                    color: viewMode === mode ? "#fff" : T.text.secondary,
+                    border: `1px solid ${viewMode === mode ? T.brand : T.border}`,
+                    "&:hover": {
+                      bgcolor: viewMode === mode ? T.brandDark : "#e2e8f0",
+                    },
+                  }}
+                >
+                  <Icon sx={{ fontSize: 16 }} />
+                </IconButton>
               ))}
             </Stack>
-          </Stack>
 
-          {/* Collapsible Filters */}
-          <Collapse in={showFilters}>
-            <Box
-              sx={{ mt: 1.5, pt: 1.5, borderTop: `1px solid ${DS.lineLight}` }}
-            >
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={1.5}
-                alignItems={{ sm: "center" }}
-              >
-                {[
-                  {
-                    value: categoryFilter,
-                    set: (v) => {
-                      setCategoryFilter(v);
-                      setPage(0);
-                    },
-                    label: "All Categories",
-                    items: categories.map((c) => (
-                      <MenuItem
-                        key={c._id}
-                        value={c.name}
-                        sx={{ fontSize: "0.8rem", fontFamily: DS.font }}
-                      >
-                        {c.name}
-                      </MenuItem>
-                    )),
-                  },
-                  {
-                    value: statusFilter,
-                    set: (v) => {
-                      setStatusFilter(v);
-                      setPage(0);
-                    },
-                    label: "All Statuses",
-                    items: Object.keys(STATUS_CFG).map((s) => (
-                      <MenuItem
-                        key={s}
-                        value={s}
-                        sx={{ fontSize: "0.8rem", fontFamily: DS.font }}
-                      >
-                        {s}
-                      </MenuItem>
-                    )),
-                  },
-                  {
-                    value: conditionFilter,
-                    set: (v) => {
-                      setConditionFilter(v);
-                      setPage(0);
-                    },
-                    label: "All Conditions",
-                    items: [
-                      "Excellent",
-                      "Good",
-                      "Normal",
-                      "Critical",
-                      "Poor",
-                    ].map((c) => (
-                      <MenuItem
-                        key={c}
-                        value={c}
-                        sx={{ fontSize: "0.8rem", fontFamily: DS.font }}
-                      >
-                        {c}
-                      </MenuItem>
-                    )),
-                  },
-                ].map(({ value, set, label, items }, i) => (
-                  <FormControl size="small" fullWidth key={i}>
-                    <Select
-                      value={value}
-                      onChange={(e) => set(e.target.value)}
-                      displayEmpty
-                      sx={selectSx}
-                    >
-                      <MenuItem
-                        value=""
-                        sx={{
-                          fontSize: "0.8rem",
-                          fontFamily: DS.font,
-                          color: DS.slateLight,
-                        }}
-                      >
-                        {label}
-                      </MenuItem>
-                      {items}
-                    </Select>
-                  </FormControl>
-                ))}
-                <Button
-                  variant="contained"
-                  onClick={() => {
-                    setPage(0);
-                    fetchAssets();
-                    setShowFilters(false);
+            {/* Utility icons */}
+            {[
+              {
+                icon: <Refresh sx={{ fontSize: 15 }} />,
+                tip: "Refresh",
+                fn: fetchAssets,
+              },
+              {
+                icon: <FileDownload sx={{ fontSize: 15 }} />,
+                tip: "Export",
+                fn: () => toast("Export initiated", "info"),
+              },
+            ].map(({ icon, tip, fn }) => (
+              <Tooltip key={tip} title={tip}>
+                <IconButton
+                  size="small"
+                  onClick={fn}
+                  sx={{
+                    borderRadius: "8px",
+                    width: 34,
+                    height: 34,
+                    bgcolor: "#f1f5f9",
+                    border: `1px solid ${T.border}`,
+                    "&:hover": { bgcolor: "#e2e8f0" },
                   }}
-                  sx={{ ...primaryBtn, minWidth: 96, flexShrink: 0 }}
                 >
-                  Apply
-                </Button>
-              </Stack>
-            </Box>
-          </Collapse>
+                  {icon}
+                </IconButton>
+              </Tooltip>
+            ))}
+
+            {hasFilters && (
+              <Button
+                onClick={clearFilters}
+                startIcon={<ClearAll sx={{ fontSize: 13 }} />}
+                sx={{
+                  textTransform: "none",
+                  fontSize: "0.8rem",
+                  color: T.error,
+                  borderRadius: T.radius.btn,
+                  minWidth: "auto",
+                  flexShrink: 0,
+                }}
+              >
+                Clear
+              </Button>
+            )}
+          </Stack>
         </Paper>
+      </Box>
 
-        {/* Search result count */}
-        {debouncedSearch && !loading && !fetchError && (
-          <Alert
-            severity="info"
-            icon={<Info sx={{ fontSize: 15 }} />}
-            sx={{
-              mb: 2,
-              borderRadius: DS.r.md,
-              fontSize: "0.8rem",
-              fontFamily: DS.font,
-              "& .MuiAlert-message": { py: 0.25 },
-            }}
-          >
-            <strong>{pagination.total}</strong> result
-            {pagination.total !== 1 ? "s" : ""} for "
-            <strong>{debouncedSearch}</strong>"
-          </Alert>
-        )}
-
-        {/* ── Loading progress bar (top) ─── */}
+      {/* ── Content ── */}
+      <Box sx={{ px: { xs: 2, md: 4 }, pb: 4 }}>
         {loading && (
           <LinearProgress
             sx={{
               mb: 2,
-              borderRadius: DS.r.xs,
-              bgcolor: DS.brandLight,
-              "& .MuiLinearProgress-bar": { bgcolor: DS.brand },
+              borderRadius: 1,
+              bgcolor: T.brandLight,
+              "& .MuiLinearProgress-bar": { bgcolor: T.brand },
             }}
           />
         )}
 
-        {/* ── FIX 4: Dedicated error state ── */}
         {!loading && fetchError && (
-          <ErrorState message={fetchError} onRetry={fetchAssets} />
+          <Box
+            sx={{
+              textAlign: "center",
+              py: 10,
+              bgcolor: T.surface,
+              borderRadius: T.radius.card,
+              border: `1px solid #fca5a5`,
+            }}
+          >
+            <ErrorOutline sx={{ fontSize: 40, color: T.error, mb: 1.5 }} />
+            <Typography fontWeight={700} color={T.text.primary} mb={0.5}>
+              Failed to load assets
+            </Typography>
+            <Typography fontSize="0.82rem" color={T.text.muted} mb={3}>
+              {fetchError}
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={fetchAssets}
+              startIcon={<Refresh sx={{ fontSize: 14 }} />}
+              sx={{ ...primaryBtn }}
+            >
+              Retry
+            </Button>
+          </Box>
         )}
 
-        {/* ── Grid View ──────────────────────────────────────────────────── */}
+        {/* Grid View */}
         {!fetchError && viewMode === "grid" && (
           <>
             {loading ? (
-              <GridSkeleton />
+              <Grid container spacing={2.5}>
+                {Array(6)
+                  .fill(null)
+                  .map((_, i) => (
+                    <Grid item xs={12} sm={6} md={4} key={i}>
+                      <Skeleton
+                        variant="rounded"
+                        height={280}
+                        sx={{ borderRadius: T.radius.card }}
+                      />
+                    </Grid>
+                  ))}
+              </Grid>
             ) : assets.length === 0 ? (
-              // FIX 3: distinct empty state for no-data vs no-results
               <EmptyState
                 hasFilters={hasFilters}
                 onClear={clearFilters}
                 onAdd={() => navigate("/admin/assets/add")}
-                isAdmin={isAdmin}
               />
             ) : (
-              <Grid container spacing={2}>
+              <Grid container spacing={2.5}>
                 {assets.map((asset) => (
-                  // FIX 6: removed hardcoded width from AssetCard — Grid controls it
-                  <Grid
-                    item
-                    xs={12}
-                    sm={6}
-                    md={4}
-                    lg={3}
-                    key={asset.id || asset._id}
-                  >
+                  <Grid item xs={12} sm={6} md={4} key={asset.id || asset._id}>
                     <AssetCard
                       asset={asset}
                       onView={handleViewAsset}
@@ -1609,6 +976,7 @@ export default function AssetManagement() {
                 ))}
               </Grid>
             )}
+
             {pagination.pages > 1 && !loading && assets.length > 0 && (
               <Stack alignItems="center" mt={4}>
                 <Pagination
@@ -1618,13 +986,12 @@ export default function AssetManagement() {
                   shape="rounded"
                   sx={{
                     "& .MuiPaginationItem-root": {
-                      borderRadius: DS.r.sm,
-                      fontFamily: DS.font,
-                      fontSize: "0.8rem",
+                      borderRadius: "8px",
+                      fontSize: "0.82rem",
                     },
                     "& .Mui-selected": {
-                      bgcolor: `${DS.brand} !important`,
-                      color: DS.white,
+                      bgcolor: `${T.brand} !important`,
+                      color: "#fff",
                     },
                   }}
                 />
@@ -1633,19 +1000,19 @@ export default function AssetManagement() {
           </>
         )}
 
-        {/* ── List View ──────────────────────────────────────────────────── */}
+        {/* List View */}
         {!fetchError && viewMode === "list" && (
           <Paper
             elevation={0}
             sx={{
-              borderRadius: DS.r.lg,
-              border: `1px solid ${DS.line}`,
+              borderRadius: T.radius.card,
+              border: `1px solid ${T.border}`,
               overflow: "hidden",
-              bgcolor: DS.white,
-              boxShadow: DS.shadow,
+              bgcolor: T.surface,
+              boxShadow: T.shadow,
             }}
           >
-            <TableContainer sx={{ maxHeight: 560 }}>
+            <TableContainer sx={{ maxHeight: 580 }}>
               <Table stickyHeader size="small">
                 <TableHead>
                   <TableRow>
@@ -1655,7 +1022,6 @@ export default function AssetManagement() {
                       { id: null, label: "Category" },
                       { id: null, label: "Location" },
                       { id: "status", label: "Status" },
-                      { id: null, label: "Health" },
                       { id: null, label: "Type" },
                       { id: null, label: "Actions", align: "center" },
                     ].map(({ id, label, align }) => (
@@ -1665,9 +1031,6 @@ export default function AssetManagement() {
                             active={orderBy === id}
                             direction={orderBy === id ? order : "asc"}
                             onClick={() => handleSort(id)}
-                            sx={{
-                              "& .MuiTableSortLabel-icon": { fontSize: 12 },
-                            }}
                           >
                             {label}
                           </TableSortLabel>
@@ -1684,257 +1047,170 @@ export default function AssetManagement() {
                   ) : assets.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={7}
                         align="center"
-                        sx={{
-                          py: 8,
-                          color: DS.slateLight,
-                          fontFamily: DS.font,
-                        }}
+                        sx={{ py: 8, color: T.text.muted, fontSize: "0.82rem" }}
                       >
-                        {/* FIX 3: meaningful copy based on context */}
                         {hasFilters
                           ? "No assets match your filters."
-                          : "No assets found. Add your first asset to get started."}
+                          : "No assets found."}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    assets.map((asset) => {
-                      const key = asset.id || asset._id;
-                      return (
-                        <TableRow
-                          hover
-                          key={key}
-                          onClick={() => handleViewAsset(asset)}
-                          sx={{
-                            cursor: "pointer",
-                            "&:hover": { bgcolor: DS.brandLight },
-                            "& .MuiTableCell-root": {
-                              borderColor: DS.lineLight,
-                            },
-                            transition: "background 0.12s",
-                          }}
-                        >
-                          <TableCell sx={cellSx}>
-                            <Stack
-                              direction="row"
-                              spacing={1.25}
-                              alignItems="center"
-                            >
-                              <Avatar
-                                sx={{
-                                  width: 28,
-                                  height: 28,
-                                  bgcolor: DS.brandLight,
-                                  fontSize: "0.72rem",
-                                  fontWeight: 700,
-                                  color: DS.brand,
-                                  border: `1.5px solid ${DS.brandMid}`,
-                                  fontFamily: DS.font,
-                                }}
-                              >
-                                {asset.assetName?.charAt(0).toUpperCase()}
-                              </Avatar>
-                              <Box>
-                                <Typography
-                                  sx={{
-                                    fontWeight: 700,
-                                    fontSize: "0.8rem",
-                                    color: DS.ink,
-                                    fontFamily: DS.font,
-                                  }}
-                                >
-                                  {asset.assetName}
-                                </Typography>
-                                {asset.isClone && (
-                                  <Typography
-                                    sx={{
-                                      fontSize: "0.58rem",
-                                      fontWeight: 700,
-                                      color: DS.info,
-                                      bgcolor: DS.infoBg,
-                                      px: "4px",
-                                      py: "1px",
-                                      borderRadius: DS.r.xs,
-                                      display: "inline-block",
-                                      fontFamily: DS.font,
-                                    }}
-                                  >
-                                    CLONE
-                                  </Typography>
-                                )}
-                              </Box>
-                            </Stack>
-                          </TableCell>
-                          <TableCell sx={cellSx}>
+                    assets.map((asset) => (
+                      <TableRow
+                        hover
+                        key={asset.id || asset._id}
+                        onClick={() => handleViewAsset(asset)}
+                        sx={{
+                          cursor: "pointer",
+                          "&:hover": { bgcolor: "#f8fafc" },
+                          transition: "background 0.12s",
+                        }}
+                      >
+                        <TableCell sx={cellSx}>
+                          <Typography
+                            fontWeight={700}
+                            fontSize="0.82rem"
+                            color={T.text.primary}
+                          >
+                            {asset.assetName}
+                          </Typography>
+                          {asset.isClone && (
                             <Typography
                               sx={{
-                                fontSize: "0.68rem",
-                                color: DS.slateLight,
-                                fontFamily: DS.mono,
+                                fontSize: "0.6rem",
+                                fontWeight: 700,
+                                color: "#0369a1",
+                                bgcolor: "#e0f2fe",
+                                px: "4px",
+                                py: "1px",
+                                borderRadius: "3px",
+                                display: "inline-block",
+                                mt: 0.25,
                               }}
                             >
-                              {asset.assetId}
+                              CLONE
                             </Typography>
-                          </TableCell>
-                          <TableCell sx={cellSx}>
-                            <Box
-                              sx={{
-                                px: "7px",
-                                py: "2.5px",
-                                borderRadius: DS.r.xs,
-                                bgcolor: DS.brandLight,
-                                display: "inline-block",
-                              }}
-                            >
-                              <Typography
-                                sx={{
-                                  fontSize: "0.7rem",
-                                  fontWeight: 600,
-                                  color: DS.brand,
-                                  fontFamily: DS.font,
-                                }}
-                              >
-                                {asset.assetCategoryId?.name ||
-                                  asset.assetCategory ||
-                                  "—"}
-                              </Typography>
-                            </Box>
-                          </TableCell>
-                          <TableCell sx={cellSx}>
-                            <Stack
-                              direction="row"
-                              spacing={0.4}
-                              alignItems="center"
-                            >
-                              <LocationOn
-                                sx={{ fontSize: 11, color: DS.slateLight }}
-                              />
-                              <Typography
-                                sx={{
-                                  fontSize: "0.75rem",
-                                  color: DS.slate,
-                                  fontFamily: DS.font,
-                                }}
-                              >
-                                {asset.currentLocation || "—"}
-                              </Typography>
-                            </Stack>
-                          </TableCell>
-                          <TableCell sx={cellSx}>
-                            <StatusBadge status={asset.status} />
-                          </TableCell>
-                          <TableCell sx={cellSx}>
-                            <HealthMeter score={asset.healthScore || 0} />
-                          </TableCell>
-                          <TableCell sx={cellSx}>
-                            <Box
-                              sx={{
-                                px: "7px",
-                                py: "2.5px",
-                                borderRadius: DS.r.xs,
-                                bgcolor: asset.isClone
-                                  ? DS.infoBg
-                                  : DS.successBg,
-                                display: "inline-block",
-                              }}
-                            >
-                              <Typography
-                                sx={{
-                                  fontSize: "0.65rem",
-                                  fontWeight: 700,
-                                  color: asset.isClone ? DS.info : DS.success,
-                                  fontFamily: DS.font,
-                                }}
-                              >
-                                {asset.isClone ? "Clone" : "Original"}
-                              </Typography>
-                            </Box>
-                          </TableCell>
-                          <TableCell
-                            align="center"
-                            sx={cellSx}
-                            onClick={(e) => e.stopPropagation()}
+                          )}
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Typography
+                            fontSize="0.72rem"
+                            color={T.text.muted}
+                            fontFamily="monospace"
                           >
-                            <Stack
-                              direction="row"
-                              spacing={0.25}
-                              justifyContent="center"
-                            >
-                              <Tooltip
-                                title={
-                                  asset.isClone ? "Cannot clone again" : "Clone"
-                                }
+                            {asset.assetId || "—"}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Typography fontSize="0.78rem">
+                            {asset.assetCategoryId?.name ||
+                              asset.assetCategory ||
+                              "—"}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Stack
+                            direction="row"
+                            alignItems="center"
+                            spacing={0.4}
+                          >
+                            <LocationOn
+                              sx={{ fontSize: 11, color: T.text.muted }}
+                            />
+                            <Typography fontSize="0.78rem">
+                              {asset.currentLocation || "—"}
+                            </Typography>
+                          </Stack>
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <StatusPill status={asset.status} />
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Typography
+                            sx={{
+                              fontSize: "0.68rem",
+                              fontWeight: 700,
+                              color: asset.isClone ? "#0369a1" : "#0f766e",
+                              bgcolor: asset.isClone ? "#e0f2fe" : "#f0fdf4",
+                              px: "7px",
+                              py: "2px",
+                              borderRadius: "4px",
+                              display: "inline-block",
+                            }}
+                          >
+                            {asset.isClone ? "Clone" : "Original"}
+                          </Typography>
+                        </TableCell>
+                        <TableCell
+                          align="center"
+                          sx={cellSx}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Stack
+                            direction="row"
+                            spacing={0.25}
+                            justifyContent="center"
+                          >
+                            {!asset.isClone && (
+                              <Tooltip title="Clone">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => openCloneDialog(asset)}
+                                  sx={{ borderRadius: "6px" }}
+                                >
+                                  <ContentCopy
+                                    sx={{ fontSize: 13, color: T.brand }}
+                                  />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            <Tooltip title="Edit">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleEditAsset(asset)}
+                                sx={{ borderRadius: "6px" }}
                               >
-                                <span>
-                                  <IconButton
-                                    size="small"
-                                    disabled={asset.isClone}
-                                    onClick={() =>
-                                      !asset.isClone && openCloneDialog(asset)
-                                    }
-                                    sx={{ borderRadius: DS.r.sm }}
-                                  >
-                                    <ContentCopy
-                                      sx={{
-                                        fontSize: 13,
-                                        color: asset.isClone
-                                          ? DS.slateLight
-                                          : DS.brand,
-                                      }}
-                                    />
-                                  </IconButton>
-                                </span>
-                              </Tooltip>
-                              <Tooltip title="Edit">
+                                <Edit sx={{ fontSize: 13, color: T.brand }} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="View">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleViewAsset(asset)}
+                                sx={{ borderRadius: "6px" }}
+                              >
+                                <Visibility
+                                  sx={{ fontSize: 13, color: T.text.secondary }}
+                                />
+                              </IconButton>
+                            </Tooltip>
+                            {isAdmin && (
+                              <Tooltip title="Delete">
                                 <IconButton
                                   size="small"
-                                  onClick={() => handleEditAsset(asset)}
-                                  sx={{ borderRadius: DS.r.sm }}
+                                  onClick={() => {
+                                    setSelectedAsset(asset);
+                                    setDialogError("");
+                                    setDeleteOpen(true);
+                                  }}
+                                  sx={{ borderRadius: "6px" }}
                                 >
-                                  <Edit
-                                    sx={{ fontSize: 13, color: DS.brand }}
+                                  <Delete
+                                    sx={{ fontSize: 13, color: T.error }}
                                   />
                                 </IconButton>
                               </Tooltip>
-                              <Tooltip title="View">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleViewAsset(asset)}
-                                  sx={{ borderRadius: DS.r.sm }}
-                                >
-                                  <Visibility
-                                    sx={{ fontSize: 13, color: DS.slate }}
-                                  />
-                                </IconButton>
-                              </Tooltip>
-                              {isAdmin && (
-                                <Tooltip title="Delete">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => {
-                                      setSelectedAsset(asset);
-                                      setDialogError("");
-                                      setDeleteOpen(true);
-                                    }}
-                                    sx={{ borderRadius: DS.r.sm }}
-                                  >
-                                    <Delete
-                                      sx={{ fontSize: 13, color: DS.error }}
-                                    />
-                                  </IconButton>
-                                </Tooltip>
-                              )}
-                            </Stack>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
+                            )}
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
               </Table>
             </TableContainer>
-            {/* FIX 9: rowsPerPage change resets page to 0 */}
             <TablePagination
               rowsPerPageOptions={[6, 12, 24, 48]}
               component="div"
@@ -1944,24 +1220,15 @@ export default function AssetManagement() {
               onPageChange={(_, p) => setPage(p)}
               onRowsPerPageChange={(e) => {
                 setRowsPerPage(parseInt(e.target.value, 10));
-                setPage(0); // FIX 9
+                setPage(0);
               }}
-              sx={{
-                borderTop: `1px solid ${DS.line}`,
-                fontSize: "0.78rem",
-                fontFamily: DS.font,
-                "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
-                  {
-                    fontFamily: DS.font,
-                    fontSize: "0.75rem",
-                  },
-              }}
+              sx={{ borderTop: `1px solid ${T.border}`, fontSize: "0.78rem" }}
             />
           </Paper>
         )}
       </Box>
 
-      {/* ── Clone Dialog ──────────────────────────────────────────────────── */}
+      {/* ── Clone Dialog ── */}
       <Dialog
         open={cloneOpen}
         onClose={() => !actionLoading && setCloneOpen(false)}
@@ -1970,106 +1237,90 @@ export default function AssetManagement() {
         PaperProps={{
           elevation: 0,
           sx: {
-            borderRadius: DS.r.xl,
-            border: `1px solid ${DS.line}`,
-            boxShadow: DS.shadowLg,
+            borderRadius: T.radius.dialog,
+            border: `1px solid ${T.border}`,
+            boxShadow: T.shadowMd,
           },
         }}
       >
-        <DialogTitle sx={{ borderBottom: `1px solid ${DS.lineLight}`, pb: 2 }}>
-          <Stack direction="row" alignItems="center" spacing={1.5}>
-            <Box
-              sx={{
-                width: 34,
-                height: 34,
-                borderRadius: DS.r.md,
-                bgcolor: DS.brandLight,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ContentCopy sx={{ color: DS.brand, fontSize: 16 }} />
-            </Box>
-            <Box>
-              <Typography
-                sx={{
-                  fontWeight: 700,
-                  fontSize: "0.9375rem",
-                  fontFamily: DS.font,
-                  color: DS.ink,
-                }}
-              >
-                Clone Asset
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: "0.72rem",
-                  color: DS.slateLight,
-                  fontFamily: DS.font,
-                }}
-              >
-                A new asset ID and tag will be auto-generated
-              </Typography>
-            </Box>
-          </Stack>
+        <DialogTitle
+          sx={{
+            fontWeight: 700,
+            fontSize: "0.95rem",
+            borderBottom: `1px solid #f1f5f9`,
+            pb: 1.5,
+          }}
+        >
+          Clone Asset
+          <Typography
+            fontSize="0.75rem"
+            color={T.text.muted}
+            fontWeight={400}
+            mt={0.25}
+          >
+            A new asset ID and tag will be auto-generated
+          </Typography>
         </DialogTitle>
         <DialogContent sx={{ pt: "20px !important" }}>
-          <Typography
-            sx={{
-              fontSize: "0.8rem",
-              mb: 2.5,
-              color: DS.slate,
-              fontFamily: DS.font,
-            }}
-          >
-            Creating a clone of{" "}
-            <Box component="strong" sx={{ color: DS.ink }}>
-              {selectedAsset?.assetName}
-            </Box>
-          </Typography>
-          {/* FIX 7: dialog-level error */}
           {dialogError && (
             <Alert
               severity="error"
-              sx={{
-                mb: 2,
-                borderRadius: DS.r.md,
-                fontSize: "0.78rem",
-                fontFamily: DS.font,
-              }}
+              sx={{ mb: 2, borderRadius: "8px", fontSize: "0.78rem" }}
             >
               {dialogError}
             </Alert>
           )}
+          <Typography fontSize="0.82rem" color={T.text.secondary} mb={2}>
+            Creating a clone of{" "}
+            <strong style={{ color: T.text.primary }}>
+              {selectedAsset?.assetName}
+            </strong>
+          </Typography>
           <TextField
             fullWidth
             label="Clone Name *"
-            margin="none"
+            size="small"
             value={cloneName}
             onChange={(e) => setCloneName(e.target.value)}
-            size="small"
-            sx={{ mb: 2, ...fieldSx }}
+            sx={{
+              mb: 2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "8px",
+                fontSize: "0.85rem",
+              },
+            }}
             error={!cloneName.trim()}
-            helperText={!cloneName.trim() ? "Clone name is required" : ""}
+            helperText={!cloneName.trim() ? "Required" : ""}
           />
           <TextField
             fullWidth
             label="Location (optional)"
+            size="small"
             value={cloneLocation}
             onChange={(e) => setCloneLocation(e.target.value)}
-            size="small"
             helperText="Leave blank to inherit original location"
-            sx={fieldSx}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "8px",
+                fontSize: "0.85rem",
+              },
+            }}
           />
         </DialogContent>
         <DialogActions
-          sx={{ p: 2.5, pt: 2, borderTop: `1px solid ${DS.lineLight}`, gap: 1 }}
+          sx={{ p: 2.5, pt: 2, borderTop: `1px solid #f1f5f9`, gap: 1 }}
         >
           <Button
             onClick={() => setCloneOpen(false)}
             disabled={actionLoading}
-            sx={outlineBtn}
+            sx={{
+              textTransform: "none",
+              borderRadius: "8px",
+              borderColor: T.border,
+              color: T.text.secondary,
+              fontSize: "0.82rem",
+            }}
+            variant="outlined"
           >
             Cancel
           </Button>
@@ -2081,17 +1332,17 @@ export default function AssetManagement() {
               actionLoading ? (
                 <CircularProgress size={13} color="inherit" />
               ) : (
-                <ContentCopy sx={{ fontSize: 15 }} />
+                <ContentCopy sx={{ fontSize: 14 }} />
               )
             }
             sx={primaryBtn}
           >
-            Confirm Clone
+            {actionLoading ? "Cloning…" : "Confirm Clone"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* ── Delete Dialog ──────────────────────────────────────────────────── */}
+      {/* ── Delete Dialog ── */}
       <Dialog
         open={deleteOpen}
         onClose={() => !actionLoading && setDeleteOpen(false)}
@@ -2099,55 +1350,37 @@ export default function AssetManagement() {
         PaperProps={{
           elevation: 0,
           sx: {
-            borderRadius: DS.r.xl,
-            border: `1px solid ${DS.line}`,
-            boxShadow: DS.shadowLg,
+            borderRadius: T.radius.dialog,
+            border: `1px solid ${T.border}`,
+            boxShadow: T.shadowMd,
           },
         }}
       >
         <DialogTitle
-          sx={{
-            fontWeight: 700,
-            fontSize: "0.9375rem",
-            fontFamily: DS.font,
-            color: DS.ink,
-          }}
+          sx={{ fontWeight: 700, fontSize: "0.95rem", color: T.text.primary }}
         >
           Delete Asset
         </DialogTitle>
         <DialogContent>
-          {/* FIX 8: dialog-level error */}
           {dialogError && (
             <Alert
               severity="error"
-              sx={{
-                mb: 2,
-                borderRadius: DS.r.md,
-                fontSize: "0.78rem",
-                fontFamily: DS.font,
-              }}
+              sx={{ mb: 2, borderRadius: "8px", fontSize: "0.78rem" }}
             >
               {dialogError}
             </Alert>
           )}
           <Alert
             severity="error"
-            sx={{
-              mb: 2.5,
-              borderRadius: DS.r.md,
-              fontSize: "0.78rem",
-              fontFamily: DS.font,
-            }}
+            sx={{ mb: 2, borderRadius: "8px", fontSize: "0.78rem" }}
           >
             This action is permanent and cannot be undone.
           </Alert>
-          <Typography
-            sx={{ fontSize: "0.8rem", fontFamily: DS.font, color: DS.slate }}
-          >
+          <Typography fontSize="0.82rem" color={T.text.secondary}>
             Are you sure you want to delete{" "}
-            <Box component="strong" sx={{ color: DS.ink }}>
+            <strong style={{ color: T.text.primary }}>
               {selectedAsset?.assetName}
-            </Box>
+            </strong>
             ?
           </Typography>
         </DialogContent>
@@ -2155,7 +1388,14 @@ export default function AssetManagement() {
           <Button
             onClick={() => setDeleteOpen(false)}
             disabled={actionLoading}
-            sx={outlineBtn}
+            variant="outlined"
+            sx={{
+              textTransform: "none",
+              borderRadius: "8px",
+              borderColor: T.border,
+              color: T.text.secondary,
+              fontSize: "0.82rem",
+            }}
           >
             Cancel
           </Button>
@@ -2167,13 +1407,13 @@ export default function AssetManagement() {
               actionLoading ? (
                 <CircularProgress size={13} color="inherit" />
               ) : (
-                <Delete sx={{ fontSize: 15 }} />
+                <Delete sx={{ fontSize: 14 }} />
               )
             }
             sx={{
               ...primaryBtn,
-              bgcolor: DS.error,
-              "&:hover": { bgcolor: "#7F1212" },
+              bgcolor: T.error,
+              "&:hover": { bgcolor: "#b91c1c" },
             }}
           >
             Delete
@@ -2181,7 +1421,7 @@ export default function AssetManagement() {
         </DialogActions>
       </Dialog>
 
-      {/* ── Snackbar ──────────────────────────────────────────────────────── */}
+      {/* ── Snackbar ── */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
@@ -2192,10 +1432,9 @@ export default function AssetManagement() {
           severity={snackbar.severity}
           onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
           sx={{
-            borderRadius: DS.r.md,
-            fontSize: "0.8rem",
-            fontFamily: DS.font,
-            boxShadow: DS.shadowLg,
+            borderRadius: "10px",
+            fontSize: "0.82rem",
+            boxShadow: T.shadowMd,
           }}
         >
           {snackbar.message}

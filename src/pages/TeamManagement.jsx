@@ -1,4 +1,4 @@
-// pages/TeamManagement.js
+// pages/TeamManagement.jsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
@@ -97,24 +97,13 @@ const C = {
   },
 };
 
-const ROLE_OPTIONS = [
-  "Inspector",
-  "Senior Inspector",
-  "Supervisor",
-  "Manager",
-  "Admin",
-];
 const STATUS_OPTIONS = ["active", "inactive", "onLeave"];
-
 const EMPTY_FILTERS = {
   role: "",
   status: "",
   performanceMin: "",
   performanceMax: "",
 };
-
-// Single unified search term
-const EMPTY_SEARCH = "";
 
 const getStatusStyle = (status) => {
   switch (status?.toLowerCase()) {
@@ -133,6 +122,7 @@ const getStatusStyle = (status) => {
         Icon: CloseIcon,
       };
     case "onleave":
+    case "on_leave":
     case "on leave":
       return { bg: C.infoBg, color: C.info, label: "On Leave", Icon: WorkIcon };
     default:
@@ -210,7 +200,7 @@ function StatCard({ title, value, icon: Icon, color }) {
             lineHeight: 1.2,
           }}
         >
-          {value?.toLocaleString() ?? 0}
+          {value ?? 0}
         </Typography>
       </CardContent>
     </Card>
@@ -226,7 +216,6 @@ function NoResultsState({
   onAddMember,
 }) {
   const isSearching = !!searchTerm || hasFilters;
-
   return (
     <Paper
       elevation={0}
@@ -275,7 +264,6 @@ function NoResultsState({
               <CloseIcon sx={{ fontSize: 12, color: "#fff" }} />
             </Box>
           </Box>
-
           <Typography
             sx={{
               fontWeight: 700,
@@ -286,7 +274,6 @@ function NoResultsState({
           >
             No results found
           </Typography>
-
           {searchTerm && (
             <Typography
               sx={{ fontSize: "0.85rem", color: C.text.secondary, mb: 0.5 }}
@@ -297,7 +284,6 @@ function NoResultsState({
               </Box>
             </Typography>
           )}
-
           <Typography
             sx={{
               fontSize: "0.82rem",
@@ -307,51 +293,8 @@ function NoResultsState({
               mx: "auto",
             }}
           >
-            Try different keywords, check for typos, or remove some filters to
-            see more results.
+            Try different keywords, check for typos, or remove some filters.
           </Typography>
-
-          <Box
-            sx={{
-              display: "inline-flex",
-              flexDirection: "column",
-              gap: 0.8,
-              mb: 3,
-              textAlign: "left",
-              bgcolor: C.bg,
-              borderRadius: "10px",
-              px: 2.5,
-              py: 1.5,
-              border: `1px solid ${C.border}`,
-            }}
-          >
-            {[
-              "Search by first name, last name, or full name",
-              "Try a partial email address",
-              "Use a role keyword like Inspector or Admin",
-            ].map((tip) => (
-              <Box
-                key={tip}
-                sx={{ display: "flex", alignItems: "center", gap: 1 }}
-              >
-                <Box
-                  sx={{
-                    width: 4,
-                    height: 4,
-                    borderRadius: "50%",
-                    bgcolor: C.text.muted,
-                    flexShrink: 0,
-                  }}
-                />
-                <Typography
-                  sx={{ fontSize: "0.78rem", color: C.text.secondary }}
-                >
-                  {tip}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-
           <Stack
             direction="row"
             spacing={1.5}
@@ -369,35 +312,9 @@ function NoResultsState({
                   borderRadius: "10px",
                   borderColor: C.border,
                   color: C.text.secondary,
-                  "&:hover": {
-                    borderColor: C.primary,
-                    color: C.primary,
-                    bgcolor: alpha(C.primary, 0.04),
-                  },
                 }}
               >
                 Clear Search
-              </Button>
-            )}
-            {hasFilters && (
-              <Button
-                variant="outlined"
-                startIcon={<FilterIcon sx={{ fontSize: 16 }} />}
-                onClick={onClearAll}
-                sx={{
-                  textTransform: "none",
-                  fontSize: "0.82rem",
-                  borderRadius: "10px",
-                  borderColor: C.border,
-                  color: C.text.secondary,
-                  "&:hover": {
-                    borderColor: C.primary,
-                    color: C.primary,
-                    bgcolor: alpha(C.primary, 0.04),
-                  },
-                }}
-              >
-                Clear Filters
               </Button>
             )}
             <Button
@@ -472,7 +389,7 @@ function NoResultsState({
 }
 
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
-function FilterBar({ filters, onFilterChange, activeFilterCount }) {
+function FilterBar({ filters, onFilterChange, activeFilterCount, roles }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [local, setLocal] = useState(filters);
 
@@ -569,11 +486,23 @@ function FilterBar({ filters, onFilterChange, activeFilterCount }) {
             <MenuItem value="" sx={{ fontSize: "0.85rem" }}>
               All Roles
             </MenuItem>
-            {ROLE_OPTIONS.map((r) => (
-              <MenuItem key={r} value={r} sx={{ fontSize: "0.85rem" }}>
-                {r}
-              </MenuItem>
-            ))}
+            {roles && roles.length > 0
+              ? roles.map((r) => (
+                  <MenuItem
+                    key={r._id || r.id || r.value}
+                    value={r.name || r.label}
+                    sx={{ fontSize: "0.85rem" }}
+                  >
+                    {r.name || r.label}
+                  </MenuItem>
+                ))
+              : ["Inspector", "Senior Inspector", "Supervisor", "Manager"].map(
+                  (r) => (
+                    <MenuItem key={r} value={r} sx={{ fontSize: "0.85rem" }}>
+                      {r}
+                    </MenuItem>
+                  ),
+                )}
           </Select>
         </FormControl>
 
@@ -616,6 +545,7 @@ function FilterBar({ filters, onFilterChange, activeFilterCount }) {
           }}
           InputProps={{ inputProps: { min: 0, max: 100 } }}
         />
+
         <TextField
           size="small"
           fullWidth
@@ -670,17 +600,14 @@ function FilterBar({ filters, onFilterChange, activeFilterCount }) {
 function MemberRow({ member, onView, onEdit, onDelete }) {
   const { bg, color, label, Icon } = getStatusStyle(member.status);
   const perfColor = getPerformanceColor(member.performanceScore);
-
-  // Use firstName and lastName for display
   const displayName =
     member.firstName && member.lastName
       ? `${member.firstName} ${member.lastName}`
       : member.name || "Unknown";
-
   const displayInitials =
     member.firstName && member.lastName
       ? `${member.firstName.charAt(0)}${member.lastName.charAt(0)}`.toUpperCase()
-      : member.initials || member.name?.charAt(0)?.toUpperCase() || "?";
+      : member.email?.charAt(0)?.toUpperCase() || "?";
 
   return (
     <TableRow
@@ -722,7 +649,13 @@ function MemberRow({ member, onView, onEdit, onDelete }) {
       </TableCell>
       <TableCell>
         <Chip
-          label={member.roleDisplay || member.role}
+          label={
+            member.teamRoleDisplay ||
+            member.teamRole ||
+            member.roleDisplay ||
+            member.role ||
+            "—"
+          }
           size="small"
           sx={{
             bgcolor: alpha(C.primary, 0.08),
@@ -850,16 +783,14 @@ function MemberRow({ member, onView, onEdit, onDelete }) {
 function MobileMemberCard({ member, onView, onEdit, onDelete }) {
   const { bg, color, label, Icon } = getStatusStyle(member.status);
   const perfColor = getPerformanceColor(member.performanceScore);
-
   const displayName =
     member.firstName && member.lastName
       ? `${member.firstName} ${member.lastName}`
       : member.name || "Unknown";
-
   const displayInitials =
     member.firstName && member.lastName
       ? `${member.firstName.charAt(0)}${member.lastName.charAt(0)}`.toUpperCase()
-      : member.initials || member.name?.charAt(0)?.toUpperCase() || "?";
+      : member.email?.charAt(0)?.toUpperCase() || "?";
 
   return (
     <Paper
@@ -930,7 +861,6 @@ function MobileMemberCard({ member, onView, onEdit, onDelete }) {
           </IconButton>
         </Stack>
       </Box>
-
       <Box
         sx={{
           display: "grid",
@@ -944,7 +874,7 @@ function MobileMemberCard({ member, onView, onEdit, onDelete }) {
             label: "Role",
             content: (
               <Chip
-                label={member.roleDisplay || member.role}
+                label={member.teamRoleDisplay || member.teamRole || "—"}
                 size="small"
                 sx={{
                   bgcolor: alpha(C.primary, 0.08),
@@ -998,7 +928,6 @@ function MobileMemberCard({ member, onView, onEdit, onDelete }) {
           </Box>
         ))}
       </Box>
-
       <Divider sx={{ my: 1 }} />
       <Box sx={{ mt: 1 }}>
         <Typography
@@ -1052,14 +981,11 @@ export default function TeamManagement() {
     deleteTeamMember,
     updateFilters,
     clearError,
+    roles,
   } = useTeam();
 
-    console.log("user...........", teamMembers)
-
-  // ── Single unified search term ──
-  const [searchTerm, setSearchTerm] = useState(EMPTY_SEARCH);
+  const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState(EMPTY_FILTERS);
-
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -1083,7 +1009,7 @@ export default function TeamManagement() {
     mountedRef.current = true;
   }, []);
 
-  // ── Debounced search + filter effect ──
+  // Debounced search + filter → updateFilters
   useEffect(() => {
     if (!mountedRef.current) return;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -1101,11 +1027,14 @@ export default function TeamManagement() {
     };
   }, [searchTerm, filters, currentPage, rowsPerPage, updateFilters]);
 
+  // Computed stats from members list
   const totalMembers = teamMembers?.length || 0;
   const activeMembers =
     teamMembers?.filter((m) => m.status === "active").length || 0;
   const onLeaveMembers =
-    teamMembers?.filter((m) => m.status === "onLeave").length || 0;
+    teamMembers?.filter((m) =>
+      ["onLeave", "on_leave", "on leave"].includes(m.status?.toLowerCase()),
+    ).length || 0;
   const avgPerformance =
     teamMembers?.length > 0
       ? Math.round(
@@ -1115,21 +1044,19 @@ export default function TeamManagement() {
       : 0;
 
   const activeFilterCount = Object.values(filters).filter(
-    (v) => v !== "" && v !== null && v !== undefined,
+    (v) => v !== "" && v !== null,
   ).length;
   const hasAnySearch = searchTerm.trim() !== "";
 
   const handleClearSearch = useCallback(() => {
-    setSearchTerm(EMPTY_SEARCH);
+    setSearchTerm("");
     setCurrentPage(0);
   }, []);
-
   const handleClearAll = useCallback(() => {
-    setSearchTerm(EMPTY_SEARCH);
+    setSearchTerm("");
     setFilters(EMPTY_FILTERS);
     setCurrentPage(0);
   }, []);
-
   const handleFilterChange = useCallback((newFilters) => {
     setFilters(newFilters);
     setCurrentPage(0);
@@ -1140,7 +1067,7 @@ export default function TeamManagement() {
     if (result.success) {
       showToast(result.message);
       setAddModalOpen(false);
-    } else showToast(result.error, "error");
+    } else showToast(result.error || "Failed to add member", "error");
     return result;
   };
 
@@ -1150,22 +1077,25 @@ export default function TeamManagement() {
       showToast(result.message);
       setEditModalOpen(false);
       setSelectedMember(null);
-    } else showToast(result.error, "error");
+    } else showToast(result.error || "Failed to update member", "error");
     return result;
   };
 
   const handleDeleteMember = async () => {
     if (!selectedMember) return;
-    const result = await deleteTeamMember(selectedMember.id, true);
+    const result = await deleteTeamMember(
+      selectedMember.id || selectedMember._id,
+      true,
+    );
     if (result.success) {
       showToast(result.message);
       setDeleteModalOpen(false);
       setSelectedMember(null);
-    } else showToast(result.error, "error");
-    return result;
+    } else showToast(result.error || "Failed to delete member", "error");
   };
 
-  const handleViewMember = (m) => navigate(`/admin/team-details/${m.id}`);
+  const handleViewMember = (m) =>
+    navigate(`/admin/team-details/${m.id || m._id}`);
   const handleEditClick = (m) => {
     setSelectedMember(m);
     setEditModalOpen(true);
@@ -1221,7 +1151,7 @@ export default function TeamManagement() {
       }}
     >
       <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3.5 } }}>
-        {/* Header */}
+        {/* ── Header ── */}
         <Box sx={{ mb: 3 }}>
           <Box
             sx={{
@@ -1269,7 +1199,7 @@ export default function TeamManagement() {
             </Button>
           </Box>
 
-          {/* Management Buttons */}
+          {/* Management nav buttons */}
           <Box
             sx={{
               display: "flex",
@@ -1285,26 +1215,26 @@ export default function TeamManagement() {
                 icon: BusinessIcon,
                 path: "/admin/departments",
               },
-              {
-                label: "Manage Locations",
-                icon: LocationOnIcon,
-                path: "/admin/locations",
-              },
             ].map(({ label, icon: Icon, path }) => (
               <Button
                 key={label}
-                variant="contained"
+                variant="outlined"
                 startIcon={<Icon />}
                 onClick={() => navigate(path)}
                 sx={{
-                  bgcolor: C.primary,
-                  "&:hover": { bgcolor: C.primaryDark },
+                  borderColor: C.border,
+                  color: C.text.primary,
                   borderRadius: "10px",
                   textTransform: "none",
-                  fontWeight: 600,
+                  fontWeight: 500,
                   fontSize: "0.8rem",
                   px: 2.5,
                   py: 0.8,
+                  "&:hover": {
+                    borderColor: C.primary,
+                    color: C.primary,
+                    bgcolor: alpha(C.primary, 0.04),
+                  },
                 }}
               >
                 {label}
@@ -1313,7 +1243,7 @@ export default function TeamManagement() {
           </Box>
         </Box>
 
-        {/* Stats */}
+        {/* ── Stats ── */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {statCards.map((card, i) => (
             <Grid item xs={6} sm={3} key={i}>
@@ -1322,7 +1252,7 @@ export default function TeamManagement() {
           ))}
         </Grid>
 
-        {/* Search + Filter Panel */}
+        {/* ── Search + Filter Panel ── */}
         <Paper
           elevation={0}
           sx={{
@@ -1381,7 +1311,6 @@ export default function TeamManagement() {
               }}
               sx={{ flex: 2, minWidth: 200 }}
             />
-
             <Divider
               orientation="vertical"
               flexItem
@@ -1390,13 +1319,12 @@ export default function TeamManagement() {
                 borderColor: C.border,
               }}
             />
-
             <FilterBar
               filters={filters}
               onFilterChange={handleFilterChange}
               activeFilterCount={activeFilterCount}
+              roles={roles}
             />
-
             {(hasAnySearch || activeFilterCount > 0) && (
               <Button
                 variant="text"
@@ -1417,7 +1345,7 @@ export default function TeamManagement() {
             )}
           </Stack>
 
-          {/* Active search/filter pills */}
+          {/* Active pills */}
           {(hasAnySearch || activeFilterCount > 0) && (
             <Box
               sx={{
@@ -1470,41 +1398,11 @@ export default function TeamManagement() {
                   }}
                 />
               )}
-              {filters.performanceMin && (
-                <Chip
-                  size="small"
-                  label={`Perf ≥ ${filters.performanceMin}%`}
-                  onDelete={() =>
-                    setFilters((f) => ({ ...f, performanceMin: "" }))
-                  }
-                  sx={{
-                    fontSize: "0.72rem",
-                    height: 24,
-                    bgcolor: alpha(C.warning, 0.08),
-                    color: C.warning,
-                  }}
-                />
-              )}
-              {filters.performanceMax && (
-                <Chip
-                  size="small"
-                  label={`Perf ≤ ${filters.performanceMax}%`}
-                  onDelete={() =>
-                    setFilters((f) => ({ ...f, performanceMax: "" }))
-                  }
-                  sx={{
-                    fontSize: "0.72rem",
-                    height: 24,
-                    bgcolor: alpha(C.warning, 0.08),
-                    color: C.warning,
-                  }}
-                />
-              )}
             </Box>
           )}
         </Paper>
 
-        {/* Error */}
+        {/* ── Error ── */}
         {error && (
           <Alert
             severity="error"
@@ -1515,7 +1413,7 @@ export default function TeamManagement() {
           </Alert>
         )}
 
-        {/* Content */}
+        {/* ── Content ── */}
         {loading && !teamMembers?.length ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
             <CircularProgress sx={{ color: C.primary }} />
@@ -1532,7 +1430,7 @@ export default function TeamManagement() {
           <Box>
             {teamMembers.map((m) => (
               <MobileMemberCard
-                key={m.id}
+                key={m.id || m._id}
                 member={m}
                 onView={handleViewMember}
                 onEdit={handleEditClick}
@@ -1596,7 +1494,7 @@ export default function TeamManagement() {
                 <TableBody>
                   {teamMembers.map((m) => (
                     <MemberRow
-                      key={m.id}
+                      key={m.id || m._id}
                       member={m}
                       onView={handleViewMember}
                       onEdit={handleEditClick}
@@ -1634,7 +1532,7 @@ export default function TeamManagement() {
         )}
       </Container>
 
-      {/* Modals */}
+      {/* ── Modals ── */}
       <AddMemberModal
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}

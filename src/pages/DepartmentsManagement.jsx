@@ -1,5 +1,5 @@
-// pages/DepartmentManagement.jsx
-import React, { useState, useEffect, useCallback } from "react";
+// src/pages/DepartmentManagement.jsx
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Container,
@@ -31,6 +31,8 @@ import {
   Switch,
   FormControlLabel,
   alpha,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -42,16 +44,21 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   People as PeopleIcon,
+  MoreVert as MoreVertIcon,
+  Refresh as RefreshIcon,
+  ArrowBack as ArrowBackIcon,  // Added back icon
 } from "@mui/icons-material";
-import { useTeam } from "../context/TeamContext";
+import { useNavigate } from "react-router-dom";  // Added for navigation
+import { useDepartment } from "../context/DepartmentContext";
 
 const C = {
-  primary: "#0d4a5c",
+  primary: "#0d4f63",
   primaryDark: "#0a3a49",
-  primaryBg: alpha("#0a3a49", 0.08),
+  primaryBg: alpha("#0d4f63", 0.08),
   success: "#10b981",
   successBg: "#ecfdf5",
   error: "#ef4444",
+  warning: "#f59e0b",
   surface: "#ffffff",
   bg: "#f9fafb",
   border: "#e5e7eb",
@@ -59,9 +66,9 @@ const C = {
   text: { primary: "#111827", secondary: "#6b7280", muted: "#9ca3af" },
 };
 
-const ACCENT = "#0a3a49";
+const ACCENT = "#0d4f63";
 
-// ─── Department Modal ─────────────────────────────────────────────────────────
+// Department Modal Component
 function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
   const [form, setForm] = useState({
     name: "",
@@ -72,24 +79,47 @@ function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
 
   useEffect(() => {
     if (open) {
-      setForm(
-        editItem
-          ? {
-              name: editItem.name || "",
-              description: editItem.description || "",
-              isActive: editItem.isActive !== false,
-            }
-          : { name: "", description: "", isActive: true },
-      );
+      if (editItem) {
+        setForm({
+          name: editItem.name || "",
+          description: editItem.description || "",
+          isActive: editItem.isActive !== false,
+        });
+      } else {
+        setForm({ name: "", description: "", isActive: true });
+      }
       setErrors({});
     }
   }, [editItem, open]);
 
   const validate = () => {
     const e = {};
-    if (!form.name.trim()) e.name = "Department name is required";
+    if (!form.name.trim()) {
+      e.name = "Department name is required";
+    } else if (form.name.trim().length < 2) {
+      e.name = "Department name must be at least 2 characters";
+    } else if (form.name.trim().length > 50) {
+      e.name = "Department name must be less than 50 characters";
+    } else if (!/^[a-zA-Z][a-zA-Z0-9\s_-]*$/.test(form.name.trim())) {
+      e.name = "Department name can only contain letters, numbers, spaces, underscores and hyphens";
+    }
+    
+    if (form.description && form.description.length > 200) {
+      e.description = "Description must be less than 200 characters";
+    }
+    
     setErrors(e);
-    return !Object.keys(e).length;
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (validate()) {
+      onSubmit({
+        ...form,
+        name: form.name.trim(),
+        description: form.description.trim(),
+      });
+    }
   };
 
   return (
@@ -144,8 +174,9 @@ function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             error={!!errors.name}
-            helperText={errors.name}
-            placeholder="e.g. Human Resources"
+            helperText={errors.name || "Enter a unique department name"}
+            placeholder="e.g., Human Resources"
+            autoFocus
             sx={{
               "& .MuiOutlinedInput-root": { borderRadius: "10px" },
               "& label": { fontSize: "0.85rem" },
@@ -161,6 +192,8 @@ function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
             rows={3}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             placeholder="Describe the department's responsibilities..."
+            error={!!errors.description}
+            helperText={errors.description}
             sx={{
               "& .MuiOutlinedInput-root": { borderRadius: "10px" },
               "& label": { fontSize: "0.85rem" },
@@ -174,6 +207,14 @@ function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
                 onChange={(e) =>
                   setForm({ ...form, isActive: e.target.checked })
                 }
+                sx={{
+                  "& .MuiSwitch-switchBase.Mui-checked": {
+                    color: ACCENT,
+                  },
+                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                    backgroundColor: ACCENT,
+                  },
+                }}
               />
             }
             label={
@@ -189,6 +230,7 @@ function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
         <Button
           onClick={onClose}
           variant="outlined"
+          disabled={loading}
           sx={{
             textTransform: "none",
             fontSize: "0.85rem",
@@ -200,9 +242,7 @@ function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
           Cancel
         </Button>
         <Button
-          onClick={() => {
-            if (validate()) onSubmit(form);
-          }}
+          onClick={handleSubmit}
           variant="contained"
           disabled={loading}
           sx={{
@@ -210,7 +250,7 @@ function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
             fontSize: "0.85rem",
             borderRadius: "10px",
             bgcolor: ACCENT,
-            "&:hover": { bgcolor: "#6d28d9" },
+            "&:hover": { bgcolor: "#0a3a49" },
             minWidth: 140,
           }}
         >
@@ -227,8 +267,8 @@ function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
   );
 }
 
-// ─── Delete Modal ─────────────────────────────────────────────────────────────
-function DeleteModal({ open, onClose, onConfirm, loading, item, itemType }) {
+// Delete Confirmation Modal
+function DeleteModal({ open, onClose, onConfirm, loading, item }) {
   return (
     <Dialog
       open={open}
@@ -253,22 +293,22 @@ function DeleteModal({ open, onClose, onConfirm, loading, item, itemType }) {
             <DeleteIcon sx={{ fontSize: 18, color: C.error }} />
           </Box>
           <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>
-            Delete {itemType}
+            Delete Department
           </Typography>
         </Box>
       </DialogTitle>
       <DialogContent>
-        <Typography sx={{ fontSize: "0.85rem", color: C.text.secondary }}>
+        <Typography sx={{ fontSize: "0.85rem", color: C.text.secondary, mb: 2 }}>
           Are you sure you want to delete <strong>{item?.name}</strong>? This
           action cannot be undone.
         </Typography>
         {item?.memberCount > 0 && (
           <Alert
             severity="warning"
-            sx={{ mt: 1.5, fontSize: "0.8rem", borderRadius: "10px" }}
+            sx={{ mt: 1, fontSize: "0.8rem", borderRadius: "10px" }}
           >
-            This {itemType.toLowerCase()} has {item.memberCount} member(s)
-            assigned to it.
+            This department has {item.memberCount} member(s) assigned.
+            Deleting it will affect these members.
           </Alert>
         )}
       </DialogContent>
@@ -276,6 +316,7 @@ function DeleteModal({ open, onClose, onConfirm, loading, item, itemType }) {
         <Button
           onClick={onClose}
           variant="outlined"
+          disabled={loading}
           sx={{
             textTransform: "none",
             fontSize: "0.85rem",
@@ -305,18 +346,23 @@ function DeleteModal({ open, onClose, onConfirm, loading, item, itemType }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// Main Component
 export default function DepartmentManagement() {
+  const navigate = useNavigate();  // Added for navigation
   const {
     departments,
-    departmentsPagination,
-    departmentsLoading,
+    loading,
     actionLoading,
+    error,
+    pagination,
+    canManageDepartments,
     fetchDepartments,
     createDepartment,
     updateDepartment,
     deleteDepartment,
-  } = useTeam();
+    toggleDepartmentStatus,
+    clearError,
+  } = useDepartment();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
@@ -325,54 +371,146 @@ export default function DepartmentManagement() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [toast, setToast] = useState({
     open: false,
     message: "",
     severity: "success",
   });
+  
+  const debounceTimerRef = useRef(null);
 
   const showToast = useCallback(
     (msg, sev = "success") =>
       setToast({ open: true, message: msg, severity: sev }),
     [],
   );
+  
   const closeToast = () => setToast((p) => ({ ...p, open: false }));
 
-  // fetchDepartments is stable (defined with [] deps in context), so this effect is safe
-  useEffect(() => {
-    const t = setTimeout(() => {
-      fetchDepartments(
-        { search: searchTerm, page: page + 1, limit: rowsPerPage },
-        true,
-      );
-    }, 300);
-    return () => clearTimeout(t);
+  // Debounced fetch function
+  const debouncedFetch = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      fetchDepartments({
+        search: searchTerm,
+        page: page + 1,
+        limit: rowsPerPage,
+        sort: "createdAt",
+        order: "desc",
+      });
+    }, 500);
   }, [searchTerm, page, rowsPerPage, fetchDepartments]);
 
+  useEffect(() => {
+    if (canManageDepartments) {
+      debouncedFetch();
+    }
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [debouncedFetch, canManageDepartments]);
+
+  // Reset pagination when search changes
+  useEffect(() => {
+    setPage(0);
+  }, [searchTerm]);
+
   const handleSubmit = async (formData) => {
-    const result = editItem
-      ? await updateDepartment(editItem._id, formData)
-      : await createDepartment(formData);
-    if (result.success) {
-      showToast(result.message);
-      setModalOpen(false);
-      setEditItem(null);
-    } else showToast(result.error, "error");
+    try {
+      let result;
+      if (editItem) {
+        result = await updateDepartment(editItem._id, formData);
+      } else {
+        // Check for duplicate department name before creating
+        const isDuplicate = departments.some(
+          dept => dept.name.toLowerCase() === formData.name.toLowerCase()
+        );
+        if (isDuplicate) {
+          showToast("A department with this name already exists", "error");
+          return;
+        }
+        result = await createDepartment(formData);
+      }
+      
+      if (result.success) {
+        showToast(result.message);
+        setModalOpen(false);
+        setEditItem(null);
+      } else {
+        showToast(result.error || "Operation failed", "error");
+      }
+    } catch (error) {
+      console.error("Department operation error:", error);
+      showToast(error.message || "An unexpected error occurred", "error");
+    }
   };
 
   const handleDelete = async () => {
-    const result = await deleteDepartment(deleteTarget._id);
-    if (result.success) {
-      showToast(result.message);
-      setDeleteModalOpen(false);
-      setDeleteTarget(null);
-    } else showToast(result.error, "error");
+    if (!deleteTarget) return;
+    
+    try {
+      const result = await deleteDepartment(deleteTarget._id);
+      if (result.success) {
+        showToast(result.message);
+        setDeleteModalOpen(false);
+        setDeleteTarget(null);
+      } else {
+        showToast(result.error || "Failed to delete department", "error");
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      showToast(error.message || "An unexpected error occurred", "error");
+    }
+  };
+
+  const handleToggleStatus = async (department) => {
+    try {
+      const result = await toggleDepartmentStatus(department._id, department.isActive);
+      if (result.success) {
+        showToast(`Department ${department.isActive ? "deactivated" : "activated"} successfully`);
+      } else {
+        showToast(result.error || "Failed to update status", "error");
+      }
+    } catch (error) {
+      showToast("Failed to update department status", "error");
+    }
+  };
+
+  const handleMenuOpen = (event, department) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedDepartment(department);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedDepartment(null);
+  };
+
+  const handleRefresh = () => {
+    fetchDepartments({
+      search: searchTerm,
+      page: page + 1,
+      limit: rowsPerPage,
+      sort: "createdAt",
+      order: "desc",
+    });
+    showToast("Departments refreshed", "info");
+  };
+
+  const handleGoBack = () => {
+    navigate(-1); // Navigate back to previous page
   };
 
   const statItems = [
     {
       label: "Total Departments",
-      value: departmentsPagination.total || departments.length,
+      value: pagination.total || departments.length,
       color: ACCENT,
       icon: BusinessIcon,
     },
@@ -390,6 +528,21 @@ export default function DepartmentManagement() {
     },
   ];
 
+  if (!canManageDepartments) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Paper sx={{ p: 4, textAlign: "center" }}>
+          <Typography variant="h5" color="error" gutterBottom>
+            Access Denied
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            You don't have permission to access this page. Only administrators can manage departments.
+          </Typography>
+        </Paper>
+      </Container>
+    );
+  }
+
   return (
     <Box
       sx={{
@@ -399,7 +552,7 @@ export default function DepartmentManagement() {
       }}
     >
       <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3.5 } }}>
-        {/* Header */}
+        {/* Header with Back Button */}
         <Box
           sx={{
             display: "flex",
@@ -410,21 +563,41 @@ export default function DepartmentManagement() {
             mb: 3,
           }}
         >
-          <Box>
-            <Typography
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: "1.25rem", sm: "1.5rem" },
-                color: C.text.primary,
-                letterSpacing: "-0.02em",
-                mb: 0.5,
-              }}
-            >
-              Department Management
-            </Typography>
-            <Typography sx={{ color: C.text.secondary, fontSize: "0.85rem" }}>
-              Organize your team into departments
-            </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            {/* Back Button */}
+            <Tooltip title="Go Back" arrow>
+              <IconButton
+                onClick={handleGoBack}
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: "10px",
+                  bgcolor: alpha(ACCENT, 0.08),
+                  color: ACCENT,
+                  "&:hover": {
+                    bgcolor: alpha(ACCENT, 0.15),
+                  },
+                }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+            </Tooltip>
+            <Box>
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  fontSize: { xs: "1.25rem", sm: "1.5rem" },
+                  color: C.text.primary,
+                  letterSpacing: "-0.02em",
+                  mb: 0.5,
+                }}
+              >
+                Department Management
+              </Typography>
+              <Typography sx={{ color: C.text.secondary, fontSize: "0.85rem" }}>
+                Organize your team into departments
+              </Typography>
+            </Box>
           </Box>
           <Button
             variant="contained"
@@ -441,13 +614,14 @@ export default function DepartmentManagement() {
               fontSize: "0.8rem",
               px: 2.5,
               py: 0.8,
+              "&:hover": { bgcolor: "#0a3a49" },
             }}
           >
             Add Department
           </Button>
         </Box>
 
-        {/* Stats */}
+        {/* Stats Cards */}
         <Box
           sx={{
             display: "grid",
@@ -518,7 +692,7 @@ export default function DepartmentManagement() {
           ))}
         </Box>
 
-        {/* Search */}
+        {/* Search and Refresh Bar */}
         <Paper
           elevation={0}
           sx={{
@@ -526,16 +700,18 @@ export default function DepartmentManagement() {
             border: `1px solid ${C.border}`,
             mb: 2.5,
             p: 1.5,
+            display: "flex",
+            gap: 1,
+            alignItems: "center",
           }}
         >
           <TextField
             fullWidth
-            placeholder="Search departments..."
+            placeholder="Search departments by name or description..."
             variant="standard"
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setPage(0);
             }}
             InputProps={{
               disableUnderline: true,
@@ -554,10 +730,15 @@ export default function DepartmentManagement() {
               sx: { fontSize: "0.9rem", color: C.text.primary, py: 0.8, px: 1 },
             }}
           />
+          <Tooltip title="Refresh">
+            <IconButton onClick={handleRefresh} size="small">
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
         </Paper>
 
-        {/* Table */}
-        {departmentsLoading && !departments.length ? (
+        {/* Department Table */}
+        {loading && !departments.length ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
             <CircularProgress sx={{ color: ACCENT }} />
           </Box>
@@ -571,15 +752,17 @@ export default function DepartmentManagement() {
             }}
           >
             <BusinessIcon sx={{ fontSize: 48, color: C.text.muted, mb: 1.5 }} />
-            <Typography sx={{ color: C.text.secondary, fontSize: "0.9rem" }}>
-              No departments found
+            <Typography sx={{ color: C.text.secondary, fontSize: "0.9rem", mb: 1 }}>
+              {searchTerm ? "No departments match your search" : "No departments found"}
             </Typography>
-            <Button
-              onClick={() => setModalOpen(true)}
-              sx={{ mt: 2, fontSize: "0.8rem" }}
-            >
-              Add your first department
-            </Button>
+            {!searchTerm && (
+              <Button
+                onClick={() => setModalOpen(true)}
+                sx={{ mt: 2, fontSize: "0.8rem" }}
+              >
+                Add your first department
+              </Button>
+            )}
           </Paper>
         ) : (
           <Paper
@@ -590,14 +773,13 @@ export default function DepartmentManagement() {
               overflow: "hidden",
             }}
           >
-            <TableContainer>
-              <Table>
+            <TableContainer sx={{ overflowX: "auto" }}>
+              <Table sx={{ minWidth: 800 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: C.bg }}>
                     {[
                       "Department",
                       "Description",
-                      "Members",
                       "Status",
                       "Created",
                       "Actions",
@@ -670,36 +852,20 @@ export default function DepartmentManagement() {
                         </Box>
                       </TableCell>
                       <TableCell>
-                        <Typography
-                          sx={{
-                            fontSize: "0.82rem",
-                            color: C.text.secondary,
-                            maxWidth: 220,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {dept.description || "—"}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 0.5,
-                          }}
-                        >
-                          <PeopleIcon
-                            sx={{ fontSize: 14, color: C.text.muted }}
-                          />
+                        <Tooltip title={dept.description || "No description"}>
                           <Typography
-                            sx={{ fontSize: "0.85rem", fontWeight: 500 }}
+                            sx={{
+                              fontSize: "0.82rem",
+                              color: C.text.secondary,
+                              maxWidth: 220,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
                           >
-                            {dept.memberCount || 0}
+                            {dept.description || "—"}
                           </Typography>
-                        </Box>
+                        </Tooltip>
                       </TableCell>
                       <TableCell>
                         <Chip
@@ -740,6 +906,7 @@ export default function DepartmentManagement() {
                                 setEditItem(dept);
                                 setModalOpen(true);
                               }}
+                              disabled={actionLoading}
                               sx={{
                                 width: 30,
                                 height: 30,
@@ -754,25 +921,22 @@ export default function DepartmentManagement() {
                               <EditIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Delete Department" arrow>
+                          <Tooltip title="More Options" arrow>
                             <IconButton
                               size="small"
-                              onClick={() => {
-                                setDeleteTarget(dept);
-                                setDeleteModalOpen(true);
-                              }}
+                              onClick={(e) => handleMenuOpen(e, dept)}
+                              disabled={actionLoading}
                               sx={{
                                 width: 30,
                                 height: 30,
                                 borderRadius: "8px",
                                 color: C.text.secondary,
                                 "&:hover": {
-                                  bgcolor: alpha(C.error, 0.08),
-                                  color: C.error,
+                                  bgcolor: alpha(ACCENT, 0.08),
                                 },
                               }}
                             >
-                              <DeleteIcon sx={{ fontSize: 16 }} />
+                              <MoreVertIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </Tooltip>
                         </Stack>
@@ -787,7 +951,7 @@ export default function DepartmentManagement() {
             >
               <TablePagination
                 component="div"
-                count={departmentsPagination.total || departments.length}
+                count={pagination.total || departments.length}
                 page={page}
                 onPageChange={(_, p) => setPage(p)}
                 rowsPerPage={rowsPerPage}
@@ -795,7 +959,7 @@ export default function DepartmentManagement() {
                   setRowsPerPage(parseInt(e.target.value, 10));
                   setPage(0);
                 }}
-                rowsPerPageOptions={[5, 10, 20]}
+                rowsPerPageOptions={[5, 10, 20, 50]}
                 sx={{
                   "& .MuiTablePagination-toolbar": {
                     fontSize: "0.8rem",
@@ -810,6 +974,7 @@ export default function DepartmentManagement() {
         )}
       </Container>
 
+      {/* Modals */}
       <DeptModal
         open={modalOpen}
         onClose={() => {
@@ -820,6 +985,7 @@ export default function DepartmentManagement() {
         loading={actionLoading}
         editItem={editItem}
       />
+      
       <DeleteModal
         open={deleteModalOpen}
         onClose={() => {
@@ -829,9 +995,57 @@ export default function DepartmentManagement() {
         onConfirm={handleDelete}
         loading={actionLoading}
         item={deleteTarget}
-        itemType="Department"
       />
 
+      {/* Action Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        PaperProps={{
+          sx: {
+            borderRadius: "12px",
+            minWidth: 150,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            handleToggleStatus(selectedDepartment);
+            handleMenuClose();
+          }}
+          sx={{ fontSize: "0.85rem", gap: 1 }}
+        >
+          {selectedDepartment?.isActive ? (
+            <>Deactivate</>
+          ) : (
+            <>Activate</>
+          )}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setEditItem(selectedDepartment);
+            setModalOpen(true);
+            handleMenuClose();
+          }}
+          sx={{ fontSize: "0.85rem", gap: 1 }}
+        >
+          <EditIcon sx={{ fontSize: 16 }} /> Edit
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setDeleteTarget(selectedDepartment);
+            setDeleteModalOpen(true);
+            handleMenuClose();
+          }}
+          sx={{ fontSize: "0.85rem", gap: 1, color: C.error }}
+        >
+          <DeleteIcon sx={{ fontSize: 16 }} /> Delete
+        </MenuItem>
+      </Menu>
+
+      {/* Toast Notifications */}
       <Snackbar
         open={toast.open}
         autoHideDuration={4000}
@@ -847,6 +1061,20 @@ export default function DepartmentManagement() {
           {toast.message}
         </Alert>
       </Snackbar>
+
+      {/* Error Snackbar */}
+      {error && (
+        <Snackbar
+          open={!!error}
+          autoHideDuration={6000}
+          onClose={clearError}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          <Alert onClose={clearError} severity="error" sx={{ borderRadius: 2 }}>
+            {error}
+          </Alert>
+        </Snackbar>
+      )}
     </Box>
   );
 }

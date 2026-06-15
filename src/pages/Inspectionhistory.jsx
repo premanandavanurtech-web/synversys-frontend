@@ -9,7 +9,6 @@ import {
   Chip,
   Avatar,
   Stack,
-  CircularProgress,
   Alert,
   Snackbar,
   Table,
@@ -29,38 +28,44 @@ import {
   Select,
   FormControl,
   Grid,
-  Card,
-  CardContent,
-  Rating,
+  Button,
 } from "@mui/material";
 import { createTheme, ThemeProvider, alpha } from "@mui/material/styles";
 import {
   Search as SearchIcon,
-  Refresh as RefreshIcon,
   Visibility as VisibilityIcon,
   Assignment as AssignmentIcon,
   Clear as ClearIcon,
-  PictureAsPdf as PdfIcon,
-  TableChart as ExcelIcon,
+  Download as DownloadIcon,
+  CalendarMonth as CalendarMonthIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useTeamAssignment } from "../context/TeamAssignmentContext";
 
 const theme = createTheme({
   palette: {
-    primary: { main: "#0d4a5c" },
+    primary: { main: "#0d3d52" },
     success: { main: "#10b981" },
     warning: { main: "#f59e0b" },
     error: { main: "#ef4444" },
   },
-  shape: { borderRadius: 12 },
+  shape: { borderRadius: 10 },
+  typography: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: { root: { textTransform: "none", fontWeight: 600 } },
+    },
+  },
 });
 
+// ─── Config ──────────────────────────────────────────────────────────────────
 const REVIEW_STATUS_CFG = {
-  pending_review: { label: "Pending Review", color: "#f59e0b", bg: "#fffbeb" },
-  approved: { label: "Approved", color: "#10b981", bg: "#ecfdf5" },
-  rejected: { label: "Rejected", color: "#ef4444", bg: "#fef2f2" },
-  needs_revision: { label: "Needs Revision", color: "#8b5cf6", bg: "#f5f3ff" },
+  pending_review: { label: "Under Review", color: "#0d3d52", bg: "#e6f3f8" },
+  approved: { label: "Approved", color: "#fff", bg: "#0d3d52" },
+  rejected: { label: "Rejected", color: "#dc2626", bg: "#fee2e2" },
+  needs_revision: { label: "Needs Revision", color: "#fff", bg: "#ef4444" },
 };
 
 const ReviewStatusChip = ({ status }) => {
@@ -71,10 +76,46 @@ const ReviewStatusChip = ({ status }) => {
     <Chip
       label={cfg.label}
       size="small"
-      sx={{ bgcolor: cfg.bg, color: cfg.color, fontWeight: 700 }}
+      sx={{
+        bgcolor: cfg.bg,
+        color: cfg.color,
+        fontWeight: 700,
+        fontSize: "0.7rem",
+        height: 24,
+        borderRadius: "12px",
+      }}
     />
   );
 };
+
+// ─── Stat Card ───────────────────────────────────────────────────────────────
+const StatCard = ({ title, value, color }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: { xs: 1.5, sm: 2 },
+      borderRadius: 2.5,
+      border: "1px solid #e2e8f0",
+      height: "100%",
+      width:"285px"
+    }}
+  >
+    <Typography
+      variant="body2"
+      color="text.secondary"
+      sx={{ mb: 0.5, fontSize: "0.78rem" }}
+    >
+      {title}
+    </Typography>
+    <Typography
+      variant="h6"
+      fontWeight={700}
+      sx={{ color: color || "#0f172a", fontSize: "1.5rem" }}
+    >
+      {value}
+    </Typography>
+  </Paper>
+);
 
 export default function InspectionHistory() {
   const navigate = useNavigate();
@@ -83,11 +124,23 @@ export default function InspectionHistory() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [inspections, setInspections] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    pendingReview: 0,
+    approved: 0,
+    rejected: 0,
+    needsRevision: 0,
+    avgCompletionRate: 0,
+    totalImages: 0,
+    totalAttachments: 0,
+  });
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10,
+    limit: 20,
     total: 0,
     totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
   });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -97,17 +150,19 @@ export default function InspectionHistory() {
     severity: "success",
   });
 
-  const toast = useCallback(
-    (msg, severity = "success") => setSnack({ open: true, msg, severity }),
-    [],
-  );
+  const toast = useCallback((msg, severity = "success") => {
+    setSnack({ open: true, msg, severity });
+  }, []);
 
   const loadInspections = useCallback(
     async (page = 1) => {
-      const result = await fetchInspectionHistory(page, 10);
+      const result = await fetchInspectionHistory(page, 20);
       if (result.success) {
         setInspections(result.inspections);
         setPagination(result.pagination);
+        if (result.summary) {
+          setSummary(result.summary);
+        }
       } else {
         toast(result.error, "error");
       }
@@ -119,9 +174,7 @@ export default function InspectionHistory() {
     loadInspections();
   }, []);
 
-  // FIXED: Proper ID handling and navigation
   const handleViewInspection = (submissionId) => {
-    console.log("Navigating to inspection details with ID:", submissionId);
     if (
       submissionId &&
       submissionId !== "undefined" &&
@@ -129,14 +182,11 @@ export default function InspectionHistory() {
     ) {
       navigate(`/team/inspection/${submissionId}`);
     } else {
-      console.error("Invalid inspection ID:", submissionId);
       toast("Invalid inspection ID", "error");
     }
   };
 
-  // FIXED: Proper export handling
   const handleExport = async (submissionId, format) => {
-    console.log(`Exporting inspection ${submissionId} as ${format}`);
     if (
       !submissionId ||
       submissionId === "undefined" ||
@@ -154,127 +204,104 @@ export default function InspectionHistory() {
   };
 
   const filteredInspections = inspections.filter((insp) => {
+    const assetName = insp.assignment?.assets?.[0]?.assetName || "";
+    const checklistName = insp.checklistSummary?.[0]?.checklistName || "";
     if (
       search &&
-      !insp.inspectionId?.toLowerCase().includes(search.toLowerCase())
-    )
+      !insp.inspectionId?.toLowerCase().includes(search.toLowerCase()) &&
+      !assetName.toLowerCase().includes(search.toLowerCase()) &&
+      !checklistName.toLowerCase().includes(search.toLowerCase())
+    ) {
       return false;
+    }
     if (statusFilter && insp.reviewStatus !== statusFilter) return false;
     return true;
   });
 
+  // Avg score across rows that have a performanceRating
+  const avgScore = (() => {
+    const rated = inspections.filter((i) => i.performanceRating != null);
+    if (rated.length === 0)
+      return summary.avgCompletionRate ? `${summary.avgCompletionRate}%` : "—";
+    const total = rated.reduce(
+      (sum, i) => sum + (Number(i.performanceRating) / 5) * 100,
+      0,
+    );
+    return `${Math.round(total / rated.length)}%`;
+  })();
+
+  if (loading && inspections.length === 0) {
+    return (
+      <ThemeProvider theme={theme}>
+        <Box sx={{ minHeight: "100vh" }}>
+          <Container maxWidth="xl" sx={{ py: 3 }}>
+            <Skeleton
+              variant="rectangular"
+              height={120}
+              sx={{ borderRadius: 2 }}
+            />
+            <Skeleton
+              variant="rectangular"
+              height={400}
+              sx={{ mt: 2, borderRadius: 2 }}
+            />
+          </Container>
+        </Box>
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ minHeight: "100vh"}}>
-        <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3.5 } }}>
+      <Box sx={{ minHeight: "100vh" }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3 } }}>
           {/* Header */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 2,
-              mb: 3,
-            }}
-          >
-            <Box>
-              <Typography variant={isMobile ? "h6" : "h5"} fontWeight={800}>
-                Inspection History
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                View all your completed inspections and submissions
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1}>
-              <Tooltip title="Refresh">
-                <IconButton
-                  onClick={() => loadInspections(pagination.page)}
-                  disabled={loading}
-                  sx={{
-                    border: "1px solid",
-                    borderColor: "divider",
-                    borderRadius: 2,
-                    bgcolor: "white",
-                  }}
-                >
-                  <RefreshIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Stack>
+          <Box sx={{ mb: 2.5 }}>
+            <Typography
+              variant={isMobile ? "h6" : "h5"}
+              fontWeight={800}
+              color="#0f172a"
+              sx={{ fontSize: { xs: "1.15rem", md: "1.35rem" } }}
+            >
+              Inspection History
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ fontSize: "0.8rem" }}
+            >
+              View your submitted inspection forms
+            </Typography>
           </Box>
 
-          {/* Stats Summary */}
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={6} sm={3} sx={{ width:"278px"}}>
-              <Paper sx={{ p: 2, textAlign: "center", borderRadius: 1}}>
-                <Typography variant="h5" fontWeight={800}>
-                  {pagination.total}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Total Inspections
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={6} sm={3} sx={{ width:"278px"}}>
-              <Paper sx={{ p: 2, textAlign: "center", borderRadius: 1 }}>
-                <Typography variant="h5" fontWeight={800} color="#10b981">
-                  {
-                    inspections.filter((i) => i.reviewStatus === "approved")
-                      .length
-                  }
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Approved
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={6} sm={3} sx={{ width:"278px"}}>
-              <Paper sx={{ p: 2, textAlign: "center", borderRadius: 1 }}>
-                <Typography variant="h5" fontWeight={800} color="#f59e0b">
-                  {
-                    inspections.filter(
-                      (i) => i.reviewStatus === "pending_review",
-                    ).length
-                  }
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Pending Review
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={6} sm={3} sx={{ width:"278px"}}>
-              <Paper sx={{ p: 2, textAlign: "center", borderRadius: 1 }}>
-                <Typography variant="h5" fontWeight={800} color="#ef4444">
-                  {
-                    inspections.filter((i) => i.reviewStatus === "rejected")
-                      .length
-                  }
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Rejected
-                </Typography>
-              </Paper>
-            </Grid>
-          </Grid>
-
-          {/* Filters */}
-          <Paper sx={{ mb: 2, p: 2, borderRadius: 1 }}>
+          {/* Search + Filters Bar */}
+          <Paper
+            elevation={0}
+            sx={{
+              mb: 2.5,
+              p: 1.5,
+              borderRadius: 2.5,
+              border: "1px solid #e2e8f0",
+            }}
+          >
             <Stack
               direction={{ xs: "column", sm: "row" }}
-              spacing={1.5}
+              spacing={1.25}
               alignItems={{ sm: "center" }}
             >
               <TextField
                 size="small"
-                placeholder="Search by Inspection ID..."
+                placeholder="Search submissions..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                sx={{ flex: 2, minWidth: 200 }}
+                sx={{
+                  flex: 1,
+                  "& .MuiOutlinedInput-root": { fontSize: "0.85rem" },
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon sx={{ fontSize: 18, color: "#9ca3af" }} />
+                      <SearchIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
                     </InputAdornment>
                   ),
                   endAdornment: search && (
@@ -284,15 +311,21 @@ export default function InspectionHistory() {
                   ),
                 }}
               />
-              <FormControl size="small" sx={{ minWidth: 160 }}>
+              <FormControl
+                size="small"
+                sx={{ minWidth: 140, width: { xs: "100%", sm: "auto" } }}
+              >
                 <Select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   displayEmpty
+                  sx={{ fontSize: "0.85rem" }}
                 >
-                  <MenuItem value="">All Status</MenuItem>
+                  <MenuItem value="" sx={{ fontSize: "0.85rem" }}>
+                    Status
+                  </MenuItem>
                   {Object.entries(REVIEW_STATUS_CFG).map(([k, cfg]) => (
-                    <MenuItem key={k} value={k}>
+                    <MenuItem key={k} value={k} sx={{ fontSize: "0.85rem" }}>
                       {cfg.label}
                     </MenuItem>
                   ))}
@@ -301,113 +334,144 @@ export default function InspectionHistory() {
             </Stack>
           </Paper>
 
-          {/* Inspections Table */}
-          {loading ? (
-            <Paper sx={{ p: 4, borderRadius: 1 }}>
-              <CircularProgress
-                size={40}
-                sx={{ display: "block", mx: "auto" }}
+          {/* Stats Summary */}
+          <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+            <Grid item xs={6} sm={3}>
+              <StatCard title="Total Submissions" value={summary.total} />
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <StatCard
+                title="Approved"
+                value={summary.approved}
+                color="#10b981"
               />
-              <Skeleton height={52} sx={{ mt: 2 }} />
-              <Skeleton height={52} />
-              <Skeleton height={52} />
-            </Paper>
-          ) : filteredInspections.length === 0 ? (
-            <Paper sx={{ p: 8, textAlign: "center", borderRadius: 3 }}>
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <StatCard
+                title="Under Review"
+                value={summary.pendingReview}
+                color="#ef4444"
+              />
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <StatCard title="Avg Score" value={avgScore} />
+            </Grid>
+          </Grid>
+
+          {/* Inspections Table */}
+          {filteredInspections.length === 0 ? (
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 4, sm: 8 },
+                textAlign: "center",
+                borderRadius: 2.5,
+                border: "1px solid #e2e8f0",
+              }}
+            >
               <Fade in>
                 <Box>
                   <Avatar
                     sx={{
-                      width: 80,
-                      height: 80,
-                      bgcolor: alpha("#0d4a5c", 0.07),
+                      width: 64,
+                      height: 64,
+                      bgcolor: alpha("#0d3d52", 0.07),
                       mx: "auto",
                       mb: 2,
                     }}
                   >
                     <AssignmentIcon
-                      sx={{ fontSize: 40, color: "#0d4a5c", opacity: 0.4 }}
+                      sx={{ fontSize: 32, color: "#0d3d52", opacity: 0.4 }}
                     />
                   </Avatar>
                   <Typography
                     fontWeight={700}
                     color="text.secondary"
                     variant="h6"
+                    sx={{ fontSize: "1rem" }}
                   >
                     No inspections found
                   </Typography>
-                  <Typography variant="body2" color="text.disabled">
-                    You haven't completed any inspections yet.
+                  <Typography
+                    variant="body2"
+                    color="text.disabled"
+                    sx={{ fontSize: "0.8rem" }}
+                  >
+                    You haven't submitted any inspections yet.
                   </Typography>
                 </Box>
               </Fade>
             </Paper>
           ) : (
-            <Paper sx={{ overflow: "hidden", borderRadius: 1 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                overflow: "hidden",
+                borderRadius: 2.5,
+                border: "1px solid #e2e8f0",
+              }}
+            >
               <TableContainer sx={{ overflowX: "auto" }}>
                 <Table sx={{ minWidth: 800 }}>
                   <TableHead>
-                    <TableRow sx={{ bgcolor: "#f9fafb" }}>
+                    <TableRow sx={{ bgcolor: "#f8fafc" }}>
                       <TableCell
                         sx={{
                           fontWeight: 700,
-                          fontSize: 11,
+                          fontSize: "0.7rem",
                           textTransform: "uppercase",
+                          color: "#475569",
                         }}
                       >
-                        Inspection ID
+                        InspectionId
                       </TableCell>
                       <TableCell
                         sx={{
                           fontWeight: 700,
-                          fontSize: 11,
+                          fontSize: "0.7rem",
                           textTransform: "uppercase",
+                          color: "#475569",
                         }}
                       >
-                        Checklist
+                        Form Type
                       </TableCell>
                       <TableCell
                         sx={{
                           fontWeight: 700,
-                          fontSize: 11,
+                          fontSize: "0.7rem",
                           textTransform: "uppercase",
+                          color: "#475569",
                         }}
                       >
-                        Asset
+                        Submitted Date
                       </TableCell>
                       <TableCell
                         sx={{
                           fontWeight: 700,
-                          fontSize: 11,
+                          fontSize: "0.7rem",
                           textTransform: "uppercase",
+                          color: "#475569",
                         }}
                       >
-                        Submitted At
+                        Status
                       </TableCell>
                       <TableCell
                         sx={{
                           fontWeight: 700,
-                          fontSize: 11,
+                          fontSize: "0.7rem",
                           textTransform: "uppercase",
+                          color: "#475569",
                         }}
                       >
-                        Review Status
+                        Score
                       </TableCell>
                       <TableCell
+                        align="left"
                         sx={{
                           fontWeight: 700,
-                          fontSize: 11,
+                          fontSize: "0.7rem",
                           textTransform: "uppercase",
-                        }}
-                      >
-                        Rating
-                      </TableCell>
-                      <TableCell
-                        align="center"
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: 11,
-                          textTransform: "uppercase",
+                          color: "#475569",
                         }}
                       >
                         Actions
@@ -415,112 +479,129 @@ export default function InspectionHistory() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {filteredInspections.map((insp, idx) => (
-                      <Fade
-                        in
-                        timeout={200 + idx * 40}
-                        key={insp._id || insp.id}
-                      >
-                        <TableRow hover>
-                          <TableCell>
-                            <Typography fontWeight={600} variant="body2">
-                              {insp.inspectionId || insp._id?.slice(-8)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">
-                              {insp.checklistName || "—"}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">
-                              {insp.assetTag || "—"}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">
-                              {insp.submittedAt
-                                ? new Date(
-                                    insp.submittedAt,
-                                  ).toLocaleDateString()
-                                : "—"}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <ReviewStatusChip status={insp.reviewStatus} />
-                          </TableCell>
-                          <TableCell>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
-                              }}
-                            >
-                              <Rating
-                                value={insp.performanceRating || 0}
-                                readOnly
-                                size="small"
-                                precision={0.5}
-                              />
-                              <Typography variant="caption">
-                                ({insp.performanceRating || 0})
+                    {filteredInspections.map((insp, idx) => {
+                      const submissionId = insp._id || insp.submissionId;
+                      const assetName = insp.inspectionId
+                      const formType =
+                        insp.checklistSummary?.[0]?.checklistName || "—";
+                      const reviewStatus = (
+                        insp.reviewStatus || "pending_review"
+                      ).toLowerCase();
+                      const score =
+                        insp.performanceRating != null
+                          ? `${Math.round((Number(insp.performanceRating) / 5) * 100)}%`
+                          : "—";
+                      const canView = reviewStatus !== "needs_revision";
+
+                      return (
+                        <Fade in timeout={150 + idx * 30} key={submissionId}>
+                          <TableRow hover>
+                            <TableCell>
+                              <Typography
+                                fontWeight={700}
+                                variant="body2"
+                                sx={{ fontSize: "0.82rem", color: "#0d3d52" }}
+                              >
+                                {assetName}
                               </Typography>
-                            </Box>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Stack
-                              direction="row"
-                              spacing={0.5}
-                              justifyContent="center"
-                            >
-                              <Tooltip title="View Details">
-                                <IconButton
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body2"
+                                sx={{ fontSize: "0.82rem", color: "#475569" }}
+                              >
+                                {formType}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body2"
+                                sx={{ fontSize: "0.82rem", color: "#475569" }}
+                              >
+                                {insp.submittedAt
+                                  ? new Date(insp.submittedAt)
+                                      .toLocaleDateString("en-US", {
+                                        year: "numeric",
+                                        month: "2-digit",
+                                        day: "2-digit",
+                                      })
+                                      .replace(/\//g, "-")
+                                  : "—"}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <ReviewStatusChip status={insp.reviewStatus} />
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body2"
+                                fontWeight={700}
+                                sx={{
+                                  fontSize: "0.82rem",
+                                  color:
+                                    score === "—"
+                                      ? "#94a3b8"
+                                      : Number(score.replace("%", "")) >= 80
+                                        ? "#10b981"
+                                        : "#dc2626",
+                                }}
+                              >
+                                {score}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="left">
+                              {reviewStatus === "needs_revision" ? (
+                                <Button
                                   size="small"
+                                  variant="contained"
                                   onClick={() =>
-                                    handleViewInspection(insp._id || insp.id)
+                                    navigate(`/team/task/${insp.assignmentId}`)
                                   }
                                   sx={{
+                                    bgcolor: "#ef4444",
+                                    "&:hover": { bgcolor: "#dc2626" },
+                                    fontSize: "0.72rem",
+                                    fontWeight: 700,
                                     borderRadius: 1.5,
-                                    bgcolor: alpha("#0d4a5c", 0.08),
+                                    boxShadow: "none",
+                                    whiteSpace: "nowrap",
                                   }}
                                 >
-                                  <VisibilityIcon
-                                    sx={{ fontSize: 17, color: "#0d4a5c" }}
-                                  />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Export PDF">
-                                <IconButton
-                                  size="small"
-                                  onClick={() =>
-                                    handleExport(insp._id || insp.id, "pdf")
-                                  }
-                                  sx={{ borderRadius: 1.5 }}
+                                  Start Remaining Task
+                                </Button>
+                              ) : (
+                                <Stack
+                                  direction="row"
+                                  spacing={0.5}
+                                  alignItems="center"
                                 >
-                                  <PdfIcon
-                                    sx={{ fontSize: 17, color: "#ef4444" }}
-                                  />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Export Excel">
-                                <IconButton
-                                  size="small"
-                                  onClick={() =>
-                                    handleExport(insp._id || insp.id, "excel")
-                                  }
-                                  sx={{ borderRadius: 1.5 }}
-                                >
-                                  <ExcelIcon
-                                    sx={{ fontSize: 17, color: "#10b981" }}
-                                  />
-                                </IconButton>
-                              </Tooltip>
-                            </Stack>
-                          </TableCell>
-                        </TableRow>
-                      </Fade>
-                    ))}
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={
+                                      <VisibilityIcon sx={{ fontSize: 15 }} />
+                                    }
+                                    onClick={() =>
+                                      handleViewInspection(submissionId)
+                                    }
+                                    sx={{
+                                      borderColor: "#e2e8f0",
+                                      color: "#0f172a",
+                                      fontSize: "0.75rem",
+                                      fontWeight: 600,
+                                      borderRadius: 1,
+                                      px: 1.5,
+                                    }}
+                                  >
+                                    View
+                                  </Button>
+                                </Stack>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        </Fade>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>
@@ -530,8 +611,7 @@ export default function InspectionHistory() {
                     p: 2,
                     display: "flex",
                     justifyContent: "center",
-                    borderTop: "1px solid",
-                    borderColor: "divider",
+                    borderTop: "1px solid #e2e8f0",
                   }}
                 >
                   <Pagination
@@ -539,6 +619,7 @@ export default function InspectionHistory() {
                     page={pagination.page}
                     onChange={(_, p) => loadInspections(p)}
                     color="primary"
+                    size="small"
                   />
                 </Box>
               )}
@@ -555,6 +636,7 @@ export default function InspectionHistory() {
           <Alert
             severity={snack.severity}
             onClose={() => setSnack({ ...snack, open: false })}
+            sx={{ borderRadius: 2, fontSize: "0.8rem" }}
           >
             {snack.msg}
           </Alert>

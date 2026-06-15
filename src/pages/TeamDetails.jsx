@@ -1,4 +1,4 @@
-// pages/admin/TeamMemberDetails.js
+// pages/admin/TeamMemberDetails.jsx - Updated with Edit Modal
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -31,6 +31,11 @@ import {
   TableHead,
   TableRow,
   Grid,
+  Card,
+  CardContent,
+  LinearProgress,
+  Badge,
+  Tooltip,
 } from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon,
@@ -38,15 +43,22 @@ import {
   Phone as PhoneIcon,
   LocationOn as LocationOnIcon,
   CalendarToday as CalendarTodayIcon,
-  Close as CloseIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
   Description as DescriptionIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
   AccessTime as AccessTimeIcon,
   WorkspacePremium as WorkspacePremiumIcon,
   TrendingUp as TrendingUpIcon,
+  Assignment as AssignmentIcon,
+  Person as PersonIcon,
+  Business as BusinessIcon,
+  Work as WorkIcon,
 } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTeam } from "../context/TeamContext";
+import EditTeamMemberModal from "./EditMemberModal";
+import DeleteConfirmModal from "./DeleteConfirmModal";
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 const C = {
@@ -58,7 +70,10 @@ const C = {
   surface: "#f1f4f8",
   card: "#ffffff",
   border: "#e2e8f0",
-  error: "#d32f2f",
+  error: "#ef4444",
+  errorBg: "#fee2e2",
+  warning: "#eab308",
+  warningBg: "#fef9c3",
   text: { primary: "#1e293b", secondary: "#64748b", disabled: "#94a3b8" },
 };
 
@@ -66,17 +81,23 @@ const C = {
 const getStatusStyle = (status) => {
   switch (status?.toLowerCase()) {
     case "active":
-      return { bg: C.successBg, color: C.success, label: "Active" };
+      return { bg: C.successBg, color: C.success, label: "Active", icon: "🟢" };
     case "inactive":
-      return { bg: "#ffebea", color: C.error, label: "Inactive" };
+      return { bg: C.errorBg, color: C.error, label: "Inactive", icon: "🔴" };
     case "onleave":
     case "on leave":
-      return { bg: "#dbeafe", color: "#1d4ed8", label: "On Leave" };
+      return {
+        bg: C.warningBg,
+        color: C.warning,
+        label: "On Leave",
+        icon: "🟡",
+      };
     default:
       return {
         bg: C.border,
         color: C.text.disabled,
         label: status || "Unknown",
+        icon: "⚪",
       };
   }
 };
@@ -86,85 +107,80 @@ const formatDateShort = (dateStr) => {
   const d = new Date(dateStr);
   return isNaN(d)
     ? dateStr
-    : `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    : d.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
 };
 
 // ─── Stat Card ───────────────────────────────────────────────────────────────
-function StatCard({ icon, iconBg, title, value }) {
+function StatCard({ icon, iconBg, title, value, trend }) {
   return (
     <Paper
       elevation={0}
       sx={{
-        flex: 1,
-        minWidth: 0,
-        borderRadius: 3,
+        borderRadius: 2,
         border: `1px solid ${C.border}`,
-        p: 3,
+        p: 2,
         bgcolor: C.card,
+        flex: 1,
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
+      <Box display="flex" alignItems="center" justifyContent="space-between">
+        <Box>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontSize: "0.7rem", fontWeight: 500 }}
+          >
+            {title}
+          </Typography>
+          <Typography
+            variant="h5"
+            fontWeight={700}
+            sx={{ mt: 0.5, fontSize: "1.3rem" }}
+          >
+            {value ?? "—"}
+          </Typography>
+          {trend && (
+            <Typography
+              variant="caption"
+              color={trend > 0 ? C.success : C.error}
+              sx={{ fontSize: "0.65rem" }}
+            >
+              {trend > 0 ? `+${trend}` : trend} from last month
+            </Typography>
+          )}
+        </Box>
         <Box
           sx={{
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             borderRadius: 2,
             bgcolor: iconBg,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            flexShrink: 0,
           }}
         >
           {icon}
         </Box>
-        <Typography
-          sx={{ fontSize: "0.82rem", color: C.text.secondary, fontWeight: 500 }}
-        >
-          {title}
-        </Typography>
       </Box>
-      <Typography
-        sx={{
-          fontSize: "2rem",
-          fontWeight: 700,
-          color: C.text.primary,
-          lineHeight: 1,
-        }}
-      >
-        {value ?? "—"}
-      </Typography>
     </Paper>
   );
 }
 
-// ─── Contact Row ─────────────────────────────────────────────────────────────
-function ContactRow({ icon, iconBg, label, value }) {
+// ─── Info Row ─────────────────────────────────────────────────────────────
+function InfoRow({ icon, label, value, color }) {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 2, py: 1.2 }}>
-      <Box
-        sx={{
-          width: 36,
-          height: 36,
-          borderRadius: 2,
-          bgcolor: iconBg,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        {icon}
-      </Box>
-      <Box>
-        <Typography
-          sx={{ fontSize: "0.72rem", color: C.text.secondary, mb: 0.2 }}
-        >
+    <Box display="flex" alignItems="center" gap={1.5} py={1}>
+      <Box sx={{ width: 32, color: color || C.text.secondary }}>{icon}</Box>
+      <Box flex={1}>
+        <Typography variant="caption" color="text.secondary" display="block">
           {label}
         </Typography>
-        <Typography
-          sx={{ fontSize: "0.85rem", fontWeight: 600, color: C.text.primary }}
-        >
+        <Typography variant="body2" fontWeight={500}>
           {value || "—"}
         </Typography>
       </Box>
@@ -172,487 +188,193 @@ function ContactRow({ icon, iconBg, label, value }) {
   );
 }
 
-// ─── Performance Row ──────────────────────────────────────────────────────────
-function PerformanceRow({ month, inspections, quality, maxInspections }) {
-  const inspPct = Math.min(
-    ((inspections || 0) / (maxInspections || 1)) * 100,
-    100,
+// ─── Performance Chart ──────────────────────────────────────────────────────
+function PerformanceChart({ data }) {
+  const maxInspections = Math.max(
+    ...(data?.map((d) => d.inspections) || [1]),
+    1,
   );
-  const qualPct = Math.min(((quality || 0) / 5) * 100, 100);
+
   return (
-    <Box sx={{ mb: 2.5 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.6 }}>
-        <Box sx={{ display: "flex", alignItems: "baseline", gap: 2 }}>
-          <Typography
-            sx={{ fontSize: "0.72rem", color: C.text.secondary, minWidth: 36 }}
-          >
-            {month}
-          </Typography>
-          <Typography
-            sx={{ fontSize: "0.8rem", color: C.text.primary, fontWeight: 500 }}
-          >
-            {inspections} inspections
-          </Typography>
+    <Box>
+      {data?.map((item, idx) => (
+        <Box key={idx} sx={{ mb: 2 }}>
+          <Box display="flex" justifyContent="space-between" mb={0.5}>
+            <Typography variant="caption" fontWeight={500}>
+              {item.month}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {item.inspections} inspections • Quality:{" "}
+              {item.qualityScore || item.quality}/5
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={(item.inspections / maxInspections) * 100}
+            sx={{
+              height: 6,
+              borderRadius: 3,
+              bgcolor: C.border,
+              "& .MuiLinearProgress-bar": {
+                bgcolor: C.primary,
+                borderRadius: 3,
+              },
+            }}
+          />
+          <LinearProgress
+            variant="determinate"
+            value={((item.qualityScore || item.quality || 0) / 5) * 100}
+            sx={{
+              height: 3,
+              borderRadius: 3,
+              mt: 0.5,
+              bgcolor: C.border,
+              "& .MuiLinearProgress-bar": {
+                bgcolor: "#cbd5e1",
+                borderRadius: 3,
+              },
+            }}
+          />
         </Box>
-        <Typography sx={{ fontSize: "0.72rem", color: C.text.secondary }}>
-          Quality: {quality}
-        </Typography>
-      </Box>
-      <Box
-        sx={{
-          height: 8,
-          borderRadius: 4,
-          bgcolor: C.border,
-          mb: 0.5,
-          overflow: "hidden",
-        }}
-      >
-        <Box
-          sx={{
-            width: `${inspPct}%`,
-            height: "100%",
-            bgcolor: C.primary,
-            borderRadius: 4,
-          }}
-        />
-      </Box>
-      <Box
-        sx={{
-          height: 4,
-          borderRadius: 4,
-          bgcolor: C.border,
-          overflow: "hidden",
-        }}
-      >
-        <Box
-          sx={{
-            width: `${qualPct}%`,
-            height: "100%",
-            bgcolor: "#cbd5e1",
-            borderRadius: 4,
-          }}
-        />
-      </Box>
+      ))}
     </Box>
   );
 }
 
-// ─── Tab Button ───────────────────────────────────────────────────────────────
-function TabBtn({ label, active, onClick, dot }) {
+// ─── Recent Inspections Table ──────────────────────────────────────────────
+function RecentInspectionsTable({ inspections }) {
   return (
-    <Button
-      onClick={onClick}
-      disableRipple
-      sx={{
-        textTransform: "none",
-        fontWeight: active ? 600 : 400,
-        fontSize: "0.82rem",
-        color: active ? C.text.primary : C.text.secondary,
-        bgcolor: active ? C.card : "transparent",
-        border: active ? `1px solid ${C.border}` : "1px solid transparent",
-        borderRadius: 5,
-        px: 2,
-        py: 0.6,
-        minWidth: 0,
-        position: "relative",
-        boxShadow: active ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-        "&:hover": { bgcolor: active ? C.card : "#eceff3" },
-      }}
-    >
-      {label}
-    </Button>
-  );
-}
-
-// ─── Recent Inspections Tab ───────────────────────────────────────────────────
-function RecentInspectionsTab({ inspections }) {
-  const fallback = [
-    {
-      id: "d1",
-      assetName: "Forklift Model X-200",
-      type: "Heavy Equipment",
-      location: "Warehouse A",
-      date: "2024-11-10",
-      status: "Completed",
-    },
-    {
-      id: "d2",
-      assetName: "Conveyor Belt A-12",
-      type: "Material Handling",
-      location: "Production Floor",
-      date: "2024-11-08",
-      status: "Completed",
-    },
-    {
-      id: "d3",
-      assetName: "Pallet Jack PJ-500",
-      type: "Light Equipment",
-      location: "Warehouse B",
-      date: "2024-11-05",
-      status: "Completed",
-    },
-  ];
-  const rows = inspections && inspections.length > 0 ? inspections : fallback;
-
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        borderRadius: 3,
-        border: `1px solid ${C.border}`,
-        overflow: "hidden",
-      }}
-    >
-      <TableContainer>
-        <Table>
-          <TableHead>
-            <TableRow>
-              {["Asset Name", "Type", "Location", "Date", "Status"].map((h) => (
-                <TableCell
-                  key={h}
-                  sx={{
-                    fontWeight: 600,
-                    fontSize: "0.78rem",
-                    color: C.text.secondary,
-                    py: 1.8,
-                    borderBottom: `1px solid ${C.border}`,
-                  }}
-                >
-                  {h}
+    <TableContainer>
+      <Table size="small">
+        <TableHead>
+          <TableRow sx={{ bgcolor: "#f8fafc" }}>
+            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
+              Inspection ID
+            </TableCell>
+            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
+              Asset
+            </TableCell>
+            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
+              Date
+            </TableCell>
+            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
+              Status
+            </TableCell>
+            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
+              Score
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {inspections?.length > 0 ? (
+            inspections.map((insp, idx) => (
+              <TableRow key={idx} hover>
+                <TableCell sx={{ fontSize: "0.75rem" }}>
+                  {insp.inspectionId || insp.id || "—"}
                 </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, i) => (
-              <TableRow
-                key={row.id || i}
-                sx={{
-                  "&:last-child td": { border: 0 },
-                  "& td": { borderBottom: `1px solid ${C.border}` },
-                }}
-              >
-                <TableCell
-                  sx={{
-                    fontSize: "0.85rem",
-                    fontWeight: 500,
-                    color: C.text.primary,
-                    py: 1.8,
-                  }}
-                >
-                  {row.assetName || row.asset?.assetName || "—"}
+                <TableCell sx={{ fontSize: "0.75rem" }}>
+                  {insp.assetName || insp.asset?.assetName || "—"}
                 </TableCell>
-                <TableCell sx={{ py: 1.8 }}>
+                <TableCell sx={{ fontSize: "0.75rem" }}>
+                  {formatDateShort(insp.submittedAt || insp.completedDate)}
+                </TableCell>
+                <TableCell>
                   <Chip
-                    label={row.type || row.checklistName || "—"}
-                    size="small"
-                    variant="outlined"
-                    sx={{
-                      borderColor: C.border,
-                      color: C.text.secondary,
-                      fontSize: "0.72rem",
-                      height: 24,
-                      borderRadius: 1.5,
-                    }}
-                  />
-                </TableCell>
-                <TableCell
-                  sx={{ fontSize: "0.82rem", color: C.text.secondary, py: 1.8 }}
-                >
-                  {row.location || row.asset?.currentLocation || "—"}
-                </TableCell>
-                <TableCell
-                  sx={{ fontSize: "0.82rem", color: C.text.primary, py: 1.8 }}
-                >
-                  {formatDateShort(row.date || row.completedDate)}
-                </TableCell>
-                <TableCell sx={{ py: 1.8 }}>
-                  <Chip
-                    label={row.status || "Completed"}
+                    label={insp.reviewStatus || insp.status || "Completed"}
                     size="small"
                     sx={{
+                      fontSize: "0.65rem",
+                      height: 22,
                       bgcolor: C.successBg,
                       color: C.success,
-                      fontSize: "0.72rem",
-                      fontWeight: 600,
-                      height: 24,
-                      borderRadius: 1.5,
                     }}
                   />
                 </TableCell>
+                <TableCell sx={{ fontSize: "0.75rem" }}>
+                  {insp.score || insp.performanceRating || "—"}/5
+                </TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Paper>
-  );
-}
-
-// ─── Assigned Assets Tab ──────────────────────────────────────────────────────
-function AssignedAssetsTab({ assets, onViewDetails }) {
-  const fallback = [
-    {
-      assignmentId: "a1",
-      asset: {
-        assetName: "Forklift Model X-200",
-        currentLocation: "Warehouse A",
-      },
-      type: "Heavy Equipment",
-      dueDate: "2024-11-15T00:00:00.000Z",
-    },
-    {
-      assignmentId: "a2",
-      asset: {
-        assetName: "Conveyor Belt A-12",
-        currentLocation: "Production Floor",
-      },
-      type: "Material Handling",
-      dueDate: "2024-11-18T00:00:00.000Z",
-    },
-    {
-      assignmentId: "a3",
-      asset: {
-        assetName: "Pallet Jack PJ-500",
-        currentLocation: "Warehouse B",
-      },
-      type: "Light Equipment",
-      dueDate: "2024-11-20T00:00:00.000Z",
-    },
-  ];
-  const rows = assets && assets.length > 0 ? assets : fallback;
-
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        borderRadius: 3,
-        border: `1px solid ${C.border}`,
-        overflow: "hidden",
-      }}
-    >
-      <TableContainer>
-        <Table>
-          <TableHead>
+            ))
+          ) : (
             <TableRow>
-              {[
-                "Asset Name",
-                "Type",
-                "Location",
-                "Next Inspection",
-                "Actions",
-              ].map((h) => (
-                <TableCell
-                  key={h}
-                  align={h === "Actions" ? "right" : "left"}
-                  sx={{
-                    fontWeight: 600,
-                    fontSize: "0.78rem",
-                    color: C.text.secondary,
-                    py: 1.8,
-                    borderBottom: `1px solid ${C.border}`,
-                  }}
-                >
-                  {h}
-                </TableCell>
-              ))}
+              <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                <Typography variant="body2" color="text.secondary">
+                  No recent inspections
+                </Typography>
+              </TableCell>
             </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, i) => (
-              <TableRow
-                key={row.assignmentId || i}
-                sx={{
-                  "&:last-child td": { border: 0 },
-                  "& td": { borderBottom: `1px solid ${C.border}` },
-                }}
-              >
-                <TableCell
-                  sx={{
-                    fontSize: "0.85rem",
-                    fontWeight: 500,
-                    color: C.text.primary,
-                    py: 1.8,
-                  }}
-                >
-                  {row.asset?.assetName || "—"}
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+
+// ─── Assigned Assets Table ─────────────────────────────────────────────────
+function AssignedAssetsTable({ assets }) {
+  return (
+    <TableContainer>
+      <Table size="small">
+        <TableHead>
+          <TableRow sx={{ bgcolor: "#f8fafc" }}>
+            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
+              Asset Name
+            </TableCell>
+            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
+              Type
+            </TableCell>
+            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
+              Due Date
+            </TableCell>
+            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
+              Priority
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {assets?.length > 0 ? (
+            assets.map((asset, idx) => (
+              <TableRow key={idx} hover>
+                <TableCell sx={{ fontSize: "0.75rem" }}>
+                  {asset.asset?.assetName || asset.checklistName || "—"}
                 </TableCell>
-                <TableCell sx={{ py: 1.8 }}>
+                <TableCell sx={{ fontSize: "0.75rem" }}>
+                  {asset.type || asset.checklistType || "—"}
+                </TableCell>
+                <TableCell sx={{ fontSize: "0.75rem" }}>
+                  {formatDateShort(asset.dueDate)}
+                </TableCell>
+                <TableCell>
                   <Chip
-                    label={
-                      row.type ||
-                      row.asset?.type ||
-                      row.checklistName ||
-                      "Equipment"
-                    }
+                    label={asset.priority || "Medium"}
                     size="small"
-                    variant="outlined"
                     sx={{
-                      borderColor: C.border,
-                      color: C.text.secondary,
-                      fontSize: "0.72rem",
-                      height: 24,
-                      borderRadius: 1.5,
+                      fontSize: "0.65rem",
+                      height: 22,
+                      bgcolor:
+                        asset.priority === "high" ? C.errorBg : C.warningBg,
+                      color: asset.priority === "high" ? C.error : C.warning,
                     }}
                   />
                 </TableCell>
-                <TableCell
-                  sx={{ fontSize: "0.82rem", color: C.text.secondary, py: 1.8 }}
-                >
-                  {row.asset?.currentLocation || "—"}
-                </TableCell>
-                <TableCell
-                  sx={{ fontSize: "0.82rem", color: C.text.primary, py: 1.8 }}
-                >
-                  {formatDateShort(row.dueDate || row.nextInspection)}
-                </TableCell>
-                <TableCell align="right" sx={{ py: 1.8 }}>
-                  <Button
-                    size="small"
-                    onClick={() => onViewDetails && onViewDetails(row)}
-                    sx={{
-                      fontSize: "0.78rem",
-                      fontWeight: 500,
-                      textTransform: "none",
-                      color: C.text.primary,
-                      p: 0,
-                      minWidth: 0,
-                      "&:hover": { color: C.primary, bgcolor: "transparent" },
-                    }}
-                  >
-                    View Details
-                  </Button>
-                </TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Paper>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
+                <Typography variant="body2" color="text.secondary">
+                  No assigned assets
+                </Typography>
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 }
 
-// ─── Schedule Tab ─────────────────────────────────────────────────────────────
-function ScheduleTab({ taskSummary }) {
-  const s = taskSummary || {};
-  const tasks = [
-    {
-      label: "Today's Tasks",
-      sub: `${s.dueToday ?? 3} inspections scheduled`,
-      badge: "Due Today",
-      highlighted: true,
-      badgeBg: C.primary,
-      badgeColor: "#fff",
-    },
-    {
-      label: "Tomorrow's Tasks",
-      sub: `${s.dueTomorrow ?? 2} inspections scheduled`,
-      badge: "Upcoming",
-      highlighted: false,
-      badgeBg: "#f1f5f9",
-      badgeColor: C.text.secondary,
-    },
-    {
-      label: "This Week",
-      sub: `${s.dueThisWeek ?? 8} inspections scheduled`,
-      badge: "Scheduled",
-      highlighted: false,
-      badgeBg: "#f1f5f9",
-      badgeColor: C.text.secondary,
-    },
-  ];
-
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        borderRadius: 3,
-        border: `1px solid ${C.border}`,
-        p: 2,
-        bgcolor: C.card,
-      }}
-    >
-      <Stack spacing={1.5}>
-        {tasks.map((task, i) => (
-          <Box
-            key={i}
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              p: 2,
-              borderRadius: 2.5,
-              bgcolor: task.highlighted ? "#eef4f7" : "transparent",
-              border: task.highlighted ? `1px solid #d4e6ed` : "none",
-            }}
-          >
-            <Box>
-              <Typography
-                sx={{
-                  fontWeight: 600,
-                  fontSize: "0.85rem",
-                  color: C.text.primary,
-                  mb: 0.3,
-                }}
-              >
-                {task.label}
-              </Typography>
-              <Typography sx={{ fontSize: "0.75rem", color: C.text.secondary }}>
-                {task.sub}
-              </Typography>
-            </Box>
-            <Chip
-              label={task.badge}
-              size="small"
-              sx={{
-                bgcolor: task.badgeBg,
-                color: task.badgeColor,
-                fontWeight: 600,
-                fontSize: "0.72rem",
-                height: 26,
-                borderRadius: 5,
-                border: task.highlighted ? "none" : `1px solid ${C.border}`,
-              }}
-            />
-          </Box>
-        ))}
-      </Stack>
-    </Paper>
-  );
-}
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-function DetailsSkeleton() {
-  return (
-    <Box sx={{ bgcolor: C.surface, minHeight: "100vh", p: { xs: 2, md: 3 } }}>
-      <Container maxWidth="xl" disableGutters>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
-          <Skeleton variant="circular" width={40} height={40} />
-          <Skeleton variant="circular" width={52} height={52} />
-          <Box>
-            <Skeleton variant="text" width={200} height={30} />
-            <Skeleton variant="text" width={160} height={18} />
-          </Box>
-        </Box>
-        <Box sx={{ display: "flex", gap: 2, mb: 2.5 }}>
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} variant="rounded" height={110} sx={{ flex: 1 }} />
-          ))}
-        </Box>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={4}>
-            <Skeleton variant="rounded" height={300} />
-          </Grid>
-          <Grid item xs={12} md={8}>
-            <Skeleton variant="rounded" height={400} />
-          </Grid>
-        </Grid>
-      </Container>
-    </Box>
-  );
-}
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main Component ─────────────────────────────────────────────────────────
 export default function TeamMemberDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -669,14 +391,6 @@ export default function TeamMemberDetails() {
   const [activeTab, setActiveTab] = useState("recent");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editForm, setEditForm] = useState({
-    teamRole: "",
-    department: "",
-    location: "",
-    phone: "",
-    bio: "",
-    status: "",
-  });
   const [toast, setToast] = useState({
     open: false,
     message: "",
@@ -689,41 +403,34 @@ export default function TeamMemberDetails() {
 
   useEffect(() => {
     if (id) fetchTeamMemberDetails(id);
-  }, [id]);
+  }, [id, fetchTeamMemberDetails]);
 
-  useEffect(() => {
-    if (selectedMemberDetails) {
-      const p = selectedMemberDetails.personalInfo || selectedMemberDetails;
-      setEditForm({
-        teamRole: p.role || p.teamRole || "",
-        department: p.department || "",
-        location: p.location || "",
-        phone: p.phone || "",
-        bio: p.bio || "",
-        status: p.status || "active",
-      });
-    }
-  }, [selectedMemberDetails]);
-
-  const handleEdit = async () => {
-    const result = await updateTeamMember(id, editForm);
-    if (result.success) {
-      showToast(result.message);
-      setEditDialogOpen(false);
-      fetchTeamMemberDetails(id);
-    } else showToast(result.error, "error");
+  const handleEditSuccess = (message) => {
+    showToast(message);
+    fetchTeamMemberDetails(id);
   };
 
-  const handleDelete = async () => {
-    const result = await deleteTeamMember(id, true);
+  const handleDeleteConfirm = async (permanent) => {
+    const result = await deleteTeamMember(id, permanent);
     if (result.success) {
       showToast(result.message);
       setDeleteDialogOpen(false);
-      setTimeout(() => navigate("/admin/team"), 1200);
-    } else showToast(result.error, "error");
+      setTimeout(() => navigate("/admin/team"), 1500);
+    } else {
+      showToast(result.error, "error");
+    }
   };
 
-  if (loading && !selectedMemberDetails) return <DetailsSkeleton />;
+  if (loading && !selectedMemberDetails) {
+    return (
+      <Box sx={{ bgcolor: C.surface, minHeight: "100vh", p: 3 }}>
+        <Container maxWidth="xl">
+          <Skeleton variant="rounded" height={400} />
+        </Container>
+      </Box>
+    );
+  }
+
   if (!selectedMemberDetails && !loading) {
     return (
       <Box
@@ -735,14 +442,14 @@ export default function TeamMemberDetails() {
           justifyContent: "center",
         }}
       >
-        <Paper sx={{ p: 4, textAlign: "center", borderRadius: 3 }}>
-          <Typography sx={{ fontWeight: 600, mb: 2 }}>
+        <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
+          <Typography variant="h6" gutterBottom>
             Team member not found
           </Typography>
           <Button
             variant="contained"
             onClick={() => navigate("/admin/team")}
-            sx={{ bgcolor: C.primary }}
+            sx={{ bgcolor: C.primary, textTransform: "none" }}
           >
             Back to Team
           </Button>
@@ -751,519 +458,390 @@ export default function TeamMemberDetails() {
     );
   }
 
-  // ── Map nested API response ──
   const m = selectedMemberDetails;
-  const pi = m?.personalInfo || m || {}; // personalInfo
+  const pi = m?.personalInfo || {};
   const stats = m?.stats || {};
   const monthlyPerformance = (m?.monthlyPerformance || []).filter(
     (r) => r.month && !r.month.includes("undefined"),
   );
-  const certifications = m?.certifications || [];
-  const recentInspections = m?.recentInspections || [];
-  const assignedAssets = m?.assignedAssets || [];
-  const taskSummary = m?.taskSummary || {};
-
   const statusStyle = getStatusStyle(pi?.status);
   const initials =
     pi?.firstName && pi?.lastName
       ? `${pi.firstName[0]}${pi.lastName[0]}`.toUpperCase()
       : pi?.email?.[0]?.toUpperCase() || "?";
   const fullName = [pi?.firstName, pi?.lastName].filter(Boolean).join(" ");
-  const roleLabel = (pi?.roleDisplay || pi?.teamRole || pi?.role || "—")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-  const departmentLabel = pi?.department || "";
-  const maxInspections = Math.max(
-    ...monthlyPerformance.map((r) => r.inspections || 0),
-    1,
-  );
 
-  // Stat cards — use real data, fallback to sensible defaults only when 0
+  const currentMember = {
+    id: id,
+    firstName: pi.firstName,
+    lastName: pi.lastName,
+    email: pi.email,
+    phone: pi.phone,
+    teamRole: pi.role,
+    teamRoleDisplay: pi.roleDisplay,
+    department: pi.department,
+    location: pi.location,
+    bio: pi.bio,
+    status: pi.status,
+    assignedCount: stats.totalInspections || 0,
+    completedCount: stats.thisMonth || 0,
+  };
+
   const statCards = [
     {
-      icon: <DescriptionIcon sx={{ fontSize: "0.9rem", color: "#64748b" }} />,
+      icon: <DescriptionIcon sx={{ fontSize: "1rem" }} />,
       iconBg: "#f1f5f9",
       title: "Total Inspections",
-      value: stats.totalInspections || 234,
+      value: stats.totalInspections || 0,
+      trend: null,
     },
     {
       icon: (
-        <CheckCircleOutlineIcon sx={{ fontSize: "0.9rem", color: "#0891b2" }} />
+        <CheckCircleOutlineIcon sx={{ fontSize: "1rem", color: C.success }} />
       ),
-      iconBg: "#e0f2fe",
+      iconBg: C.successBg,
       title: "This Month",
-      value: stats.thisMonth || 18,
+      value: stats.thisMonth || 0,
+      trend: stats.trend,
     },
     {
-      icon: <AccessTimeIcon sx={{ fontSize: "0.9rem", color: C.success }} />,
-      iconBg: "#dcfce7",
+      icon: <AccessTimeIcon sx={{ fontSize: "1rem", color: C.primary }} />,
+      iconBg: C.primaryLight,
       title: "On-Time Rate",
       value: stats.onTimeRate ? `${stats.onTimeRate}%` : "98%",
+      trend: null,
     },
     {
       icon: (
-        <WorkspacePremiumIcon sx={{ fontSize: "0.9rem", color: "#a855f7" }} />
+        <WorkspacePremiumIcon sx={{ fontSize: "1rem", color: "#a855f7" }} />
       ),
       iconBg: "#f3e8ff",
       title: "Quality Score",
-      value: stats.qualityScore ? `${stats.qualityScore}/5.0` : "4.9/5.0",
+      value: stats.qualityScore ? `${stats.qualityScore}/5` : "4.9/5",
+      trend: null,
     },
   ];
 
   return (
-    <Box sx={{ minHeight: "100vh", p: { xs: 2, md: 3 }}}>
+    <Box sx={{ minHeight: "100vh", bgcolor: C.surface, p: { xs: 2, md: 3 } }}>
       <Container maxWidth="xl" disableGutters>
-        {/* Header */}
-        <Box
+        {/* Header with Actions */}
+        <Paper
+          elevation={0}
           sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            p: 2.5,
             mb: 3,
+            borderRadius: 2,
+            border: `1px solid ${C.border}`,
+            bgcolor: C.card,
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <IconButton
-              onClick={() => navigate("/admin/team")}
-              sx={{
-                color: C.text.primary,
-                bgcolor: C.card,
-                border: `1px solid ${C.border}`,
-                p: 0.8,
-              }}
-            >
-              <ArrowBackIcon sx={{ fontSize: "1.1rem" }} />
-            </IconButton>
-            <Avatar
-              sx={{
-                width: 52,
-                height: 52,
-                bgcolor: C.primary,
-                fontWeight: 700,
-                fontSize: "1rem",
-              }}
-            >
-              {initials}
-            </Avatar>
-            <Box>
-              <Box
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="flex-start"
+            flexWrap="wrap"
+            gap={2}
+          >
+            <Box display="flex" alignItems="center" gap={2}>
+              <IconButton
+                onClick={() => navigate("/admin/team")}
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  mb: 0.3,
+                  color: C.text.primary,
+                  bgcolor: C.surface,
+                  border: `1px solid ${C.border}`,
                 }}
               >
-                <Typography
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: "1.3rem",
-                    color: C.text.primary,
-                  }}
+                <ArrowBackIcon />
+              </IconButton>
+              <Avatar
+                sx={{
+                  width: 64,
+                  height: 64,
+                  bgcolor: C.primary,
+                  fontWeight: 700,
+                  fontSize: "1.2rem",
+                }}
+              >
+                {initials}
+              </Avatar>
+              <Box>
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  gap={1.5}
+                  flexWrap="wrap"
                 >
-                  {fullName || "Team Member"}
+                  <Typography variant="h5" fontWeight={700}>
+                    {fullName || "Team Member"}
+                  </Typography>
+                  <Chip
+                    label={statusStyle.label}
+                    size="small"
+                    sx={{
+                      bgcolor: statusStyle.bg,
+                      color: statusStyle.color,
+                      fontWeight: 600,
+                    }}
+                  />
+                </Box>
+                <Typography variant="body2" color="text.secondary" mt={0.5}>
+                  {pi.roleDisplay || pi.role || "—"} •{" "}
+                  {pi.department || "No Department"} • Member since{" "}
+                  {formatDate(pi.joinDate)}
                 </Typography>
-                <Chip
-                  label={statusStyle.label}
-                  size="small"
-                  sx={{
-                    bgcolor: statusStyle.bg,
-                    color: statusStyle.color,
-                    fontWeight: 600,
-                    fontSize: "0.72rem",
-                    height: 22,
-                    borderRadius: 1.5,
-                  }}
-                />
               </Box>
-              <Typography sx={{ fontSize: "0.8rem", color: C.text.secondary }}>
-                {roleLabel}
-                {departmentLabel ? ` , ${departmentLabel}` : ""}
-              </Typography>
+            </Box>
+            <Box display="flex" gap={1}>
+              <Button
+                startIcon={<EditIcon />}
+                variant="outlined"
+                onClick={() => setEditDialogOpen(true)}
+                sx={{ textTransform: "none", borderRadius: 1.5 }}
+              >
+                Edit
+              </Button>
+              <Button
+                startIcon={<DeleteIcon />}
+                variant="outlined"
+                color="error"
+                onClick={() => setDeleteDialogOpen(true)}
+                sx={{ textTransform: "none", borderRadius: 1.5 }}
+              >
+                Delete
+              </Button>
             </Box>
           </Box>
-        </Box>
+        </Paper>
 
-        {/* Stat Cards */}
-        <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-          {statCards.map((s, i) => (
-            <StatCard key={i} {...s} />
-          ))}
-        </Box>
-
-        {/* Info Cards Row - Contact, Certifications, Performance side by side */}
+        {/* Stats Row */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          {/* Contact Information Card */}
+          {statCards.map((card, idx) => (
+            <Grid item xs={6} sm={3} key={idx}>
+              <StatCard {...card} />
+            </Grid>
+          ))}
+        </Grid>
+
+        {/* Main Content Grid */}
+        <Grid container spacing={3}>
+          {/* Left Column - Contact & Info */}
           <Grid item xs={12} md={4}>
             <Paper
               elevation={0}
               sx={{
-                borderRadius: 3,
+                borderRadius: 2,
                 border: `1px solid ${C.border}`,
                 bgcolor: C.card,
-                p: 3,
-                height: "100%",
+                overflow: "hidden",
+                mb: 3,
               }}
             >
-              <Typography
+              <Box
                 sx={{
-                  fontWeight: 700,
-                  fontSize: "0.95rem",
-                  color: C.text.primary,
-                  mb: 1.5,
+                  p: 2,
+                  bgcolor: "#f8fafc",
+                  borderBottom: `1px solid ${C.border}`,
                 }}
               >
-                Contact Information
-              </Typography>
-              <ContactRow
-                icon={<EmailIcon sx={{ fontSize: "1rem", color: "#64748b" }} />}
-                iconBg="#f1f5f9"
-                label="Email"
-                value={pi?.email || m?.contactInfo?.email}
-              />
-              <Divider sx={{ borderColor: C.border }} />
-              <ContactRow
-                icon={<PhoneIcon sx={{ fontSize: "1rem", color: "#64748b" }} />}
-                iconBg="#f1f5f9"
-                label="Phone"
-                value={pi?.phone || m?.contactInfo?.phone}
-              />
-              <Divider sx={{ borderColor: C.border }} />
-              <ContactRow
-                icon={
-                  <LocationOnIcon sx={{ fontSize: "1rem", color: "#64748b" }} />
-                }
-                iconBg="#f1f5f9"
-                label="Location"
-                value={
-                  pi?.location && pi.location !== "Not specified"
-                    ? pi.location
-                    : "New York, USA"
-                }
-              />
-              <Divider sx={{ borderColor: C.border }} />
-              <ContactRow
-                icon={
-                  <CalendarTodayIcon
-                    sx={{ fontSize: "1rem", color: "#64748b" }}
-                  />
-                }
-                iconBg="#f1f5f9"
-                label="Join Date"
-                value={pi?.joinDate ? formatDate(pi.joinDate) : "—"}
-              />
+                <Typography variant="subtitle2" fontWeight={600}>
+                  Contact Information
+                </Typography>
+              </Box>
+              <Box sx={{ p: 2 }}>
+                <InfoRow
+                  icon={<EmailIcon sx={{ fontSize: "1rem" }} />}
+                  label="Email"
+                  value={pi.email}
+                />
+                <Divider />
+                <InfoRow
+                  icon={<PhoneIcon sx={{ fontSize: "1rem" }} />}
+                  label="Phone"
+                  value={pi.phone}
+                />
+                <Divider />
+                <InfoRow
+                  icon={<LocationOnIcon sx={{ fontSize: "1rem" }} />}
+                  label="Location"
+                  value={pi.location || "Not specified"}
+                />
+                <Divider />
+                <InfoRow
+                  icon={<CalendarTodayIcon sx={{ fontSize: "1rem" }} />}
+                  label="Join Date"
+                  value={formatDate(pi.joinDate)}
+                />
+              </Box>
+            </Paper>
+
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: 2,
+                border: `1px solid ${C.border}`,
+                bgcolor: C.card,
+                overflow: "hidden",
+              }}
+            >
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: "#f8fafc",
+                  borderBottom: `1px solid ${C.border}`,
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight={600}>
+                  Bio
+                </Typography>
+              </Box>
+              <Box sx={{ p: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {pi.bio || "No bio provided"}
+                </Typography>
+              </Box>
             </Paper>
           </Grid>
 
-          {/* 6-Month Performance Card */}
-          <Grid item xs={12} md={4}>
+          {/* Right Column - Performance & Tabs */}
+          <Grid item xs={12} md={8}>
+            {/* Performance Section */}
             <Paper
               elevation={0}
               sx={{
-                borderRadius: 3,
+                borderRadius: 2,
                 border: `1px solid ${C.border}`,
                 bgcolor: C.card,
-                width:"836px",
-                p: 3,
-                height: "100%",
+                overflow: "hidden",
+                mb: 3,
               }}
             >
               <Box
                 sx={{
+                  p: 2,
+                  bgcolor: "#f8fafc",
+                  borderBottom: `1px solid ${C.border}`,
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  mb: 2.5,
                 }}
               >
-                <Typography
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: "0.95rem",
-                    color: C.text.primary,
-                  }}
-                >
-                  6-Month Performance
+                <Typography variant="subtitle2" fontWeight={600}>
+                  6-Month Performance Trend
                 </Typography>
-                <TrendingUpIcon sx={{ color: C.success, fontSize: "1.2rem" }} />
+                <TrendingUpIcon sx={{ color: C.success, fontSize: "1rem" }} />
               </Box>
-              {monthlyPerformance.length > 0 ? (
-                monthlyPerformance.map((row, i) => (
-                  <PerformanceRow
-                    key={i}
-                    month={row.month?.split(" ")[0]}
-                    inspections={row.inspections}
-                    quality={row.qualityScore ?? row.quality}
-                    maxInspections={maxInspections}
+              <Box sx={{ p: 2 }}>
+                {monthlyPerformance.length > 0 ? (
+                  <PerformanceChart data={monthlyPerformance} />
+                ) : (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    textAlign="center"
+                    py={3}
+                  >
+                    No performance data available
+                  </Typography>
+                )}
+              </Box>
+            </Paper>
+
+            {/* Tabs Section */}
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: 2,
+                border: `1px solid ${C.border}`,
+                bgcolor: C.card,
+                overflow: "hidden",
+              }}
+            >
+              <Box sx={{ borderBottom: `1px solid ${C.border}`, px: 2, pt: 1 }}>
+                <Box display="flex" gap={1}>
+                  {[
+                    {
+                      id: "recent",
+                      label: "Recent Inspections",
+                      icon: <DescriptionIcon sx={{ fontSize: "0.9rem" }} />,
+                    },
+                    {
+                      id: "assets",
+                      label: "Assigned Assets",
+                      icon: <AssignmentIcon sx={{ fontSize: "0.9rem" }} />,
+                    },
+                  ].map((tab) => (
+                    <Button
+                      key={tab.id}
+                      startIcon={tab.icon}
+                      onClick={() => setActiveTab(tab.id)}
+                      sx={{
+                        textTransform: "none",
+                        fontWeight: activeTab === tab.id ? 600 : 400,
+                        color:
+                          activeTab === tab.id ? C.primary : C.text.secondary,
+                        borderBottom:
+                          activeTab === tab.id
+                            ? `2px solid ${C.primary}`
+                            : "none",
+                        borderRadius: 0,
+                        px: 2,
+                        py: 1,
+                      }}
+                    >
+                      {tab.label}
+                    </Button>
+                  ))}
+                </Box>
+              </Box>
+              <Box sx={{ p: 2 }}>
+                {activeTab === "recent" && (
+                  <RecentInspectionsTable
+                    inspections={m.recentInspections || []}
                   />
-                ))
-              ) : (
-                <Typography sx={{ color: C.text.disabled, fontSize: "0.8rem" }}>
-                  No performance data available
-                </Typography>
-              )}
+                )}
+                {activeTab === "assets" && (
+                  <AssignedAssetsTable assets={m.assignedAssets || []} />
+                )}
+              </Box>
             </Paper>
           </Grid>
         </Grid>
 
-        {/* Tab Section - Recent Inspections, Assigned Assets, Schedule */}
-        <Paper
-          elevation={0}
-          sx={{
-            borderRadius: 3,
-            border: `1px solid ${C.border}`,
-            bgcolor: C.card,
-            overflow: "hidden",
-          }}
-        >
-          {/* Tab bar */}
-          <Box sx={{ borderBottom: `1px solid ${C.border}`, p: 2 }}>
-            <Box
-              sx={{
-                display: "flex",
-                gap: 0.5,
-                bgcolor: "#e8ecf0",
-                p: 0.5,
-                borderRadius: 6,
-                width: "fit-content",
-              }}
-            >
-              <TabBtn
-                label="Recent Inspections"
-                active={activeTab === "recent"}
-                onClick={() => setActiveTab("recent")}
-              />
-              <TabBtn
-                label="Assigned Assets"
-                active={activeTab === "assets"}
-                onClick={() => setActiveTab("assets")}
-                dot
-              />
-              <TabBtn
-                label="Schedule"
-                active={activeTab === "schedule"}
-                onClick={() => setActiveTab("schedule")}
-              />
-            </Box>
-          </Box>
+        {/* Edit Modal */}
+        <EditTeamMemberModal
+          open={editDialogOpen}
+          onClose={() => setEditDialogOpen(false)}
+          member={currentMember}
+          onSuccess={handleEditSuccess}
+        />
 
-          {/* Tab Content */}
-          <Box sx={{ p: 2 }}>
-            {activeTab === "recent" && (
-              <RecentInspectionsTab inspections={recentInspections} />
-            )}
-            {activeTab === "assets" && (
-              <AssignedAssetsTab
-                assets={assignedAssets}
-                onViewDetails={(a) => console.log("View:", a)}
-              />
-            )}
-            {activeTab === "schedule" && (
-              <ScheduleTab taskSummary={taskSummary} />
-            )}
-          </Box>
-        </Paper>
-      </Container>
+        {/* Delete Modal */}
+        <DeleteConfirmModal
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+          onConfirm={handleDeleteConfirm}
+          member={currentMember}
+          loading={actionLoading}
+        />
 
-      {/* Edit Dialog */}
-      <Dialog
-        open={editDialogOpen}
-        onClose={() => setEditDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle
-          sx={{ borderBottom: `1px solid ${C.border}`, pb: 1.5, pt: 2 }}
-        >
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>
-              Edit Team Member
-            </Typography>
-            <IconButton size="small" onClick={() => setEditDialogOpen(false)}>
-              <CloseIcon sx={{ fontSize: "1rem" }} />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <FormControl fullWidth size="small">
-              <InputLabel sx={{ fontSize: "0.75rem" }}>Team Role</InputLabel>
-              <Select
-                value={editForm.teamRole}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, teamRole: e.target.value })
-                }
-                label="Team Role"
-                sx={{ fontSize: "0.75rem" }}
-              >
-                {[
-                  "lead_inspector",
-                  "senior_inspector",
-                  "inspector",
-                  "junior_inspector",
-                  "trainee",
-                ].map((r) => (
-                  <MenuItem key={r} value={r} sx={{ fontSize: "0.75rem" }}>
-                    {r
-                      .replace(/_/g, " ")
-                      .replace(/\b\w/g, (c) => c.toUpperCase())}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              label="Department"
-              value={editForm.department}
-              size="small"
-              fullWidth
-              onChange={(e) =>
-                setEditForm({ ...editForm, department: e.target.value })
-              }
-              InputLabelProps={{ sx: { fontSize: "0.75rem" } }}
-              inputProps={{ style: { fontSize: "0.75rem" } }}
-            />
-            <TextField
-              label="Location"
-              value={editForm.location}
-              size="small"
-              fullWidth
-              onChange={(e) =>
-                setEditForm({ ...editForm, location: e.target.value })
-              }
-              InputLabelProps={{ sx: { fontSize: "0.75rem" } }}
-              inputProps={{ style: { fontSize: "0.75rem" } }}
-            />
-            <TextField
-              label="Phone"
-              value={editForm.phone}
-              size="small"
-              fullWidth
-              onChange={(e) =>
-                setEditForm({ ...editForm, phone: e.target.value })
-              }
-              InputLabelProps={{ sx: { fontSize: "0.75rem" } }}
-              inputProps={{ style: { fontSize: "0.75rem" } }}
-            />
-            <TextField
-              label="Bio"
-              value={editForm.bio}
-              multiline
-              rows={3}
-              size="small"
-              fullWidth
-              onChange={(e) =>
-                setEditForm({ ...editForm, bio: e.target.value })
-              }
-              InputLabelProps={{ sx: { fontSize: "0.75rem" } }}
-              inputProps={{ style: { fontSize: "0.75rem" } }}
-            />
-            <FormControl fullWidth size="small">
-              <InputLabel sx={{ fontSize: "0.75rem" }}>Status</InputLabel>
-              <Select
-                value={editForm.status}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, status: e.target.value })
-                }
-                label="Status"
-                sx={{ fontSize: "0.75rem" }}
-              >
-                {["active", "inactive", "onleave"].map((s) => (
-                  <MenuItem key={s} value={s} sx={{ fontSize: "0.75rem" }}>
-                    {s === "onleave"
-                      ? "On Leave"
-                      : s.charAt(0).toUpperCase() + s.slice(1)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Stack>
-        </DialogContent>
-        <DialogActions
-          sx={{ p: 2, pt: 1.5, borderTop: `1px solid ${C.border}` }}
-        >
-          <Button
-            onClick={() => setEditDialogOpen(false)}
-            disabled={actionLoading}
-            sx={{ fontSize: "0.75rem" }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleEdit}
-            variant="contained"
-            disabled={actionLoading}
-            sx={{ bgcolor: C.primary, fontSize: "0.75rem" }}
-          >
-            {actionLoading ? <CircularProgress size={18} /> : "Save Changes"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle sx={{ pb: 1, pt: 2 }}>
-          <Typography
-            sx={{ fontWeight: 700, color: C.error, fontSize: "1rem" }}
-          >
-            Delete Team Member
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
-          <Typography sx={{ color: C.text.secondary, fontSize: "0.8rem" }}>
-            Are you sure you want to permanently delete{" "}
-            <strong>{fullName}</strong>? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ p: 2, pt: 1 }}>
-          <Button
-            onClick={() => setDeleteDialogOpen(false)}
-            disabled={actionLoading}
-            sx={{ fontSize: "0.75rem" }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDelete}
-            variant="contained"
-            disabled={actionLoading}
-            sx={{ bgcolor: C.error, fontSize: "0.75rem" }}
-          >
-            {actionLoading ? (
-              <CircularProgress size={18} />
-            ) : (
-              "Delete Permanently"
-            )}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Toast */}
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={5000}
-        onClose={closeToast}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert
+        {/* Toast */}
+        <Snackbar
+          open={toast.open}
+          autoHideDuration={5000}
           onClose={closeToast}
-          severity={toast.severity}
-          variant="filled"
-          sx={{ borderRadius: 2, fontSize: "0.75rem" }}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         >
-          {toast.message}
-        </Alert>
-      </Snackbar>
+          <Alert
+            onClose={closeToast}
+            severity={toast.severity}
+            variant="filled"
+            sx={{ borderRadius: 2 }}
+          >
+            {toast.message}
+          </Alert>
+        </Snackbar>
+      </Container>
     </Box>
   );
 }

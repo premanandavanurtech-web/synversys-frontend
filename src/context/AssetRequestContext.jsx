@@ -11,10 +11,13 @@
 //  - getStats added (admin-only)
 //  - All setLoading/setError properly reset in finally blocks
 //  - FIXED: Proper response extraction and error handling for getRequestById
+//  - ADDED: linkChildAsset method for linking assets directly
+//  - FIXED: Team members can now link assets (canLinkAsset = true for both admin and team)
+//  - FIXED: Team members can now create child requests (canCreateChild = true)
 
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { useAuth } from "./AuthContexts";
-import { api } from "./AssetContext"; // ← single shared axios instance with auth interceptor
+import { api } from "./AssetContext";
 
 const AssetRequestContext = createContext();
 
@@ -41,8 +44,8 @@ export const AssetRequestProvider = ({ children }) => {
   const canReject = isAdmin;
   const canViewStats = isAdmin;
   const canCreateParent = true; // both admin & team
-  const canCreateChild = isAdmin; // only admin per Postman collection
-  const canLinkAsset = isAdmin;
+  const canCreateChild = true; // ✅ FIXED: Both admin AND team can create child requests
+  const canLinkAsset = true; // ✅ FIXED: Both admin AND team can link assets
   const canComplete = true; // both can complete (team = own, admin = any)
 
   // ── Generic request helper ────────────────────────────────────────────────────
@@ -66,8 +69,6 @@ export const AssetRequestProvider = ({ children }) => {
   }, []);
 
   // ── GET /asset-requests ───────────────────────────────────────────────────────
-  // Admin: all requests scoped to their admin account
-  // Team:  only their own requests
   const fetchRequests = useCallback(
     (filters = {}) =>
       request(async () => {
@@ -101,45 +102,30 @@ export const AssetRequestProvider = ({ children }) => {
   );
 
   // ── GET /asset-requests/:id ───────────────────────────────────────────────────
-  // FIXED: Properly handles different response structures and validates data
   const getRequestById = useCallback(
     (id) =>
       request(async () => {
         const res = await api.get(`/asset-requests/${id}`);
         
-        console.log("Raw API response:", res.data);
-        
-        // Handle different response structures
         let requestData = null;
         
-        // Case 1: Direct request object with _id
         if (res.data && res.data._id) {
           requestData = res.data;
-        }
-        // Case 2: Nested in data.request
-        else if (res.data?.data?.request && res.data.data.request._id) {
+        } else if (res.data?.data?.request && res.data.data.request._id) {
           requestData = res.data.data.request;
-        }
-        // Case 3: Nested in request property
-        else if (res.data?.request && res.data.request._id) {
+        } else if (res.data?.request && res.data.request._id) {
           requestData = res.data.request;
-        }
-        // Case 4: Success wrapper with data
-        else if (res.data?.success && res.data?.data) {
+        } else if (res.data?.success && res.data?.data) {
           requestData = res.data.data.request || res.data.data;
-        }
-        // Case 5: Check if response has the minimal required fields
-        else if (res.data && (res.data.status || res.data.requestType)) {
+        } else if (res.data && (res.data.status || res.data.requestType)) {
           requestData = res.data;
         }
         
-        // Validate that we got a valid request object
         if (!requestData || !requestData._id) {
           console.error("Invalid request data received:", res.data);
           throw new Error("Request not found or invalid data structure");
         }
         
-        console.log("Extracted request data:", requestData);
         return requestData;
       }),
     [request],
@@ -177,7 +163,6 @@ export const AssetRequestProvider = ({ children }) => {
   );
 
   // ── POST /asset-requests/parent ──────────────────────────────────────────────
-  // Both admin and team can create parent requests
   const createParentRequest = useCallback(
     (data) =>
       request(async () => {
@@ -187,22 +172,33 @@ export const AssetRequestProvider = ({ children }) => {
     [request],
   );
 
-  // Alias kept for backwards compat
   const createRequest = createParentRequest;
 
-  // ── POST /asset-requests/:parentId/child (admin only) ────────────────────────
+  // ── POST /asset-requests/:parentId/child (UPDATED - both admin and team) ─────
   const createChildRequest = useCallback(
     (parentId, data) =>
       request(async () => {
-        if (!canCreateChild) throw new Error("Access denied: admin only");
+        // ✅ Removed admin-only restriction - both admin and team can create child requests
         const res = await api.post(`/asset-requests/${parentId}/child`, data);
         return res.data;
       }),
-    [request, canCreateChild],
+    [request],
+  );
+
+  // ── POST /asset-requests/:requestId/link-child ──────────────────────────────────
+  const linkChildAsset = useCallback(
+    (requestId, childAssetId, relationshipType = "accessory") =>
+      request(async () => {
+        const res = await api.post(`/asset-requests/${requestId}/link-child`, {
+          childAssetId,
+          relationshipType,
+        });
+        return res.data;
+      }),
+    [request],
   );
 
   // ── PATCH /asset-requests/:id/approve (admin only) ───────────────────────────
-  // Backend expects { approvalNotes: "..." }  (key from Postman collection)
   const approveRequest = useCallback(
     (id, approvalNotes = "") =>
       request(async () => {
@@ -216,7 +212,6 @@ export const AssetRequestProvider = ({ children }) => {
   );
 
   // ── PATCH /asset-requests/:id/reject (admin only) ────────────────────────────
-  // Backend expects { reason: "..." }
   const rejectRequest = useCallback(
     (id, reason) =>
       request(async () => {
@@ -228,7 +223,6 @@ export const AssetRequestProvider = ({ children }) => {
   );
 
   // ── PATCH /asset-requests/:id/complete ───────────────────────────────────────
-  // Admin can complete any approved request; team can only complete their own approved request
   const completeRequest = useCallback(
     (id, completionNotes = "") =>
       request(async () => {
@@ -240,18 +234,17 @@ export const AssetRequestProvider = ({ children }) => {
     [request],
   );
 
-  // ── POST /asset-requests/:requestId/link-asset (admin only) ──────────────────
+  // ── POST /asset-requests/:requestId/link-asset (UPDATED - both admin and team) ──
   const linkAsset = useCallback(
     (requestId, childAssetId, relationshipType = "accessory") =>
       request(async () => {
-        if (!canLinkAsset) throw new Error("Access denied: admin only");
         const res = await api.post(`/asset-requests/${requestId}/link-asset`, {
           childAssetId,
           relationshipType,
         });
         return res.data;
       }),
-    [request, canLinkAsset],
+    [request],
   );
 
   // ── PATCH /asset-requests/:parentId/child/:childId/status (admin only) ───────
@@ -271,17 +264,15 @@ export const AssetRequestProvider = ({ children }) => {
   const value = {
     loading,
     error,
-    // Role flags
     isAdmin,
     isTeam,
     canApprove,
     canReject,
     canViewStats,
     canCreateParent,
-    canCreateChild,
-    canLinkAsset,
+    canCreateChild: true,
+    canLinkAsset: true,
     canComplete,
-    // API methods
     fetchRequests,
     getRequestById,
     getRequestsByAsset,
@@ -294,6 +285,7 @@ export const AssetRequestProvider = ({ children }) => {
     rejectRequest,
     completeRequest,
     linkAsset,
+    linkChildAsset,
     updateChildStatus,
   };
 

@@ -1,4 +1,5 @@
-// pages/AssignmentChecklist.jsx
+// pages/AssignmentChecklist.jsx - Complete fixed version with admin validation
+
 import React, {
   useState,
   useEffect,
@@ -49,6 +50,9 @@ import {
   Skeleton,
   Fade,
   Zoom,
+  Slide,
+  Divider,
+  LinearProgress,
 } from "@mui/material";
 import {
   createTheme,
@@ -74,60 +78,109 @@ import {
   CalendarMonth as CalendarMonthIcon,
   SwapHoriz as SwapHorizIcon,
   Clear as ClearIcon,
-  Restore as RestoreIcon,
   Inventory2 as InventoryIcon,
   FlagOutlined as FlagIcon,
   NotesOutlined as NotesIcon,
   PersonSearch as PersonSearchIcon,
   GroupAdd as GroupAddIcon,
   PendingActions as PendingActionsIcon,
-  RateReview as ReviewIcon,
-  Cancel as CancelIcon,
+  TrendingUp as TrendingUpIcon,
+  WarningAmber as WarningAmberIcon,
+  Schedule as ScheduleIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContexts";
 import { useAssignment } from "../context/AssignmentContext";
 
-// ─── Theme ─────────────────────────────────────────────────────────────────────
+// ─── Modern Theme ─────────────────────────────────────────────────────────────────────
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#0d4a5c",
-      dark: "#072e3a",
-      light: "#e3f0f4",
-      contrastText: "#fff",
+      main: "#1e5887",
+      light: "#084d68",
+      dark: "#104661",
+      contrastText: "#ffffff",
     },
-    secondary: { main: "#1a7a9a" },
-    success: { main: "#10b981", light: "#ecfdf5", dark: "#059669" },
-    warning: { main: "#f59e0b", light: "#fffbeb" },
-    error: { main: "#ef4444", light: "#fef2f2" },
-    info: { main: "#3b82f6", light: "#eff6ff" },
-    text: { primary: "#111827", secondary: "#6b7280", disabled: "#9ca3af" },
-    background: { default: "#f0f4f8", paper: "#ffffff" },
-    divider: "#e5e7eb",
+    secondary: {
+      main: "#ec4899",
+      light: "#f472b6",
+      dark: "#db2777",
+    },
+    success: {
+      main: "#10b981",
+      light: "#34d399",
+      dark: "#059669",
+    },
+    warning: {
+      main: "#f59e0b",
+      light: "#fbbf24",
+      dark: "#d97706",
+    },
+    error: {
+      main: "#ef4444",
+      light: "#f87171",
+      dark: "#dc2626",
+    },
+    info: {
+      main: "#3b82f6",
+      light: "#60a5fa",
+      dark: "#2563eb",
+    },
+    background: {
+      default: "#f8fafc",
+      paper: "#ffffff",
+    },
+    text: {
+      primary: "#0f172a",
+      secondary: "#64748b",
+      disabled: "#94a3b8",
+    },
+    divider: "#e2e8f0",
   },
   typography: {
-    fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif",
-    button: { textTransform: "none", fontWeight: 700 },
+    fontFamily: "'Inter', 'Poppins', system-ui, sans-serif",
+    button: { textTransform: "none", fontWeight: 600, fontSize: "0.8125rem" },
   },
-  shape: { borderRadius: 12 },
+  shape: { borderRadius: 16 },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: 12,
+          padding: "8px 16px",
           boxShadow: "none",
           "&:hover": { boxShadow: "none" },
+        },
+        contained: {
+          background: "linear-gradient(135deg, #1e5f79 0%, #175f7b 100%)",
+          "&:hover": {
+            background: "linear-gradient(135deg, #084d68 0%, #0b3a4c 100%)",
+          },
         },
       },
     },
     MuiPaper: {
       styleOverrides: {
-        root: { borderRadius: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" },
+        root: {
+          borderRadius: 20,
+          backgroundImage: "none",
+        },
       },
     },
-    MuiChip: { styleOverrides: { root: { fontWeight: 600, fontSize: 11 } } },
-    MuiTextField: { defaultProps: { size: "small" } },
-    MuiSelect: { defaultProps: { size: "small" } },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 20,
+          border: "1px solid #e2e8f0",
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          borderBottomColor: "#f1f5f9",
+        },
+      },
+    },
   },
 });
 
@@ -143,7 +196,7 @@ const STATUS_CFG = {
     label: "In Progress",
     color: "#3b82f6",
     bg: "#eff6ff",
-    icon: HourglassTopIcon,
+    icon: PendingActionsIcon,
   },
   submitted: {
     label: "Submitted",
@@ -173,45 +226,50 @@ const STATUS_CFG = {
     label: "Overdue",
     color: "#ef4444",
     bg: "#fef2f2",
-    icon: ErrorOutlineIcon,
+    icon: WarningAmberIcon,
   },
 };
 
 const PRIORITY_CFG = {
-  low: { label: "Low", color: "#10b981", bg: "#ecfdf5" },
-  medium: { label: "Medium", color: "#f59e0b", bg: "#fffbeb" },
-  high: { label: "High", color: "#ef4444", bg: "#fef2f2" },
-  critical: { label: "Critical", color: "#7f1d1d", bg: "#fee2e2" },
+  low: { label: "Low", color: "#10b981", bg: "#ecfdf5", icon: "🟢" },
+  medium: { label: "Medium", color: "#f59e0b", bg: "#fffbeb", icon: "🟡" },
+  high: { label: "High", color: "#ef4444", bg: "#fef2f2", icon: "🔴" },
+  critical: { label: "Critical", color: "#7f1d1d", bg: "#fee2e2", icon: "💀" },
 };
 
 // ─── Styled Components ──────────────────────────────────────────────────────────
-const HoverCard = styled(Card)(() => ({
-  transition: "transform 0.18s, box-shadow 0.18s",
+const GlassCard = styled(Card)(({ theme }) => ({
+  background: "rgba(255, 255, 255, 0.9)",
+  backdropFilter: "blur(10px)",
+  border: "1px solid rgba(99, 102, 241, 0.1)",
+  transition: "all 0.3s ease",
   "&:hover": {
-    transform: "translateY(-2px)",
-    boxShadow: "0 8px 24px rgba(0,0,0,0.11)",
+    transform: "translateY(-4px)",
+    boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+    borderColor: "rgba(99, 102, 241, 0.2)",
   },
 }));
 
-const StatCard = ({
+const GradientText = styled(Typography)(({ theme }) => ({
+  background: "linear-gradient(135deg, #363637 0%, #212122 100%)",
+  backgroundClip: "text",
+  WebkitBackgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+}));
+
+// ─── Stat Card Component ──────────────────────────────────────────────────────────
+const ModernStatCard = ({
   label,
   value,
   icon: Icon,
-  color,
-  bg,
-  loading,
+  trend,
   subtitle,
+  loading,
+  color,
 }) => (
   <Zoom in timeout={300}>
-    <HoverCard
-      sx={{
-        border: "1px solid",
-        borderColor: "divider",
-        height: "100%",
-        width: "270px",
-      }}
-    >
-      <CardContent sx={{ p: "20px !important" }}>
+    <GlassCard sx={{ height: "100%", overflow: "hidden", width: "275px" }}>
+      <CardContent sx={{ p: 2.5 }}>
         <Box
           sx={{
             display: "flex",
@@ -219,30 +277,40 @@ const StatCard = ({
             alignItems: "flex-start",
           }}
         >
-          <Box sx={{ flex: 1 }}>
+          <Box>
             <Typography
               variant="caption"
               color="text.secondary"
-              fontWeight={700}
-              sx={{
-                textTransform: "uppercase",
-                letterSpacing: "0.07em",
-                display: "block",
-                mb: 0.5,
-              }}
+              sx={{ fontWeight: 600, letterSpacing: "0.05em" }}
             >
               {label}
             </Typography>
             {loading ? (
-              <Skeleton width={56} height={40} />
+              <Skeleton width={60} height={40} />
             ) : (
               <Typography
                 variant="h5"
                 fontWeight={700}
-                sx={{ color, lineHeight: 1.15 }}
+                sx={{ mt: 1, color: color || "text.primary" }}
               >
                 {value ?? 0}
               </Typography>
+            )}
+            {trend && (
+              <Box
+                sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 1 }}
+              >
+                <TrendingUpIcon sx={{ fontSize: 10, color: "#10b981" }} />
+                <Typography
+                  variant="caption"
+                  sx={{ color: "#10b981", fontWeight: 600 }}
+                >
+                  {trend}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  vs last week
+                </Typography>
+              </Box>
             )}
             {subtitle && !loading && (
               <Typography
@@ -256,21 +324,21 @@ const StatCard = ({
           </Box>
           <Avatar
             sx={{
-              bgcolor: bg ?? alpha(color, 0.12),
-              color,
+              bgcolor: alpha(color || "#6366f1", 0.1),
+              color: color || "#6366f1",
               width: 48,
               height: 48,
-              ml: 1,
             }}
           >
             <Icon sx={{ fontSize: 24 }} />
           </Avatar>
         </Box>
       </CardContent>
-    </HoverCard>
+    </GlassCard>
   </Zoom>
 );
 
+// ─── Status Chip ──────────────────────────────────────────────────────────
 const StatusChip = ({ status }) => {
   const cfg = STATUS_CFG[status?.toLowerCase()] ?? STATUS_CFG.pending;
   const Icon = cfg.icon;
@@ -278,28 +346,36 @@ const StatusChip = ({ status }) => {
     <Chip
       label={cfg.label}
       size="small"
-      icon={<Icon sx={{ fontSize: 13 }} />}
+      icon={<Icon sx={{ fontSize: 14 }} />}
       sx={{
         bgcolor: cfg.bg,
         color: cfg.color,
         fontWeight: 700,
+        borderRadius: 2,
         "& .MuiChip-icon": { color: cfg.color },
       }}
     />
   );
 };
 
+// ─── Priority Chip ──────────────────────────────────────────────────────────
 const PriorityChip = ({ priority }) => {
   const cfg = PRIORITY_CFG[priority?.toLowerCase()] ?? PRIORITY_CFG.medium;
   return (
     <Chip
       label={cfg.label}
       size="small"
-      sx={{ bgcolor: cfg.bg, color: cfg.color, fontWeight: 700 }}
+      sx={{
+        bgcolor: cfg.bg,
+        color: cfg.color,
+        fontWeight: 700,
+        borderRadius: 2,
+      }}
     />
   );
 };
 
+// ─── Date Cell ──────────────────────────────────────────────────────────
 const DateCell = ({ date }) => {
   if (!date)
     return (
@@ -308,21 +384,17 @@ const DateCell = ({ date }) => {
       </Typography>
     );
   const d = new Date(date);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dayStart = new Date(d);
-  dayStart.setHours(0, 0, 0, 0);
-  const isPast = dayStart < today;
+  const isOverdue = d < new Date();
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-      <CalendarMonthIcon
-        sx={{ fontSize: 13, color: isPast ? "#ef4444" : "#9ca3af" }}
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+      <ScheduleIcon
+        sx={{ fontSize: 14, color: isOverdue ? "#ef4444" : "#94a3b8" }}
       />
       <Typography
         variant="body2"
         sx={{
-          color: isPast ? "#ef4444" : "inherit",
-          fontWeight: isPast ? 600 : 400,
+          color: isOverdue ? "#ef4444" : "inherit",
+          fontWeight: isOverdue ? 600 : 400,
         }}
       >
         {d.toLocaleDateString("en-US", {
@@ -335,34 +407,41 @@ const DateCell = ({ date }) => {
   );
 };
 
-const CompletionBar = ({ rate }) => {
-  const pct = Math.min(100, Math.max(0, rate ?? 0));
+// ─── Progress Bar ──────────────────────────────────────────────────────────
+const ProgressBar = ({ value }) => {
+  const pct = Math.min(100, Math.max(0, value ?? 0));
   const color = pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#ef4444";
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 90 }}>
+    <Box
+      sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 120 }}
+    >
       <Box
         sx={{
           flex: 1,
-          height: 5,
+          height: 6,
+          bgcolor: "#f1f5f9",
           borderRadius: 3,
-          bgcolor: "#e5e7eb",
           overflow: "hidden",
         }}
       >
-        <Box
+        <LinearProgress
+          variant="determinate"
+          value={pct}
           sx={{
-            width: `${pct}%`,
-            height: "100%",
-            bgcolor: color,
+            height: 6,
             borderRadius: 3,
-            transition: "width 0.5s ease",
+            bgcolor: "#f1f5f9",
+            "& .MuiLinearProgress-bar": {
+              bgcolor: color,
+              borderRadius: 3,
+            },
           }}
         />
       </Box>
       <Typography
         variant="caption"
         fontWeight={700}
-        sx={{ color, minWidth: 32 }}
+        sx={{ color, minWidth: 40 }}
       >
         {pct}%
       </Typography>
@@ -370,41 +449,7 @@ const CompletionBar = ({ rate }) => {
   );
 };
 
-const TH = ({ children, align }) => (
-  <TableCell
-    align={align}
-    sx={{
-      fontWeight: 700,
-      fontSize: 11,
-      color: "#9ca3af",
-      bgcolor: "#f9fafb",
-      textTransform: "uppercase",
-      letterSpacing: "0.06em",
-      borderBottom: "2px solid #e5e7eb",
-      py: "10px",
-      px: 2,
-    }}
-  >
-    {children}
-  </TableCell>
-);
-
-const SectionLabel = ({ icon: Icon, children, required }) => (
-  <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: 0.75 }}>
-    {Icon && <Icon sx={{ fontSize: 15, color: "#0d4a5c" }} />}
-    <Typography
-      variant="caption"
-      fontWeight={700}
-      color="text.secondary"
-      sx={{ textTransform: "uppercase", letterSpacing: "0.05em" }}
-    >
-      {children}
-      {required && <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>}
-    </Typography>
-  </Box>
-);
-
-// ─── Selection Modal ─────────────────────────────────────────────────────────────
+// ─── Selection Modal ──────────────────────────────────────────────────────────
 const SelectionModal = ({
   open,
   onClose,
@@ -447,18 +492,23 @@ const SelectionModal = ({
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { borderRadius: 3 } }}
+      PaperProps={{ sx: { borderRadius: 2, overflow: "hidden" } }}
     >
-      <Box sx={{ bgcolor: "#0d4a5c", p: 2.5 }}>
+      <Box
+        sx={{
+          background: "linear-gradient(135deg, #0b394a 0%, #114d64 100%)",
+          p: 3,
+        }}
+      >
         <Box
           sx={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            mb: 1.5,
+            mb: 2,
           }}
         >
-          <Typography fontWeight={700} color="white" variant="subtitle1">
+          <Typography fontWeight={700} color="white" variant="h6">
             {title}
           </Typography>
           <IconButton
@@ -472,34 +522,32 @@ const SelectionModal = ({
         <TextField
           fullWidth
           size="small"
-          placeholder="Search…"
+          placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           sx={{
             bgcolor: "white",
-            borderRadius: 1,
-            "& .MuiOutlinedInput-root": { borderRadius: 1 },
+            borderRadius: 2,
+            "& .MuiOutlinedInput-root": { borderRadius: 2 },
           }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 16, color: "#9ca3af" }} />
+                <SearchIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
               </InputAdornment>
             ),
           }}
         />
       </Box>
 
-      <Box sx={{ maxHeight: 360, overflow: "auto" }}>
+      <Box sx={{ maxHeight: 400, overflow: "auto" }}>
         {loading ? (
-          <Box sx={{ py: 5, textAlign: "center" }}>
-            <CircularProgress size={28} />
+          <Box sx={{ py: 6, textAlign: "center" }}>
+            <CircularProgress size={28} sx={{ color: "#084d68" }} />
           </Box>
         ) : filtered.length === 0 ? (
-          <Box sx={{ py: 5, textAlign: "center" }}>
-            <Typography color="text.secondary" variant="body2">
-              No items found
-            </Typography>
+          <Box sx={{ py: 6, textAlign: "center" }}>
+            <Typography color="text.secondary">No items found</Typography>
           </Box>
         ) : (
           <List dense disablePadding>
@@ -519,36 +567,33 @@ const SelectionModal = ({
                   divider
                   onClick={() => onToggle(id)}
                   sx={{
-                    py: 1,
+                    py: 1.5,
                     cursor: "pointer",
-                    "&:hover": { bgcolor: alpha("#0d4a5c", 0.04) },
-                    bgcolor: selected ? alpha("#0d4a5c", 0.04) : "transparent",
+                    transition: "all 0.2s",
+                    "&:hover": { bgcolor: alpha("#084d68", 0.04) },
+                    bgcolor: selected ? alpha("#084d68", 0.04) : "transparent",
                   }}
                 >
                   {multiSelect ? (
                     <Checkbox
                       checked={selected}
                       size="small"
-                      sx={{ mr: 0.5 }}
-                      onChange={() => {}}
+                      sx={{ mr: 1, color: "#084d68" }}
                     />
                   ) : (
                     <Radio
                       checked={selected}
                       size="small"
-                      sx={{ mr: 0.5 }}
-                      onChange={() => {}}
+                      sx={{ mr: 1, color: "#084d68" }}
                     />
                   )}
                   <ListItemAvatar>
                     <Avatar
                       sx={{
-                        width: 34,
-                        height: 34,
-                        bgcolor: selected ? "#0d4a5c" : alpha("#0d4a5c", 0.08),
-                        color: selected ? "white" : "#0d4a5c",
-                        fontSize: 13,
-                        fontWeight: 700,
+                        width: 36,
+                        height: 36,
+                        bgcolor: selected ? "#084d68" : alpha("#084d68", 0.1),
+                        color: selected ? "white" : "#084d68",
                       }}
                     >
                       {name.charAt(0).toUpperCase()}
@@ -556,22 +601,20 @@ const SelectionModal = ({
                   </ListItemAvatar>
                   <ListItemText
                     primary={
-                      <Typography variant="body2" fontWeight={600}>
+                      <Typography fontWeight={600} sx={{ fontSize: "12px" }}>
                         {name}
                       </Typography>
                     }
                     secondary={
-                      sub ? (
+                      sub && (
                         <Typography variant="caption" color="text.secondary">
                           {sub}
                         </Typography>
-                      ) : undefined
+                      )
                     }
                   />
                   {selected && (
-                    <CheckCircleIcon
-                      sx={{ fontSize: 16, color: "#10b981", ml: 1 }}
-                    />
+                    <CheckCircleIcon sx={{ fontSize: 12, color: "#10b981" }} />
                   )}
                 </ListItem>
               );
@@ -582,12 +625,11 @@ const SelectionModal = ({
 
       <Box
         sx={{
-          p: 2,
+          p: 2.5,
+          borderTop: "1px solid #e2e8f0",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderTop: "1px solid",
-          borderColor: "divider",
         }}
       >
         <Typography variant="caption" color="text.secondary">
@@ -597,11 +639,15 @@ const SelectionModal = ({
               ? "1 selected"
               : "None selected"}
         </Typography>
-        <Stack direction="row" spacing={1}>
-          <Button size="small" variant="outlined" onClick={onClose}>
+        <Stack direction="row" spacing={1.5}>
+          <Button variant="outlined" onClick={onClose} sx={{ borderRadius: 2 }}>
             Cancel
           </Button>
-          <Button size="small" variant="contained" onClick={onDone}>
+          <Button
+            variant="contained"
+            onClick={onDone}
+            sx={{ borderRadius: 2, background: "#084d68" }}
+          >
             Done
           </Button>
         </Stack>
@@ -610,7 +656,7 @@ const SelectionModal = ({
   );
 };
 
-// ─── Default Form Values ──────────────────────────────────────────────────────────
+// ─── Form Defaults ──────────────────────────────────────────────────────────
 const defaultAssignForm = () => ({
   checklistIds: [],
   adminId: "",
@@ -623,9 +669,8 @@ const defaultAssignForm = () => ({
 
 const defaultReassignForm = () => ({
   newAdminId: "",
-  newTeamMemberIds: [],
-  newAssetIds: [],
-  newChecklistIds: [],
+  teamMemberIds: [],
+  assetIds: [],
   dueDate: "",
   priority: "medium",
   reason: "",
@@ -640,8 +685,9 @@ export default function AssignmentChecklist() {
     assignToTeam,
     reassignToAdmin,
     reassignToTeam,
+    getAssignments,
+    getAssignmentStats,
     softDeleteAssignment,
-    restoreAssignment,
     assignLoading,
   } = useAssignment();
 
@@ -651,7 +697,7 @@ export default function AssignmentChecklist() {
   const isAdmin = user?.role === "admin";
   const canManage = isSuperAdmin || isAdmin;
 
-  // ── Core State ──────────────────────────────────────────────────────────────────
+  // ── Core State ──────────────────────────────────────────────────────────
   const [assignments, setAssignments] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -662,6 +708,7 @@ export default function AssignmentChecklist() {
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
   const [stats, setStats] = useState(null);
+  const [viewMode, setViewMode] = useState("table");
   const [filters, setFilters] = useState({
     status: "",
     priority: "",
@@ -670,28 +717,16 @@ export default function AssignmentChecklist() {
     limit: 10,
   });
 
-  const [deletedAssignments, setDeletedAssignments] = useState([]);
-  const [deletedPagination, setDeletedPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 1,
-  });
-  const [deletedLoading, setDeletedLoading] = useState(false);
-  const [showDeleted, setShowDeleted] = useState(false);
-
-  // ── Dialog State ────────────────────────────────────────────────────────────────
+  // ── Dialog State ──────────────────────────────────────────────────────────
   const [assignOpen, setAssignOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [restoreOpen, setRestoreOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [restoring, setRestoring] = useState(false);
 
-  // ── Data State ──────────────────────────────────────────────────────────────────
+  // ── Data State ──────────────────────────────────────────────────────────
   const [checklists, setChecklists] = useState([]);
   const [checklistsLoading, setChecklistsLoading] = useState(false);
   const [admins, setAdmins] = useState([]);
@@ -701,7 +736,7 @@ export default function AssignmentChecklist() {
   const [assets, setAssets] = useState([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
 
-  // ── Forms ───────────────────────────────────────────────────────────────────────
+  // ── Forms ──────────────────────────────────────────────────────────
   const [assignForm, setAssignForm] = useState(defaultAssignForm);
   const [reassignForm, setReassignForm] = useState(defaultReassignForm);
 
@@ -710,7 +745,6 @@ export default function AssignmentChecklist() {
     admin: false,
     team: false,
     asset: false,
-    reassignChecklist: false,
     reassignAdmin: false,
     reassignTeam: false,
     reassignAsset: false,
@@ -718,7 +752,7 @@ export default function AssignmentChecklist() {
   const openModal = (key) => setModalStates((p) => ({ ...p, [key]: true }));
   const closeModal = (key) => setModalStates((p) => ({ ...p, [key]: false }));
 
-  // ── Toast ───────────────────────────────────────────────────────────────────────
+  // ── Toast ──────────────────────────────────────────────────────────
   const [snack, setSnack] = useState({
     open: false,
     msg: "",
@@ -733,74 +767,37 @@ export default function AssignmentChecklist() {
     [],
   );
 
-  // ── API Helpers ─────────────────────────────────────────────────────────────────
-  const fetchAssignments = useCallback(
-    async (f) => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (f.status && f.status !== "all") params.append("status", f.status);
-        if (f.priority) params.append("priority", f.priority);
-        if (f.search) params.append("search", f.search);
-        params.append("page", f.page);
-        params.append("limit", f.limit);
-
-        const res = await authRequest("GET", `/assignments?${params}`);
-        if (res?.success) {
-          setAssignments(res.assignments || []);
-          setPagination(
-            res.pagination ?? { page: 1, limit: 10, total: 0, totalPages: 1 },
-          );
-        } else {
-          toast(res?.message || "Failed to fetch assignments", "error");
-        }
-      } catch (err) {
-        toast(err?.message || "Failed to fetch assignments", "error");
-      } finally {
-        setLoading(false);
+  // ── Data Fetching ──────────────────────────────────────────────────────────
+  const fetchAssignments = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await getAssignments(filters);
+      if (result?.success) {
+        setAssignments(result.assignments);
+        setPagination(result.pagination);
+      } else {
+        toast(result?.error || "Failed to fetch assignments", "error");
       }
-    },
-    [authRequest, toast],
-  );
+    } catch (err) {
+      toast(err?.message || "Failed to fetch assignments", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [getAssignments, filters, toast]);
 
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const res = await authRequest("GET", "/assignments/stats");
-      if (res?.success) {
-        setStats(res.stats || res.data || {});
+      const result = await getAssignmentStats();
+      if (result?.success) {
+        setStats(result.stats);
       }
     } catch (err) {
-      console.error("Stats fetch failed:", err?.message);
+      console.error("Stats fetch failed:", err);
     } finally {
       setStatsLoading(false);
     }
-  }, [authRequest]);
-
-  const fetchDeletedAssignments = useCallback(
-    async (page = 1) => {
-      setDeletedLoading(true);
-      try {
-        const res = await authRequest(
-          "GET",
-          `/assignments/deleted?page=${page}&limit=10`,
-        );
-        if (res?.success) {
-          setDeletedAssignments(res.assignments || []);
-          setDeletedPagination(
-            res.pagination ?? { page: 1, limit: 10, total: 0, totalPages: 1 },
-          );
-        } else {
-          toast(res?.message || "Failed to fetch deleted assignments", "error");
-        }
-      } catch (err) {
-        toast(err?.message || "Failed to fetch deleted assignments", "error");
-      } finally {
-        setDeletedLoading(false);
-      }
-    },
-    [authRequest, toast],
-  );
+  }, [getAssignmentStats]);
 
   const fetchChecklists = useCallback(async () => {
     setChecklistsLoading(true);
@@ -809,9 +806,9 @@ export default function AssignmentChecklist() {
         "GET",
         "/checklists?limit=100&status=published",
       );
-      setChecklists(res?.checklists ?? res?.data?.checklists ?? []);
+      setChecklists(res?.checklists ?? []);
     } catch (err) {
-      console.error("fetchChecklists:", err?.message);
+      console.error("fetchChecklists:", err);
     } finally {
       setChecklistsLoading(false);
     }
@@ -824,7 +821,7 @@ export default function AssignmentChecklist() {
       const res = await authRequest("GET", "/clients");
       setAdmins(res?.clients ?? []);
     } catch (err) {
-      console.error("fetchAdmins:", err?.message);
+      console.error("fetchAdmins:", err);
     } finally {
       setAdminsLoading(false);
     }
@@ -837,7 +834,7 @@ export default function AssignmentChecklist() {
       const res = await authRequest("GET", "/team");
       setTeamMembers(res?.members ?? []);
     } catch (err) {
-      console.error("fetchTeamMembers:", err?.message);
+      console.error("fetchTeamMembers:", err);
     } finally {
       setTeamLoading(false);
     }
@@ -850,15 +847,15 @@ export default function AssignmentChecklist() {
       const res = await authRequest("GET", "/assets");
       setAssets(res?.assets ?? []);
     } catch (err) {
-      console.error("fetchAssets:", err?.message);
+      console.error("fetchAssets:", err);
     } finally {
       setAssetsLoading(false);
     }
   }, [authRequest, isAdmin]);
 
-  // ── Initial Load ────────────────────────────────────────────────────────────────
+  // ── Effects ──────────────────────────────────────────────────────────
   useEffect(() => {
-    fetchAssignments(filters);
+    fetchAssignments();
     fetchStats();
     fetchChecklists();
     if (isSuperAdmin) fetchAdmins();
@@ -868,16 +865,16 @@ export default function AssignmentChecklist() {
     }
   }, []);
 
-  useEffect(() => {
-    if (showDeleted) {
-      fetchDeletedAssignments(1);
-    }
-  }, [showDeleted, fetchDeletedAssignments]);
-
+  // ── Handlers ──────────────────────────────────────────────────────────
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value, page: 1 };
     setFilters(newFilters);
-    fetchAssignments(newFilters);
+    getAssignments(newFilters).then((res) => {
+      if (res?.success) {
+        setAssignments(res.assignments);
+        setPagination(res.pagination);
+      }
+    });
   };
 
   const clearFilters = () => {
@@ -889,56 +886,22 @@ export default function AssignmentChecklist() {
       limit: 10,
     };
     setFilters(defaultFilters);
-    fetchAssignments(defaultFilters);
+    getAssignments(defaultFilters).then((res) => {
+      if (res?.success) {
+        setAssignments(res.assignments);
+        setPagination(res.pagination);
+      }
+    });
   };
 
-  // ── Stats Cards Data ────────────────────────────────────────────────────────────
-  const statCards = useMemo(
-    () => [
-      {
-        label: "Total Assignments",
-        value: stats?.total ?? stats?.totalAssignments ?? 0,
-        icon: AssignmentIcon,
-        color: "#0d4a5c",
-        bg: "#e3f0f4",
-        subtitle: "All active records",
-      },
-      {
-        label: "Pending",
-        value: stats?.pending ?? stats?.byStatus?.pending ?? 0,
-        icon: PendingActionsIcon,
-        color: "#f59e0b",
-        bg: "#fffbeb",
-        subtitle: "Awaiting action",
-      },
-      {
-        label: "Completed",
-        value: (stats?.completed ?? 0) + (stats?.approved ?? 0),
-        icon: CheckCircleIcon,
-        color: "#10b981",
-        bg: "#ecfdf5",
-        subtitle: "Completed + Approved",
-      },
-      {
-        label: "Overdue",
-        value: stats?.overdue ?? stats?.byStatus?.overdue ?? 0,
-        icon: ErrorOutlineIcon,
-        color: "#ef4444",
-        bg: "#fef2f2",
-        subtitle: "Past due date",
-      },
-    ],
-    [stats],
-  );
-
-  // ── Assign Handler ──────────────────────────────────────────────────────────────
+  // ── Assign Handler ──────────────────────────────────────────────────────────
   const handleAssign = async () => {
     if (!assignForm.checklistIds.length) {
       toast("Select at least one checklist", "error");
       return;
     }
     if (isSuperAdmin && !assignForm.adminId) {
-      toast("Select an admin", "error");
+      toast("Please select an admin", "error");
       return;
     }
     if (!isSuperAdmin && !assignForm.teamMemberIds.length) {
@@ -971,7 +934,7 @@ export default function AssignmentChecklist() {
         toast("Checklist assigned successfully!");
         setAssignOpen(false);
         setAssignForm(defaultAssignForm());
-        fetchAssignments(filters);
+        fetchAssignments();
         fetchStats();
       } else {
         toast(result?.error || "Assignment failed", "error");
@@ -983,7 +946,7 @@ export default function AssignmentChecklist() {
     }
   };
 
-  // ── Reassign Handler ────────────────────────────────────────────────────────────
+  // ── Reassign Handler ──────────────────────────────────────────────────────────
   const handleReassign = async () => {
     if (!selected) return;
     if (!reassignForm.reason.trim()) {
@@ -991,10 +954,10 @@ export default function AssignmentChecklist() {
       return;
     }
     if (isSuperAdmin && !reassignForm.newAdminId) {
-      toast("Select a new admin", "error");
+      toast("Please select a new admin", "error");
       return;
     }
-    if (!isSuperAdmin && !reassignForm.newTeamMemberIds.length) {
+    if (!isSuperAdmin && !reassignForm.teamMemberIds.length) {
       toast("Select at least one team member", "error");
       return;
     }
@@ -1007,16 +970,17 @@ export default function AssignmentChecklist() {
           newAdminId: reassignForm.newAdminId,
           dueDate: reassignForm.dueDate,
           priority: reassignForm.priority,
-          reason: reassignForm.reason,
           notes: reassignForm.notes,
+          reason: reassignForm.reason,
         });
       } else {
         result = await reassignToTeam(selected._id, {
-          newTeamMemberIds: reassignForm.newTeamMemberIds,
-          newAssetIds: reassignForm.newAssetIds,
+          teamMemberIds: reassignForm.teamMemberIds,
           dueDate: reassignForm.dueDate,
-          reason: reassignForm.reason,
+          priority: reassignForm.priority,
           notes: reassignForm.notes,
+          reason: reassignForm.reason,
+          assetIds: reassignForm.assetIds,
         });
       }
       if (result?.success) {
@@ -1024,9 +988,8 @@ export default function AssignmentChecklist() {
         setReassignOpen(false);
         setSelected(null);
         setReassignForm(defaultReassignForm());
-        fetchAssignments(filters);
+        fetchAssignments();
         fetchStats();
-        if (showDeleted) fetchDeletedAssignments(deletedPagination.page);
       } else {
         toast(result?.error || "Re-assignment failed", "error");
       }
@@ -1037,7 +1000,7 @@ export default function AssignmentChecklist() {
     }
   };
 
-  // ── Delete/Restore Handlers ─────────────────────────────────────────────────────
+  // ─── Delete Handler ──────────────────────────────────────────────────────────
   const handleSoftDelete = async () => {
     if (!selected) return;
     setDeleting(true);
@@ -1047,9 +1010,8 @@ export default function AssignmentChecklist() {
         toast("Assignment deleted");
         setDeleteOpen(false);
         setSelected(null);
-        fetchAssignments(filters);
+        fetchAssignments();
         fetchStats();
-        if (showDeleted) fetchDeletedAssignments(deletedPagination.page);
       } else {
         toast(result?.error || "Delete failed", "error");
       }
@@ -1060,602 +1022,411 @@ export default function AssignmentChecklist() {
     }
   };
 
-  const handleRestore = async () => {
-    if (!selected) return;
-    setRestoring(true);
-    try {
-      const result = await restoreAssignment(selected._id);
-      if (result?.success) {
-        toast("Assignment restored");
-        setRestoreOpen(false);
-        setSelected(null);
-        fetchAssignments(filters);
-        fetchStats();
-        fetchDeletedAssignments(deletedPagination.page);
-      } else {
-        toast(result?.error || "Restore failed", "error");
-      }
-    } catch (err) {
-      toast(err?.message || "Restore failed", "error");
-    } finally {
-      setRestoring(false);
-    }
-  };
+  // ─── Stats Cards ──────────────────────────────────────────────────────────
+  const statCards = useMemo(
+    () => [
+      {
+        label: "Total Assignments",
+        value: stats?.total ?? 0,
+        icon: AssignmentIcon,
+        color: "#084d68",
+        trend: "+12%",
+        subtitle: "All active records",
+      },
+      {
+        label: "Pending",
+        value: stats?.byStatus?.pending ?? 0,
+        icon: PendingActionsIcon,
+        color: "#f59e0b",
+        trend: "+5%",
+        subtitle: "Awaiting action",
+      },
+      {
+        label: "Completed",
+        value:
+          (stats?.byStatus?.completed ?? 0) + (stats?.byStatus?.approved ?? 0),
+        icon: CheckCircleIcon,
+        color: "#10b981",
+        trend: "+8%",
+        subtitle: "Completed + Approved",
+      },
+      {
+        label: "Overdue",
+        value: stats?.overdue ?? 0,
+        icon: WarningAmberIcon,
+        color: "#ef4444",
+        trend: "+2%",
+        subtitle: "Past due date",
+      },
+    ],
+    [stats],
+  );
 
   const hasFilters = !!(filters.status || filters.priority || filters.search);
 
-  // ── Render ───────────────────────────────────────────────────────────────────────
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ minHeight: "100vh" }}>
-        <Container
-          maxWidth="xl"
-          sx={{ py: { xs: 2, md: 3.5 }, px: { xs: 1.5, md: 3 } }}
-        >
-          {/* Header */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              flexWrap: "wrap",
-              gap: 2,
-              mb: 3,
-            }}
-          >
-            <Box>
-              <Typography
-                variant={isMobile ? "h6" : "h5"}
-                fontWeight={800}
-                color="text.primary"
-                sx={{ letterSpacing: "-0.02em" }}
+        <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
+          {/* Header Section */}
+          <Fade in timeout={400}>
+            <Box sx={{ mb: 4 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  flexWrap: "wrap",
+                  gap: 2,
+                }}
               >
-                Assignment Management
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5 }}
-              >
-                {isSuperAdmin
-                  ? "Assign checklists to admins and track progress"
-                  : isAdmin
-                    ? "Assign checklists to your team and track progress"
-                    : "View your assigned checklists"}
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1}>
-              <Tooltip title="Refresh">
-                <IconButton
-                  size="small"
-                  onClick={() => {
-                    if (showDeleted) {
-                      fetchDeletedAssignments(deletedPagination.page);
-                    } else {
-                      fetchAssignments(filters);
-                      fetchStats();
-                    }
-                  }}
-                  disabled={loading || deletedLoading}
-                  sx={{
-                    border: "1px solid",
-                    borderColor: "divider",
-                    borderRadius: 2,
-                    bgcolor: "white",
-                  }}
-                >
-                  <RefreshIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              {canManage && !showDeleted && (
-                <Button
-                  variant="contained"
-                  startIcon={
-                    isSuperAdmin ? <PersonAddIcon /> : <GroupAddIcon />
-                  }
-                  onClick={() => setAssignOpen(true)}
-                  size="small"
-                >
-                  {isSuperAdmin ? "Assign to Admin" : "Assign to Team"}
-                </Button>
-              )}
-            </Stack>
-          </Box>
-
-          {/* Stats Cards - Only show in Active View */}
-          {!showDeleted && (
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              {statCards.map((card, i) => (
-                <Grid item xs={12} sm={6} md={3} lg={1.7} key={i}>
-                  <StatCard {...card} loading={statsLoading} />
-                </Grid>
-              ))}
-            </Grid>
-          )}
-
-          {/* Filters (only for active view) */}
-          {!showDeleted && (
-            <Paper sx={{ mb: 2, p: 2 }}>
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={1.5}
-                alignItems={{ sm: "center" }}
-                flexWrap="wrap"
-              >
-                <TextField
-                  size="small"
-                  placeholder="Search assignments…"
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange("search", e.target.value)}
-                  sx={{ flex: 2, minWidth: 200 }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon sx={{ fontSize: 18, color: "#9ca3af" }} />
-                      </InputAdornment>
-                    ),
-                    endAdornment: filters.search && (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleFilterChange("search", "")}
-                      >
-                        <ClearIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                    ),
-                  }}
-                />
-                <FormControl size="small" sx={{ minWidth: 140 }}>
-                  <Select
-                    value={filters.status}
-                    onChange={(e) =>
-                      handleFilterChange("status", e.target.value)
-                    }
-                    displayEmpty
-                  >
-                    <MenuItem value="">
-                      <Typography variant="body2" color="text.secondary">
-                        All Status
-                      </Typography>
-                    </MenuItem>
-                    {Object.entries(STATUS_CFG).map(([k, cfg]) => (
-                      <MenuItem key={k} value={k}>
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
-                          <Box
-                            sx={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              bgcolor: cfg.color,
-                            }}
-                          />
-                          {cfg.label}
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 130 }}>
-                  <Select
-                    value={filters.priority}
-                    onChange={(e) =>
-                      handleFilterChange("priority", e.target.value)
-                    }
-                    displayEmpty
-                  >
-                    <MenuItem value="">
-                      <Typography variant="body2" color="text.secondary">
-                        All Priority
-                      </Typography>
-                    </MenuItem>
-                    {Object.entries(PRIORITY_CFG).map(([k, cfg]) => (
-                      <MenuItem key={k} value={k}>
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
-                          <Box
-                            sx={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              bgcolor: cfg.color,
-                            }}
-                          />
-                          {cfg.label}
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                {hasFilters && (
-                  <Button
-                    size="small"
-                    onClick={clearFilters}
-                    startIcon={<ClearIcon />}
-                    sx={{ color: "#ef4444", whiteSpace: "nowrap" }}
-                  >
-                    Clear Filters
-                  </Button>
-                )}
-                <Typography
-                  variant="caption"
-                  color="text.disabled"
-                  sx={{ ml: "auto", whiteSpace: "nowrap" }}
-                >
-                  {assignments.length} of {pagination.total} results
-                </Typography>
-              </Stack>
-            </Paper>
-          )}
-
-          {/* Table */}
-          {showDeleted ? (
-            // Deleted View
-            <Paper sx={{ overflow: "hidden" }}>
-              {deletedLoading ? (
-                <Box sx={{ p: 4 }}>
-                  <CircularProgress
-                    size={40}
-                    sx={{ display: "block", mx: "auto" }}
-                  />
-                  <Skeleton height={52} sx={{ mt: 2 }} />
-                  <Skeleton height={52} />
-                  <Skeleton height={52} />
-                </Box>
-              ) : deletedAssignments.length === 0 ? (
-                <Box sx={{ p: 8, textAlign: "center" }}>
-                  <Fade in>
-                    <Box>
-                      <Avatar
-                        sx={{
-                          width: 80,
-                          height: 80,
-                          bgcolor: alpha("#ef4444", 0.07),
-                          mx: "auto",
-                          mb: 2,
-                        }}
-                      >
-                        <DeleteIcon
-                          sx={{ fontSize: 40, color: "#ef4444", opacity: 0.4 }}
-                        />
-                      </Avatar>
-                      <Typography
-                        fontWeight={700}
-                        color="text.secondary"
-                        variant="h6"
-                      >
-                        No deleted assignments
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.disabled"
-                        display="block"
-                        sx={{ mt: 1 }}
-                      >
-                        Soft-deleted items appear here and can be restored
-                      </Typography>
-                    </Box>
-                  </Fade>
-                </Box>
-              ) : (
-                <>
-                  <TableContainer sx={{ overflowX: "auto" }}>
-                    <Table sx={{ minWidth: 800 }}>
-                      <TableHead>
-                        <TableRow>
-                          <TH>Checklist</TH>
-                          <TH>Assigned To</TH>
-                          <TH>Deleted At</TH>
-                          <TH>Status</TH>
-                          <TH>Priority</TH>
-                          <TH align="center">Actions</TH>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {deletedAssignments.map((asgn, idx) => (
-                          <Fade in timeout={200 + idx * 40} key={asgn._id}>
-                            <TableRow hover>
-                              <TableCell sx={{ py: "12px", px: 2 }}>
-                                <Typography fontWeight={700} variant="body2">
-                                  {asgn.checklistData?.[0]?.name ??
-                                    asgn.checklistIds?.[0]?.name ??
-                                    "—"}
-                                </Typography>
-                                <Typography
-                                  variant="caption"
-                                  color="text.disabled"
-                                >
-                                  #{asgn._id?.slice(-8)}
-                                </Typography>
-                              </TableCell>
-                              <TableCell sx={{ py: "12px", px: 2 }}>
-                                {asgn.assignedToAdmin?.email ??
-                                  (asgn.assignedToTeamMembers?.length
-                                    ? `${asgn.assignedToTeamMembers.length} member(s)`
-                                    : "—")}
-                              </TableCell>
-                              <TableCell sx={{ py: "12px", px: 2 }}>
-                                <DateCell date={asgn.deletedAt} />
-                              </TableCell>
-                              <TableCell sx={{ py: "12px", px: 2 }}>
-                                <StatusChip status={asgn.status} />
-                              </TableCell>
-                              <TableCell sx={{ py: "12px", px: 2 }}>
-                                <PriorityChip priority={asgn.priority} />
-                              </TableCell>
-                              <TableCell
-                                align="center"
-                                sx={{ py: "12px", px: 2 }}
-                              >
-                                <Stack
-                                  direction="row"
-                                  spacing={0.5}
-                                  justifyContent="center"
-                                >
-                                  <Tooltip title="View Details">
-                                    <IconButton
-                                      size="small"
-                                      sx={{ borderRadius: 1.5 }}
-                                      onClick={() => {
-                                        setSelected(asgn);
-                                        setDetailsOpen(true);
-                                      }}
-                                    >
-                                      <VisibilityIcon sx={{ fontSize: 17 }} />
-                                    </IconButton>
-                                  </Tooltip>
-                                  <Tooltip title="Restore">
-                                    <IconButton
-                                      size="small"
-                                      sx={{
-                                        borderRadius: 1.5,
-                                        color: "#10b981",
-                                      }}
-                                      onClick={() => {
-                                        setSelected(asgn);
-                                        setRestoreOpen(true);
-                                      }}
-                                    >
-                                      <RestoreIcon sx={{ fontSize: 17 }} />
-                                    </IconButton>
-                                  </Tooltip>
-                                </Stack>
-                              </TableCell>
-                            </TableRow>
-                          </Fade>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  {deletedPagination.totalPages > 1 && (
-                    <Box
-                      sx={{
-                        p: 2,
-                        display: "flex",
-                        justifyContent: "center",
-                        borderTop: "1px solid",
-                        borderColor: "divider",
-                      }}
-                    >
-                      <Pagination
-                        count={deletedPagination.totalPages}
-                        page={deletedPagination.page}
-                        onChange={(_, p) => fetchDeletedAssignments(p)}
-                        color="primary"
-                        size={isMobile ? "small" : "medium"}
-                      />
-                    </Box>
-                  )}
-                </>
-              )}
-            </Paper>
-          ) : loading ? (
-            // Loading View
-            <Paper sx={{ p: 4 }}>
-              <CircularProgress
-                size={40}
-                sx={{ display: "block", mx: "auto" }}
-              />
-              <Skeleton height={52} sx={{ mt: 2 }} />
-              <Skeleton height={52} />
-              <Skeleton height={52} />
-            </Paper>
-          ) : assignments.length === 0 ? (
-            // Empty View
-            <Paper sx={{ p: 8, textAlign: "center" }}>
-              <Fade in>
                 <Box>
-                  <Avatar
-                    sx={{
-                      width: 80,
-                      height: 80,
-                      bgcolor: alpha("#0d4a5c", 0.07),
-                      mx: "auto",
-                      mb: 2,
-                    }}
-                  >
-                    <AssignmentIcon
-                      sx={{ fontSize: 40, color: "#0d4a5c", opacity: 0.4 }}
-                    />
-                  </Avatar>
-                  <Typography
+                  <GradientText
+                    variant={isMobile ? "h6" : "h5"}
                     fontWeight={700}
-                    color="text.secondary"
-                    variant="h6"
                   >
-                    No assignments found
-                  </Typography>
+                    Assignment Management
+                  </GradientText>
                   <Typography
                     variant="body2"
-                    color="text.disabled"
-                    display="block"
+                    color="text.secondary"
                     sx={{ mt: 1 }}
                   >
-                    {hasFilters
-                      ? "Try adjusting your filters"
-                      : canManage
-                        ? "Create your first assignment using the button above"
-                        : "You have no assignments yet"}
+                    {isSuperAdmin
+                      ? "Assign checklists to admins and track progress"
+                      : isAdmin
+                        ? "Manage team assignments and monitor completion"
+                        : "Track your assigned checklists and submissions"}
                   </Typography>
                 </Box>
-              </Fade>
+                <Stack direction="row" spacing={1.5}>
+                  <Tooltip title="Refresh">
+                    <IconButton
+                      onClick={fetchAssignments}
+                      disabled={loading}
+                      sx={{
+                        bgcolor: "white",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 2,
+                      }}
+                    >
+                      <RefreshIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  {canManage && (
+                    <Button
+                      variant="contained"
+                      startIcon={
+                        isSuperAdmin ? <PersonSearchIcon /> : <GroupAddIcon />
+                      }
+                      onClick={() => setAssignOpen(true)}
+                      sx={{
+                        borderRadius: 2,
+                        background:
+                          "linear-gradient(135deg, #1e5f79 0%, #175f7b 100%)",
+                      }}
+                    >
+                      {isSuperAdmin ? "Assign to Admin" : "Assign to Team"}
+                    </Button>
+                  )}
+                </Stack>
+              </Box>
+            </Box>
+          </Fade>
+
+          {/* Stats Cards */}
+          <Grid container spacing={2.5} sx={{ mb: 4 }}>
+            {statCards.map((card, i) => (
+              <Grid item xs={12} sm={6} md={3} key={i}>
+                <ModernStatCard {...card} loading={statsLoading} />
+              </Grid>
+            ))}
+          </Grid>
+
+          {/* Filters Bar */}
+          <Paper sx={{ mb: 3, p: 2, borderRadius: 1 }}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={2}
+              alignItems="center"
+            >
+              <TextField
+                size="small"
+                placeholder="Search by checklist or assignee..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange("search", e.target.value)}
+                sx={{ flex: 2, minWidth: 200 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: filters.search && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleFilterChange("search", "")}
+                    >
+                      <ClearIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  ),
+                }}
+              />
+              <FormControl size="small" sx={{ minWidth: 140 }}>
+                <Select
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange("status", e.target.value)}
+                  displayEmpty
+                >
+                  <MenuItem value="">All Status</MenuItem>
+                  {Object.entries(STATUS_CFG).map(([k, cfg]) => (
+                    <MenuItem key={k} value={k}>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            bgcolor: cfg.color,
+                          }}
+                        />
+                        {cfg.label}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 130 }}>
+                <Select
+                  value={filters.priority}
+                  onChange={(e) =>
+                    handleFilterChange("priority", e.target.value)
+                  }
+                  displayEmpty
+                >
+                  <MenuItem value="">All Priority</MenuItem>
+                  {Object.entries(PRIORITY_CFG).map(([k, cfg]) => (
+                    <MenuItem key={k} value={k}>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <span>{cfg.icon}</span> {cfg.label}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {hasFilters && (
+                <Button
+                  onClick={clearFilters}
+                  startIcon={<ClearIcon />}
+                  sx={{ color: "#ef4444", whiteSpace: "nowrap" }}
+                >
+                  Clear Filters
+                </Button>
+              )}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  ml: "auto",
+                }}
+              >
+                <Typography variant="caption" color="text.disabled">
+                  {assignments.length} of {pagination.total}
+                </Typography>
+              </Box>
+            </Stack>
+          </Paper>
+
+          {/* Main Content - Table View Only */}
+          {loading ? (
+            <Paper sx={{ p: 6, textAlign: "center", borderRadius: 1 }}>
+              <CircularProgress sx={{ color: "#084d68" }} />
+              <Skeleton height={60} sx={{ mt: 3 }} />
+              <Skeleton height={60} />
+              <Skeleton height={60} />
+            </Paper>
+          ) : assignments.length === 0 ? (
+            <Paper sx={{ p: 8, textAlign: "center", borderRadius: 1 }}>
+              <Avatar
+                sx={{
+                  width: 80,
+                  height: 80,
+                  bgcolor: alpha("#084d68", 0.1),
+                  mx: "auto",
+                  mb: 2,
+                }}
+              >
+                <AssignmentIcon sx={{ fontSize: 40, color: "#084d68" }} />
+              </Avatar>
+              <Typography variant="h6" fontWeight={700} color="text.primary">
+                No assignments found
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {hasFilters
+                  ? "Try adjusting your filters"
+                  : canManage
+                    ? "Create your first assignment using the button above"
+                    : "You have no assignments yet"}
+              </Typography>
             </Paper>
           ) : (
-            // Active View Table
-            <Paper sx={{ overflow: "hidden" }}>
+            <Paper sx={{ borderRadius: 1, overflow: "hidden" }}>
               <TableContainer sx={{ overflowX: "auto" }}>
-                <Table sx={{ minWidth: 800 }}>
+                <Table>
                   <TableHead>
-                    <TableRow>
-                      <TH>Checklist</TH>
-                      <TH>Assigned To</TH>
-                      <TH>Due Date</TH>
-                      <TH>Priority</TH>
-                      <TH>Status</TH>
-                      <TH>Progress</TH>
-                      <TH align="center">Actions</TH>
+                    <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                      <TableCell
+                        sx={{ fontWeight: 700, fontSize: 12, color: "#64748b" }}
+                      >
+                        Checklist
+                      </TableCell>
+                      <TableCell
+                        sx={{ fontWeight: 700, fontSize: 12, color: "#64748b" }}
+                      >
+                        Assigned To
+                      </TableCell>
+                      <TableCell
+                        sx={{ fontWeight: 700, fontSize: 12, color: "#64748b" }}
+                      >
+                        Due Date
+                      </TableCell>
+                      <TableCell
+                        sx={{ fontWeight: 700, fontSize: 12, color: "#64748b" }}
+                      >
+                        Priority
+                      </TableCell>
+                      <TableCell
+                        sx={{ fontWeight: 700, fontSize: 12, color: "#64748b" }}
+                      >
+                        Status
+                      </TableCell>
+                      <TableCell
+                        sx={{ fontWeight: 700, fontSize: 12, color: "#64748b" }}
+                      >
+                        Progress
+                      </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{ fontWeight: 700, fontSize: 12, color: "#64748b" }}
+                      >
+                        Actions
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {assignments.map((asgn, idx) => {
-                      const statusCfg =
-                        STATUS_CFG[asgn.status?.toLowerCase()] ??
-                        STATUS_CFG.pending;
-                      const assignedTo =
-                        asgn.assignedToAdmin?.email ??
-                        (asgn.assignedToTeamMembers?.length
-                          ? `${asgn.assignedToTeamMembers.length} member(s)`
-                          : "—");
-                      const completionRate =
-                        asgn.summary?.completionRate ??
-                        asgn.checklistData?.[0]?.completionRate ??
-                        0;
-                      return (
-                        <Fade in timeout={200 + idx * 40} key={asgn._id}>
-                          <TableRow
-                            hover
-                            sx={{
-                              "&:hover td:first-of-type": {
-                                borderLeft: `3px solid ${statusCfg.color}`,
-                              },
-                            }}
-                          >
-                            <TableCell sx={{ py: "12px", px: 2 }}>
-                              <Typography fontWeight={700} variant="body2">
-                                {asgn.checklistData?.[0]?.name ??
-                                  asgn.checklistIds?.[0]?.name ??
-                                  "—"}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.disabled"
-                              >
-                                #{asgn._id?.slice(-8)}
-                              </Typography>
-                            </TableCell>
-                            <TableCell sx={{ py: "12px", px: 2 }}>
-                              <Typography variant="body2" fontWeight={500}>
-                                {assignedTo}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.disabled"
-                                sx={{ textTransform: "capitalize" }}
-                              >
-                                {asgn.assignedByRole ?? "—"}
-                              </Typography>
-                            </TableCell>
-                            <TableCell sx={{ py: "12px", px: 2 }}>
-                              <DateCell date={asgn.dueDate} />
-                            </TableCell>
-                            <TableCell sx={{ py: "12px", px: 2 }}>
-                              <PriorityChip priority={asgn.priority} />
-                            </TableCell>
-                            <TableCell sx={{ py: "12px", px: 2 }}>
-                              <StatusChip status={asgn.status} />
-                            </TableCell>
-                            <TableCell sx={{ py: "12px", px: 2 }}>
-                              <CompletionBar rate={completionRate} />
-                            </TableCell>
-                            <TableCell
-                              align="center"
-                              sx={{ py: "12px", px: 2 }}
+                    {assignments.map((asgn, idx) => (
+                      <Fade in timeout={200 + idx * 30} key={asgn._id}>
+                        <TableRow
+                          hover
+                          sx={{
+                            "&:hover": { bgcolor: alpha("#084d68", 0.02) },
+                          }}
+                        >
+                          <TableCell>
+                            <Typography fontWeight={700} variant="body2">
+                              {asgn.checklistData?.[0]?.name ??
+                                asgn.checklistIds?.[0]?.name ??
+                                "—"}
+                            </Typography>
+                            <Typography variant="caption" color="text.disabled">
+                              #{asgn._id?.slice(-8)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight={500}>
+                              {asgn.assignedToAdmin?.email ??
+                                (asgn.assignedToTeamMembers?.length
+                                  ? `${asgn.assignedToTeamMembers.length} member(s)`
+                                  : "—")}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <DateCell date={asgn.dueDate} />
+                          </TableCell>
+                          <TableCell>
+                            <PriorityChip priority={asgn.priority} />
+                          </TableCell>
+                          <TableCell>
+                            <StatusChip status={asgn.status} />
+                          </TableCell>
+                          <TableCell>
+                            <ProgressBar
+                              value={asgn.summary?.completionRate ?? 0}
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Stack
+                              direction="row"
+                              spacing={0.5}
+                              justifyContent="center"
                             >
-                              <Stack
-                                direction="row"
-                                spacing={0.5}
-                                justifyContent="center"
-                              >
-                                <Tooltip title="View Details">
+                              <Tooltip title="View Details">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => {
+                                    setSelected(asgn);
+                                    setDetailsOpen(true);
+                                  }}
+                                  sx={{ borderRadius: 1.5 }}
+                                >
+                                  <VisibilityIcon sx={{ fontSize: 18 }} />
+                                </IconButton>
+                              </Tooltip>
+                              {canManage && (
+                                <Tooltip title="Re-assign">
                                   <IconButton
                                     size="small"
-                                    sx={{ borderRadius: 1.5 }}
                                     onClick={() => {
                                       setSelected(asgn);
-                                      setDetailsOpen(true);
+                                      setReassignForm({
+                                        ...defaultReassignForm(),
+                                        dueDate:
+                                          asgn.dueDate?.split("T")[0] ?? "",
+                                        priority: asgn.priority ?? "medium",
+                                      });
+                                      setReassignOpen(true);
                                     }}
+                                    sx={{ borderRadius: 1.5, color: "#084d68" }}
                                   >
-                                    <VisibilityIcon sx={{ fontSize: 17 }} />
+                                    <SwapHorizIcon sx={{ fontSize: 18 }} />
                                   </IconButton>
                                 </Tooltip>
-                                {canManage && (
-                                  <Tooltip title="Re-assign">
-                                    <IconButton
-                                      size="small"
-                                      sx={{
-                                        borderRadius: 1.5,
-                                        color: "#f59e0b",
-                                      }}
-                                      onClick={() => {
-                                        setSelected(asgn);
-                                        setReassignForm({
-                                          ...defaultReassignForm(),
-                                          dueDate:
-                                            asgn.dueDate?.split("T")[0] ?? "",
-                                          priority: asgn.priority ?? "medium",
-                                        });
-                                        setReassignOpen(true);
-                                      }}
-                                    >
-                                      <SwapHorizIcon sx={{ fontSize: 17 }} />
-                                    </IconButton>
-                                  </Tooltip>
-                                )}
-                                {canManage && (
-                                  <Tooltip title="Delete">
-                                    <IconButton
-                                      size="small"
-                                      sx={{
-                                        borderRadius: 1.5,
-                                        color: "#ef4444",
-                                      }}
-                                      onClick={() => {
-                                        setSelected(asgn);
-                                        setDeleteOpen(true);
-                                      }}
-                                    >
-                                      <DeleteIcon sx={{ fontSize: 17 }} />
-                                    </IconButton>
-                                  </Tooltip>
-                                )}
-                              </Stack>
-                            </TableCell>
-                          </TableRow>
-                        </Fade>
-                      );
-                    })}
+                              )}
+                              {canManage && (
+                                <Tooltip title="Delete">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => {
+                                      setSelected(asgn);
+                                      setDeleteOpen(true);
+                                    }}
+                                    sx={{ borderRadius: 1.5, color: "#ef4444" }}
+                                  >
+                                    <DeleteIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      </Fade>
+                    ))}
                   </TableBody>
                 </Table>
               </TableContainer>
               {pagination.totalPages > 1 && (
                 <Box
                   sx={{
-                    p: 2,
+                    p: 2.5,
                     display: "flex",
                     justifyContent: "center",
-                    borderTop: "1px solid",
-                    borderColor: "divider",
+                    borderTop: "1px solid #e2e8f0",
                   }}
                 >
                   <Pagination
@@ -1663,7 +1434,7 @@ export default function AssignmentChecklist() {
                     page={filters.page}
                     onChange={(_, p) => handleFilterChange("page", p)}
                     color="primary"
-                    size={isMobile ? "small" : "medium"}
+                    shape="rounded"
                   />
                 </Box>
               )}
@@ -1672,8 +1443,8 @@ export default function AssignmentChecklist() {
         </Container>
       </Box>
 
-      {/* Details, Delete, Restore, Assign, Reassign Dialogs remain the same... */}
-      {/* ── Details Dialog ─────────────────────────────────────────────────────── */}
+      {/* Dialogs */}
+      {/* ─── Details Dialog ─────────────────────────────────────────────────────── */}
       <Dialog
         open={detailsOpen}
         onClose={() => {
@@ -1682,15 +1453,13 @@ export default function AssignmentChecklist() {
         }}
         maxWidth="md"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
+        PaperProps={{ sx: { borderRadius: 4 } }}
       >
         {selected && (
           <>
             <Box
               sx={{
-                bgcolor:
-                  STATUS_CFG[selected.status?.toLowerCase()]?.color ??
-                  "#0d4a5c",
+                background: `linear-gradient(135deg, ${STATUS_CFG[selected.status?.toLowerCase()]?.color || "#6366f1"} 0%, ${STATUS_CFG[selected.status?.toLowerCase()]?.color || "#8b5cf6"} 100%)`,
                 p: 3,
               }}
             >
@@ -1729,61 +1498,47 @@ export default function AssignmentChecklist() {
             <DialogContent sx={{ p: 3 }}>
               <Stack spacing={3}>
                 <Grid container spacing={2}>
-                  {[
-                    {
-                      label: "Status",
-                      content: <StatusChip status={selected.status} />,
-                    },
-                    {
-                      label: "Priority",
-                      content: <PriorityChip priority={selected.priority} />,
-                    },
-                    {
-                      label: "Due Date",
-                      content: <DateCell date={selected.dueDate} />,
-                    },
-                    {
-                      label: "Progress",
-                      content: (
-                        <CompletionBar
-                          rate={selected.summary?.completionRate}
-                        />
-                      ),
-                    },
-                  ].map(({ label, content }) => (
-                    <Grid item xs={6} sm={3} key={label}>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        display="block"
-                        sx={{ mb: 0.5 }}
-                      >
-                        {label}
-                      </Typography>
-                      {content}
-                    </Grid>
-                  ))}
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" color="text.secondary">
+                      Status
+                    </Typography>
+                    <StatusChip status={selected.status} />
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" color="text.secondary">
+                      Priority
+                    </Typography>
+                    <PriorityChip priority={selected.priority} />
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" color="text.secondary">
+                      Due Date
+                    </Typography>
+                    <DateCell date={selected.dueDate} />
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" color="text.secondary">
+                      Progress
+                    </Typography>
+                    <ProgressBar
+                      value={selected.summary?.completionRate ?? 0}
+                    />
+                  </Grid>
                 </Grid>
-                <Paper sx={{ p: 2, bgcolor: "#f9fafb" }}>
+                <Paper sx={{ p: 2.5, bgcolor: "#f8fafc", borderRadius: 3 }}>
                   <Typography
                     variant="caption"
                     fontWeight={700}
                     color="text.secondary"
-                    sx={{
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
-                      display: "block",
-                      mb: 1.5,
-                    }}
                   >
                     Assignment Info
                   </Typography>
-                  <Grid container spacing={2}>
+                  <Grid container spacing={2} sx={{ mt: 1 }}>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="caption" color="text.secondary">
                         Customer
                       </Typography>
-                      <Typography fontWeight={500} variant="body2">
+                      <Typography fontWeight={500}>
                         {selected.customerName ?? "—"}
                       </Typography>
                     </Grid>
@@ -1791,20 +1546,8 @@ export default function AssignmentChecklist() {
                       <Typography variant="caption" color="text.secondary">
                         Assigned By
                       </Typography>
-                      <Typography fontWeight={500} variant="body2">
+                      <Typography fontWeight={500}>
                         {selected.assignedBy?.email ?? "—"}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="caption" color="text.secondary">
-                        Role
-                      </Typography>
-                      <Typography
-                        fontWeight={500}
-                        variant="body2"
-                        sx={{ textTransform: "capitalize" }}
-                      >
-                        {selected.assignedByRole ?? "—"}
                       </Typography>
                     </Grid>
                     <Grid item xs={12}>
@@ -1818,7 +1561,7 @@ export default function AssignmentChecklist() {
                   </Grid>
                 </Paper>
                 {selected.assignedToTeamMembers?.length > 0 && (
-                  <Paper sx={{ p: 2 }}>
+                  <Paper sx={{ p: 2.5, borderRadius: 3 }}>
                     <Typography
                       variant="caption"
                       fontWeight={700}
@@ -1837,7 +1580,7 @@ export default function AssignmentChecklist() {
                 )}
               </Stack>
             </DialogContent>
-            <DialogActions sx={{ p: 2 }}>
+            <DialogActions sx={{ p: 2.5 }}>
               <Button
                 onClick={() => {
                   setDetailsOpen(false);
@@ -1852,7 +1595,7 @@ export default function AssignmentChecklist() {
         )}
       </Dialog>
 
-      {/* ── Delete Confirm ──────────────────────────────────────────────────────── */}
+      {/* ─── Delete Confirm ──────────────────────────────────────────────────────── */}
       <Dialog
         open={deleteOpen}
         onClose={() => {
@@ -1861,27 +1604,20 @@ export default function AssignmentChecklist() {
         }}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
+        PaperProps={{ sx: { borderRadius: 2 } }}
       >
         <DialogTitle>
           <Stack direction="row" spacing={1.5} alignItems="center">
-            <Avatar
-              sx={{
-                bgcolor: alpha("#ef4444", 0.1),
-                color: "#ef4444",
-                width: 36,
-                height: 36,
-              }}
-            >
-              <WarningIcon sx={{ fontSize: 20 }} />
+            <Avatar sx={{ bgcolor: alpha("#ef4444", 0.1), color: "#ef4444" }}>
+              <WarningIcon />
             </Avatar>
             <Typography fontWeight={800}>Delete Assignment</Typography>
           </Stack>
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2">
-            Are you sure you want to delete this assignment? It can be restored
-            from the Deleted tab.
+            Are you sure you want to delete this assignment? This action cannot
+            be undone.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2.5, gap: 1 }}>
@@ -1903,79 +1639,24 @@ export default function AssignmentChecklist() {
             startIcon={
               deleting ? <CircularProgress size={15} /> : <DeleteIcon />
             }
+            sx={{ background: "#084d68" }}
           >
-            {deleting ? "Deleting…" : "Delete"}
+            {deleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* ── Restore Confirm ─────────────────────────────────────────────────────── */}
-      <Dialog
-        open={restoreOpen}
-        onClose={() => {
-          setRestoreOpen(false);
-          setSelected(null);
-        }}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
-      >
-        <DialogTitle>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Avatar
-              sx={{
-                bgcolor: alpha("#10b981", 0.1),
-                color: "#10b981",
-                width: 36,
-                height: 36,
-              }}
-            >
-              <RestoreIcon sx={{ fontSize: 20 }} />
-            </Avatar>
-            <Typography fontWeight={800}>Restore Assignment</Typography>
-          </Stack>
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            This assignment will be moved back to Active Assignments.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ p: 2.5, gap: 1 }}>
-          <Button
-            onClick={() => {
-              setRestoreOpen(false);
-              setSelected(null);
-            }}
-            variant="outlined"
-            disabled={restoring}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleRestore}
-            variant="contained"
-            color="success"
-            disabled={restoring}
-            startIcon={
-              restoring ? <CircularProgress size={15} /> : <RestoreIcon />
-            }
-          >
-            {restoring ? "Restoring…" : "Restore"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ── Assign Modal ────────────────────────────────────────────────────────── */}
+      {/* ─── Assign Modal ────────────────────────────────────────────────────────── */}
       <Dialog
         open={assignOpen}
         onClose={() => setAssignOpen(false)}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
+        PaperProps={{ sx: { borderRadius: 2 } }}
       >
         <Box
           sx={{
-            bgcolor: "#0d4a5c",
+            background: "linear-gradient(135deg, #084d68 0%, #0b3a4c 100%)",
             p: 3,
             display: "flex",
             justifyContent: "space-between",
@@ -1984,9 +1665,9 @@ export default function AssignmentChecklist() {
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             {isSuperAdmin ? (
-              <PersonSearchIcon sx={{ color: "#fff", fontSize: 22 }} />
+              <PersonSearchIcon sx={{ color: "white" }} />
             ) : (
-              <GroupAddIcon sx={{ color: "#fff", fontSize: 22 }} />
+              <GroupAddIcon sx={{ color: "white" }} />
             )}
             <Typography color="white" fontWeight={800} variant="h6">
               {isSuperAdmin ? "Assign to Admin" : "Assign to Team"}
@@ -1995,65 +1676,85 @@ export default function AssignmentChecklist() {
           <IconButton
             onClick={() => setAssignOpen(false)}
             size="small"
-            sx={{ color: "white", bgcolor: alpha("#fff", 0.1) }}
+            sx={{ color: "white", bgcolor: alpha("#fff", 0.15) }}
           >
-            <CloseIcon sx={{ fontSize: 18 }} />
+            <CloseIcon />
           </IconButton>
         </Box>
         <DialogContent sx={{ p: 3 }}>
           <Stack spacing={2.5}>
             <Box>
-              <SectionLabel icon={DescriptionIcon} required>
-                Checklists
-              </SectionLabel>
               <Button
                 variant="outlined"
                 fullWidth
                 onClick={() => openModal("checklist")}
                 startIcon={<DescriptionIcon />}
+                sx={{
+                  borderColor: assignForm.checklistIds.length === 0 ? "#ef4444" : undefined,
+                  color: assignForm.checklistIds.length === 0 ? "#ef4444" : undefined,
+                }}
               >
                 {assignForm.checklistIds.length === 0
-                  ? "Select Checklists"
-                  : `${assignForm.checklistIds.length} selected`}
+                  ? "⚠️ Select Checklists (Required)"
+                  : `📋 ${assignForm.checklistIds.length} selected`}
               </Button>
+              {assignForm.checklistIds.length === 0 && (
+                <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+                  Please select at least one checklist
+                </Typography>
+              )}
             </Box>
+            
             {isSuperAdmin && (
               <Box>
-                <SectionLabel icon={PersonSearchIcon} required>
-                  Admin
-                </SectionLabel>
                 <Button
                   variant="outlined"
                   fullWidth
                   onClick={() => openModal("admin")}
                   startIcon={<PersonAddIcon />}
+                  sx={{
+                    borderColor: !assignForm.adminId ? "#ef4444" : undefined,
+                    color: !assignForm.adminId ? "#ef4444" : undefined,
+                  }}
                 >
-                  {assignForm.adminId ? "Admin selected ✓" : "Select Admin"}
+                  {assignForm.adminId 
+                    ? `✓ ${admins.find(a => (a._id || a.id) === assignForm.adminId)?.customerName || "Admin selected"}`
+                    : "⚠️ Select Admin (Required)"}
                 </Button>
+                {!assignForm.adminId && (
+                  <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+                    Please select an admin to continue
+                  </Typography>
+                )}
               </Box>
             )}
+            
             {!isSuperAdmin && (
               <Box>
-                <SectionLabel icon={PeopleIcon} required>
-                  Team Members
-                </SectionLabel>
                 <Button
                   variant="outlined"
                   fullWidth
                   onClick={() => openModal("team")}
                   startIcon={<PeopleIcon />}
+                  sx={{
+                    borderColor: assignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined,
+                    color: assignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined,
+                  }}
                 >
                   {assignForm.teamMemberIds.length === 0
-                    ? "Select Team Members"
-                    : `${assignForm.teamMemberIds.length} selected`}
+                    ? "⚠️ Select Team Members (Required)"
+                    : `👥 ${assignForm.teamMemberIds.length} selected`}
                 </Button>
+                {assignForm.teamMemberIds.length === 0 && (
+                  <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+                    Please select at least one team member
+                  </Typography>
+                )}
               </Box>
             )}
+            
             {!isSuperAdmin && (
               <Box>
-                <SectionLabel icon={InventoryIcon}>
-                  Assets (optional)
-                </SectionLabel>
                 <Button
                   variant="outlined"
                   fullWidth
@@ -2061,85 +1762,37 @@ export default function AssignmentChecklist() {
                   startIcon={<InventoryIcon />}
                 >
                   {assignForm.assetIds.length === 0
-                    ? "Select Assets"
-                    : `${assignForm.assetIds.length} selected`}
+                    ? "Select Assets (Optional)"
+                    : `📦 ${assignForm.assetIds.length} selected`}
                 </Button>
               </Box>
             )}
+            
             <Box>
-              <SectionLabel icon={CalendarMonthIcon} required>
-                Due Date
-              </SectionLabel>
               <TextField
                 fullWidth
                 type="date"
+                label="Due Date"
                 value={assignForm.dueDate}
                 onChange={(e) =>
                   setAssignForm((p) => ({ ...p, dueDate: e.target.value }))
                 }
                 InputLabelProps={{ shrink: true }}
+                required
               />
             </Box>
+            
             <Box>
-              <SectionLabel icon={FlagIcon} required>
-                Priority
-              </SectionLabel>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                {Object.entries(PRIORITY_CFG).map(([k, v]) => (
-                  <Box
-                    key={k}
-                    onClick={() =>
-                      setAssignForm((p) => ({ ...p, priority: k }))
-                    }
-                    sx={{
-                      px: 2,
-                      py: 0.8,
-                      borderRadius: 2,
-                      cursor: "pointer",
-                      border: `2px solid ${assignForm.priority === k ? v.color : "#e5e7eb"}`,
-                      bgcolor: assignForm.priority === k ? v.bg : "#fff",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.5,
-                      transition: "all 0.15s",
-                      "&:hover": { borderColor: v.color },
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        bgcolor: v.color,
-                      }}
-                    />
-                    <Typography
-                      variant="caption"
-                      fontWeight={assignForm.priority === k ? 700 : 400}
-                      sx={{
-                        color:
-                          assignForm.priority === k
-                            ? v.color
-                            : "text.secondary",
-                      }}
-                    >
-                      {v.label}
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
-            </Box>
-            <Box>
-              <SectionLabel icon={NotesIcon}>Notes</SectionLabel>
               <TextField
                 fullWidth
                 multiline
                 rows={3}
+                label="Notes"
                 value={assignForm.notes}
                 onChange={(e) =>
                   setAssignForm((p) => ({ ...p, notes: e.target.value }))
                 }
-                placeholder="Add instructions or context…"
+                placeholder="Add instructions or context..."
               />
             </Box>
           </Stack>
@@ -2151,17 +1804,18 @@ export default function AssignmentChecklist() {
           <Button
             onClick={handleAssign}
             variant="contained"
-            disabled={submitting || assignLoading}
+            disabled={submitting || assignLoading || (isSuperAdmin && !assignForm.adminId) || assignForm.checklistIds.length === 0 || (!isSuperAdmin && assignForm.teamMemberIds.length === 0)}
             startIcon={
               submitting ? <CircularProgress size={15} /> : <SendIcon />
             }
+            sx={{ background: "linear-gradient(135deg, #1e5f79 0%, #175f7b 100%)" }}
           >
-            {submitting ? "Assigning…" : "Assign"}
+            {submitting ? "Assigning..." : "Assign"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* ── Reassign Modal ──────────────────────────────────────────────────────── */}
+      {/* ─── Reassign Modal ──────────────────────────────────────────────────────── */}
       <Dialog
         open={reassignOpen}
         onClose={() => {
@@ -2170,11 +1824,11 @@ export default function AssignmentChecklist() {
         }}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
+        PaperProps={{ sx: { borderRadius: 2 } }}
       >
         <Box
           sx={{
-            bgcolor: "#0d4a5c",
+            background: "linear-gradient(135deg, #084d68 0%, #165f7c 100%)",
             p: 3,
             display: "flex",
             justifyContent: "space-between",
@@ -2182,7 +1836,7 @@ export default function AssignmentChecklist() {
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <SwapHorizIcon sx={{ color: "#fff", fontSize: 22 }} />
+            <SwapHorizIcon sx={{ color: "white" }} />
             <Typography color="white" fontWeight={800} variant="h6">
               Re-assign Assignment
             </Typography>
@@ -2195,83 +1849,96 @@ export default function AssignmentChecklist() {
             size="small"
             sx={{ color: "white", bgcolor: alpha("#fff", 0.15) }}
           >
-            <CloseIcon sx={{ fontSize: 18 }} />
+            <CloseIcon />
           </IconButton>
         </Box>
         <DialogContent sx={{ p: 3 }}>
           <Stack spacing={2.5}>
             <Box>
-              <SectionLabel icon={WarningIcon} required>
-                Reason
-              </SectionLabel>
               <TextField
                 fullWidth
                 multiline
                 rows={2}
+                label="Reason *"
                 value={reassignForm.reason}
                 onChange={(e) =>
                   setReassignForm((p) => ({ ...p, reason: e.target.value }))
                 }
                 placeholder="Why is this being re-assigned?"
                 required
+                error={!reassignForm.reason.trim()}
+                helperText={!reassignForm.reason.trim() && "Reason is required"}
               />
             </Box>
+            
             {isSuperAdmin && (
               <Box>
-                <SectionLabel icon={PersonSearchIcon} required>
-                  New Admin
-                </SectionLabel>
                 <Button
                   variant="outlined"
                   fullWidth
                   onClick={() => openModal("reassignAdmin")}
                   startIcon={<PersonAddIcon />}
+                  sx={{
+                    borderColor: !reassignForm.newAdminId ? "#ef4444" : undefined,
+                    color: !reassignForm.newAdminId ? "#ef4444" : undefined,
+                  }}
                 >
-                  {reassignForm.newAdminId
-                    ? "Admin selected ✓"
-                    : "Select Admin"}
+                  {reassignForm.newAdminId 
+                    ? `✓ ${admins.find(a => (a._id || a.id) === reassignForm.newAdminId)?.customerName || "New Admin selected"}`
+                    : "⚠️ Select New Admin (Required)"}
                 </Button>
+                {!reassignForm.newAdminId && (
+                  <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+                    Please select a new admin to re-assign
+                  </Typography>
+                )}
               </Box>
             )}
+            
             {!isSuperAdmin && (
               <Box>
-                <SectionLabel icon={PeopleIcon} required>
-                  New Team Members
-                </SectionLabel>
                 <Button
                   variant="outlined"
                   fullWidth
                   onClick={() => openModal("reassignTeam")}
                   startIcon={<PeopleIcon />}
+                  sx={{
+                    borderColor: reassignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined,
+                    color: reassignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined,
+                  }}
                 >
-                  {reassignForm.newTeamMemberIds.length === 0
-                    ? "Select Team Members"
-                    : `${reassignForm.newTeamMemberIds.length} selected`}
+                  {reassignForm.teamMemberIds.length === 0
+                    ? "⚠️ Select Team Members (Required)"
+                    : `👥 ${reassignForm.teamMemberIds.length} selected`}
                 </Button>
+                {reassignForm.teamMemberIds.length === 0 && (
+                  <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+                    Please select at least one team member
+                  </Typography>
+                )}
               </Box>
             )}
+            
             {!isSuperAdmin && (
               <Box>
-                <SectionLabel icon={InventoryIcon}>
-                  New Assets (optional)
-                </SectionLabel>
                 <Button
                   variant="outlined"
                   fullWidth
                   onClick={() => openModal("reassignAsset")}
                   startIcon={<InventoryIcon />}
                 >
-                  {reassignForm.newAssetIds.length === 0
-                    ? "Select Assets"
-                    : `${reassignForm.newAssetIds.length} selected`}
+                  {reassignForm.assetIds.length === 0
+                    ? "Select Assets (Optional)"
+                    : `📦 ${reassignForm.assetIds.length} selected`}
                 </Button>
               </Box>
             )}
+            
             <Box>
-              <SectionLabel icon={CalendarMonthIcon}>New Due Date</SectionLabel>
               <TextField
                 fullWidth
                 type="date"
+                label="New Due Date"
                 value={reassignForm.dueDate}
                 onChange={(e) =>
                   setReassignForm((p) => ({ ...p, dueDate: e.target.value }))
@@ -2279,64 +1946,18 @@ export default function AssignmentChecklist() {
                 InputLabelProps={{ shrink: true }}
               />
             </Box>
+            
             <Box>
-              <SectionLabel icon={FlagIcon}>Priority</SectionLabel>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                {Object.entries(PRIORITY_CFG).map(([k, v]) => (
-                  <Box
-                    key={k}
-                    onClick={() =>
-                      setReassignForm((p) => ({ ...p, priority: k }))
-                    }
-                    sx={{
-                      px: 2,
-                      py: 0.8,
-                      borderRadius: 2,
-                      cursor: "pointer",
-                      border: `2px solid ${reassignForm.priority === k ? v.color : "#e5e7eb"}`,
-                      bgcolor: reassignForm.priority === k ? v.bg : "#fff",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.5,
-                      transition: "all 0.15s",
-                      "&:hover": { borderColor: v.color },
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        bgcolor: v.color,
-                      }}
-                    />
-                    <Typography
-                      variant="caption"
-                      fontWeight={reassignForm.priority === k ? 700 : 400}
-                      sx={{
-                        color:
-                          reassignForm.priority === k
-                            ? v.color
-                            : "text.secondary",
-                      }}
-                    >
-                      {v.label}
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
-            </Box>
-            <Box>
-              <SectionLabel icon={NotesIcon}>Additional Notes</SectionLabel>
               <TextField
                 fullWidth
                 multiline
                 rows={2}
+                label="Additional Notes"
                 value={reassignForm.notes}
                 onChange={(e) =>
                   setReassignForm((p) => ({ ...p, notes: e.target.value }))
                 }
-                placeholder="Extra instructions…"
+                placeholder="Extra instructions..."
               />
             </Box>
           </Stack>
@@ -2354,19 +1975,18 @@ export default function AssignmentChecklist() {
           <Button
             onClick={handleReassign}
             variant="contained"
-            color="warning"
-            disabled={submitting || assignLoading}
+            disabled={submitting || assignLoading || !reassignForm.reason.trim() || (isSuperAdmin && !reassignForm.newAdminId) || (!isSuperAdmin && reassignForm.teamMemberIds.length === 0)}
             startIcon={
               submitting ? <CircularProgress size={15} /> : <SwapHorizIcon />
             }
-            sx={{ color: "#fff" , backgroundColor:"#0d4a5c" }}
+            sx={{ background: "#084d68" }}
           >
-            {submitting ? "Re-assigning…" : "Re-assign"}
+            {submitting ? "Re-assigning..." : "Re-assign"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* ── Selection Modals ────────────────────────────────────────────────────── */}
+      {/* Selection Modals */}
       <SelectionModal
         open={modalStates.checklist}
         onClose={() => closeModal("checklist")}
@@ -2384,7 +2004,7 @@ export default function AssignmentChecklist() {
         }
         onDone={() => closeModal("checklist")}
       />
-
+      
       <SelectionModal
         open={modalStates.admin}
         onClose={() => closeModal("admin")}
@@ -2396,7 +2016,19 @@ export default function AssignmentChecklist() {
         onDone={() => closeModal("admin")}
         multiSelect={false}
       />
-
+      
+      <SelectionModal
+        open={modalStates.reassignAdmin}
+        onClose={() => closeModal("reassignAdmin")}
+        title="Select New Admin"
+        items={admins}
+        loading={adminsLoading}
+        selectedIds={reassignForm.newAdminId}
+        onToggle={(id) => setReassignForm((p) => ({ ...p, newAdminId: id }))}
+        onDone={() => closeModal("reassignAdmin")}
+        multiSelect={false}
+      />
+      
       <SelectionModal
         open={modalStates.team}
         onClose={() => closeModal("team")}
@@ -2414,7 +2046,7 @@ export default function AssignmentChecklist() {
         }
         onDone={() => closeModal("team")}
       />
-
+      
       <SelectionModal
         open={modalStates.asset}
         onClose={() => closeModal("asset")}
@@ -2432,50 +2064,38 @@ export default function AssignmentChecklist() {
         }
         onDone={() => closeModal("asset")}
       />
-
-      <SelectionModal
-        open={modalStates.reassignAdmin}
-        onClose={() => closeModal("reassignAdmin")}
-        title="Select Admin"
-        items={admins}
-        loading={adminsLoading}
-        selectedIds={reassignForm.newAdminId}
-        onToggle={(id) => setReassignForm((p) => ({ ...p, newAdminId: id }))}
-        onDone={() => closeModal("reassignAdmin")}
-        multiSelect={false}
-      />
-
+      
       <SelectionModal
         open={modalStates.reassignTeam}
         onClose={() => closeModal("reassignTeam")}
         title="Select Team Members"
         items={teamMembers}
         loading={teamLoading}
-        selectedIds={reassignForm.newTeamMemberIds}
+        selectedIds={reassignForm.teamMemberIds}
         onToggle={(id) =>
           setReassignForm((p) => ({
             ...p,
-            newTeamMemberIds: p.newTeamMemberIds.includes(id)
-              ? p.newTeamMemberIds.filter((i) => i !== id)
-              : [...p.newTeamMemberIds, id],
+            teamMemberIds: p.teamMemberIds.includes(id)
+              ? p.teamMemberIds.filter((i) => i !== id)
+              : [...p.teamMemberIds, id],
           }))
         }
         onDone={() => closeModal("reassignTeam")}
       />
-
+      
       <SelectionModal
         open={modalStates.reassignAsset}
         onClose={() => closeModal("reassignAsset")}
         title="Select Assets"
         items={assets}
         loading={assetsLoading}
-        selectedIds={reassignForm.newAssetIds}
+        selectedIds={reassignForm.assetIds}
         onToggle={(id) =>
           setReassignForm((p) => ({
             ...p,
-            newAssetIds: p.newAssetIds.includes(id)
-              ? p.newAssetIds.filter((i) => i !== id)
-              : [...p.newAssetIds, id],
+            assetIds: p.assetIds.includes(id)
+              ? p.assetIds.filter((i) => i !== id)
+              : [...p.assetIds, id],
           }))
         }
         onDone={() => closeModal("reassignAsset")}
@@ -2491,7 +2111,7 @@ export default function AssignmentChecklist() {
         <Alert
           severity={snack.severity}
           onClose={closeSnack}
-          sx={{ borderRadius: 2, fontWeight: 600 }}
+          sx={{ borderRadius: 3, fontWeight: 600 }}
         >
           {snack.msg}
         </Alert>
