@@ -19,8 +19,16 @@ export const useRoles = () => {
 };
 
 export const RoleProvider = ({ children }) => {
-  const { token, isAuthenticated, isAdmin, isSuperAdmin, get, post, put, del } =
-    useAuth();
+  const {
+    token,
+    isAuthenticated,
+    isAdmin,
+    isSuperAdmin,
+    get,
+    post,
+    put,
+    delete: deleteRequest,
+  } = useAuth();
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -202,7 +210,7 @@ export const RoleProvider = ({ children }) => {
       setError(null);
 
       try {
-        const response = await del(`/roles/${roleId}`);
+        const response = await deleteRequest(`/roles/${roleId}`);
 
         if (response.success) {
           // Refresh the roles list
@@ -220,7 +228,13 @@ export const RoleProvider = ({ children }) => {
         setLoading(false);
       }
     },
-    [canManageRoles, del, fetchRoles, pagination.page, pagination.limit],
+    [
+      canManageRoles,
+      deleteRequest,
+      fetchRoles,
+      pagination.page,
+      pagination.limit,
+    ],
   );
 
   // Toggle role status (activate/deactivate)

@@ -66,7 +66,14 @@ function FormRow({ children }) {
 
 // Small popup for quickly creating a Role or Department without leaving
 // the Add Member form. `type` is either "role" or "department".
-function QuickCreateDialog({ open, onClose, onCreate, type }) {
+function QuickCreateDialog({
+  open,
+  onClose,
+  onCreate,
+  type,
+  existingItems = [],
+  onSelectExisting,
+}) {
   const isRole = type === "role";
   const label = isRole ? "Role" : "Department";
 
@@ -104,6 +111,16 @@ function QuickCreateDialog({ open, onClose, onCreate, type }) {
     }
     if (!isRole && trimmed.length < 2) {
       setError("Department name must be at least 2 characters");
+      return;
+    }
+
+    const existingItem = existingItems.find(
+      (item) => item.name?.toLowerCase() === trimmed.toLowerCase(),
+    );
+    const existingId = existingItem?._id || existingItem?.id;
+    if (existingId) {
+      onSelectExisting?.(existingId);
+      onClose();
       return;
     }
 
@@ -297,6 +314,11 @@ export default function AddMemberModal({
     return result;
   };
 
+  const selectExistingRole = (roleId) => {
+    setFormData((prev) => ({ ...prev, roleId }));
+    if (errors.roleId) setErrors((prev) => ({ ...prev, roleId: "" }));
+  };
+
   const handleCreateDepartment = async (data) => {
     const result = await createDepartment(data);
     await fetchDepartments({ limit: 100 }, true);
@@ -311,6 +333,12 @@ export default function AddMemberModal({
         setErrors((prev) => ({ ...prev, departmentId: "" }));
     }
     return result;
+  };
+
+  const selectExistingDepartment = (departmentId) => {
+    setFormData((prev) => ({ ...prev, departmentId }));
+    if (errors.departmentId)
+      setErrors((prev) => ({ ...prev, departmentId: "" }));
   };
 
   const validate = () => {
@@ -649,12 +677,16 @@ export default function AddMemberModal({
         open={roleDialogOpen}
         onClose={() => setRoleDialogOpen(false)}
         onCreate={handleCreateRole}
+        existingItems={roles}
+        onSelectExisting={selectExistingRole}
         type="role"
       />
       <QuickCreateDialog
         open={deptDialogOpen}
         onClose={() => setDeptDialogOpen(false)}
         onCreate={handleCreateDepartment}
+        existingItems={departments}
+        onSelectExisting={selectExistingDepartment}
         type="department"
       />
     </>

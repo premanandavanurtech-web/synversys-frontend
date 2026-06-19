@@ -153,11 +153,18 @@ const RolesManagement = () => {
     }
 
     try {
+      let result;
       if (editingRole) {
-        await updateRole(editingRole._id, formData);
+        result = await updateRole(editingRole._id, formData);
+        if (result?.success === false) {
+          throw new Error(result.error || "Failed to update role");
+        }
         showSnackbar("Role updated successfully", "success");
       } else {
-        await createRole(formData);
+        result = await createRole(formData);
+        if (result?.success === false) {
+          throw new Error(result.error || "Failed to create role");
+        }
         showSnackbar("Role created successfully", "success");
       }
       handleCloseDialog();
@@ -171,7 +178,10 @@ const RolesManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this role?")) {
       try {
-        await deleteRole(id);
+        const result = await deleteRole(id);
+        if (result?.success === false) {
+          throw new Error(result.error || "Failed to delete role");
+        }
         showSnackbar("Role deleted successfully", "success");
       } catch (err) {
         showSnackbar(err.message || "Failed to delete role", "error");
@@ -627,14 +637,10 @@ const RolesManagement = () => {
                             <IconButton
                               size="small"
                               onClick={() => handleDelete(role._id)}
-                              disabled={role.memberCount > 0}
                             >
                               <DeleteIcon
                                 fontSize="small"
-                                sx={{
-                                  color:
-                                    role.memberCount > 0 ? "#ccc" : "#f44336",
-                                }}
+                                sx={{ color: "#f44336" }}
                               />
                             </IconButton>
                           </Tooltip>
