@@ -19,9 +19,9 @@ import { ChecklistBuilderProvider } from "./context/ChecklistBuilderContext";
 import { RequestChecklistProvider } from "./context/RequestChecklistContext";
 import { AssignmentProvider } from "./context/AssignmentContext";
 import { AssetRequestProvider } from "./context/AssetRequestContext";
-import TeamAssignmentProvider from "./context/TeamAssignmentContext";
+import TeamAssignmentProvider from "./context/TeamAssignmentcontext";
 import { ContactInquiryProvider } from "./context/InquiryContext";
-import { RecycleBinProvider } from "./context/RecycleBinContext";
+import { RecycleBinProvider } from "./context/Recyclebincontext";
 import { RoleProvider } from "./context/RoleContext";
 import { DepartmentProvider } from "./context/DepartmentContext";
 

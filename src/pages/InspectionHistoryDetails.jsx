@@ -35,7 +35,7 @@ import {
   PictureAsPdf as PdfIcon,
 } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
-import { useTeamAssignment } from "../context/TeamAssignmentContext";
+import { useTeamAssignment } from "../context/TeamAssignmentcontext";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 

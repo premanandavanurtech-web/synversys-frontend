@@ -49,7 +49,7 @@ import {
   Close as CloseIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { useTeamAssignment } from "../context/TeamAssignmentContext";
+import { useTeamAssignment } from "../context/TeamAssignmentcontext";
 import { useAuth } from "../context/AuthContexts";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
