@@ -1342,6 +1342,7 @@ export default function ChecklistPage() {
   const userRole = user?.role;
   const isSuperAdmin = userRole === "super_admin" || userRole === "superadmin";
   const isAdmin = userRole === "admin";
+  const canCreateRequests = userRole !== "admin";
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isSmallMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -1435,6 +1436,8 @@ export default function ChecklistPage() {
       setListLoading(false);
     }
   }, [getAllChecklists, listFilters, showSnack, isSmallMobile]);
+
+  console.log("setChecklist----====>>",checklists)
 
   // Fetch Requests
   const fetchRequests = useCallback(async () => {
@@ -1774,18 +1777,20 @@ export default function ChecklistPage() {
                   Clone
                 </Button>
               )}
-              <Button
-                variant="outlined"
-                startIcon={<RequestPageIcon />}
-                onClick={() => setRequestOpen(true)}
-                sx={{
-                  fontSize: { xs: 11, sm: 13 },
-                  borderColor: "primary.main",
-                  color: "primary.main",
-                }}
-              >
-                Request
-              </Button>
+              {canCreateRequests && (
+                <Button
+                  variant="outlined"
+                  startIcon={<RequestPageIcon />}
+                  onClick={() => setRequestOpen(true)}
+                  sx={{
+                    fontSize: { xs: 11, sm: 13 },
+                    borderColor: "primary.main",
+                    color: "primary.main",
+                  }}
+                >
+                  Request
+                </Button>
+              )}
               {(isSuperAdmin || isAdmin) && (
                 <Button
                   variant="contained"
@@ -2608,15 +2613,17 @@ export default function ChecklistPage() {
 
         {/* Modals */}
         <CreateModal open={createOpen} onClose={() => setCreateOpen(false)} />
-        <RequestChecklistModal
-          open={requestOpen}
-          onClose={() => setRequestOpen(false)}
-          onSuccess={() => {
-            showSnack("Checklist request submitted successfully!");
-            setTab(1);
-            fetchRequests();
-          }}
-        />
+        {canCreateRequests && (
+          <RequestChecklistModal
+            open={requestOpen}
+            onClose={() => setRequestOpen(false)}
+            onSuccess={() => {
+              showSnack("Checklist request submitted successfully!");
+              setTab(1);
+              fetchRequests();
+            }}
+          />
+        )}
         <AssignmentModal
           open={assignModalOpen}
           onClose={() => {
@@ -2690,8 +2697,122 @@ export default function ChecklistPage() {
             </Box>
           </DialogTitle>
           <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
-            <Stack spacing={2}>
+            <Stack spacing={2.5}>
               <Grid container spacing={1.5}>
+                {[
+                  {
+                    label: "Status",
+                    content: <StatusBadge status={viewRequest?.status} />,
+                  },
+                  {
+                    label: "Urgency",
+                    content: (
+                      <PriorityBadge priority={viewRequest?.urgencyLevel} />
+                    ),
+                  },
+                  {
+                    label: "Category",
+                    content: (
+                      <Typography variant="body2" fontWeight={600}>
+                        {viewRequest?.category || "—"}
+                      </Typography>
+                    ),
+                  },
+                  {
+                    label: "Usage Frequency",
+                    content: (
+                      <Typography variant="body2" fontWeight={600}>
+                        {viewRequest?.expectedUsageFrequency || "—"}
+                      </Typography>
+                    ),
+                  },
+                ].map(({ label, content }) => (
+                  <Grid item xs={6} sm={3} key={label}>
+                    <InfoTile sx={{ height: "100%" }}>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        fontWeight={600}
+                        display="block"
+                        sx={{ mb: 0.5 }}
+                      >
+                        {label}
+                      </Typography>
+                      {content}
+                    </InfoTile>
+                  </Grid>
+                ))}
+              </Grid>
+
+              <Box>
+                <Typography
+                  variant="caption"
+                  fontWeight={700}
+                  color="text.secondary"
+                  sx={{
+                    textTransform: "uppercase",
+                    letterSpacing: "0.07em",
+                    display: "block",
+                    mb: 1,
+                  }}
+                >
+                  Detailed Description
+                </Typography>
+                <Box
+                  sx={{
+                    p: 2,
+                    width: "100%",
+                    bgcolor: "#f7f9fa",
+                    borderRadius: "10px",
+                    border: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ lineHeight: 1.75, whiteSpace: "pre-wrap" }}
+                  >
+                    {viewRequest?.detailedDescription || "—"}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box>
+                <Typography
+                  variant="caption"
+                  fontWeight={700}
+                  color="text.secondary"
+                  sx={{
+                    textTransform: "uppercase",
+                    letterSpacing: "0.07em",
+                    display: "block",
+                    mb: 1,
+                  }}
+                >
+                  Business Justification
+                </Typography>
+                <Box
+                  sx={{
+                    p: 2,
+                    width: "100%",
+                    bgcolor: "#f7f9fa",
+                    borderRadius: "10px",
+                    border: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ lineHeight: 1.75, whiteSpace: "pre-wrap" }}
+                  >
+                    {viewRequest?.businessJustification || "—"}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Grid container spacing={1.5} sx={{ display: "none" }}>
                 <Grid item xs={6} sm={3}>
                   <Typography
                     variant="caption"

@@ -1,4 +1,6 @@
 // pages/admin/CloneChecklist.jsx - Fully Responsive with All Issues Fixed
+// + View Details dialog so users can inspect a clone's fields/description/status
+//   before (or instead of) cloning it again.
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
@@ -60,6 +62,7 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CategoryIcon from "@mui/icons-material/Category";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import MenuIcon from "@mui/icons-material/Menu";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
 const appTheme = createTheme({
   palette: {
@@ -269,7 +272,12 @@ const TableSkeleton = () => (
         <TD><Skeleton variant="rounded" width={40} height={22} /></TD>
         <TD><Skeleton variant="rounded" width={56} height={22} /></TD>
         <TD><Skeleton variant="rounded" width={56} height={22} /></TD>
-        <TD><Skeleton variant="rounded" width={80} height={32} sx={{ borderRadius: "10px" }} /></TD>
+        <TD>
+          <Box sx={{ display: "flex", gap: 0.75, justifyContent: "center" }}>
+            <Skeleton variant="rounded" width={64} height={32} sx={{ borderRadius: "10px" }} />
+            <Skeleton variant="rounded" width={64} height={32} sx={{ borderRadius: "10px" }} />
+          </Box>
+        </TD>
       </HoverRow>
     ))}
   </>
@@ -405,7 +413,145 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
   ); 
 };
 
-const MobileCard = ({ row, onClone }) => {
+// ─── View Clone Details Dialog ─────────────────────────────────────────────
+// Shows everything about a cloned checklist: status (draft/published),
+// description, what it was cloned from, and its full field list. This is
+// the piece that was missing — previously there was no way to inspect a
+// clone beyond its table row.
+const ViewCloneDialog = ({ open, checklist, onClose, onClone }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  if (!checklist) return null;
+  const fields = checklist.fields || [];
+  const clonedFromName =
+    checklist.clonedFrom?.name || checklist.clonedFromName || null;
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: "20px", m: { xs: 1, sm: 2 }, maxHeight: "90vh" } }}
+    >
+      <Box sx={{ bgcolor: "primary.main", px: { xs: 2.5, sm: 3 }, py: { xs: 2.5, sm: 3 }, borderRadius: "20px 20px 0 0" }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <Box sx={{ pr: 2, minWidth: 0 }}>
+            <Typography fontWeight={800} fontSize={{ xs: 16, sm: 19 }} color="white" sx={{ wordBreak: "break-word" }}>
+              {checklist.name}
+            </Typography>
+            <Typography variant="caption" sx={{ color: alpha("#fff", 0.65), mt: 0.5, display: "block" }}>
+              Created {fmt(checklist.createdAt)}
+              {clonedFromName && <> · Cloned from "{clonedFromName}"</>}
+            </Typography>
+            <Stack direction="row" spacing={0.75} sx={{ mt: 1.5, flexWrap: "wrap", gap: 0.75 }}>
+              <StatusBadge status={checklist.status} />
+              <TypeBadge type={checklist.checklistType} />
+              {checklist.category && (
+                <Chip
+                  label={checklist.category}
+                  size="small"
+                  sx={{ height: 24, fontSize: 11, fontWeight: 600, color: "white", bgcolor: alpha("#fff", 0.15), border: `1px solid ${alpha("#fff", 0.25)}` }}
+                />
+              )}
+            </Stack>
+          </Box>
+          <IconButton onClick={onClose} sx={{ color: "white", bgcolor: alpha("#fff", 0.12), "&:hover": { bgcolor: alpha("#fff", 0.2) }, width: 36, height: 36, flexShrink: 0 }}>
+            <CloseIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Box>
+      </Box>
+
+      <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Stack spacing={3}>
+          <Grid container spacing={1.5}>
+            {[
+              { label: "Version", val: `v${checklist.version || 1}` },
+              { label: "Fields", val: checklist.totalFields ?? fields.length },
+              { label: "Category", val: checklist.category || "—" },
+              { label: "Created", val: fmt(checklist.createdAt) },
+            ].map(({ label, val }) => (
+              <Grid item xs={6} sm={3} key={label}>
+                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.04), border: "1px solid", borderColor: alpha(theme.palette.primary.main, 0.1) }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mb: 0.25 }}>
+                    {label}
+                  </Typography>
+                  <Typography variant="body2" fontWeight={700}>
+                    {val}
+                  </Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+
+          {checklist.description && (
+            <Box>
+              <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: "0.07em", display: "block", mb: 1 }}>
+                Description
+              </Typography>
+              <Box sx={{ p: 2, bgcolor: "#f7f9fa", borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
+                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.75 }}>
+                  {checklist.description}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+
+          {fields.length > 0 && (
+            <Box>
+              <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: "0.07em", display: "block", mb: 1.5 }}>
+                Fields ({fields.length})
+              </Typography>
+              <Stack spacing={1}>
+                {fields.map((field, idx) => (
+                  <Box key={field._id || idx} sx={{ display: "flex", alignItems: "center", gap: 1.5, p: 1.5, borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
+                    <Avatar sx={{ width: 28, height: 28, fontSize: 11, fontWeight: 700, bgcolor: alpha(theme.palette.primary.main, 0.1), color: "primary.main" }}>
+                      {idx + 1}
+                    </Avatar>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="body2" fontWeight={600} noWrap>
+                        {field.label}
+                      </Typography>
+                      <Typography variant="caption" color="text.disabled">
+                        {field.type} · {field.required ? "Required" : "Optional"}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          )}
+
+          {fields.length === 0 && (
+            <Typography variant="body2" color="text.disabled" sx={{ textAlign: "center", py: 2 }}>
+              This checklist has no fields.
+            </Typography>
+          )}
+        </Stack>
+      </DialogContent>
+
+      <DialogActions sx={{ p: { xs: 2, sm: 2.5 }, borderTop: "1px solid", borderColor: "divider", bgcolor: "#fafbfc", borderRadius: "0 0 20px 20px", gap: 1, flexWrap: "wrap" }}>
+        <Button
+          onClick={() => {
+            onClose();
+            onClone(checklist);
+          }}
+          variant="contained"
+          size={isMobile ? "small" : "medium"}
+          startIcon={<ContentCopyIcon sx={{ fontSize: 16 }} />}
+          sx={{ borderRadius: "10px" }}
+        >
+          Clone This
+        </Button>
+        <Button onClick={onClose} variant="outlined" size={isMobile ? "small" : "medium"} sx={{ borderRadius: "10px" }}>
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+const MobileCard = ({ row, onClone, onView }) => {
   const theme = useTheme();
   return (
     <Paper sx={{ p: 2, mb: 1.5, border: "1px solid", borderColor: "divider", transition: "all 0.2s", "&:hover": { borderColor: "primary.main", boxShadow: (t) => `0 4px 16px ${alpha(t.palette.primary.main, 0.1)}` } }} elevation={0}>
@@ -430,9 +576,14 @@ const MobileCard = ({ row, onClone }) => {
         </Box>
         <TypeBadge type={row.checklistType} />
       </Box>
-      <Button fullWidth variant="contained" size="small" startIcon={<ContentCopyIcon sx={{ fontSize: 15 }} />} onClick={() => onClone(row)} sx={{ borderRadius: "10px", fontSize: 13, py: 0.75 }}>
-        Clone This Checklist
-      </Button>
+      <Stack direction="row" spacing={1}>
+        <Button fullWidth variant="outlined" size="small" startIcon={<VisibilityIcon sx={{ fontSize: 15 }} />} onClick={() => onView(row)} sx={{ borderRadius: "10px", fontSize: 13, py: 0.75 }}>
+          View
+        </Button>
+        <Button fullWidth variant="contained" size="small" startIcon={<ContentCopyIcon sx={{ fontSize: 15 }} />} onClick={() => onClone(row)} sx={{ borderRadius: "10px", fontSize: 13, py: 0.75 }}>
+          Clone
+        </Button>
+      </Stack>
     </Paper>
   );
 };
@@ -451,6 +602,7 @@ export default function CloneChecklist() {
   const [listLoading, setListLoading] = useState(false); 
   const [fetchError, setFetchError] = useState(null); 
   const [dialog, setDialog] = useState({ open: false, checklist: null }); 
+  const [viewDialog, setViewDialog] = useState({ open: false, checklist: null });
   const [cloneLoading, setCloneLoading] = useState(false); 
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" }); 
   
@@ -506,6 +658,9 @@ export default function CloneChecklist() {
   
   const openClone = (row) => setDialog({ open: true, checklist: row }); 
   const closeClone = () => { if (!cloneLoading) setDialog({ open: false, checklist: null }); }; 
+
+  const openView = (row) => setViewDialog({ open: true, checklist: row });
+  const closeView = () => setViewDialog({ open: false, checklist: null });
   
   const handleCloneConfirm = useCallback(async (newName) => { 
     if (!dialog.checklist) return; 
@@ -534,6 +689,7 @@ export default function CloneChecklist() {
   const stats = { 
     total: pagination.total || statsSource.length, 
     published: statsSource.filter((r) => r.status === "published" || r.status === "active").length, 
+    drafts: statsSource.filter((r) => r.status === "draft").length,
     totalFields: statsSource.reduce((s, r) => s + (r.totalFields ?? r.fields?.length ?? 0), 0), 
     categories: [...new Set(statsSource.map((r) => r.category).filter(Boolean))].length 
   }; 
@@ -584,8 +740,8 @@ export default function CloneChecklist() {
             {[
               { label: "Total Cloneable", value: stats.total, sub: "Available to duplicate", icon: <LayersIcon sx={{ fontSize: { xs: 18, sm: 20 } }} /> },
               { label: "Published", value: stats.published, sub: "Active & ready to clone", icon: <CheckCircleIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.success.main },
-              { label: "Total Fields", value: stats.totalFields, sub: "Across all checklists", icon: <ListAltIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.info.main },
-              { label: "Categories", value: stats.categories, sub: "Distinct categories", icon: <CategoryIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.warning.main }
+              { label: "Drafts", value: stats.drafts, sub: "Awaiting publishing", icon: <DescriptionIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.warning.main },
+              { label: "Total Fields", value: stats.totalFields, sub: "Across all checklists", icon: <ListAltIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.info.main }
             ].map((s) => (
               <Grid item xs={6} sm={3} key={s.label}>
                 <StatCard {...s} loading={listLoading && allRows.length === 0} />
@@ -607,7 +763,7 @@ export default function CloneChecklist() {
             
             {!fetchError && isMobile && (
               <Box sx={{ p: 2 }}>
-                {listLoading ? <MobileSkeleton /> : rows.length === 0 ? <EmptyState searched={!!debouncedSearch} /> : rows.map((row) => <MobileCard key={row._id} row={row} onClone={openClone} />)}
+                {listLoading ? <MobileSkeleton /> : rows.length === 0 ? <EmptyState searched={!!debouncedSearch} /> : rows.map((row) => <MobileCard key={row._id} row={row} onClone={openClone} onView={openView} />)}
               </Box>
             )}
             
@@ -622,7 +778,7 @@ export default function CloneChecklist() {
                       <TH align="center">Fields</TH>
                       <TH align="center">Type</TH>
                       <TH align="center">Status</TH>
-                      <TH align="center">Action</TH>
+                      <TH align="center">Actions</TH>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -634,7 +790,7 @@ export default function CloneChecklist() {
                           <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
                             <CatAvatar category={row.category} />
                             <Box>
-                              <Typography fontWeight={700} fontSize={13} noWrap>{row.name}</Typography>
+                              <Typography fontWeight={700} fontSize={13} noWrap>{row.name.length>40?row.name.slice(0,30)+"...":row.name}</Typography>
                               {row.description && <Typography variant="caption" color="text.disabled" sx={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 220 }}>{row.description}</Typography>}
                             </Box>
                           </Box>
@@ -661,9 +817,14 @@ export default function CloneChecklist() {
                         <TD align="center"><TypeBadge type={row.checklistType} /></TD>
                         <TD align="center"><StatusBadge status={row.status} /></TD>
                         <TD align="center">
-                          <Button size="small" variant="contained" startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />} onClick={() => openClone(row)} sx={{ fontSize: 12, borderRadius: "10px", px: 1.75, py: 0.65, whiteSpace: "nowrap" }}>
-                            Clone
-                          </Button>
+                          <Stack direction="row" spacing={0.75} justifyContent="center">
+                            <Button size="small" variant="outlined" startIcon={<VisibilityIcon sx={{ fontSize: 14 }} />} onClick={() => openView(row)} sx={{ fontSize: 12, borderRadius: "10px", px: 1.5, py: 0.65, whiteSpace: "nowrap" }}>
+                              View
+                            </Button>
+                            <Button size="small" variant="contained" startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />} onClick={() => openClone(row)} sx={{ fontSize: 12, borderRadius: "10px", px: 1.75, py: 0.65, whiteSpace: "nowrap" }}>
+                              Clone
+                            </Button>
+                          </Stack>
                         </TD>
                       </HoverRow>
                     ))}
@@ -693,6 +854,13 @@ export default function CloneChecklist() {
         </Container>
 
         <CloneDialog open={dialog.open} checklist={dialog.checklist} onClose={closeClone} onConfirm={handleCloneConfirm} loading={cloneLoading} />
+
+        <ViewCloneDialog
+          open={viewDialog.open}
+          checklist={viewDialog.checklist}
+          onClose={closeView}
+          onClone={openClone}
+        />
         
         <Snackbar open={snack.open} autoHideDuration={4500} onClose={() => setSnack((s) => ({ ...s, open: false }))} anchorOrigin={{ vertical: "top", horizontal: "right" }} TransitionComponent={Fade}>
           <Alert 

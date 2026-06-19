@@ -1,9 +1,8 @@
 // pages/AssetRequests.jsx
 // ─── Changes ──────────────────────────────────────────────────────────────────
-// • FIXED: Stats now reflect actual counts from backend, not filtered results
-// • Added real-time stat updates when filters change
-// • Fixed stat counts to match actual data in database
-// • Added proper loading states for stats
+// • Added "Add New Asset" option in the asset select inside CreateParentDialog
+// • Clicking "Add New Asset" opens AddNewAsset page as a full-screen modal
+// • After asset is created, the dialog refreshes the asset list and auto-selects it
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -44,7 +43,10 @@ import {
   Snackbar,
   Divider,
   Autocomplete,
-  Badge,
+  Slide,
+  AppBar,
+  Toolbar,
+  alpha,
 } from "@mui/material";
 import {
   Search,
@@ -63,6 +65,8 @@ import {
   TrendingUp,
   Inventory2,
   FilterList,
+  Close,
+  AddCircleOutline,
 } from "@mui/icons-material";
 import { styled, keyframes } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
@@ -259,8 +263,146 @@ const assetStatusColor = (s) =>
     Disposed: T.textMuted,
   })[s] || T.textMuted;
 
-// ─── Asset Autocomplete shared component ───────────────────────────────────────
-function AssetAutocomplete({ value, onChange, assets, loading, error }) {
+// ─── Slide-up transition for full-screen modal ─────────────────────────────────
+const SlideUp = React.forwardRef(function SlideUp(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// EMBEDDED ADD ASSET MODAL
+// ──────────────────────────────────────────────────────────────────────────────
+function AddAssetModal({ open, onClose, onAssetCreated }) {
+  const [AddNewAsset, setAddNewAsset] = useState(null);
+
+  useEffect(() => {
+    if (open && !AddNewAsset) {
+      import("./AddNewAsset")
+        .then((mod) => setAddNewAsset(() => mod.default))
+        .catch(() => setAddNewAsset(null));
+    }
+  }, [open]);
+
+  return (
+    <Dialog
+      fullScreen
+      open={open}
+      onClose={onClose}
+      TransitionComponent={SlideUp}
+      PaperProps={{
+        sx: {
+          bgcolor: "#f0f4f7",
+          m: { xs: 0, sm: "12px" },
+          borderRadius: { xs: 0, sm: "16px" },
+          height: { xs: "100%", sm: "calc(100% - 24px)" },
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.22)",
+        },
+      }}
+    >
+      {/* ── Slim top bar with just a close button ── */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 3,
+          py: 1.25,
+          bgcolor: T.surface,
+          borderBottom: `1px solid ${T.border}`,
+          flexShrink: 0,
+          zIndex: 10,
+        }}
+      >
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Box
+            sx={{
+              width: 30,
+              height: 30,
+              borderRadius: 1.5,
+              bgcolor: T.tealLight,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Inventory2 sx={{ fontSize: 15, color: T.teal }} />
+          </Box>
+          <Box>
+            <Typography sx={{ fontWeight: 700, fontSize: "0.875rem", color: T.text, lineHeight: 1.2 }}>
+              Add New Asset
+            </Typography>
+            <Typography sx={{ fontSize: "0.68rem", color: T.textMuted }}>
+              Asset will be auto-selected after saving
+            </Typography>
+          </Box>
+        </Stack>
+        <Tooltip title="Close and go back">
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              bgcolor: "#f1f5f9",
+              color: T.textMuted,
+              borderRadius: 1.5,
+              width: 30,
+              height: 30,
+              "&:hover": { bgcolor: T.redBg, color: T.red },
+              transition: "all 0.15s",
+            }}
+          >
+            <Close sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
+
+      {/* ── Scrollable content area ── */}
+      <Box sx={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+        {open && AddNewAsset ? (
+          <AddNewAsset
+            embeddedMode
+            onEmbeddedSuccess={(newAsset) => {
+              onAssetCreated(newAsset);
+              onClose();
+            }}
+          />
+        ) : open ? (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "60vh",
+              gap: 1.5,
+            }}
+          >
+            <CircularProgress size={32} sx={{ color: T.teal }} />
+            <Typography sx={{ color: T.textMuted, fontSize: "0.875rem", fontWeight: 500 }}>
+              Loading asset form…
+            </Typography>
+          </Box>
+        ) : null}
+      </Box>
+    </Dialog>
+  );
+}
+
+// ─── Asset Autocomplete with "Add New Asset" option ───────────────────────────
+function AssetAutocomplete({
+  value,
+  onChange,
+  assets,
+  loading,
+  error,
+  onAddNewAsset,
+}) {
+  // We inject a sentinel option that triggers the add-asset flow
+  const ADD_SENTINEL = { __isAddNew: true, _id: "__add_new__" };
+
+  const options = [...(assets || []), ADD_SENTINEL];
+
   return (
     <Box>
       <Typography
@@ -273,20 +415,90 @@ function AssetAutocomplete({ value, onChange, assets, loading, error }) {
       </Typography>
       <Autocomplete
         value={value}
-        onChange={onChange}
-        options={assets}
+        onChange={(event, newValue) => {
+          if (newValue?.__isAddNew) {
+            // Don't select the sentinel — open the add-asset modal instead
+            onAddNewAsset?.();
+            return;
+          }
+          onChange(event, newValue);
+        }}
+        options={options}
         loading={loading}
+        filterOptions={(opts, state) => {
+          // Always keep the sentinel at the bottom; filter the rest normally
+          const filtered = opts.filter((o) => {
+            if (o.__isAddNew) return true;
+            const label = (() => {
+              const name = o.name || o.assetName || "";
+              const tag = o.assetTag || o.serialNumber || "";
+              return `${name} ${tag}`.toLowerCase();
+            })();
+            return label.includes(state.inputValue.toLowerCase());
+          });
+          return filtered;
+        }}
         getOptionLabel={(option) => {
           if (!option) return "";
+          if (option.__isAddNew) return "Add New Asset";
           const name = option.name || option.assetName || "Unnamed";
           const tag = option.assetTag || option.serialNumber || "";
           return tag ? `${name} (${tag})` : name;
         }}
         isOptionEqualToValue={(option, val) => {
           if (!option || !val) return false;
+          if (option.__isAddNew || val.__isAddNew) return false;
           return (option._id || option.id) === (val._id || val.id);
         }}
         renderOption={(props, option) => {
+          // ── "Add New Asset" sentinel ──
+          if (option.__isAddNew) {
+            return (
+              <Box
+                component="li"
+                {...props}
+                key="__add_new__"
+                sx={{
+                  borderTop: `1px solid ${T.border}`,
+                  mt: 0.5,
+                  pt: "10px !important",
+                }}
+              >
+                <Stack direction="row" alignItems="center" spacing={1.5}>
+                  <Box
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 1.5,
+                      bgcolor: T.tealLight,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <AddCircleOutline
+                      sx={{ fontSize: 16, color: T.teal }}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="body2"
+                      fontWeight={700}
+                      color={T.teal}
+                    >
+                      Add New Asset
+                    </Typography>
+                    <Typography variant="caption" color={T.textMuted}>
+                      Create a new asset and select it
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Box>
+            );
+          }
+
+          // ── Normal asset option ──
           const name = option.name || option.assetName || "Unnamed";
           const tag = option.assetTag || option.serialNumber || "";
           const sc = assetStatusColor(option.status);
@@ -401,6 +613,9 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
   const [formError, setFormError] = useState("");
   const [selectedAsset, setSelectedAsset] = useState(null);
 
+  // Controls the embedded AddNewAsset modal
+  const [addAssetOpen, setAddAssetOpen] = useState(false);
+
   useEffect(() => {
     if (open) {
       getAllAssets({ limit: 200 });
@@ -423,6 +638,22 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
     } else {
       setSelectedAsset(null);
       setForm((p) => ({ ...p, assetId: "" }));
+    }
+  };
+
+  // Called when a new asset is successfully created inside the embedded modal
+  const handleNewAssetCreated = async (newAsset) => {
+    // Refresh the assets list so the new asset appears
+    await getAllAssets({ limit: 200 });
+
+    // Auto-select the newly created asset
+    if (newAsset) {
+      setSelectedAsset(newAsset);
+      setForm((p) => ({
+        ...p,
+        assetId: newAsset._id || newAsset.id || "",
+      }));
+      setFormError("");
     }
   };
 
@@ -461,59 +692,68 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={() => !submitting && onClose()}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{ sx: { borderRadius: 3 } }}
-    >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
-        <Stack direction="row" alignItems="center" spacing={1.5}>
-          <Box
-            sx={{
-              width: 34,
-              height: 34,
-              borderRadius: 2,
-              bgcolor: T.tealLight,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Add sx={{ color: T.teal, fontSize: 18 }} />
-          </Box>
-          New Asset Request
-        </Stack>
-      </DialogTitle>
-      <Divider />
-      <DialogContent sx={{ pt: 2.5 }}>
-        {formError && (
-          <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
-            {formError}
-          </Alert>
-        )}
-        <Stack spacing={2.5}>
-          <AssetAutocomplete
-            value={selectedAsset}
-            onChange={handleAssetChange}
-            assets={assets}
-            loading={assetsLoading}
-            error=""
-          />
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Request Type</InputLabel>
-              <Select
-                value={form.requestType}
-                label="Request Type"
-                sx={{ borderRadius: 2 }}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, requestType: e.target.value }))
-                }
-              >
-                {["transfer", "maintenance", "repair", "checkout", "other"].map(
-                  (t) => (
+    <>
+      <Dialog
+        open={open}
+        onClose={() => !submitting && onClose()}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Box
+              sx={{
+                width: 34,
+                height: 34,
+                borderRadius: 2,
+                bgcolor: T.tealLight,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Add sx={{ color: T.teal, fontSize: 18 }} />
+            </Box>
+            New Asset Request
+          </Stack>
+        </DialogTitle>
+        <Divider />
+        <DialogContent sx={{ pt: 2.5 }}>
+          {formError && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              {formError}
+            </Alert>
+          )}
+          <Stack spacing={2.5}>
+            {/* Asset selector with "Add New Asset" option */}
+            <AssetAutocomplete
+              value={selectedAsset}
+              onChange={handleAssetChange}
+              assets={assets}
+              loading={assetsLoading}
+              error=""
+              onAddNewAsset={() => setAddAssetOpen(true)}
+            />
+
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Request Type</InputLabel>
+                <Select
+                  value={form.requestType}
+                  label="Request Type"
+                  sx={{ borderRadius: 2 }}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, requestType: e.target.value }))
+                  }
+                >
+                  {[
+                    "transfer",
+                    "maintenance",
+                    "repair",
+                    "checkout",
+                    "other",
+                  ].map((t) => (
                     <MenuItem
                       key={t}
                       value={t}
@@ -521,75 +761,82 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
                     >
                       {t}
                     </MenuItem>
-                  ),
-                )}
-              </Select>
-            </FormControl>
-            <FormControl fullWidth size="small">
-              <InputLabel>Urgency</InputLabel>
-              <Select
-                value={form.urgency}
-                label="Urgency"
-                sx={{ borderRadius: 2 }}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, urgency: e.target.value }))
-                }
-              >
-                {["low", "medium", "high", "critical"].map((u) => (
-                  <MenuItem
-                    key={u}
-                    value={u}
-                    sx={{ textTransform: "capitalize" }}
-                  >
-                    {u}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel>Urgency</InputLabel>
+                <Select
+                  value={form.urgency}
+                  label="Urgency"
+                  sx={{ borderRadius: 2 }}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, urgency: e.target.value }))
+                  }
+                >
+                  {["low", "medium", "high", "critical"].map((u) => (
+                    <MenuItem
+                      key={u}
+                      value={u}
+                      sx={{ textTransform: "capitalize" }}
+                    >
+                      {u}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              size="small"
+              label="Description"
+              value={form.description}
+              inputProps={{ maxLength: 1000 }}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, description: e.target.value }))
+              }
+              placeholder="Describe the reason for this request…"
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+            />
           </Stack>
-          <TextField
-            fullWidth
-            multiline
-            rows={3}
-            size="small"
-            label="Description"
-            value={form.description}
-            inputProps={{ maxLength: 1000 }}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, description: e.target.value }))
-            }
-            placeholder="Describe the reason for this request…"
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-        <Button
-          onClick={onClose}
-          disabled={submitting}
-          sx={{ borderRadius: 2, textTransform: "none" }}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
-          disabled={submitting}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 600,
-            background: `linear-gradient(135deg, ${T.teal} 0%, ${T.tealDark} 100%)`,
-          }}
-        >
-          {submitting ? (
-            <CircularProgress size={17} sx={{ color: "#fff" }} />
-          ) : (
-            "Create Request"
-          )}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+          <Button
+            onClick={onClose}
+            disabled={submitting}
+            sx={{ borderRadius: 2, textTransform: "none" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            disabled={submitting}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 600,
+              background: `linear-gradient(135deg, ${T.teal} 0%, ${T.tealDark} 100%)`,
+            }}
+          >
+            {submitting ? (
+              <CircularProgress size={17} sx={{ color: "#fff" }} />
+            ) : (
+              "Create Request"
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Full-screen Add Asset modal — sits on top of the create-request dialog */}
+      <AddAssetModal
+        open={addAssetOpen}
+        onClose={() => setAddAssetOpen(false)}
+        onAssetCreated={handleNewAssetCreated}
+      />
+    </>
   );
 }
 
@@ -600,11 +847,11 @@ export default function AssetRequests() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { fetchRequests, loading, isAdmin } = useAssetRequest();
+  const hideCreateRequest = user?.role === "admin";
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [requests, setRequests] = useState([]);
-  // FIXED: Initialize stats with proper structure from backend
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -649,15 +896,12 @@ export default function AssetRequests() {
         type: filters.type,
         status: filters.status,
         search: filters.search,
-        // Add sort parameters if your API supports them
         sortBy: sortField,
         sortOrder: sortOrder,
       });
 
       if (data?.success) {
         setRequests(data.requests || []);
-        // FIXED: Ensure stats are properly set from backend response
-        // The backend should return actual counts, not filtered counts
         setStats(
           data.stats || {
             total: 0,
@@ -669,7 +913,6 @@ export default function AssetRequests() {
         );
         setPagination((p) => ({ ...p, ...data.pagination }));
       } else if (data?.requests) {
-        // Fallback if success flag isn't present
         setRequests(data.requests || []);
         setStats(
           data.stats || {
@@ -823,7 +1066,6 @@ export default function AssetRequests() {
     },
   ];
 
-  // Mobile card — child/link available to all
   const MobileCard = ({ r }) => (
     <Card
       sx={{
@@ -918,7 +1160,6 @@ export default function AssetRequests() {
             {fmt(r.createdAt)}
           </Typography>
         </Stack>
-        {/* Child/Link available to all users */}
         <Stack
           direction="row"
           spacing={0.75}
@@ -1042,27 +1283,29 @@ export default function AssetRequests() {
             Manage transfers, maintenance, repairs &amp; more
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1.5} flexWrap="wrap">
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<Add sx={{ fontSize: 17 }} />}
-            onClick={() => setCreateParentOpen(true)}
-            sx={{
-              borderRadius: 2.5,
-              textTransform: "none",
-              fontWeight: 600,
-              fontSize: "0.82rem",
-              background: `linear-gradient(135deg, ${T.teal} 0%, ${T.tealDark} 100%)`,
-              boxShadow: "0 2px 8px rgba(10,97,87,0.25)",
-            }}
-          >
-            New Request
-          </Button>
-        </Stack>
+        {!hideCreateRequest && (
+          <Stack direction="row" spacing={1.5} flexWrap="wrap">
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<Add sx={{ fontSize: 17 }} />}
+              onClick={() => setCreateParentOpen(true)}
+              sx={{
+                borderRadius: 2.5,
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: "0.82rem",
+                background: `linear-gradient(135deg, ${T.teal} 0%, ${T.tealDark} 100%)`,
+                boxShadow: "0 2px 8px rgba(10,97,87,0.25)",
+              }}
+            >
+              New Request
+            </Button>
+          </Stack>
+        )}
       </Stack>
 
-      {/* ── Stat Cards - FIXED: Now showing actual backend counts ── */}
+      {/* ── Stat Cards ── */}
       <Box
         sx={{
           display: "grid",
@@ -1104,7 +1347,6 @@ export default function AssetRequests() {
                       mt: 0.5,
                     }}
                   >
-                    {/* FIXED: Always show actual counts, not filtered results */}
                     {stats[key] ?? 0}
                   </Typography>
                 </Box>

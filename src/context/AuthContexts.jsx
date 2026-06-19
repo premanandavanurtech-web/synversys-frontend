@@ -20,7 +20,7 @@ export const useAuth = () => {
   return context;
 };
 
-const API_BASE_URL = "http://localhost:9001/api/v1";
+const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
 
 // Clear all auth data from storage
 const clearAuthData = () => {

@@ -48,9 +48,10 @@ import ChevronRightOutlinedIcon from "@mui/icons-material/ChevronRightOutlined";
 import SpaceDashboardOutlinedIcon from "@mui/icons-material/SpaceDashboardOutlined";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import AnalyticsOutlinedIcon from "@mui/icons-material/AnalyticsOutlined"; // NEW
 import RestoreFromTrashOutlinedIcon from "@mui/icons-material/RestoreFromTrashOutlined";
 import { useAuth } from "../context/AuthContexts";
+import { useTeam } from "../context/TeamContext";
 
 // Styled Components - Responsive
 const MobileHeader = styled(Box)(({ theme }) => ({
@@ -130,7 +131,7 @@ const navItemsConfig = {
       label: "Dashboard",
       path: "/dashboard",
       roles: ["super_admin"],
-      order: 10, // Using increments of 10 allows inserting items between existing ones
+      order: 10,
       section: "main",
     },
     {
@@ -157,7 +158,7 @@ const navItemsConfig = {
       label: "Checklist Recycle Bin",
       path: "/admin/checklists/recycle-bin",
       roles: ["super_admin"],
-      order: 35, // Placed right after Checklists Builder
+      order: 35,
       section: "content",
     },
     {
@@ -172,7 +173,7 @@ const navItemsConfig = {
     {
       id: "reports",
       icon: BarChartOutlinedIcon,
-      label: "Reports and Analysis",
+      label: "Reports",
       path: "/admin/reports",
       roles: ["super_admin"],
       order: 50,
@@ -255,7 +256,7 @@ const navItemsConfig = {
     {
       id: "reports",
       icon: BarChartOutlinedIcon,
-      label: "Reports and Analysis",
+      label: "Reports",
       path: "/admin/reports",
       roles: ["admin"],
       order: 50,
@@ -328,6 +329,7 @@ const navItemsConfig = {
     },
   ],
 };
+
 
 // Section headers for visual grouping (optional)
 const sectionHeaders = {
@@ -405,6 +407,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, isAuthenticated, loading: authLoading } = useAuth();
+  const { profile } = useTeam();
   const theme = useTheme();
 
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -415,6 +418,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
   const [activeItem, setActiveItem] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [bottomNavValue, setBottomNavValue] = useState(0);
+  const avatarUrl = profile?.avatarUrl || user?.avatarUrl || "";
 
   // Get sorted nav items (no grouping for bottom nav)
   const navItems = getNavItems(user?.role, false);
@@ -753,6 +757,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
             }}
           >
             <Avatar
+              src={avatarUrl || undefined}
               sx={{
                 width: { md: 32, lg: 36, xl: 40 },
                 height: { md: 32, lg: 36, xl: 40 },
@@ -889,6 +894,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
           }}
         >
           <Avatar
+            src={avatarUrl || undefined}
             sx={{
               width: { xs: 40, sm: 44 },
               height: { xs: 40, sm: 44 },

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import {
   Box,
@@ -31,6 +30,7 @@ import {
   useTheme,
   useMediaQuery,
   LinearProgress,
+  Dialog,
 } from "@mui/material";
 import {
   ArrowBack,
@@ -52,6 +52,7 @@ import {
   Close,
   CheckCircleOutline,
   InfoOutlined,
+  AddCircleOutline,
 } from "@mui/icons-material";
 import { useAsset } from "../context/AssetContext";
 import { useAssetCategory } from "../context/AssetCategoryContexts";
@@ -139,6 +140,19 @@ const menuPaperSx = {
   border: `1px solid ${T.border}`,
   borderRadius: T.radius.lg,
   boxShadow: T.shadow.lg,
+};
+
+const dropdownMenuProps = {
+  sx: { zIndex: 2300 },
+  PaperProps: { sx: menuPaperSx },
+  anchorOrigin: {
+    vertical: "bottom",
+    horizontal: "left",
+  },
+  transformOrigin: {
+    vertical: "top",
+    horizontal: "left",
+  },
 };
 
 const Label = ({ children, required }) => (
@@ -332,7 +346,214 @@ const CheckboxGroup = ({
   );
 };
 
-export default function AddNewAsset() {
+// ─── Quick Add Category Dialog ───────────────────────────────────────────────
+// Opened from the Asset Category select when the user picks "Add New Category".
+// Creates a real category through AssetCategoryContext instead of just storing
+// a one-off custom name.
+function QuickCategoryDialog({
+  open,
+  onClose,
+  onCreate,
+  categories = [],
+  onSelectExisting,
+}) {
+  const [form, setForm] = useState({ name: "", description: "" });
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setForm({ name: "", description: "" });
+      setError("");
+    }
+  }, [open]);
+
+  const handleCreate = async () => {
+    const trimmed = form.name.trim();
+    if (!trimmed) {
+      setError("Category name is required");
+      return;
+    }
+    if (trimmed.length < 2) {
+      setError("Category name must be at least 2 characters");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await onCreate({
+        name: trimmed,
+        description: form.description.trim(),
+        isActive: true,
+      });
+      if (result?.success === false) {
+        setError(
+          result?.error || result?.message || "Failed to create category",
+        );
+      } else {
+        onClose();
+      }
+    } catch (err) {
+      const message = err?.message || "Failed to create category";
+      const isDuplicate =
+        /duplicate key|already exists|E11000/i.test(message);
+      const existing = categories.find(
+        (cat) => cat?.name?.trim().toLowerCase() === trimmed.toLowerCase(),
+      );
+
+      if (isDuplicate && existing) {
+        onSelectExisting?.(existing);
+        onClose();
+        return;
+      }
+
+      setError(
+        isDuplicate
+          ? "A category with this name already exists, but it is not available in this list."
+          : message,
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={submitting ? undefined : onClose}
+      maxWidth="sm"
+      fullWidth
+      sx={{ zIndex: 2400 }}
+      PaperProps={{
+        sx: {
+          borderRadius: T.radius.lg,
+          boxShadow: T.shadow.lg,
+          overflow: "hidden",
+        },
+      }}
+    >
+      <Box
+        sx={{
+          px: 3,
+          pt: 2.5,
+          pb: 2,
+          borderBottom: `1px solid ${T.border}`,
+          bgcolor: alpha(T.brandPrimary, 0.04),
+        }}
+      >
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: T.radius.sm,
+              bgcolor: alpha(T.brandPrimary, 0.1),
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CategoryOutlined sx={{ fontSize: 18, color: T.brandPrimary }} />
+          </Box>
+          <Typography
+            sx={{ fontWeight: 700, fontSize: "1rem", color: T.text.primary }}
+          >
+            Add New Category
+          </Typography>
+        </Stack>
+      </Box>
+
+      <Box sx={{ p: 3 }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2, borderRadius: T.radius.md }}>
+            {error}
+          </Alert>
+        )}
+        <Stack spacing={2.5}>
+          <Box>
+            <Label required>Category Name</Label>
+            <TextField
+              fullWidth
+              autoFocus
+              size="small"
+              placeholder="e.g. Electronics, Vehicles..."
+              value={form.name}
+              onChange={(e) => {
+                setForm((p) => ({ ...p, name: e.target.value }));
+                if (error) setError("");
+              }}
+              onKeyDown={(e) =>
+                e.key === "Enter" && !e.shiftKey && handleCreate()
+              }
+              sx={inputSx}
+            />
+          </Box>
+          <Box>
+            <Label>Description (Optional)</Label>
+            <TextField
+              fullWidth
+              size="small"
+              multiline
+              rows={2}
+              placeholder="Brief description of this category..."
+              value={form.description}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, description: e.target.value }))
+              }
+              sx={inputSx}
+            />
+          </Box>
+        </Stack>
+      </Box>
+
+      <Box
+        sx={{
+          px: 3,
+          pb: 2.5,
+          pt: 1.5,
+          borderTop: `1px solid ${T.border}`,
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 1.5,
+        }}
+      >
+        <Button
+          onClick={onClose}
+          disabled={submitting}
+          variant="outlined"
+          sx={{
+            textTransform: "none",
+            borderRadius: T.radius.md,
+            borderColor: T.border,
+            color: T.text.secondary,
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleCreate}
+          disabled={submitting}
+          variant="contained"
+          startIcon={
+            submitting ? <CircularProgress size={14} color="inherit" /> : null
+          }
+          sx={{
+            textTransform: "none",
+            borderRadius: T.radius.md,
+            bgcolor: T.brandPrimary,
+            "&:hover": { bgcolor: T.brandDark },
+            minWidth: 150,
+          }}
+        >
+          {submitting ? "Creating..." : "Create Category"}
+        </Button>
+      </Box>
+    </Dialog>
+  );
+}
+
+export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = null }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
@@ -342,6 +563,7 @@ export default function AddNewAsset() {
   const {
     categories,
     getAllCategories,
+    createCategory,
     loading: catLoading,
   } = useAssetCategory() || {};
   const {
@@ -385,7 +607,7 @@ export default function AddNewAsset() {
   });
 
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
-  const [otherCategoryName, setOtherCategoryName] = useState("");
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
 
   const [mheFilters, setMheFilters] = useState({});
@@ -481,6 +703,22 @@ export default function AddNewAsset() {
       assignedUsers: { ...p.assignedUsers, [field]: value?.id || null },
     }));
 
+  // Creates a real category via AssetCategoryContext, refreshes the dropdown
+  // list, and auto-selects the newly created category.
+  const handleCreateCategory = async (data) => {
+    const result = await createCategory(data);
+    await getAllCategories?.({ limit: 100 });
+    const newId =
+      result?.category?._id ||
+      result?.category?.id ||
+      result?.data?._id ||
+      result?._id;
+    if (newId) {
+      setSelectedCategoryId(newId);
+    }
+    return result;
+  };
+
   const handleCB = (section, label, checked) => {
     if (!canEdit) return;
     const map = {
@@ -525,18 +763,8 @@ export default function AddNewAsset() {
       toast("Please select a category", "error");
       return;
     }
-    // FIX 2: validate custom name when "Other" is selected
-    if (selectedCategoryId === "other" && !otherCategoryName.trim()) {
-      toast("Please enter a custom category name", "error");
-      return;
-    }
 
     try {
-      const selectedCat =
-        selectedCategoryId !== "other"
-          ? categories?.find((c) => c._id === selectedCategoryId)
-          : null;
-
       const mheUtilization =
         Object.keys(mheFilters).find((k) => mheFilters[k]) || "";
       const vehicleType =
@@ -554,10 +782,7 @@ export default function AddNewAsset() {
         description: formData.description.trim(),
         serialNumber: formData.serialNumber.trim() || undefined,
 
-        // FIX 2: send assetCategoryId for known cats, customCategoryName for "other"
-        ...(selectedCategoryId !== "other"
-          ? { assetCategoryId: selectedCategoryId }
-          : { customCategoryName: otherCategoryName.trim() }),
+        assetCategoryId: selectedCategoryId,
 
         currentLocation: formData.currentLocation.trim(),
         customPhysicalAddress: formData.customPhysicalAddress,
@@ -570,6 +795,7 @@ export default function AddNewAsset() {
 
         status: formData.status,
         assetCondition: formData.assetCondition,
+        healthScore: formData.healthScore,
 
         purchaseCost: formData.purchaseCost
           ? parseFloat(formData.purchaseCost)
@@ -626,7 +852,12 @@ export default function AddNewAsset() {
       const res = await createAsset(payload);
       if (res?.success) {
         toast("Asset created successfully!");
-        setTimeout(() => navigate("/admin/assets"), 1800);
+        if (embeddedMode && onEmbeddedSuccess) {
+          const newAsset = res.asset || res.data || null;
+          setTimeout(() => onEmbeddedSuccess(newAsset), 900);
+        } else {
+          setTimeout(() => navigate(-1), 1800);
+        }
       } else {
         throw new Error(res?.message || "Creation failed");
       }
@@ -704,8 +935,6 @@ export default function AddNewAsset() {
 
   const selectedCatName = (() => {
     if (!selectedCategoryId) return null;
-    if (selectedCategoryId === "other")
-      return otherCategoryName?.trim() || "Other";
     const cat = categories?.find((c) => c._id === selectedCategoryId);
     return cat?.name || null;
   })();
@@ -717,7 +946,7 @@ export default function AddNewAsset() {
     "In Transit",
     "Reserved",
   ];
-  const CONDITION_OPTIONS = ["Excellent", "Normal", "Critical", "Poor"];
+  const CONDITION_OPTIONS = ["Excellent", "Normal", "Poor", "Critical"];
   const STATUS_COLORS = {
     Active: T.success,
     "In Maintenance": T.warning,
@@ -736,9 +965,7 @@ export default function AddNewAsset() {
           py: { xs: 1.5, sm: 2 },
           position: "sticky",
           top: 0,
-          width:"1110px",
-          marginLeft:"30px",
-          borderRadius: 2,
+          width: "100%",
           zIndex: 100,
           boxSizing: "border-box",
         }}
@@ -930,41 +1157,22 @@ export default function AddNewAsset() {
                         <Select
                           value={selectedCategoryId}
                           onChange={(e) => {
-                            setSelectedCategoryId(e.target.value);
-                            if (e.target.value !== "other") {
-                              setOtherCategoryName("");
+                            const val = e.target.value;
+                            if (val === "other") {
+                              setCategoryDialogOpen(true);
+                              return;
                             }
+                            setSelectedCategoryId(val);
                           }}
                           disabled={!canEdit}
                           displayEmpty
                           sx={selectSx}
-                          MenuProps={{
-                            PaperProps: { sx: menuPaperSx },
-                            anchorOrigin: {
-                              vertical: "bottom",
-                              horizontal: "left",
-                            },
-                            transformOrigin: {
-                              vertical: "top",
-                              horizontal: "left",
-                            },
-                          }}
+                          MenuProps={dropdownMenuProps}
                           renderValue={(val) => {
                             if (!val)
                               return (
                                 <span style={{ color: T.text.muted }}>
                                   Select category…
-                                </span>
-                              );
-                            if (val === "other")
-                              return (
-                                <span
-                                  style={{
-                                    color: T.brandPrimary,
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  Other (Custom)
                                 </span>
                               );
                             const cat = categories?.find((c) => c._id === val);
@@ -1021,30 +1229,27 @@ export default function AddNewAsset() {
                           )}
                           <Divider sx={{ my: 0.5 }} />
                           <MenuItem value="other">
-                            <Typography
-                              sx={{
-                                color: T.brandPrimary,
-                                fontSize: "0.875rem",
-                                fontWeight: 500,
-                              }}
+                            <Stack
+                              direction="row"
+                              alignItems="center"
+                              spacing={0.75}
                             >
-                              + Other (Custom)
-                            </Typography>
+                              <AddCircleOutline
+                                sx={{ fontSize: 16, color: T.brandPrimary }}
+                              />
+                              <Typography
+                                sx={{
+                                  color: T.brandPrimary,
+                                  fontSize: "0.875rem",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Add New Category
+                              </Typography>
+                            </Stack>
                           </MenuItem>
                         </Select>
                       </FormControl>
-
-                      {selectedCategoryId === "other" && (
-                        <TextField
-                          size="small"
-                          fullWidth
-                          placeholder="Enter custom category name"
-                          value={otherCategoryName}
-                          onChange={(e) => setOtherCategoryName(e.target.value)}
-                          disabled={!canEdit}
-                          sx={{ mt: 1, ...inputSx }}
-                        />
-                      )}
 
                       {selectedCatName && (
                         <Stack
@@ -1171,6 +1376,10 @@ export default function AddNewAsset() {
                           </Typography>
                         }
                         disabled={!canEdit}
+                        slotProps={{
+                          popper: { sx: { zIndex: 2300 } },
+                          paper: { sx: menuPaperSx },
+                        }}
                         renderInput={(params) => (
                           <TextField
                             {...params}
@@ -1352,6 +1561,7 @@ export default function AddNewAsset() {
                       onChange={(e) => fi("status", e.target.value)}
                       disabled={!canEdit}
                       sx={selectSx}
+                      MenuProps={dropdownMenuProps}
                     >
                       {STATUS_OPTIONS.map((s) => (
                         <MenuItem key={s} value={s}>
@@ -1376,6 +1586,7 @@ export default function AddNewAsset() {
                       onChange={(e) => fi("assetCondition", e.target.value)}
                       disabled={!canEdit}
                       sx={selectSx}
+                      MenuProps={dropdownMenuProps}
                     >
                       {CONDITION_OPTIONS.map((s) => (
                         <MenuItem key={s} value={s}>
@@ -1409,6 +1620,10 @@ export default function AddNewAsset() {
                     onChange={(e) => fi("commissioningDate", e.target.value)}
                     disabled={!canEdit}
                     InputLabelProps={{ shrink: true }}
+                    inputProps={{
+                      onClick: (e) => e.currentTarget.showPicker?.(),
+                      style: { cursor: canEdit ? "pointer" : "default" },
+                    }}
                     sx={inputSx}
                   />
                 </Grid>
@@ -1672,6 +1887,7 @@ export default function AddNewAsset() {
                         }
                         disabled={!canEdit}
                         sx={selectSx}
+                        MenuProps={dropdownMenuProps}
                       >
                         {["Green", "Yellow", "Red"].map((v) => (
                           <MenuItem key={v} value={v}>
@@ -1909,6 +2125,7 @@ export default function AddNewAsset() {
                         }
                         disabled={!canEdit}
                         sx={selectSx}
+                        MenuProps={dropdownMenuProps}
                       >
                         {["Low", "Medium", "High", "Critical"].map((v) => (
                           <MenuItem key={v} value={v}>
@@ -1998,6 +2215,7 @@ export default function AddNewAsset() {
                               }
                               disabled={!canEdit}
                               sx={selectSx}
+                              MenuProps={dropdownMenuProps}
                             >
                               {[
                                 "Daily",
@@ -2031,6 +2249,10 @@ export default function AddNewAsset() {
                             }
                             disabled={!canEdit}
                             InputLabelProps={{ shrink: true }}
+                            inputProps={{
+                              onClick: (e) => e.currentTarget.showPicker?.(),
+                              style: { cursor: canEdit ? "pointer" : "default" },
+                            }}
                             sx={inputSx}
                           />
                         </Grid>
@@ -2102,6 +2324,17 @@ export default function AddNewAsset() {
           </Grid>
         </Grid>
       </Box>
+
+      <QuickCategoryDialog
+        open={categoryDialogOpen}
+        onClose={() => setCategoryDialogOpen(false)}
+        onCreate={handleCreateCategory}
+        categories={categories}
+        onSelectExisting={(category) => {
+          setSelectedCategoryId(category._id || category.id);
+          toast(`Selected existing category "${category.name}"`, "info");
+        }}
+      />
 
       <Snackbar
         open={snackbar.open}

@@ -106,10 +106,17 @@ const initials = (name) =>
         .slice(0, 2)
         .toUpperCase();
 
-const fmtErr = (e) =>
-  typeof e === "string"
-    ? e
-    : e?.response?.data?.message || e?.message || "Something went wrong";
+const fmtErr = (e) => {
+  if (typeof e === "string") return e;
+  const data = e?.response?.data;
+  // Show field-level validation errors if present
+  if (data?.errors?.length > 0) {
+    return data.errors
+      .map((err) => `${err.field ? `${err.field}: ` : ""}${err.message}`)
+      .join(", ");
+  }
+  return data?.message || e?.message || "Something went wrong";
+};
 
 // Access Denied Component
 const AccessDenied = () => {
@@ -348,7 +355,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
       elevation={0}
     >
       <CardContent sx={{ p: { xs: 1.75, sm: 2 } }}>
-        <Box
+        {/* <Box
           sx={{
             position: "absolute",
             top: 14,
@@ -358,7 +365,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
             borderRadius: "50%",
             bgcolor: isActive ? C.success : C.text.muted,
           }}
-        />
+        /> */}
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
           <Avatar
@@ -1351,34 +1358,34 @@ export default function ClientManagement() {
   }, [search, updateFilters, fetchClients, filters.search]);
 
   const handleAddClient = async (formData) => {
-    try {
-      await addClient(formData);
-      showToast("Customer created successfully!");
-      setModalOpen(false);
-      fetchClients({ page: 1 });
-    } catch (err) {
-      showToast(fmtErr(err), "error");
-    }
-  };
+  try {
+    await addClient(formData);
+    showToast("Customer created successfully!", "success");
+    setModalOpen(false);
+    fetchClients({ page: 1 });
+  } catch (err) {
+    showToast(fmtErr(err), "error");
+  }
+};
 
   const handleEditClient = async (formData) => {
-    try {
-      await editClient(editingClient._id, {
-        customerName: formData.customerName,
-        membershipPlan: formData.membershipPlan,
-        licenseLimit: parseInt(formData.licenseLimit),
-        phone: formData.phone,
-        website: formData.website,
-        notes: formData.notes,
-      });
-      showToast("Customer updated successfully!");
-      setModalOpen(false);
-      setEditingClient(null);
-      fetchClients();
-    } catch (err) {
-      showToast(fmtErr(err), "error");
-    }
-  };
+  try {
+    await editClient(editingClient._id, {
+      customerName: formData.customerName,
+      membershipPlan: formData.membershipPlan,
+      licenseLimit: parseInt(formData.licenseLimit),
+      phone: formData.phone,
+      website: formData.website,
+      notes: formData.notes,
+    });
+    showToast("Customer updated successfully!", "success");
+    setModalOpen(false);
+    setEditingClient(null);
+    fetchClients();
+  } catch (err) {
+    showToast(fmtErr(err), "error");
+  }
+};
 
   const handleStatusChange = async () => {
     try {
@@ -1498,6 +1505,8 @@ export default function ClientManagement() {
       </Box>
     );
   }
+
+  console.log("Error====>>",error)
 
   return (
     <Box sx={{ bgcolor: C.surface, minHeight: "100vh", p: { xs: 2, sm: 3 } }}>

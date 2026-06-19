@@ -1,36 +1,24 @@
-// context/ReportContext.js  — Fixed & Enhanced
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useRef,
-} from "react";
+import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { useAuth } from "./AuthContexts";
 import axios from "axios";
 
 const ReportContext = createContext();
 
 export const useReport = () => {
-  const context = useContext(ReportContext);
-  if (!context)
-    throw new Error("useReport must be used within a ReportProvider");
-  return context;
+  const ctx = useContext(ReportContext);
+  if (!ctx) throw new Error("useReport must be used within a ReportProvider");
+  return ctx;
 };
 
-const API_BASE_URL = "http://localhost:9001/api/v1";
+const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
 
 const getApiClient = (token) => {
   const client = axios.create({
     baseURL: API_BASE_URL,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     withCredentials: true,
-    timeout: 20000,
+    timeout: 30000,
   });
-  // Auto-redirect on 401
   client.interceptors.response.use(
     (res) => res,
     (err) => {
@@ -40,59 +28,85 @@ const getApiClient = (token) => {
         window.location.href = "/login";
       }
       return Promise.reject(err);
-    },
+    }
   );
   return client;
 };
 
-// ─── FIX: Normalise preserves summary object AND extracts array data ──────────
+// Normalise report data from various API response shapes
 const normaliseReport = (raw, fallbackType = "") => {
   if (!raw) return null;
-
-  // The API wraps everything in { success, message, data: { summary, clients/team/etc } }
-  // raw here is already res.data (the full response body)
+  
+  // Handle both { success, data: { ... } } and direct { ... } responses
   const inner = raw.data ?? raw;
-
-  // Extract the array rows from whichever key holds them
-  const dataArray =
-    inner.clients ??
-    inner.team ??
-    inner.assets ??
-    inner.checklists ??
-    inner.assignments ??
-    inner.inspections ??
-    inner.auditLogs ??
-    inner.logs ??
-    inner.records ??
-    inner.inquiries ??
-    inner.contacts ??
-    inner.revenue ??
-    inner.compliance ??
-    [];
+  
+  // Extract data arrays based on report type
+  let dataArray = [];
+  let summary = {};
+  
+  // Check for different data structures
+  if (inner.clients) {
+    dataArray = inner.clients;
+    summary = inner.summary || {};
+  } else if (inner.teamMembers) {
+    dataArray = inner.teamMembers;
+    summary = inner.summary || {};
+  } else if (inner.assets) {
+    dataArray = inner.assets;
+    summary = inner.summary || {};
+  } else if (inner.checklists) {
+    dataArray = inner.checklists;
+    summary = inner.summary || {};
+  } else if (inner.assignments) {
+    dataArray = inner.assignments;
+    summary = inner.summary || {};
+  } else if (inner.submissions) {
+    dataArray = inner.submissions;
+    summary = inner.summary || {};
+  } else if (inner.requests) {
+    dataArray = inner.requests;
+    summary = inner.summary || {};
+  } else if (inner.logs) {
+    dataArray = inner.logs;
+    summary = inner.summary || {};
+  } else if (inner.inquiries) {
+    dataArray = inner.inquiries;
+    summary = inner.summary || {};
+  } else if (inner.financialData || inner.revenue) {
+    dataArray = inner.financialData || inner.revenue || [];
+    summary = inner.summary || {};
+  } else if (Array.isArray(inner.data)) {
+    dataArray = inner.data;
+    summary = inner.summary || {};
+  } else if (Array.isArray(inner)) {
+    dataArray = inner;
+  }
 
   return {
-    reportType: inner.reportType ?? fallbackType,
-    generatedAt: inner.generatedAt ?? new Date().toISOString(),
-    filters: inner.filters ?? {},
-    // FIX: summary lives on inner, not raw
-    summary: inner.summary ?? raw.summary ?? {},
-    recommendations: inner.recommendations ?? [],
-    planDistribution: inner.planDistribution ?? {},
-    data: Array.isArray(dataArray) ? dataArray : [],
-    totalRecords:
-      inner.totalRecords ?? (Array.isArray(dataArray) ? dataArray.length : 0),
+    reportType: inner.reportType || fallbackType,
+    generatedAt: inner.generatedAt || new Date().toISOString(),
+    summary: summary,
+    data: dataArray,
+    totalRecords: dataArray.length,
+    metadata: inner.metadata || {},
   };
+};
+
+const extractError = (err) => {
+  if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return null;
+  if (err.code === "ECONNABORTED") return "Request timed out. Please try again.";
+  if (err.response?.status === 403) return "You don't have permission to access this report.";
+  if (err.response?.status === 404) return "Report endpoint not found.";
+  if (err.response?.status >= 500) return "Server error. Please try again later.";
+  return err.response?.data?.message || err.message || "An unexpected error occurred.";
 };
 
 export const ReportProvider = ({ children }) => {
   const { token, isAuthenticated, user } = useAuth();
 
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(false);
   const [error, setError] = useState(null);
   const [reportData, setReportData] = useState(null);
-  const [analyticsData, setAnalyticsData] = useState(null);
-  const [kpiData, setKpiData] = useState(null);
   const [exporting, setExporting] = useState(false);
 
   const abortMap = useRef({});
@@ -104,44 +118,33 @@ export const ReportProvider = ({ children }) => {
     return ctrl.signal;
   }, []);
 
-  // ── Role helpers ─────────────────────────────────────────────────────────────
-  const isAdminFn = useCallback(() => user?.role === "admin", [user]);
-
-  const isSuperAdminFn = useCallback(
+  const isSuperAdmin = useCallback(
     () => user?.role === "super_admin" || user?.role === "superadmin",
-    [user],
+    [user]
   );
+  const isAdmin = useCallback(() => user?.role === "admin", [user]);
 
   const hasReportAccess = useCallback(
     (reportType) => {
-      if (isSuperAdminFn()) return true;
-      if (isAdminFn()) {
-        return [
-          "assets",
-          "team",
-          "checklists",
-          "assignments",
-          "inspections",
-          "compliance",
-        ].includes(reportType);
-      }
-      return ["inspections", "compliance"].includes(reportType);
+      if (isSuperAdmin()) return true;
+      const adminTypes = [
+        "assets", "team", "checklists", "assignments", "inspections",
+        "compliance", "asset-requests", "checklist-submissions",
+      ];
+      const teamTypes = [
+        "assignments", "asset-requests", "checklist-submissions", "inspections",
+      ];
+      if (isAdmin()) return adminTypes.includes(reportType);
+      return teamTypes.includes(reportType);
     },
-    [isAdminFn, isSuperAdminFn],
+    [isAdmin, isSuperAdmin]
   );
 
-  // ── Generic fetch helper ──────────────────────────────────────────────────────
   const fetchReport = useCallback(
-    async ({
-      endpoint,
-      reportType,
-      filters = {},
-      format = "json",
-      accessCheck,
-    }) => {
+    async ({ endpoint, reportType, filters = {}, format = "json", accessCheck }) => {
       if (!isAuthenticated || !token) return null;
       if (accessCheck && !accessCheck()) {
-        setError(`You do not have permission to access ${reportType} reports`);
+        setError(`You don't have permission to access ${reportType} reports.`);
         return null;
       }
 
@@ -157,28 +160,28 @@ export const ReportProvider = ({ children }) => {
         });
         if (format !== "json") params.append("format", format);
 
-        const response = await api.get(`${endpoint}?${params.toString()}`, {
+        const url = `${endpoint}?${params.toString()}`;
+        const config = {
           signal,
           ...(format !== "json" && { responseType: "blob" }),
-        });
+        };
+
+        const response = await api.get(url, config);
 
         if (format !== "json") return response.data;
 
         const raw = response.data;
-        if (raw?.success === false)
-          throw new Error(
-            raw.message || `Failed to fetch ${reportType} report`,
-          );
+        if (raw?.success === false) {
+          throw new Error(raw.message || `Failed to fetch ${reportType} report`);
+        }
 
-        // FIX: pass the full raw response to normaliser so it can find .data.summary
         const normalised = normaliseReport(raw, reportType);
         setReportData(normalised);
         return { success: true, message: raw.message, data: normalised };
       } catch (err) {
-        if (err.name !== "CanceledError" && err.code !== "ERR_CANCELED") {
-          const msg =
-            err.response?.data?.message || err.message || "Unexpected error";
-          console.error(`[ReportContext] ${reportType} error:`, msg);
+        const msg = extractError(err);
+        if (msg) {
+          console.error(`[ReportContext] ${reportType}:`, msg);
           setError(msg);
         }
         return null;
@@ -186,10 +189,10 @@ export const ReportProvider = ({ children }) => {
         setLoading(false);
       }
     },
-    [isAuthenticated, token, cancelKey],
+    [isAuthenticated, token, cancelKey]
   );
 
-  // ── Report methods ────────────────────────────────────────────────────────────
+  // Report methods
   const getClientReport = useCallback(
     (filters = {}, format = "json") =>
       fetchReport({
@@ -197,9 +200,92 @@ export const ReportProvider = ({ children }) => {
         reportType: "clients",
         filters,
         format,
-        accessCheck: () => isSuperAdminFn(),
+        accessCheck: isSuperAdmin,
       }),
-    [fetchReport, isSuperAdminFn],
+    [fetchReport, isSuperAdmin]
+  );
+
+  const getIndividualClientReport = useCallback(
+    (clientId, filters = {}) =>
+      fetchReport({
+        endpoint: "/reports/individual-client",
+        reportType: "individual_client",
+        filters: { clientId, ...filters },
+        accessCheck: isSuperAdmin,
+      }),
+    [fetchReport, isSuperAdmin]
+  );
+
+  const getRevenueReport = useCallback(
+    (filters = {}, format = "json") =>
+      fetchReport({
+        endpoint: "/reports/financial",
+        reportType: "revenue",
+        filters,
+        format,
+        accessCheck: isSuperAdmin,
+      }),
+    [fetchReport, isSuperAdmin]
+  );
+
+  const getChecklistRequestsReport = useCallback(
+    (filters = {}, format = "json") =>
+      fetchReport({
+        endpoint: "/reports/checklist-requests",
+        reportType: "checklist-requests",
+        filters,
+        format,
+        accessCheck: isSuperAdmin,
+      }),
+    [fetchReport, isSuperAdmin]
+  );
+
+  const getContactInquiriesReport = useCallback(
+    (filters = {}, format = "json") =>
+      fetchReport({
+        endpoint: "/reports/contact-inquiries",
+        reportType: "compliance",
+        filters,
+        format,
+        accessCheck: isSuperAdmin,
+      }),
+    [fetchReport, isSuperAdmin]
+  );
+
+  const getAuditLogsReport = useCallback(
+    (filters = {}, format = "json") =>
+      fetchReport({
+        endpoint: "/reports/audit-logs",
+        reportType: "inspections",
+        filters,
+        format,
+        accessCheck: () => hasReportAccess("inspections"),
+      }),
+    [fetchReport, hasReportAccess]
+  );
+
+  const getTeamMembersReport = useCallback(
+    (filters = {}, format = "json") =>
+      fetchReport({
+        endpoint: "/reports/team-members",
+        reportType: "team",
+        filters,
+        format,
+        accessCheck: () => hasReportAccess("team"),
+      }),
+    [fetchReport, hasReportAccess]
+  );
+
+  const getIndividualTeamReport = useCallback(
+    (teamId, filters = {}, format = "json") =>
+      fetchReport({
+        endpoint: "/reports/individual-team",
+        reportType: "individual_team",
+        filters: { teamId, ...filters },
+        format,
+        accessCheck: () => hasReportAccess("team"),
+      }),
+    [fetchReport, hasReportAccess]
   );
 
   const getAssetReport = useCallback(
@@ -211,24 +297,31 @@ export const ReportProvider = ({ children }) => {
         format,
         accessCheck: () => hasReportAccess("assets"),
       }),
-    [fetchReport, hasReportAccess],
+    [fetchReport, hasReportAccess]
   );
 
-  // FIX: team report uses /reports/individual-team only when teamId provided; else falls back to a summary
-  const getTeamReport = useCallback(
-    (filters = {}, format = "json") => {
-      const endpoint = filters.teamId
-        ? "/reports/individual-team"
-        : "/reports/assets";
-      return fetchReport({
-        endpoint,
-        reportType: "team",
+  const getAssetRequestsReport = useCallback(
+    (filters = {}, format = "json") =>
+      fetchReport({
+        endpoint: "/reports/asset-requests",
+        reportType: "asset-requests",
         filters,
         format,
-        accessCheck: () => hasReportAccess("team"),
-      });
-    },
-    [fetchReport, hasReportAccess],
+        accessCheck: () => hasReportAccess("asset-requests"),
+      }),
+    [fetchReport, hasReportAccess]
+  );
+
+  const getChecklistSubmissionsReport = useCallback(
+    (filters = {}, format = "json") =>
+      fetchReport({
+        endpoint: "/reports/checklist-submissions",
+        reportType: "checklist-submissions",
+        filters,
+        format,
+        accessCheck: () => hasReportAccess("checklist-submissions"),
+      }),
+    [fetchReport, hasReportAccess]
   );
 
   const getChecklistReport = useCallback(
@@ -240,7 +333,7 @@ export const ReportProvider = ({ children }) => {
         format,
         accessCheck: () => hasReportAccess("checklists"),
       }),
-    [fetchReport, hasReportAccess],
+    [fetchReport, hasReportAccess]
   );
 
   const getAssignmentReport = useCallback(
@@ -252,144 +345,30 @@ export const ReportProvider = ({ children }) => {
         format,
         accessCheck: () => hasReportAccess("assignments"),
       }),
-    [fetchReport, hasReportAccess],
+    [fetchReport, hasReportAccess]
   );
 
-  const getInspectionReport = useCallback(
-    (filters = {}, format = "json") =>
-      fetchReport({
-        endpoint: "/reports/audit-logs",
-        reportType: "inspections",
-        filters,
-        format,
-        accessCheck: () => hasReportAccess("inspections"),
-      }),
-    [fetchReport, hasReportAccess],
-  );
-
-  const getRevenueReport = useCallback(
-    (filters = {}, format = "json") =>
-      fetchReport({
-        endpoint: "/reports/financial",
-        reportType: "revenue",
-        filters,
-        format,
-        accessCheck: () => isSuperAdminFn(),
-      }),
-    [fetchReport, isSuperAdminFn],
-  );
-
-  const getComplianceReport = useCallback(
-    (filters = {}, format = "json") =>
-      fetchReport({
-        endpoint: "/reports/contact-inquiries",
-        reportType: "compliance",
-        filters,
-        format,
-        accessCheck: () => hasReportAccess("compliance"),
-      }),
-    [fetchReport, hasReportAccess],
-  );
-
-  const getIndividualClientReport = useCallback(
-    (clientId, filters = {}) =>
-      fetchReport({
-        endpoint: "/reports/individual-client",
-        reportType: "individual_client",
-        filters: { clientId, ...filters },
-        accessCheck: () => isSuperAdminFn(),
-      }),
-    [fetchReport, isSuperAdminFn],
-  );
-
-  // ── Analytics — with graceful fallback if endpoint doesn't exist ──────────────
-  const getDashboardAnalytics = useCallback(
-    async (dateRange = 30, startDate = null, endDate = null) => {
-      if (!isAuthenticated || !token) return null;
-
-      const signal = cancelKey("analytics");
-      setError(null);
-      setLoading(true);
-
-      try {
-        const api = getApiClient(token);
-        const params = new URLSearchParams();
-        if (dateRange) params.append("dateRange", dateRange);
-        if (startDate) params.append("startDate", startDate);
-        if (endDate) params.append("endDate", endDate);
-
-        const response = await api.get(
-          `/reports/analytics/dashboard?${params.toString()}`,
-          { signal },
-        );
-
-        if (response.data?.success !== false) {
-          setAnalyticsData(response.data?.data ?? response.data);
-          return response.data;
-        }
-        throw new Error(response.data?.message || "Failed to fetch analytics");
-      } catch (err) {
-        if (err.name !== "CanceledError" && err.code !== "ERR_CANCELED") {
-          // FIX: 404 on analytics is non-fatal — set empty object so page still renders
-          if (err.response?.status === 404) {
-            setAnalyticsData({});
-            return {};
-          }
-          setError(err.response?.data?.message || err.message);
-        }
-        return null;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [isAuthenticated, token, cancelKey],
-  );
-
-  const getKPISummary = useCallback(async () => {
-    if (!isAuthenticated || !token) return null;
-    const signal = cancelKey("kpi");
-    setLoading(true);
-    try {
-      const api = getApiClient(token);
-      const response = await api.get("/reports/analytics/kpi", { signal });
-      if (response.data?.success !== false) {
-        setKpiData(response.data);
-        return response.data;
-      }
-      throw new Error(response.data?.message || "Failed to fetch KPI");
-    } catch (err) {
-      if (err.name !== "CanceledError" && err.code !== "ERR_CANCELED") {
-        if (err.response?.status === 404) return {};
-        setError(err.response?.data?.message || err.message);
-      }
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, [isAuthenticated, token, cancelKey]);
-
-  // ── Bulk export ───────────────────────────────────────────────────────────────
-  const exportBulkReports = useCallback(
-    async (reportTypes, dateRange, format = "excel") => {
+  // Complete report export
+  const exportCompleteReport = useCallback(
+    async (format = "excel", dateRange = "this_month") => {
       if (!isAuthenticated || !token) return null;
       setExporting(true);
       setError(null);
       try {
         const api = getApiClient(token);
-        const response = await api.post(
-          "/reports/export/bulk",
-          { reportTypes, dateRange, format },
-          { responseType: "blob" },
+        const response = await api.get(
+          `/reports/export/complete?format=${format}&dateRange=${dateRange}`,
+          { responseType: "blob" }
         );
         return response.data;
       } catch (err) {
-        setError(err.response?.data?.message || err.message);
+        setError(extractError(err));
         return null;
       } finally {
         setExporting(false);
       }
     },
-    [isAuthenticated, token],
+    [isAuthenticated, token]
   );
 
   const cleanup = useCallback(() => {
@@ -404,29 +383,28 @@ export const ReportProvider = ({ children }) => {
     <ReportContext.Provider
       value={{
         loading,
-        initialLoading,
         exporting,
         error,
         reportData,
-        analyticsData,
-        kpiData,
         getClientReport,
+        getIndividualClientReport,
+        getRevenueReport,
+        getChecklistRequestsReport,
+        getContactInquiriesReport,
+        getAuditLogsReport,
+        getTeamMembersReport,
+        getIndividualTeamReport,
         getAssetReport,
-        getTeamReport,
+        getAssetRequestsReport,
+        getChecklistSubmissionsReport,
         getChecklistReport,
         getAssignmentReport,
-        getInspectionReport,
-        getRevenueReport,
-        getComplianceReport,
-        getIndividualClientReport,
-        getDashboardAnalytics,
-        getKPISummary,
-        exportBulkReports,
+        exportCompleteReport,
         clearError,
         clearReportData,
         cleanup,
-        isAdmin: isAdminFn(),
-        isSuperAdmin: isSuperAdminFn(),
+        isAdmin: isAdmin(),
+        isSuperAdmin: isSuperAdmin(),
         hasReportAccess,
       }}
     >

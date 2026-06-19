@@ -18,7 +18,7 @@ export const useTeam = () => {
   return context;
 };
 
-const API_BASE_URL = "http://localhost:9001/api/v1";
+const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
 
 const getAccessToken = () =>
   localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
@@ -230,6 +230,59 @@ export const TeamProvider = ({ children }) => {
         return {
           success: false,
           error: err.response?.data?.message || "Failed to update profile",
+        };
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [handleAuthError],
+  );
+
+  const uploadTeamAvatar = useCallback(
+    async (file) => {
+      const accessToken = getAccessToken();
+      if (!accessToken) return { success: false, error: "Not authenticated" };
+      if (!file) return { success: false, error: "Please choose an image" };
+
+      setActionLoading(true);
+      setError(null);
+      try {
+        const formData = new FormData();
+        formData.append("avatar", file);
+
+        const response = await axios.post(
+          `${API_BASE_URL}/team/me/avatar`,
+          formData,
+          {
+            headers: {
+              ...authHeaders(),
+              "Content-Type": "multipart/form-data",
+            },
+          },
+        );
+
+        if (response.data.success) {
+          const nextProfile = response.data.profile || response.data.data?.profile;
+          if (nextProfile) setProfile(nextProfile);
+          return {
+            success: true,
+            message: response.data.message || "Profile image updated successfully",
+            avatarUrl: response.data.avatarUrl || response.data.data?.avatarUrl,
+          };
+        }
+
+        return {
+          success: false,
+          error: response.data.message || "Failed to upload profile image",
+        };
+      } catch (err) {
+        handleAuthError(err);
+        return {
+          success: false,
+          error:
+            err.response?.data?.message ||
+            err.response?.data?.error ||
+            "Failed to upload profile image",
         };
       } finally {
         setActionLoading(false);
@@ -828,6 +881,7 @@ export const TeamProvider = ({ children }) => {
     // Profile
     fetchTeamProfile,
     updateTeamProfile,
+    uploadTeamAvatar,
     changePassword,
     fetchTeamMembers,
     fetchTeamStats,

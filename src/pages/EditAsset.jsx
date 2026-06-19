@@ -15,10 +15,14 @@ import {
   MenuItem,
   Divider,
   Chip,
+  Autocomplete,
+  TextField,
 } from "@mui/material";
 import { styled, keyframes } from "@mui/material/styles";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAsset } from "../context/AssetContext";
+import { useTeam } from "../context/TeamContext";
+import { useAuth } from "../context/AuthContexts";
 import CurrencyRupeeIcon from "@mui/icons-material/CurrencyRupee";
 
 import {
@@ -369,7 +373,7 @@ const STATUS_OPTIONS = [
   "In Transit",
   "Reserved",
 ];
-const CONDITION_OPTIONS = ["Good", "Fair", "Poor", "Critical"];
+const CONDITION_OPTIONS = ["Excellent", "Normal", "Poor", "Critical"];
 const INSPECTION_SCHEDULES = ["Monthly", "Quarterly", "Semi-Annual", "Annual"];
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -383,6 +387,12 @@ const getUserDisplayName = (user) => {
   return "";
 };
 
+const getUserId = (user) => {
+  if (!user) return "";
+  if (typeof user === "string") return user;
+  return user._id || user.id || "";
+};
+
 const toDateInput = (val) => {
   if (!val) return "";
   try {
@@ -392,10 +402,51 @@ const toDateInput = (val) => {
   }
 };
 
+const normalizeAssetCondition = (condition) => {
+  if (condition === "Good") return "Normal";
+  if (condition === "Fair") return "Poor";
+  return condition || "Normal";
+};
+
+const assignedUserInputSx = {
+  "& .MuiOutlinedInput-root": {
+    minHeight: 38,
+    padding: "0 8px",
+    fontSize: 13,
+    fontWeight: 500,
+    color: C.dark,
+    background: "#fafaf8",
+    borderRadius: "9px",
+    fontFamily: "'DM Sans', sans-serif",
+    "& fieldset": { border: `1.5px solid ${C.border}` },
+    "&:hover fieldset": { borderColor: C.border },
+    "&.Mui-focused": {
+      background: C.white,
+      "& fieldset": { borderColor: C.teal },
+    },
+  },
+  "& .MuiInputBase-input": {
+    fontSize: 13,
+    fontWeight: 500,
+    fontFamily: "'DM Sans', sans-serif",
+    padding: "8px 4px !important",
+  },
+  "& .MuiInputBase-input::placeholder": {
+    color: "#c8c5bc",
+    opacity: 1,
+  },
+};
+
 // ─── Main Component ───────────────────────────────────────────
 export default function EditAsset() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const {
+    teamMembers,
+    fetchTeamMembers,
+    loading: teamLoading,
+  } = useTeam() || {};
   const {
     getAssetById,
     updateAsset,
@@ -404,6 +455,8 @@ export default function EditAsset() {
     uploadAssetImages,
     loading: ctxLoading,
   } = useAsset();
+  const isTeam = user?.role === "team";
+  const currentUserId = user?._id || user?.id;
 
   const [pageLoading, setPageLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -419,6 +472,49 @@ export default function EditAsset() {
   const showSnackbar = (message, severity = "success") =>
     setSnackbar({ open: true, message, severity });
 
+  const teamOptions = (() => {
+    if (!teamMembers?.length) {
+      if (isTeam && user) {
+        const name =
+          `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+          user.name ||
+          user.email ||
+          "Me";
+        return [
+          {
+            id: currentUserId,
+            label: name,
+            name,
+            email: user.email || "",
+            role: user.role || "team",
+          },
+        ];
+      }
+      return [];
+    }
+
+    const mapped = teamMembers.map((m) => {
+      const name =
+        `${m.firstName || ""} ${m.lastName || ""}`.trim() ||
+        m.name ||
+        m.email ||
+        "Unnamed user";
+      return {
+        id: m._id || m.id,
+        label: name,
+        name,
+        email: m.email || "",
+        role: m.teamRole || m.role || "team",
+      };
+    });
+
+    if (isTeam && currentUserId) {
+      return mapped.filter((m) => m.id === currentUserId);
+    }
+
+    return mapped;
+  })();
+
   // ─── Form State ───────────────────────────────────────────
   const [form, setForm] = useState({
     // Core
@@ -428,7 +524,7 @@ export default function EditAsset() {
     serialNumber: "",
     modelNumber: "",
     status: "Active",
-    assetCondition: "Good",
+    assetCondition: "Normal",
     description: "",
     // Category & Location
     assetCategoryId: "",
@@ -462,6 +558,10 @@ export default function EditAsset() {
     fetchAsset();
   }, [id]);
 
+  useEffect(() => {
+    fetchTeamMembers?.({ limit: 100 });
+  }, [fetchTeamMembers]);
+
   const fetchAsset = async () => {
     setPageLoading(true);
     try {
@@ -476,17 +576,17 @@ export default function EditAsset() {
           serialNumber: a.serialNumber || "",
           modelNumber: a.modelNumber || "",
           status: a.status || "Active",
-          assetCondition: a.assetCondition || "Good",
+          assetCondition: normalizeAssetCondition(a.assetCondition),
           description: a.description || "",
           assetCategoryId: a.assetCategoryId?._id || a.assetCategoryId || "",
           currentLocation: a.currentLocation || "",
           department: a.department || "",
           purchaseCost: a.purchaseCost || "",
           commissioningDate: toDateInput(a.commissioningDate),
-          warrantyExpiryDate: toDateInput(a.warrantyExpiryDate),
-          primaryUser: getUserDisplayName(a.assignedUsers?.primaryUser),
-          secondaryUser: getUserDisplayName(a.assignedUsers?.secondaryUser),
-          custodian: getUserDisplayName(a.assignedUsers?.custodian),
+          warrantyExpiryDate: toDateInput(a.warrantyExpiry),
+          primaryUser: getUserId(a.assignedUsers?.primaryUser),
+          secondaryUser: getUserId(a.assignedUsers?.secondaryUser),
+          custodian: getUserId(a.assignedUsers?.custodian),
           streetAddress: addr.streetAddress || "",
           city: addr.city || "",
           stateProvince: addr.stateProvince || "",
@@ -562,7 +662,7 @@ export default function EditAsset() {
   };
 
   const getImageUrl = (name) =>
-    name ? `http://localhost:9001/uploads/assets/${name}` : null;
+    name ? `https://synversys-backend.onrender.com/uploads/assets/${name}` : null;
 
   // ─── Submit ───────────────────────────────────────────────
   const handleSubmit = async () => {
@@ -583,9 +683,14 @@ export default function EditAsset() {
         assetCategoryId: form.assetCategoryId || undefined,
         currentLocation: form.currentLocation,
         department: form.department,
+        assignedUsers: {
+          primaryUser: form.primaryUser || null,
+          secondaryUser: form.secondaryUser || null,
+          custodian: form.custodian || null,
+        },
         purchaseCost: form.purchaseCost ? Number(form.purchaseCost) : undefined,
         commissioningDate: form.commissioningDate || undefined,
-        warrantyExpiryDate: form.warrantyExpiryDate || undefined,
+        warrantyExpiry: form.warrantyExpiryDate || undefined,
         customPhysicalAddress: {
           streetAddress: form.streetAddress,
           city: form.city,
@@ -988,36 +1093,69 @@ export default function EditAsset() {
               <Person /> Assigned Users
             </SectionLabel>
             <FieldGrid cols={3}>
-              <Field
-                label="Primary User"
-                icon={<Person sx={{ fontSize: 13 }} />}
-              >
-                <StyledInput
-                  value={form.primaryUser}
-                  onChange={set("primaryUser")}
-                  placeholder="Full name or user ID"
-                />
-              </Field>
-              <Field
-                label="Secondary User"
-                icon={<Person sx={{ fontSize: 13 }} />}
-              >
-                <StyledInput
-                  value={form.secondaryUser}
-                  onChange={set("secondaryUser")}
-                  placeholder="Full name or user ID"
-                />
-              </Field>
-              <Field
-                label="Custodian"
-                icon={<VerifiedUser sx={{ fontSize: 13 }} />}
-              >
-                <StyledInput
-                  value={form.custodian}
-                  onChange={set("custodian")}
-                  placeholder="Full name or user ID"
-                />
-              </Field>
+              {[
+                { key: "primaryUser", label: "Primary User", icon: <Person sx={{ fontSize: 13 }} /> },
+                { key: "secondaryUser", label: "Secondary User", icon: <Person sx={{ fontSize: 13 }} /> },
+                { key: "custodian", label: "Custodian", icon: <VerifiedUser sx={{ fontSize: 13 }} /> },
+              ].map(({ key, label, icon }) => (
+                <Field key={key} label={label} icon={icon}>
+                  <Autocomplete
+                    size="small"
+                    options={teamOptions}
+                    loading={teamLoading}
+                    value={teamOptions.find((option) => option.id === form[key]) || null}
+                    onChange={(_, value) =>
+                      setForm((prev) => ({ ...prev, [key]: value?.id || "" }))
+                    }
+                    isOptionEqualToValue={(option, value) => option?.id === value?.id}
+                    getOptionLabel={(option) => option?.name || option?.label || ""}
+                    noOptionsText={isTeam ? "Only your account is available" : "No members found"}
+                    slotProps={{
+                      popper: { sx: { zIndex: 2300 } },
+                      paper: {
+                        sx: {
+                          borderRadius: 2,
+                          border: `1px solid ${C.border}`,
+                          boxShadow: "0 12px 30px rgba(26,26,24,0.14)",
+                        },
+                      },
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder={`Select ${label.toLowerCase()}...`}
+                        sx={assignedUserInputSx}
+                      />
+                    )}
+                    renderOption={(props, option) => (
+                      <li {...props} key={option.id}>
+                        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ py: 0.5 }}>
+                          <Avatar
+                            sx={{
+                              width: 28,
+                              height: 28,
+                              fontSize: "0.7rem",
+                              bgcolor: C.teal,
+                            }}
+                          >
+                            {(option.name || option.label)?.charAt(0) || "?"}
+                          </Avatar>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography sx={{ fontSize: 13, fontWeight: 700, color: C.dark }}>
+                              {option.name || option.label}
+                            </Typography>
+                            {option.email && (
+                              <Typography sx={{ fontSize: 11, color: C.mutedDark }}>
+                                {option.email}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Stack>
+                      </li>
+                    )}
+                  />
+                </Field>
+              ))}
             </FieldGrid>
           </FormCard>
 

@@ -40,6 +40,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useAuth } from "../context/AuthContexts";
+import { useTeam } from "../context/TeamContext";
 import { useNotifications } from "../context/NotificationContext";
 import { formatDistanceToNow } from "date-fns";
 
@@ -595,6 +596,7 @@ function MobileUserMenu({
   onLogout,
   getUserDisplayName,
   getUserInitials,
+  avatarUrl,
   getUserRole,
   roleConfig,
 }) {
@@ -625,6 +627,7 @@ function MobileUserMenu({
       {/* Profile section */}
       <Box sx={{ px: 3, py: 2, textAlign: "center" }}>
         <Avatar
+          src={avatarUrl || undefined}
           sx={{
             width: 80,
             height: 80,
@@ -701,6 +704,7 @@ function MobileUserMenu({
 /* ─── Main TopHeader (Fully Responsive) ─── */
 export default function TopHeader({ onMenuToggle }) {
   const { user, logout } = useAuth();
+  const { profile } = useTeam();
   const {
     notifications,
     unreadCount,
@@ -768,6 +772,8 @@ export default function TopHeader({ onMenuToggle }) {
       .join("")
       .toUpperCase()
       .slice(0, 2);
+
+  const avatarUrl = profile?.avatarUrl || user?.avatarUrl || "";
 
   const getUserRole = () => {
     const role = user?.role || "member";
@@ -951,6 +957,7 @@ export default function TopHeader({ onMenuToggle }) {
           >
             <Box sx={{ position: "relative" }}>
               <Avatar
+                src={avatarUrl || undefined}
                 alt={getUserDisplayName()}
                 sx={{
                   width: { xs: 32, sm: 36, md: 38 },
@@ -1066,6 +1073,7 @@ export default function TopHeader({ onMenuToggle }) {
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <Avatar
+              src={avatarUrl || undefined}
               sx={{
                 width: 48,
                 height: 48,
@@ -1215,6 +1223,7 @@ export default function TopHeader({ onMenuToggle }) {
         onLogout={handleLogout}
         getUserDisplayName={getUserDisplayName}
         getUserInitials={getUserInitials}
+        avatarUrl={avatarUrl}
         getUserRole={getUserRole}
         roleConfig={roleConfig}
       />

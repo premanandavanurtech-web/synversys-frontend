@@ -54,53 +54,101 @@ import {
   Person as PersonIcon,
   Business as BusinessIcon,
   Work as WorkIcon,
+  ContactPageOutlined as ContactPageOutlinedIcon,
+  NotesOutlined as NotesOutlinedIcon,
 } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTeam } from "../context/TeamContext";
 import EditTeamMemberModal from "./EditMemberModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 
-// ─── Palette ────────────────────────────────────────────────────────────────
+// ─── Design tokens ────────────────────────────────────────────────────────
 const C = {
   primary: "#0d4a5c",
   primaryDark: "#0a3a49",
-  primaryLight: "#e8f2f5",
-  success: "#16a34a",
-  successBg: "#dcfce7",
-  surface: "#f1f4f8",
+  primaryMuted: "#4f7d89",
+  primaryLight: "#eaf3f5",
+  success: "#15803d",
+  successBg: "#ecfdf3",
+  surface: "#f4f6f9",
   card: "#ffffff",
-  border: "#e2e8f0",
-  error: "#ef4444",
-  errorBg: "#fee2e2",
-  warning: "#eab308",
-  warningBg: "#fef9c3",
-  text: { primary: "#1e293b", secondary: "#64748b", disabled: "#94a3b8" },
+  border: "#e7eaf0",
+  error: "#dc2626",
+  errorBg: "#fef2f2",
+  warning: "#b45309",
+  warningBg: "#fff7e6",
+  gold: "#a855f7",
+  goldBg: "#f5edff",
+  text: { primary: "#16202b", secondary: "#5c6b7a", disabled: "#9aa6b2" },
 };
 
+const SHADOW = {
+  sm: "0 1px 2px rgba(15, 23, 42, 0.05)",
+  md: "0 4px 14px rgba(15, 23, 42, 0.06)",
+  lg: "0 16px 40px rgba(15, 23, 42, 0.12)",
+};
+
+const RADIUS = { card: 3, inner: 2, pill: 999 };
+
+const SectionLabel = ({ children }) => (
+  <Typography
+    variant="caption"
+    sx={{
+      fontSize: "0.68rem",
+      fontWeight: 700,
+      letterSpacing: "0.08em",
+      textTransform: "uppercase",
+      color: C.text.secondary,
+    }}
+  >
+    {children}
+  </Typography>
+);
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+// Turns enum-ish values like "on_leave" or "new-role" into "On Leave" / "New Role"
+const humanize = (value) => {
+  if (!value) return "";
+  return value
+    .toString()
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+};
+
 const getStatusStyle = (status) => {
-  switch (status?.toLowerCase()) {
+  const normalized = status?.toLowerCase().replace(/[_-]+/g, " ").trim();
+  switch (normalized) {
     case "active":
-      return { bg: C.successBg, color: C.success, label: "Active", icon: "🟢" };
+      return { bg: C.successBg, color: C.success, label: "Active" };
     case "inactive":
-      return { bg: C.errorBg, color: C.error, label: "Inactive", icon: "🔴" };
-    case "onleave":
+      return { bg: C.errorBg, color: C.error, label: "Inactive" };
     case "on leave":
-      return {
-        bg: C.warningBg,
-        color: C.warning,
-        label: "On Leave",
-        icon: "🟡",
-      };
+      return { bg: C.warningBg, color: C.warning, label: "On Leave" };
     default:
       return {
         bg: C.border,
         color: C.text.disabled,
-        label: status || "Unknown",
-        icon: "⚪",
+        label: humanize(status) || "Unknown",
       };
   }
 };
+
+const StatusDot = ({ color }) => (
+  <Box
+    component="span"
+    sx={{
+      width: 7,
+      height: 7,
+      borderRadius: "50%",
+      bgcolor: color,
+      display: "inline-block",
+      flexShrink: 0,
+    }}
+  />
+);
 
 const formatDateShort = (dateStr) => {
   if (!dateStr) return "—";
@@ -114,40 +162,94 @@ const formatDateShort = (dateStr) => {
       });
 };
 
+// ─── Empty state ─────────────────────────────────────────────────────────────
+function EmptyState({ icon, message }) {
+  return (
+    <Box
+      sx={{
+        py: 5,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 1,
+        color: C.text.disabled,
+      }}
+    >
+      <Box
+        sx={{
+          width: 44,
+          height: 44,
+          borderRadius: "50%",
+          bgcolor: C.surface,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {icon}
+      </Box>
+      <Typography variant="body2" sx={{ color: C.text.secondary, fontWeight: 500 }}>
+        {message}
+      </Typography>
+    </Box>
+  );
+}
+
 // ─── Stat Card ───────────────────────────────────────────────────────────────
-function StatCard({ icon, iconBg, title, value, trend }) {
+function StatCard({ icon, iconBg, accent, title, value, trend }) {
   return (
     <Paper
       elevation={0}
       sx={{
-        borderRadius: 2,
+        position: "relative",
+        borderRadius: RADIUS.card,
         border: `1px solid ${C.border}`,
         p: 2,
         bgcolor: C.card,
         flex: 1,
+        overflow: "hidden",
+        transition: "transform 0.18s ease, box-shadow 0.18s ease",
+        "&:hover": { transform: "translateY(-2px)", boxShadow: SHADOW.md },
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          bgcolor: accent || C.primary,
+        },
       }}
     >
       <Box display="flex" alignItems="center" justifyContent="space-between">
         <Box>
           <Typography
             variant="caption"
-            color="text.secondary"
-            sx={{ fontSize: "0.7rem", fontWeight: 500 }}
+            sx={{
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
+              color: C.text.secondary,
+            }}
           >
             {title}
           </Typography>
           <Typography
             variant="h5"
             fontWeight={700}
-            sx={{ mt: 0.5, fontSize: "1.3rem" }}
+            sx={{ mt: 0.6, fontSize: "1.4rem", color: C.text.primary, lineHeight: 1.2 }}
           >
             {value ?? "—"}
           </Typography>
           {trend && (
             <Typography
               variant="caption"
-              color={trend > 0 ? C.success : C.error}
-              sx={{ fontSize: "0.65rem" }}
+              sx={{
+                color: trend > 0 ? C.success : C.error,
+                fontSize: "0.68rem",
+                fontWeight: 600,
+              }}
             >
               {trend > 0 ? `+${trend}` : trend} from last month
             </Typography>
@@ -162,6 +264,7 @@ function StatCard({ icon, iconBg, title, value, trend }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            flexShrink: 0,
           }}
         >
           {icon}
@@ -174,13 +277,45 @@ function StatCard({ icon, iconBg, title, value, trend }) {
 // ─── Info Row ─────────────────────────────────────────────────────────────
 function InfoRow({ icon, label, value, color }) {
   return (
-    <Box display="flex" alignItems="center" gap={1.5} py={1}>
-      <Box sx={{ width: 32, color: color || C.text.secondary }}>{icon}</Box>
-      <Box flex={1}>
-        <Typography variant="caption" color="text.secondary" display="block">
+    <Box display="flex" alignItems="center" gap={1.5} py={1.1}>
+      <Box
+        sx={{
+          width: 32,
+          height: 32,
+          borderRadius: "50%",
+          bgcolor: C.surface,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: color || C.text.secondary,
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </Box>
+      <Box flex={1} minWidth={0}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: C.text.disabled,
+            fontSize: "0.68rem",
+            fontWeight: 600,
+            letterSpacing: "0.03em",
+          }}
+          display="block"
+        >
           {label}
         </Typography>
-        <Typography variant="body2" fontWeight={500}>
+        <Typography
+          variant="body2"
+          fontWeight={600}
+          sx={{
+            color: C.text.primary,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
           {value || "—"}
         </Typography>
       </Box>
@@ -198,14 +333,13 @@ function PerformanceChart({ data }) {
   return (
     <Box>
       {data?.map((item, idx) => (
-        <Box key={idx} sx={{ mb: 2 }}>
-          <Box display="flex" justifyContent="space-between" mb={0.5}>
-            <Typography variant="caption" fontWeight={500}>
+        <Box key={idx} sx={{ mb: idx === data.length - 1 ? 0 : 2.25 }}>
+          <Box display="flex" justifyContent="space-between" mb={0.6}>
+            <Typography variant="caption" fontWeight={700} sx={{ color: C.text.primary }}>
               {item.month}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {item.inspections} inspections • Quality:{" "}
-              {item.qualityScore || item.quality}/5
+            <Typography variant="caption" sx={{ color: C.text.secondary, fontWeight: 500 }}>
+              {item.inspections} inspections · Quality {item.qualityScore || item.quality}/5
             </Typography>
           </Box>
           <LinearProgress
@@ -213,11 +347,11 @@ function PerformanceChart({ data }) {
             value={(item.inspections / maxInspections) * 100}
             sx={{
               height: 6,
-              borderRadius: 3,
-              bgcolor: C.border,
+              borderRadius: RADIUS.pill,
+              bgcolor: C.surface,
               "& .MuiLinearProgress-bar": {
                 bgcolor: C.primary,
-                borderRadius: 3,
+                borderRadius: RADIUS.pill,
               },
             }}
           />
@@ -226,12 +360,12 @@ function PerformanceChart({ data }) {
             value={((item.qualityScore || item.quality || 0) / 5) * 100}
             sx={{
               height: 3,
-              borderRadius: 3,
-              mt: 0.5,
-              bgcolor: C.border,
+              borderRadius: RADIUS.pill,
+              mt: 0.6,
+              bgcolor: C.surface,
               "& .MuiLinearProgress-bar": {
-                bgcolor: "#cbd5e1",
-                borderRadius: 3,
+                bgcolor: "#d4a72c",
+                borderRadius: RADIUS.pill,
               },
             }}
           />
@@ -243,67 +377,75 @@ function PerformanceChart({ data }) {
 
 // ─── Recent Inspections Table ──────────────────────────────────────────────
 function RecentInspectionsTable({ inspections }) {
+  if (!inspections?.length) {
+    return (
+      <EmptyState
+        icon={<DescriptionIcon sx={{ fontSize: "1.2rem", color: C.text.disabled }} />}
+        message="No recent inspections to show"
+      />
+    );
+  }
+
   return (
-    <TableContainer>
+    <TableContainer sx={{ borderRadius: RADIUS.inner, border: `1px solid ${C.border}` }}>
       <Table size="small">
         <TableHead>
-          <TableRow sx={{ bgcolor: "#f8fafc" }}>
-            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
-              Inspection ID
-            </TableCell>
-            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
-              Asset
-            </TableCell>
-            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
-              Date
-            </TableCell>
-            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
-              Status
-            </TableCell>
-            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
-              Score
-            </TableCell>
+          <TableRow sx={{ bgcolor: C.surface }}>
+            {["Inspection ID", "Asset", "Date", "Status", "Score"].map((h) => (
+              <TableCell
+                key={h}
+                sx={{
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: C.text.secondary,
+                  borderBottom: `1px solid ${C.border}`,
+                }}
+              >
+                {h}
+              </TableCell>
+            ))}
           </TableRow>
         </TableHead>
         <TableBody>
-          {inspections?.length > 0 ? (
-            inspections.map((insp, idx) => (
-              <TableRow key={idx} hover>
-                <TableCell sx={{ fontSize: "0.75rem" }}>
-                  {insp.inspectionId || insp.id || "—"}
-                </TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>
-                  {insp.assetName || insp.asset?.assetName || "—"}
-                </TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>
-                  {formatDateShort(insp.submittedAt || insp.completedDate)}
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={insp.reviewStatus || insp.status || "Completed"}
-                    size="small"
-                    sx={{
-                      fontSize: "0.65rem",
-                      height: 22,
-                      bgcolor: C.successBg,
-                      color: C.success,
-                    }}
-                  />
-                </TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>
-                  {insp.score || insp.performanceRating || "—"}/5
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                <Typography variant="body2" color="text.secondary">
-                  No recent inspections
-                </Typography>
+          {inspections.map((insp, idx) => (
+            <TableRow
+              key={idx}
+              sx={{
+                "&:hover": { bgcolor: C.primaryLight },
+                "&:last-child td": { borderBottom: 0 },
+                transition: "background-color 0.12s ease",
+              }}
+            >
+              <TableCell sx={{ fontSize: "0.78rem", fontWeight: 600, color: C.text.primary }}>
+                {insp.inspectionId || insp.id || "—"}
+              </TableCell>
+              <TableCell sx={{ fontSize: "0.78rem", color: C.text.primary }}>
+                {insp.assetName || insp.asset?.assetName || "—"}
+              </TableCell>
+              <TableCell sx={{ fontSize: "0.78rem", color: C.text.secondary }}>
+                {formatDateShort(insp.submittedAt || insp.completedDate)}
+              </TableCell>
+              <TableCell>
+                <Chip
+                  label={insp.reviewStatus || insp.status || "Completed"}
+                  size="small"
+                  sx={{
+                    fontSize: "0.66rem",
+                    fontWeight: 600,
+                    height: 22,
+                    bgcolor: C.successBg,
+                    color: C.success,
+                    borderRadius: RADIUS.pill,
+                  }}
+                />
+              </TableCell>
+              <TableCell sx={{ fontSize: "0.78rem", fontWeight: 600, color: C.text.primary }}>
+                {insp.score || insp.performanceRating || "—"}/5
               </TableCell>
             </TableRow>
-          )}
+          ))}
         </TableBody>
       </Table>
     </TableContainer>
@@ -312,36 +454,56 @@ function RecentInspectionsTable({ inspections }) {
 
 // ─── Assigned Assets Table ─────────────────────────────────────────────────
 function AssignedAssetsTable({ assets }) {
+  if (!assets?.length) {
+    return (
+      <EmptyState
+        icon={<AssignmentIcon sx={{ fontSize: "1.2rem", color: C.text.disabled }} />}
+        message="No assets currently assigned"
+      />
+    );
+  }
+
   return (
-    <TableContainer>
+    <TableContainer sx={{ borderRadius: RADIUS.inner, border: `1px solid ${C.border}` }}>
       <Table size="small">
         <TableHead>
-          <TableRow sx={{ bgcolor: "#f8fafc" }}>
-            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
-              Asset Name
-            </TableCell>
-            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
-              Type
-            </TableCell>
-            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
-              Due Date
-            </TableCell>
-            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
-              Priority
-            </TableCell>
+          <TableRow sx={{ bgcolor: C.surface }}>
+            {["Asset Name", "Type", "Due Date", "Priority"].map((h) => (
+              <TableCell
+                key={h}
+                sx={{
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: C.text.secondary,
+                  borderBottom: `1px solid ${C.border}`,
+                }}
+              >
+                {h}
+              </TableCell>
+            ))}
           </TableRow>
         </TableHead>
         <TableBody>
-          {assets?.length > 0 ? (
-            assets.map((asset, idx) => (
-              <TableRow key={idx} hover>
-                <TableCell sx={{ fontSize: "0.75rem" }}>
+          {assets.map((asset, idx) => {
+            const isHigh = asset.priority === "high";
+            return (
+              <TableRow
+                key={idx}
+                sx={{
+                  "&:hover": { bgcolor: C.primaryLight },
+                  "&:last-child td": { borderBottom: 0 },
+                  transition: "background-color 0.12s ease",
+                }}
+              >
+                <TableCell sx={{ fontSize: "0.78rem", fontWeight: 600, color: C.text.primary }}>
                   {asset.asset?.assetName || asset.checklistName || "—"}
                 </TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>
+                <TableCell sx={{ fontSize: "0.78rem", color: C.text.secondary }}>
                   {asset.type || asset.checklistType || "—"}
                 </TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>
+                <TableCell sx={{ fontSize: "0.78rem", color: C.text.secondary }}>
                   {formatDateShort(asset.dueDate)}
                 </TableCell>
                 <TableCell>
@@ -349,25 +511,18 @@ function AssignedAssetsTable({ assets }) {
                     label={asset.priority || "Medium"}
                     size="small"
                     sx={{
-                      fontSize: "0.65rem",
+                      fontSize: "0.66rem",
+                      fontWeight: 600,
                       height: 22,
-                      bgcolor:
-                        asset.priority === "high" ? C.errorBg : C.warningBg,
-                      color: asset.priority === "high" ? C.error : C.warning,
+                      borderRadius: RADIUS.pill,
+                      bgcolor: isHigh ? C.errorBg : C.warningBg,
+                      color: isHigh ? C.error : C.warning,
                     }}
                   />
                 </TableCell>
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
-                <Typography variant="body2" color="text.secondary">
-                  No assigned assets
-                </Typography>
-              </TableCell>
-            </TableRow>
-          )}
+            );
+          })}
         </TableBody>
       </Table>
     </TableContainer>
@@ -425,7 +580,15 @@ export default function TeamMemberDetails() {
     return (
       <Box sx={{ bgcolor: C.surface, minHeight: "100vh", p: 3 }}>
         <Container maxWidth="xl">
-          <Skeleton variant="rounded" height={400} />
+          <Skeleton variant="rounded" height={120} sx={{ mb: 3, borderRadius: RADIUS.card }} />
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            {[0, 1, 2, 3].map((i) => (
+              <Grid item xs={6} sm={3} key={i}>
+                <Skeleton variant="rounded" height={90} sx={{ borderRadius: RADIUS.card }} />
+              </Grid>
+            ))}
+          </Grid>
+          <Skeleton variant="rounded" height={320} sx={{ borderRadius: RADIUS.card }} />
         </Container>
       </Box>
     );
@@ -442,14 +605,47 @@ export default function TeamMemberDetails() {
           justifyContent: "center",
         }}
       >
-        <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
-          <Typography variant="h6" gutterBottom>
+        <Paper
+          sx={{
+            p: 4,
+            textAlign: "center",
+            borderRadius: RADIUS.card,
+            border: `1px solid ${C.border}`,
+            boxShadow: "none",
+          }}
+        >
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: "50%",
+              bgcolor: C.surface,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              mx: "auto",
+              mb: 2,
+            }}
+          >
+            <PersonIcon sx={{ color: C.text.disabled }} />
+          </Box>
+          <Typography variant="h6" fontWeight={700} gutterBottom sx={{ color: C.text.primary }}>
             Team member not found
+          </Typography>
+          <Typography variant="body2" sx={{ color: C.text.secondary, mb: 3 }}>
+            This profile may have been removed or the link is incorrect.
           </Typography>
           <Button
             variant="contained"
             onClick={() => navigate("/admin/team")}
-            sx={{ bgcolor: C.primary, textTransform: "none" }}
+            sx={{
+              bgcolor: C.primary,
+              textTransform: "none",
+              fontWeight: 600,
+              borderRadius: RADIUS.inner,
+              boxShadow: "none",
+              "&:hover": { bgcolor: C.primaryDark, boxShadow: "none" },
+            }}
           >
             Back to Team
           </Button>
@@ -489,33 +685,33 @@ export default function TeamMemberDetails() {
 
   const statCards = [
     {
-      icon: <DescriptionIcon sx={{ fontSize: "1rem" }} />,
-      iconBg: "#f1f5f9",
+      icon: <DescriptionIcon sx={{ fontSize: "1.05rem", color: C.text.secondary }} />,
+      iconBg: C.surface,
+      accent: C.text.secondary,
       title: "Total Inspections",
       value: stats.totalInspections || 0,
       trend: null,
     },
     {
-      icon: (
-        <CheckCircleOutlineIcon sx={{ fontSize: "1rem", color: C.success }} />
-      ),
+      icon: <CheckCircleOutlineIcon sx={{ fontSize: "1.05rem", color: C.success }} />,
       iconBg: C.successBg,
+      accent: C.success,
       title: "This Month",
       value: stats.thisMonth || 0,
       trend: stats.trend,
     },
     {
-      icon: <AccessTimeIcon sx={{ fontSize: "1rem", color: C.primary }} />,
+      icon: <AccessTimeIcon sx={{ fontSize: "1.05rem", color: C.primary }} />,
       iconBg: C.primaryLight,
+      accent: C.primary,
       title: "On-Time Rate",
       value: stats.onTimeRate ? `${stats.onTimeRate}%` : "98%",
       trend: null,
     },
     {
-      icon: (
-        <WorkspacePremiumIcon sx={{ fontSize: "1rem", color: "#a855f7" }} />
-      ),
-      iconBg: "#f3e8ff",
+      icon: <WorkspacePremiumIcon sx={{ fontSize: "1.05rem", color: C.gold }} />,
+      iconBg: C.goldBg,
+      accent: C.gold,
       title: "Quality Score",
       value: stats.qualityScore ? `${stats.qualityScore}/5` : "4.9/5",
       trend: null,
@@ -529,11 +725,22 @@ export default function TeamMemberDetails() {
         <Paper
           elevation={0}
           sx={{
+            position: "relative",
             p: 2.5,
             mb: 3,
-            borderRadius: 2,
+            borderRadius: RADIUS.card,
             border: `1px solid ${C.border}`,
             bgcolor: C.card,
+            overflow: "hidden",
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 4,
+              background: `linear-gradient(90deg, ${C.primary}, ${C.primaryMuted})`,
+            },
           }}
         >
           <Box
@@ -550,45 +757,59 @@ export default function TeamMemberDetails() {
                   color: C.text.primary,
                   bgcolor: C.surface,
                   border: `1px solid ${C.border}`,
+                  "&:hover": { bgcolor: C.primaryLight },
                 }}
               >
                 <ArrowBackIcon />
               </IconButton>
-              <Avatar
+              <Box
                 sx={{
-                  width: 64,
-                  height: 64,
-                  bgcolor: C.primary,
-                  fontWeight: 700,
-                  fontSize: "1.2rem",
+                  p: "3px",
+                  borderRadius: "50%",
+                  border: `2px solid ${statusStyle.color}`,
                 }}
               >
-                {initials}
-              </Avatar>
-              <Box>
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  gap={1.5}
-                  flexWrap="wrap"
+                <Avatar
+                  sx={{
+                    width: 60,
+                    height: 60,
+                    background: `linear-gradient(135deg, ${C.primary}, ${C.primaryDark})`,
+                    fontWeight: 700,
+                    fontSize: "1.15rem",
+                  }}
                 >
-                  <Typography variant="h5" fontWeight={700}>
+                  {initials}
+                </Avatar>
+              </Box>
+              <Box>
+                <Box display="flex" alignItems="center" gap={1.25} flexWrap="wrap">
+                  <Typography variant="h5" fontWeight={700} sx={{ color: C.text.primary }}>
                     {fullName || "Team Member"}
                   </Typography>
                   <Chip
+                    icon={<StatusDot color={statusStyle.color} />}
                     label={statusStyle.label}
                     size="small"
                     sx={{
                       bgcolor: statusStyle.bg,
                       color: statusStyle.color,
-                      fontWeight: 600,
+                      fontWeight: 700,
+                      fontSize: "0.7rem",
+                      borderRadius: RADIUS.pill,
+                      "& .MuiChip-icon": { ml: "8px" },
                     }}
                   />
                 </Box>
-                <Typography variant="body2" color="text.secondary" mt={0.5}>
-                  {pi.roleDisplay || pi.role || "—"} •{" "}
-                  {pi.department || "No Department"} • Member since{" "}
-                  {formatDate(pi.joinDate)}
+                <Typography variant="body2" sx={{ color: C.text.secondary, mt: 0.5 }}>
+                  {pi.roleDisplay || humanize(pi.role) || "—"}
+                  <Box component="span" sx={{ mx: 0.75, color: C.border }}>
+                    •
+                  </Box>
+                  {pi.department || "No Department"}
+                  <Box component="span" sx={{ mx: 0.75, color: C.border }}>
+                    •
+                  </Box>
+                  Member since {formatDate(pi.joinDate)}
                 </Typography>
               </Box>
             </Box>
@@ -597,7 +818,14 @@ export default function TeamMemberDetails() {
                 startIcon={<EditIcon />}
                 variant="outlined"
                 onClick={() => setEditDialogOpen(true)}
-                sx={{ textTransform: "none", borderRadius: 1.5 }}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderRadius: RADIUS.inner,
+                  borderColor: C.border,
+                  color: C.text.primary,
+                  "&:hover": { borderColor: C.primary, bgcolor: C.primaryLight },
+                }}
               >
                 Edit
               </Button>
@@ -606,7 +834,12 @@ export default function TeamMemberDetails() {
                 variant="outlined"
                 color="error"
                 onClick={() => setDeleteDialogOpen(true)}
-                sx={{ textTransform: "none", borderRadius: 1.5 }}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderRadius: RADIUS.inner,
+                  "&:hover": { bgcolor: C.errorBg },
+                }}
               >
                 Delete
               </Button>
@@ -624,187 +857,268 @@ export default function TeamMemberDetails() {
         </Grid>
 
         {/* Main Content Grid */}
-        <Grid container spacing={3}>
+        <Grid container spacing={3} alignItems="stretch">
           {/* Left Column - Contact & Info */}
-          <Grid item xs={12} md={4}>
-            <Paper
-              elevation={0}
-              sx={{
-                borderRadius: 2,
-                border: `1px solid ${C.border}`,
-                bgcolor: C.card,
-                overflow: "hidden",
-                mb: 3,
-              }}
-            >
-              <Box
+          <Grid item xs={12} md={4} sx={{ display: "flex" }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 3, width: "100%" }}>
+              <Paper
+                elevation={0}
                 sx={{
-                  p: 2,
-                  bgcolor: "#f8fafc",
-                  borderBottom: `1px solid ${C.border}`,
+                  borderRadius: RADIUS.card,
+                  border: `1px solid ${C.border}`,
+                  bgcolor: C.card,
+                  overflow: "hidden",
+                  flexShrink: 0,
                 }}
               >
-                <Typography variant="subtitle2" fontWeight={600}>
-                  Contact Information
-                </Typography>
-              </Box>
-              <Box sx={{ p: 2 }}>
-                <InfoRow
-                  icon={<EmailIcon sx={{ fontSize: "1rem" }} />}
-                  label="Email"
-                  value={pi.email}
-                />
-                <Divider />
-                <InfoRow
-                  icon={<PhoneIcon sx={{ fontSize: "1rem" }} />}
-                  label="Phone"
-                  value={pi.phone}
-                />
-                <Divider />
-                <InfoRow
-                  icon={<LocationOnIcon sx={{ fontSize: "1rem" }} />}
-                  label="Location"
-                  value={pi.location || "Not specified"}
-                />
-                <Divider />
-                <InfoRow
-                  icon={<CalendarTodayIcon sx={{ fontSize: "1rem" }} />}
-                  label="Join Date"
-                  value={formatDate(pi.joinDate)}
-                />
-              </Box>
-            </Paper>
+                <Box
+                  sx={{
+                    px: 2,
+                    py: 1.5,
+                    bgcolor: C.surface,
+                    borderBottom: `1px solid ${C.border}`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <ContactPageOutlinedIcon sx={{ fontSize: "1.05rem", color: C.primary }} />
+                  <SectionLabel>Contact Information</SectionLabel>
+                </Box>
+                <Box sx={{ px: 2, py: 1 }}>
+                  <InfoRow
+                    icon={<EmailIcon sx={{ fontSize: "1rem" }} />}
+                    label="Email"
+                    value={pi.email}
+                  />
+                  <Divider sx={{ borderColor: C.border }} />
+                  <InfoRow
+                    icon={<PhoneIcon sx={{ fontSize: "1rem" }} />}
+                    label="Phone"
+                    value={pi.phone}
+                  />
+                  <Divider sx={{ borderColor: C.border }} />
+                  <InfoRow
+                    icon={<LocationOnIcon sx={{ fontSize: "1rem" }} />}
+                    label="Location"
+                    value={pi.location || "Not specified"}
+                  />
+                  <Divider sx={{ borderColor: C.border }} />
+                  <InfoRow
+                    icon={<CalendarTodayIcon sx={{ fontSize: "1rem" }} />}
+                    label="Join Date"
+                    value={formatDate(pi.joinDate)}
+                  />
+                </Box>
+              </Paper>
 
-            <Paper
-              elevation={0}
-              sx={{
-                borderRadius: 2,
-                border: `1px solid ${C.border}`,
-                bgcolor: C.card,
-                overflow: "hidden",
-              }}
-            >
-              <Box
+              <Paper
+                elevation={0}
                 sx={{
-                  p: 2,
-                  bgcolor: "#f8fafc",
-                  borderBottom: `1px solid ${C.border}`,
+                  borderRadius: RADIUS.card,
+                  border: `1px solid ${C.border}`,
+                  bgcolor: C.card,
+                  overflow: "hidden",
+                  flexShrink: 0,
                 }}
               >
-                <Typography variant="subtitle2" fontWeight={600}>
-                  Bio
-                </Typography>
-              </Box>
-              <Box sx={{ p: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  {pi.bio || "No bio provided"}
-                </Typography>
-              </Box>
-            </Paper>
+                <Box
+                  sx={{
+                    px: 2,
+                    py: 1.5,
+                    bgcolor: C.surface,
+                    borderBottom: `1px solid ${C.border}`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <WorkIcon sx={{ fontSize: "1.05rem", color: C.primary }} />
+                  <SectionLabel>Role &amp; Department</SectionLabel>
+                </Box>
+                <Box sx={{ px: 2, py: 1 }}>
+                  <InfoRow
+                    icon={<WorkIcon sx={{ fontSize: "1rem" }} />}
+                    label="Role"
+                    value={pi.roleDisplay || humanize(pi.role)}
+                  />
+                  <Divider sx={{ borderColor: C.border }} />
+                  <InfoRow
+                    icon={<BusinessIcon sx={{ fontSize: "1rem" }} />}
+                    label="Department"
+                    value={pi.department}
+                  />
+                  <Divider sx={{ borderColor: C.border }} />
+                  <InfoRow
+                    icon={<CheckCircleOutlineIcon sx={{ fontSize: "1rem" }} />}
+                    label="Status"
+                    value={statusStyle.label}
+                    color={statusStyle.color}
+                  />
+                </Box>
+              </Paper>
+
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: RADIUS.card,
+                  border: `1px solid ${C.border}`,
+                  bgcolor: C.card,
+                  overflow: "hidden",
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  minHeight: 140,
+                }}
+              >
+                <Box
+                  sx={{
+                    px: 2,
+                    py: 1.5,
+                    bgcolor: C.surface,
+                    borderBottom: `1px solid ${C.border}`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <NotesOutlinedIcon sx={{ fontSize: "1.05rem", color: C.primary }} />
+                  <SectionLabel>Bio</SectionLabel>
+                </Box>
+                <Box sx={{ p: 2, flex: 1 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: pi.bio ? C.text.primary : C.text.disabled, lineHeight: 1.6 }}
+                  >
+                    {pi.bio || "No bio provided yet."}
+                  </Typography>
+                </Box>
+              </Paper>
+            </Box>
           </Grid>
 
           {/* Right Column - Performance & Tabs */}
-          <Grid item xs={12} md={8}>
-            {/* Performance Section */}
-            <Paper
-              elevation={0}
-              sx={{
-                borderRadius: 2,
-                border: `1px solid ${C.border}`,
-                bgcolor: C.card,
-                overflow: "hidden",
-                mb: 3,
-              }}
-            >
-              <Box
+          <Grid item xs={12} md={8} sx={{ display: "flex" }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 3, width: "100%" }}>
+              {/* Performance Section */}
+              <Paper
+                elevation={0}
                 sx={{
-                  p: 2,
-                  bgcolor: "#f8fafc",
-                  borderBottom: `1px solid ${C.border}`,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
+                  borderRadius: RADIUS.card,
+                  border: `1px solid ${C.border}`,
+                  bgcolor: C.card,
+                  overflow: "hidden",
+                  flexShrink: 0,
                 }}
               >
-                <Typography variant="subtitle2" fontWeight={600}>
-                  6-Month Performance Trend
-                </Typography>
-                <TrendingUpIcon sx={{ color: C.success, fontSize: "1rem" }} />
-              </Box>
-              <Box sx={{ p: 2 }}>
-                {monthlyPerformance.length > 0 ? (
-                  <PerformanceChart data={monthlyPerformance} />
-                ) : (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    textAlign="center"
-                    py={3}
-                  >
-                    No performance data available
-                  </Typography>
-                )}
-              </Box>
-            </Paper>
-
-            {/* Tabs Section */}
-            <Paper
-              elevation={0}
-              sx={{
-                borderRadius: 2,
-                border: `1px solid ${C.border}`,
-                bgcolor: C.card,
-                overflow: "hidden",
-              }}
-            >
-              <Box sx={{ borderBottom: `1px solid ${C.border}`, px: 2, pt: 1 }}>
-                <Box display="flex" gap={1}>
-                  {[
-                    {
-                      id: "recent",
-                      label: "Recent Inspections",
-                      icon: <DescriptionIcon sx={{ fontSize: "0.9rem" }} />,
-                    },
-                    {
-                      id: "assets",
-                      label: "Assigned Assets",
-                      icon: <AssignmentIcon sx={{ fontSize: "0.9rem" }} />,
-                    },
-                  ].map((tab) => (
-                    <Button
-                      key={tab.id}
-                      startIcon={tab.icon}
-                      onClick={() => setActiveTab(tab.id)}
-                      sx={{
-                        textTransform: "none",
-                        fontWeight: activeTab === tab.id ? 600 : 400,
-                        color:
-                          activeTab === tab.id ? C.primary : C.text.secondary,
-                        borderBottom:
-                          activeTab === tab.id
-                            ? `2px solid ${C.primary}`
-                            : "none",
-                        borderRadius: 0,
-                        px: 2,
-                        py: 1,
-                      }}
-                    >
-                      {tab.label}
-                    </Button>
-                  ))}
+                <Box
+                  sx={{
+                    px: 2,
+                    py: 1.5,
+                    bgcolor: C.surface,
+                    borderBottom: `1px solid ${C.border}`,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <TrendingUpIcon sx={{ fontSize: "1.05rem", color: C.primary }} />
+                    <SectionLabel>6-Month Performance Trend</SectionLabel>
+                  </Box>
+                  <Box display="flex" gap={1.5}>
+                    <Box display="flex" alignItems="center" gap={0.6}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: C.primary }} />
+                      <Typography variant="caption" sx={{ color: C.text.secondary, fontSize: "0.65rem" }}>
+                        Inspections
+                      </Typography>
+                    </Box>
+                    <Box display="flex" alignItems="center" gap={0.6}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#d4a72c" }} />
+                      <Typography variant="caption" sx={{ color: C.text.secondary, fontSize: "0.65rem" }}>
+                        Quality
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Box>
-              </Box>
-              <Box sx={{ p: 2 }}>
-                {activeTab === "recent" && (
-                  <RecentInspectionsTable
-                    inspections={m.recentInspections || []}
-                  />
-                )}
-                {activeTab === "assets" && (
-                  <AssignedAssetsTable assets={m.assignedAssets || []} />
-                )}
-              </Box>
-            </Paper>
+                <Box sx={{ p: 2.5 }}>
+                  {monthlyPerformance.length > 0 ? (
+                    <PerformanceChart data={monthlyPerformance} />
+                  ) : (
+                    <EmptyState
+                      icon={<TrendingUpIcon sx={{ fontSize: "1.2rem", color: C.text.disabled }} />}
+                      message="No performance data available yet"
+                    />
+                  )}
+                </Box>
+              </Paper>
+
+              {/* Tabs Section */}
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: RADIUS.card,
+                  border: `1px solid ${C.border}`,
+                  bgcolor: C.card,
+                  overflow: "hidden",
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  minHeight: 280,
+                }}
+              >
+                <Box sx={{ borderBottom: `1px solid ${C.border}`, px: 1.5, pt: 1, flexShrink: 0 }}>
+                  <Box display="flex" gap={0.5}>
+                    {[
+                      {
+                        id: "recent",
+                        label: "Recent Inspections",
+                        icon: <DescriptionIcon sx={{ fontSize: "0.9rem" }} />,
+                      },
+                      {
+                        id: "assets",
+                        label: "Assigned Assets",
+                        icon: <AssignmentIcon sx={{ fontSize: "0.9rem" }} />,
+                      },
+                    ].map((tab) => {
+                      const active = activeTab === tab.id;
+                      return (
+                        <Button
+                          key={tab.id}
+                          startIcon={tab.icon}
+                          onClick={() => setActiveTab(tab.id)}
+                          sx={{
+                            textTransform: "none",
+                            fontSize: "0.85rem",
+                            fontWeight: active ? 700 : 500,
+                            color: active ? C.primary : C.text.secondary,
+                            bgcolor: active ? C.primaryLight : "transparent",
+                            borderBottom: active
+                              ? `2px solid ${C.primary}`
+                              : "2px solid transparent",
+                            borderRadius: "8px 8px 0 0",
+                            px: 2,
+                            py: 1,
+                            transition: "all 0.15s ease",
+                            "&:hover": { bgcolor: C.primaryLight },
+                          }}
+                        >
+                          {tab.label}
+                        </Button>
+                      );
+                    })}
+                  </Box>
+                </Box>
+                <Box sx={{ p: 2, flex: 1 }}>
+                  {activeTab === "recent" && (
+                    <RecentInspectionsTable inspections={m.recentInspections || []} />
+                  )}
+                  {activeTab === "assets" && (
+                    <AssignedAssetsTable assets={m.assignedAssets || []} />
+                  )}
+                </Box>
+              </Paper>
+            </Box>
           </Grid>
         </Grid>
 
@@ -836,7 +1150,7 @@ export default function TeamMemberDetails() {
             onClose={closeToast}
             severity={toast.severity}
             variant="filled"
-            sx={{ borderRadius: 2 }}
+            sx={{ borderRadius: RADIUS.inner, boxShadow: SHADOW.lg }}
           >
             {toast.message}
           </Alert>

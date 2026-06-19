@@ -391,7 +391,7 @@ export default function LoginPage() {
     const checkBackend = async () => {
       try {
         const response = await fetch(
-          "http://localhost:9001/api/v1/auth/health",
+          "https://synversys-backend.onrender.com/api/v1/auth/health",
           { method: "GET", timeout: 5000 },
         );
         if (!response.ok) {

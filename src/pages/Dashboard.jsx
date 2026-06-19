@@ -1,5 +1,11 @@
 // pages/Dashboard.jsx
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Box,
   Grid,
@@ -28,12 +34,13 @@ import {
   Skeleton,
   alpha,
   LinearProgress,
-  Fade,
   Zoom,
-  Card,
-  CardContent,
   Chip,
   Divider,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Collapse,
 } from "@mui/material";
 import {
   TrendingUp as TrendingUpIcon,
@@ -52,17 +59,20 @@ import {
   ErrorOutline as ErrorIcon,
   Inventory as InventoryIcon,
   TaskAlt as TaskAltIcon,
-  Engineering as EngineeringIcon,
   People as PeopleIcon,
-  AttachMoney as MoneyIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
   HourglassEmpty as HourglassIcon,
-  BarChart as BarChartIcon,
   Warning as WarningIcon,
-  Category as CategoryIcon,
   AssignmentTurnedIn as AssignmentTurnedInIcon,
+  CalendarMonth as CalendarIcon,
+  DateRange as DateRangeIcon,
+  FilterList as FilterListIcon,
+  Notifications as NotifIcon,
+  AccountBalance as RevenueIcon,
+  Category as CategoryIcon,
 } from "@mui/icons-material";
 import CurrencyRupeeIcon from "@mui/icons-material/CurrencyRupee";
+import SimCardDownloadIcon from "@mui/icons-material/SimCardDownload";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import { useAuth } from "../context/AuthContexts";
@@ -84,25 +94,22 @@ import {
   Area,
 } from "recharts";
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
+// ─── Design Tokens ─────────────────────────────────────────────────────────────
 const C = {
   primary: "#002631",
   primaryLight: "#003d4d",
-  primaryContainer: "#003d4d",
   accent: "#df8f00",
   accentLight: "#f5a623",
   secondary: "#516072",
-  secondaryContainer: "#d2e1f7",
-  onSecondaryContainer: "#556477",
-  errorContainer: "#ffdad6",
-  onErrorContainer: "#93000a",
-  success: "#2e7d32",
-  successLight: "#e8f5e9",
   surface: "#f4f6f8",
   surfaceContainerLow: "#eef1f4",
   surfaceVariant: "#e0e3e5",
   outline: "#71787c",
   outlineVariant: "#c0c8cc",
+  success: "#2e7d32",
+  successLight: "#e8f5e9",
+  errorContainer: "#ffdad6",
+  onErrorContainer: "#93000a",
   white: "#ffffff",
 };
 
@@ -115,11 +122,22 @@ const PIE_COLORS = [
   "#002631",
 ];
 
-// ─── Shared Helpers ────────────────────────────────────────────────────────────
-const fmt = (n) =>
-  n === undefined || n === null ? "—" : Number(n).toLocaleString();
-const pct = (n) => `${n ?? 0}%`;
+const FILTER_PRESETS = [
+  { label: "Today", value: "today" },
+  { label: "7 Days", value: "7d" },
+  { label: "30 Days", value: "30d" },
+  { label: "Monthly", value: "monthly" },
+  { label: "Yearly", value: "yearly" },
+  { label: "Custom", value: "custom" },
+];
 
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+const fmt = (n) =>
+  n === undefined || n === null ? "—" : Number(n).toLocaleString("en-IN");
+const pct = (n) => `${n ?? 0}%`;
+const fmtRs = (n) => `₹${fmt(n)}`;
+
+// CSV export
 const doCSV = (data, filename) => {
   const flat = (obj, pre = "") => {
     const r = {};
@@ -159,6 +177,32 @@ const doCSV = (data, filename) => {
   URL.revokeObjectURL(url);
 };
 
+// Excel export (requires SheetJS: npm install xlsx)
+const doExcel = async (data, filename) => {
+  const XLSX = await import("xlsx");
+  const flat = (obj, pre = "") => {
+    const r = {};
+    for (const k in obj) {
+      if (
+        typeof obj[k] === "object" &&
+        !Array.isArray(obj[k]) &&
+        obj[k] !== null
+      )
+        Object.assign(r, flat(obj[k], `${pre}${k}_`));
+      else
+        r[`${pre}${k}`] = Array.isArray(obj[k])
+          ? JSON.stringify(obj[k])
+          : obj[k];
+    }
+    return r;
+  };
+  const ws = XLSX.utils.json_to_sheet([flat(data)]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Dashboard");
+  XLSX.writeFile(wb, `${filename}.xlsx`);
+};
+
+// PDF export
 const doPDF = async (overview, filename) => {
   const { default: html2pdf } = await import("html2pdf.js");
   const stamp = new Date().toLocaleString("en-IN", {
@@ -169,15 +213,19 @@ const doPDF = async (overview, filename) => {
   el.style.cssText =
     "padding:36px 40px;font-family:Arial,sans-serif;max-width:860px;";
   el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;border-bottom:3px solid #002631">
-      <div><h1 style="color:#002631;font-size:22px;font-weight:800;margin:0">Dashboard Report</h1>
-      <p style="color:#516072;font-size:11px;margin:4px 0 0">Generated: ${stamp}</p></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;border-bottom:3px solid #002631;padding-bottom:16px">
+      <div>
+        <h1 style="color:#002631;font-size:22px;font-weight:800;margin:0">Dashboard Report</h1>
+        <p style="color:#516072;font-size:11px;margin:4px 0 0">Generated: ${stamp}</p>
+      </div>
       <div style="background:#003d4d;color:#fff;padding:5px 14px;border-radius:20px;font-size:10px;font-weight:600">CONFIDENTIAL</div>
     </div>
     <h2 style="color:#002631;font-size:13px;font-weight:700;margin:24px 0 12px">Overview Metrics</h2>
     <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
-      <thead><tr><th style="background:#002631;color:#fff;padding:8px 12px;text-align:left">Metric</th>
-      <th style="background:#002631;color:#fff;padding:8px 12px;text-align:left">Value</th></tr></thead>
+      <thead><tr>
+        <th style="background:#002631;color:#fff;padding:8px 12px;text-align:left">Metric</th>
+        <th style="background:#002631;color:#fff;padding:8px 12px;text-align:left">Value</th>
+      </tr></thead>
       <tbody>${Object.entries(overview)
         .map(
           ([k, v]) =>
@@ -201,115 +249,216 @@ const doPDF = async (overview, filename) => {
 };
 
 // ─── Reusable Components ───────────────────────────────────────────────────────
+
 const StatCard = ({
   icon: Icon,
   title,
   value,
   sub,
-  accent,
   loading,
+  trend,
+  trendUp,
   onClick,
-}) => (
-  <Zoom in style={{ transitionDelay: "60ms" }}>
-    <Paper
-      elevation={0}
-      onClick={onClick}
-      sx={{
-        p: 2.5,
-        borderRadius: 3,
-        height: "100%",
-        width:"270px",
-        bgcolor: accent ? C.primaryLight : C.white,
-        border: `1px solid ${alpha(accent ? C.primaryLight : C.outlineVariant, 0.6)}`,
-        cursor: onClick ? "pointer" : "default",
-        transition: "all 0.25s ease",
-        "&:hover": {
-          transform: "translateY(-3px)",
-          boxShadow: `0 8px 24px ${alpha(C.primary, 0.1)}`,
-        },
-      }}
-    >
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="flex-start"
-        mb={1.5}
-      >
-        <Box
-          sx={{
-            p: 1,
-            borderRadius: 2,
-            bgcolor: accent ? alpha("#fff", 0.12) : C.surfaceContainerLow,
-          }}
-        >
-          <Icon
-            sx={{ fontSize: 20, color: accent ? "#fff" : C.primaryLight }}
-          />
-        </Box>
-      </Box>
-      <Typography
-        sx={{
-          fontSize: "0.65rem",
-          fontWeight: 700,
-          color: accent ? alpha("#fff", 0.7) : C.secondary,
-          textTransform: "uppercase",
-          letterSpacing: "0.06em",
-          mb: 0.5,
-        }}
-      >
-        {title}
-      </Typography>
-      <Typography
-        sx={{
-          fontWeight: 800,
-          fontSize: "1.55rem",
-          color: accent ? "#fff" : C.primary,
-          lineHeight: 1,
-        }}
-      >
-        {loading ? <Skeleton width={60} /> : fmt(value)}
-      </Typography>
-      {sub && (
-        <Typography
-          sx={{
-            fontSize: "0.65rem",
-            color: accent ? alpha("#fff", 0.6) : C.outline,
-            mt: 0.5,
-          }}
-        >
-          {sub}
-        </Typography>
-      )}
-    </Paper>
-  </Zoom>
-);
+}) => {
+  const [hovered, setHovered] = useState(false);
 
-const SectionTitle = ({ icon: Icon, title }) => (
+  return (
+    <Zoom in style={{ transitionDelay: "60ms" }}>
+      <Paper
+        elevation={0}
+        onClick={onClick}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        sx={{
+          position: "relative",
+          overflow: "hidden",
+          p: { xs: 2, sm: 2.5 },
+          borderRadius: 3,
+          height: "100%",
+          width: "270px",
+          bgcolor: C.white,
+          border: `1px solid ${alpha(hovered ? "#003D4D" : C.outlineVariant, 0.6)}`,
+          cursor: onClick ? "pointer" : "default",
+          transition: "border-color 0.4s ease, transform 0.3s ease, box-shadow 0.3s ease",
+          "&:hover": {
+            transform: "translateY(-4px)",
+            boxShadow: `0 10px 28px ${alpha("#003D4D", 0.25)}`,
+          },
+          // animated background wipe
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            inset: 0,
+            bgcolor: "#003D4D",
+            transform: hovered ? "scaleX(1)" : "scaleX(0)",
+            transformOrigin: "left center",
+            transition: "transform 0.45s cubic-bezier(0.65, 0, 0.35, 1)",
+            zIndex: 0,
+          },
+        }}
+      >
+        {/* everything below sits above the wipe layer */}
+        <Box sx={{ position: "relative", zIndex: 1 }}>
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="flex-start"
+            mb={1.5}
+          >
+            <Box
+              sx={{
+                p: 1,
+                borderRadius: 2,
+                bgcolor: hovered ? alpha("#fff", 0.12) : C.surfaceContainerLow,
+                transform: hovered ? "scale(1.08) rotate(-4deg)" : "scale(1) rotate(0deg)",
+                transition: "background-color 0.4s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              }}
+            >
+              <Icon
+                sx={{
+                  fontSize: 20,
+                  color: hovered ? "#fff" : C.primaryLight,
+                  transition: "color 0.4s ease",
+                }}
+              />
+            </Box>
+            {trend && (
+              <Chip
+                icon={
+                  trendUp ? (
+                    <TrendingUpIcon sx={{ fontSize: "12px !important" }} />
+                  ) : (
+                    <TrendingDownIcon sx={{ fontSize: "12px !important" }} />
+                  )
+                }
+                label={trend}
+                size="small"
+                sx={{
+                  height: 20,
+                  fontSize: "0.6rem",
+                  fontWeight: 700,
+                  opacity: 0,
+                  animation: "fadeSlideIn 0.4s ease forwards",
+                  animationDelay: "0.1s",
+                  bgcolor: trendUp
+                    ? hovered
+                      ? alpha(C.success, 0.25)
+                      : C.successLight
+                    : hovered
+                      ? alpha(C.onErrorContainer, 0.25)
+                      : C.errorContainer,
+                  color: trendUp
+                    ? hovered
+                      ? "#a5d6a7"
+                      : C.success
+                    : hovered
+                      ? "#ffb4ab"
+                      : C.onErrorContainer,
+                  "& .MuiChip-icon": { color: "inherit" },
+                  transition: "background-color 0.4s ease, color 0.4s ease",
+                }}
+              />
+            )}
+          </Box>
+          <Typography
+            sx={{
+              fontSize: "0.65rem",
+              fontWeight: 700,
+              color: hovered ? alpha("#fff", 0.7) : C.secondary,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              mb: 0.5,
+              transition: "color 0.4s ease 0.05s",
+            }}
+          >
+            {title}
+          </Typography>
+          <Typography
+            sx={{
+              fontWeight: 800,
+              fontSize: { xs: "1.25rem", sm: "1.55rem" },
+              color: hovered ? "#fff" : C.primary,
+              lineHeight: 1,
+              transition: "color 0.4s ease 0.1s",
+            }}
+          >
+            {loading ? <Skeleton width={60} /> : value}
+          </Typography>
+          {sub && (
+            <Typography
+              sx={{
+                fontSize: "0.65rem",
+                color: hovered ? alpha("#fff", 0.6) : C.outline,
+                mt: 0.5,
+                transition: "color 0.4s ease 0.15s",
+              }}
+            >
+              {sub}
+            </Typography>
+          )}
+        </Box>
+      </Paper>
+    </Zoom>
+  );
+};
+
+const SectionTitle = ({ icon: Icon, title, chip }) => (
   <Box display="flex" alignItems="center" gap={1} mb={2}>
     <Icon sx={{ color: C.primaryLight, fontSize: 20 }} />
     <Typography sx={{ fontWeight: 700, color: C.primary, fontSize: "0.95rem" }}>
       {title}
     </Typography>
+    {chip && (
+      <Chip
+        label={chip}
+        size="small"
+        sx={{
+          ml: "auto",
+          bgcolor: C.surfaceContainerLow,
+          fontWeight: 700,
+          fontSize: "0.7rem",
+        }}
+      />
+    )}
   </Box>
 );
 
-const ChartCard = ({ title, children, minH = 280 }) => (
+// ✅ ChartCard: removed fixed width, now fully fluid
+const ChartCard = ({ title, sub, children, minH = 280, action }) => (
   <Paper
     elevation={0}
     sx={{
-      p: 2.5,
+      p: { xs: 2, sm: 2.5 },
       borderRadius: 3,
       height: "100%",
+      width: "555px", // ✅ was hardcoded 560px
       bgcolor: C.white,
       border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
-      minHeight: minH,
+      minHeight: { xs: 240, sm: minH }, // ✅ smaller minimum on mobile
     }}
   >
-    <Typography
-      sx={{ fontWeight: 700, color: C.primary, mb: 2, fontSize: "0.85rem" }}
+    <Box
+      display="flex"
+      justifyContent="space-between"
+      alignItems="flex-start"
+      mb={sub ? 0.5 : 2}
     >
-      {title}
-    </Typography>
+      <Typography
+        sx={{
+          fontWeight: 700,
+          color: C.primary,
+          fontSize: { xs: "0.8rem", sm: "0.85rem" }, // ✅ fluid
+        }}
+      >
+        {title}
+      </Typography>
+      {action}
+    </Box>
+    {sub && (
+      <Typography sx={{ fontSize: "0.7rem", color: C.outline, mb: 2 }}>
+        {sub}
+      </Typography>
+    )}
     {children}
   </Paper>
 );
@@ -320,74 +469,479 @@ const EmptyChart = ({ msg = "No data available" }) => (
   </Box>
 );
 
-// ─── SUPER ADMIN VIEW ─────────────────────────────────────────────────────────
+// ✅ ActivityTable: wrapped in overflow scroll container for mobile
+const ActivityTable = ({ activities }) => (
+  <TableContainer sx={{ maxHeight: 500, overflowX: "auto" }}>
+    <Table stickyHeader size="small" sx={{ minWidth: 1130 }}>
+      <TableHead>
+        <TableRow>
+          {["Action", "Description", "User", "Role", "When"].map((h) => (
+            <TableCell
+              key={h}
+              sx={{
+                fontWeight: 700,
+                color: C.secondary,
+                bgcolor: C.surfaceContainerLow,
+                fontSize: "0.72rem",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {h}
+            </TableCell>
+          ))}
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {activities.length > 0 ? (
+          activities.map((act, i) => (
+            <TableRow
+              key={i}
+              hover
+              sx={{ "&:hover": { bgcolor: C.surfaceContainerLow } }}
+            >
+              <TableCell>
+                <Chip
+                  label={act.action?.replace(/_/g, " ")}
+                  size="small"
+                  sx={{
+                    height: 18,
+                    fontSize: "0.6rem",
+                    fontWeight: 700,
+                    whiteSpace: "nowrap",
+                    bgcolor:
+                      act.action === "CREATE"
+                        ? C.successLight
+                        : act.action?.includes("DELETE")
+                          ? C.errorContainer
+                          : act.action === "EMAIL_SENT"
+                            ? alpha(C.accent, 0.12)
+                            : C.surfaceContainerLow,
+                    color:
+                      act.action === "CREATE"
+                        ? C.success
+                        : act.action?.includes("DELETE")
+                          ? C.onErrorContainer
+                          : act.action === "EMAIL_SENT"
+                            ? C.accent
+                            : C.secondary,
+                  }}
+                />
+              </TableCell>
+              <TableCell sx={{ maxWidth: { xs: 140, sm: 220 } }}>
+                <Typography sx={{ fontSize: "0.72rem", color: C.secondary }}>
+                  {act.description || act.desc || "—"}
+                </Typography>
+              </TableCell>
+              <TableCell>
+                <Typography
+                  sx={{
+                    fontSize: "0.72rem",
+                    color: C.primary,
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {act.actor?.email || act.actor || "—"}
+                </Typography>
+              </TableCell>
+              <TableCell>
+                <Chip
+                  label={act.actor?.role || act.role || "—"}
+                  size="small"
+                  sx={{
+                    height: 18,
+                    fontSize: "0.6rem",
+                    bgcolor: alpha(C.primaryLight, 0.08),
+                    color: C.primaryLight,
+                    whiteSpace: "nowrap",
+                  }}
+                />
+              </TableCell>
+              <TableCell>
+                <Typography
+                  sx={{
+                    fontSize: "0.7rem",
+                    color: C.outline,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {act.timestamp
+                    ? new Date(act.timestamp).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "—"}
+                </Typography>
+              </TableCell>
+            </TableRow>
+          ))
+        ) : (
+          <TableRow>
+            <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+              <Typography sx={{ color: C.secondary, fontSize: "0.8rem" }}>
+                No recent activities
+              </Typography>
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  </TableContainer>
+);
+
+const NotifList = ({ notifications }) => (
+  <Stack spacing={1}>
+    {notifications.length > 0 ? (
+      notifications.map((n, i) => (
+        <Box
+          key={i}
+          sx={{
+            p: 1.5,
+            borderRadius: 2,
+            width:"1090px",
+            bgcolor: C.surfaceContainerLow,
+            border: `1px solid ${alpha(C.outlineVariant, 0.4)}`,
+          }}
+        >
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="flex-start"
+          >
+            <Typography
+              sx={{
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                color: C.primary,
+                flex: 1,
+                pr: 1,
+              }}
+            >
+              {n.title}
+            </Typography>
+            <Chip
+              label={n.priority}
+              size="small"
+              sx={{
+                height: 16,
+                fontSize: "0.55rem",
+                fontWeight: 700,
+                flexShrink: 0,
+                bgcolor:
+                  n.priority === "high"
+                    ? C.errorContainer
+                    : n.priority === "medium"
+                      ? alpha(C.accent, 0.12)
+                      : C.surfaceVariant,
+                color:
+                  n.priority === "high"
+                    ? C.onErrorContainer
+                    : n.priority === "medium"
+                      ? C.accent
+                      : C.secondary,
+              }}
+            />
+          </Box>
+          <Typography sx={{ fontSize: "0.68rem", color: C.secondary, mt: 0.5 }}>
+            {n.message || n.msg}
+          </Typography>
+          <Typography sx={{ fontSize: "0.6rem", color: C.outline, mt: 0.75 }}>
+            {n.createdAt
+              ? new Date(n.createdAt).toLocaleString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "—"}
+          </Typography>
+        </Box>
+      ))
+    ) : (
+      <Typography
+        sx={{
+          fontSize: "0.8rem",
+          color: C.secondary,
+          textAlign: "center",
+          py: 2,
+        }}
+      >
+        No notifications
+      </Typography>
+    )}
+  </Stack>
+);
+
+// ─── Filter Bar ────────────────────────────────────────────────────────────────
+const FilterBar = ({ activeFilter, onFilterChange, loading }) => {
+  const [showCustom, setShowCustom] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const handlePreset = (preset) => {
+    if (preset === "custom") {
+      setShowCustom(true);
+      return;
+    }
+    setShowCustom(false);
+    onFilterChange({ preset });
+  };
+
+  const applyCustom = () => {
+    if (!startDate || !endDate) return;
+    onFilterChange({ preset: "custom", startDate, endDate });
+  };
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        p: { xs: 1.25, sm: 1.5 },
+        borderRadius: 2.5,
+        mb: 3,
+        bgcolor: C.white,
+        border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
+      }}
+    >
+      {/* ✅ Filter header + buttons: stacked on xs, inline on sm+ */}
+      <Box
+        display="flex"
+        alignItems="center"
+        gap={1}
+        flexWrap="wrap"
+        sx={{ rowGap: 1 }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            color: C.secondary,
+            mr: 0.5,
+          }}
+        >
+          <FilterListIcon sx={{ fontSize: 16 }} />
+          <Typography
+            sx={{
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            }}
+          >
+            Period
+          </Typography>
+        </Box>
+        <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+        {/* ✅ Preset buttons wrap gracefully on all screen sizes */}
+        <Box display="flex" gap={0.75} flexWrap="wrap" sx={{ rowGap: 0.75 }}>
+          {FILTER_PRESETS.map((p) => (
+            <Button
+              key={p.value}
+              size="small"
+              variant={
+                activeFilter?.preset === p.value ? "contained" : "outlined"
+              }
+              onClick={() => handlePreset(p.value)}
+              disabled={loading}
+              sx={{
+                height: 28,
+                minWidth: "auto",
+                px: { xs: 1, sm: 1.5 },
+                fontSize: "0.7rem",
+                fontWeight: 600,
+                borderRadius: 2,
+                textTransform: "none",
+                ...(activeFilter?.preset === p.value
+                  ? {
+                      bgcolor: C.primaryLight,
+                      borderColor: C.primaryLight,
+                      color: "#fff",
+                      "&:hover": { bgcolor: C.primary },
+                    }
+                  : {
+                      borderColor: C.outlineVariant,
+                      color: C.secondary,
+                      bgcolor: "transparent",
+                      "&:hover": {
+                        borderColor: C.primaryLight,
+                        color: C.primaryLight,
+                        bgcolor: alpha(C.primaryLight, 0.04),
+                      },
+                    }),
+              }}
+            >
+              {p.label}
+            </Button>
+          ))}
+        </Box>
+      </Box>
+
+      <Collapse in={showCustom}>
+        {/* ✅ Date pickers stack vertically on xs */}
+        <Box
+          display="flex"
+          alignItems={{ xs: "stretch", sm: "center" }}
+          gap={1.5}
+          mt={1.5}
+          flexWrap="wrap"
+          flexDirection={{ xs: "column", sm: "row" }}
+        >
+          <TextField
+            type="date"
+            size="small"
+            label="Start date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{
+              flex: { xs: "1 1 100%", sm: "0 0 auto" },
+              "& .MuiInputBase-root": { fontSize: "0.8rem", height: 36 },
+            }}
+          />
+          <Typography
+            sx={{
+              color: C.outline,
+              fontSize: "0.75rem",
+              display: { xs: "none", sm: "block" },
+            }}
+          >
+            to
+          </Typography>
+          <TextField
+            type="date"
+            size="small"
+            label="End date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{
+              flex: { xs: "1 1 100%", sm: "0 0 auto" },
+              "& .MuiInputBase-root": { fontSize: "0.8rem", height: 36 },
+            }}
+          />
+          <Box display="flex" gap={1}>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={applyCustom}
+              disabled={!startDate || !endDate || loading}
+              sx={{
+                height: 36,
+                px: 2,
+                fontSize: "0.75rem",
+                textTransform: "none",
+                bgcolor: C.primaryLight,
+                "&:hover": { bgcolor: C.primary },
+              }}
+            >
+              Apply
+            </Button>
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setShowCustom(false)}
+              sx={{
+                height: 36,
+                fontSize: "0.75rem",
+                textTransform: "none",
+                color: C.secondary,
+              }}
+            >
+              Cancel
+            </Button>
+          </Box>
+        </Box>
+      </Collapse>
+    </Paper>
+  );
+};
+
+// ─── Responsive chart height hook ─────────────────────────────────────────────
+// Returns a chart height appropriate to screen width
+const useChartHeight = (defaultH = 240, mobileH = 200) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  return isMobile ? mobileH : defaultH;
+};
+
+// ─── SUPER ADMIN VIEW ──────────────────────────────────────────────────────────
 const SuperAdminDashboard = ({ data, loading }) => {
   const navigate = useNavigate();
+  const chartH = useChartHeight(240, 190);
 
-  const clients = data?.clients || {};
-  const revenue = data?.revenue || {};
-  const checklists = data?.checklists || {};
-  const assignments = data?.assignments || {};
-  const requests = data?.requests || {};
-  const activities = data?.recentActivities || [];
+  // Server returns nested under data.data or flat — handle both shapes
+  const payload = data?.data || data || {};
+  const summary = payload.summary || {};
+  const distribution = payload.distribution || {};
+  const charts_ = payload.charts || {};
+  const activities = payload.recentActivities || [];
+  const notifications = payload.notifications || [];
 
-  // Revenue by plan for bar chart
-  const revenueByPlan = useMemo(
-    () =>
-      Object.entries(revenue.byPlan || {}).map(([plan, v]) => ({
-        plan: plan.charAt(0).toUpperCase() + plan.slice(1),
-        clients: v.count,
-        revenue: v.revenue,
-        price: v.pricePerMonth,
-      })),
-    [revenue],
-  );
-
-  // Clients by plan for pie
   const clientsByPlan = useMemo(
     () =>
-      Object.entries(clients.byPlan || {}).map(([name, value]) => ({
-        name,
-        value,
+      (distribution.clientByPlan || []).map((p) => ({
+        name: p.name,
+        value: p.value,
       })),
-    [clients],
+    [distribution],
   );
-
-  // Requests by urgency
   const requestByUrgency = useMemo(
     () =>
-      Object.entries(requests.byUrgency || {}).map(([name, value]) => ({
-        name,
-        value,
+      (distribution.requestByUrgency || []).map((r) => ({
+        name: r.name,
+        value: r.value,
       })),
-    [requests],
+    [distribution],
   );
+  const assignByPriority = useMemo(
+    () =>
+      (distribution.assignmentByPriority || []).map((a) => ({
+        name: a.name,
+        value: a.value,
+      })),
+    [distribution],
+  );
+  const revTrend = useMemo(
+    () =>
+      (charts_.revenueTrend || []).map((r) => ({
+        period: r.period,
+        revenue: r.revenue ?? 0,
+      })),
+    [charts_],
+  );
+  const assignTrend = useMemo(() => charts_.assignmentTrend || [], [charts_]);
 
   const statCards = [
     {
       icon: PeopleIcon,
       title: "Total Clients",
-      value: clients.total,
-      sub: `${clients.active} active`,
+      value: fmt(summary.totalClients),
+      sub: `${fmt(summary.newClients)} new · ${fmt(summary.activeSubscriptions)} active`,
+      trend: summary.clientGrowth ? `${summary.clientGrowth}%` : null,
+      trendUp: (summary.clientGrowth ?? 0) >= 0,
     },
     {
       icon: CurrencyRupeeIcon,
       title: "Monthly Revenue",
-      value: `${fmt(revenue.monthlyRecurring)}`,
-      sub: `${fmt(revenue.annualEstimate)} / yr`,
+      value: fmtRs(summary.totalRevenue),
+      sub: `${fmtRs(summary.totalRevenue * 12)} / yr est.`,
+      trend: summary.revenueGrowth ? `${summary.revenueGrowth}%` : null,
+      trendUp: (summary.revenueGrowth ?? 0) >= 0,
       accent: true,
     },
     {
       icon: AssignmentIcon,
       title: "Checklists",
-      value: checklists.total,
-      sub: `${checklists.global} global · ${checklists.custom || 0} custom`,
+      value: fmt(summary.totalChecklists),
+      sub: `${fmt(summary.publishedChecklists)} published`,
     },
     {
       icon: TaskAltIcon,
       title: "Assignments",
-      value: assignments.total,
-      sub: `${assignments.pending} pending · ${assignments.overdue} overdue`,
+      value: fmt(summary.pendingAssignments + summary.completedAssignments),
+      sub: `${fmt(summary.pendingAssignments)} pending · ${fmt(summary.completedAssignments)} done`,
     },
   ];
 
@@ -414,8 +968,8 @@ const SuperAdminDashboard = ({ data, loading }) => {
 
   return (
     <Box>
-      {/* Stats */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      {/* ✅ 2-col on sm, 4-col on lg */}
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
         {statCards.map((s, i) => (
           <Grid item xs={12} sm={6} lg={3} key={i}>
             <StatCard {...s} loading={loading} />
@@ -423,60 +977,75 @@ const SuperAdminDashboard = ({ data, loading }) => {
         ))}
       </Grid>
 
-      {/* Charts row 1 */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={8} sx={{width:"560px"}}>
-          <ChartCard title="Revenue by Subscription Plan">
-            {revenueByPlan.length > 0 ? (
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={revenueByPlan} barSize={36}>
+      {/* Revenue trend + Clients by plan */}
+      {/* ✅ Both charts full-width on mobile, split on md+ */}
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={8}>
+          <ChartCard
+            title="Revenue trend"
+            sub="Monthly recurring revenue over period"
+          >
+            {revTrend.some((r) => r.revenue > 0) ? (
+              <ResponsiveContainer width="100%" height={chartH}>
+                <AreaChart data={revTrend}>
+                  <defs>
+                    <linearGradient id="revG" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="5%"
+                        stopColor={C.primaryLight}
+                        stopOpacity={0.25}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor={C.primaryLight}
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke={alpha(C.outline, 0.15)}
+                    stroke={alpha(C.outline, 0.12)}
                   />
                   <XAxis
-                    dataKey="plan"
-                    tick={{ fontSize: 11, fill: C.secondary }}
+                    dataKey="period"
+                    tick={{ fontSize: 10, fill: C.secondary }}
+                    interval="preserveStartEnd"
                   />
-                  <YAxis tick={{ fontSize: 11, fill: C.secondary }} />
+                  <YAxis tick={{ fontSize: 10, fill: C.secondary }} width={48} />
                   <RTooltip
                     contentStyle={{
                       borderRadius: 8,
                       border: `1px solid ${C.outlineVariant}`,
+                      fontSize: "0.75rem",
                     }}
+                    formatter={(v) => [`₹${v.toLocaleString()}`, "Revenue"]}
                   />
-                  <Legend />
-                  <Bar
+                  <Area
+                    type="monotone"
                     dataKey="revenue"
                     name="Revenue"
-                    fill={C.primaryLight}
-                    radius={[4, 4, 0, 0]}
+                    stroke={C.primaryLight}
+                    fill="url(#revG)"
+                    strokeWidth={2}
                   />
-                  <Bar
-                    dataKey="clients"
-                    name="Clients"
-                    fill={C.accent}
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
+                </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <EmptyChart />
+              <EmptyChart msg="No revenue data for this period" />
             )}
           </ChartCard>
         </Grid>
-
-        <Grid item xs={12} md={4} sx={{width:"555px"}}>
-          <ChartCard title="Clients by Plan">
+        <Grid item xs={12} md={4}>
+          <ChartCard title="Clients by plan">
             {clientsByPlan.length > 0 ? (
-              <ResponsiveContainer width="100%" height={240}>
+              <ResponsiveContainer width="100%" height={chartH}>
                 <PieChart>
                   <Pie
                     data={clientsByPlan}
                     cx="50%"
                     cy="50%"
-                    innerRadius="52%"
-                    outerRadius="75%"
+                    innerRadius="50%"
+                    outerRadius="72%"
                     dataKey="value"
                     paddingAngle={3}
                     label={({ name, percent }) =>
@@ -498,72 +1067,67 @@ const SuperAdminDashboard = ({ data, loading }) => {
         </Grid>
       </Grid>
 
-      {/* Charts row 2 */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={6} sx={{width:"560px"}}>
-          <ChartCard title="Assignment Overview">
-            {assignments.total > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart
-                  data={[
-                    {
-                      name: "Completed",
-                      value: assignments.completed,
-                      fill: C.success,
-                    },
-                    {
-                      name: "Pending",
-                      value: assignments.pending,
-                      fill: C.accent,
-                    },
-                    {
-                      name: "Overdue",
-                      value: assignments.overdue,
-                      fill: C.onErrorContainer,
-                    },
-                    {
-                      name: "In Review",
-                      value: assignments.pendingReview,
-                      fill: C.secondary,
-                    },
-                  ]}
-                  barSize={32}
-                >
+      {/* Assignment trend + Request urgency */}
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={7}>
+          <ChartCard
+            title="Assignment overview"
+            sub="Created vs completed over period"
+          >
+            {assignTrend.some((d) => d.created > 0 || d.completed > 0) ? (
+              <ResponsiveContainer width="100%" height={chartH}>
+                <BarChart data={assignTrend} barSize={18}>
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke={alpha(C.outline, 0.15)}
+                    stroke={alpha(C.outline, 0.12)}
                   />
                   <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 11, fill: C.secondary }}
+                    dataKey="period"
+                    tick={{ fontSize: 10, fill: C.secondary }}
+                    interval="preserveStartEnd"
                   />
-                  <YAxis tick={{ fontSize: 11, fill: C.secondary }} />
-                  <RTooltip contentStyle={{ borderRadius: 8 }} />
-                  <Bar dataKey="value" name="Count" radius={[4, 4, 0, 0]}>
-                    {[C.success, C.accent, C.onErrorContainer, C.secondary].map(
-                      (fill, i) => (
-                        <Cell key={i} fill={fill} />
-                      ),
-                    )}
-                  </Bar>
+                  <YAxis
+                    tick={{ fontSize: 10, fill: C.secondary }}
+                    allowDecimals={false}
+                    width={32}
+                  />
+                  <RTooltip contentStyle={{ borderRadius: 8, fontSize: "0.75rem" }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar
+                    dataKey="created"
+                    name="Created"
+                    fill={C.primaryLight}
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="completed"
+                    name="Completed"
+                    fill={C.success}
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="overdue"
+                    name="Overdue"
+                    fill={C.onErrorContainer}
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <EmptyChart msg="No assignment data" />
+              <EmptyChart msg="No assignment data for this period" />
             )}
           </ChartCard>
         </Grid>
-
-        <Grid item xs={12} md={6} sx={{width:"555px"}}>
-          <ChartCard title="Requests by Urgency">
+        <Grid item xs={12} md={5}>
+          <ChartCard title="Requests by urgency">
             {requestByUrgency.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={chartH}>
                 <PieChart>
                   <Pie
                     data={requestByUrgency}
                     cx="50%"
                     cy="50%"
-                    outerRadius="72%"
+                    outerRadius="70%"
                     dataKey="value"
                     label={({ name, value }) => `${name}: ${value}`}
                   >
@@ -581,132 +1145,58 @@ const SuperAdminDashboard = ({ data, loading }) => {
         </Grid>
       </Grid>
 
-      {/* Recent Activities */}
-      <Paper
-        elevation={0}
-        sx={{
-          borderRadius: 1,
-          overflow: "hidden",
-          mb: 3,
-          border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
-        }}
-      >
-        <Box
-          sx={{
-            px: 2.5,
-            py: 2,
-            borderBottom: `1px solid ${alpha(C.outlineVariant, 0.3)}`,
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          <HistoryIcon sx={{ color: C.primaryLight, fontSize: 20 }} />
-          <Typography
-            sx={{ fontWeight: 700, color: C.primary, fontSize: "0.9rem" }}
-          >
-            Recent Activities
-          </Typography>
-          <Chip
-            label={activities.length}
-            size="small"
+      {/* Activities + Notifications side by side */}
+      {/* ✅ Stack vertically on mobile */}
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={7}>
+          <Paper
+            elevation={0}
             sx={{
-              ml: "auto",
-              bgcolor: C.surfaceContainerLow,
-              fontWeight: 700,
-              fontSize: "0.7rem",
+              borderRadius: 3,
+              overflow: "hidden",
+              border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
             }}
-          />
-        </Box>
-        <TableContainer sx={{ maxHeight: 360 }}>
-          <Table stickyHeader size="small">
-            <TableHead>
-              <TableRow>
-                {["Activity", "Detail", "Date"].map((h) => (
-                  <TableCell
-                    key={h}
-                    sx={{
-                      fontWeight: 700,
-                      color: C.secondary,
-                      bgcolor: C.surfaceContainerLow,
-                      fontSize: "0.72rem",
-                    }}
-                  >
-                    {h}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {activities.length > 0 ? (
-                activities.map((act, i) => (
-                  <TableRow
-                    key={i}
-                    hover
-                    sx={{ "&:hover": { bgcolor: C.surfaceContainerLow } }}
-                  >
-                    <TableCell>
-                      <Typography
-                        sx={{
-                          fontWeight: 600,
-                          fontSize: "0.75rem",
-                          color: C.primary,
-                        }}
-                      >
-                        {act.title}
-                      </Typography>
-                      <Chip
-                        label={act.type?.replace(/_/g, " ")}
-                        size="small"
-                        sx={{
-                          mt: 0.5,
-                          height: 18,
-                          fontSize: "0.6rem",
-                          bgcolor: alpha(C.primaryLight, 0.08),
-                          color: C.primaryLight,
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography
-                        sx={{ fontSize: "0.72rem", color: C.secondary }}
-                      >
-                        {act.detail || "—"}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography sx={{ fontSize: "0.7rem", color: C.outline }}>
-                        {act.timestamp
-                          ? new Date(act.timestamp).toLocaleDateString(
-                              "en-IN",
-                              {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              },
-                            )
-                          : "N/A"}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
-                    <Typography sx={{ color: C.secondary, fontSize: "0.8rem" }}>
-                      No recent activities
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+          >
+            <Box
+              sx={{
+                px: { xs: 2, sm: 2.5 },
+                py: 2,
+                borderBottom: `1px solid ${alpha(C.outlineVariant, 0.3)}`,
+              }}
+            >
+              <SectionTitle
+                icon={HistoryIcon}
+                title="Recent Activities"
+                chip={activities.length}
+              />
+            </Box>
+            <ActivityTable activities={activities} />
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={5}>
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              p: { xs: 2, sm: 2.5 },
+              border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
+              height: "100%",
+            }}
+          >
+            <SectionTitle
+              icon={NotifIcon}
+              title="Notifications"
+              chip={`${notifications.length} unread`}
+            />
+            <NotifList notifications={notifications} />
+          </Paper>
+        </Grid>
+      </Grid>
 
       {/* Quick Actions */}
       <SectionTitle icon={BoltIcon} title="Quick Actions" />
-      <Grid container spacing={2}>
+      {/* ✅ 1-col on xs, 3-col on sm+ */}
+      <Grid container spacing={{ xs: 1.5, sm: 2 }}>
         {quickActions.map((act, i) => (
           <Grid item xs={12} sm={4} key={i}>
             <Button
@@ -714,11 +1204,11 @@ const SuperAdminDashboard = ({ data, loading }) => {
               onClick={() => navigate(act.path)}
               sx={{
                 flexDirection: "column",
-                width:"375px",
                 alignItems: "flex-start",
-                p: 2,
+                p: { xs: 1.5, sm: 2 },
                 bgcolor: C.primaryLight,
                 borderRadius: 3,
+                width:"368px",
                 textTransform: "none",
                 "&:hover": {
                   transform: "translateY(-3px)",
@@ -759,71 +1249,72 @@ const SuperAdminDashboard = ({ data, loading }) => {
   );
 };
 
-// ─── ADMIN VIEW ───────────────────────────────────────────────────────────────
+// ─── ADMIN VIEW ────────────────────────────────────────────────────────────────
 const AdminDashboard = ({ data, loading }) => {
   const navigate = useNavigate();
-  const sm = useMediaQuery(useTheme().breakpoints.down("sm"));
+  const chartH = useChartHeight(240, 190);
 
-  const team = data?.team || {};
-  const assets = data?.assets || {};
-  const checklists = data?.checklists || {};
-  const inspections = data?.inspections || {};
-  const activities = data?.recentActivities || [];
+  const payload = data?.data || data || {};
+  const summary = payload.summary || {};
+  const distribution = payload.distribution || {};
+  const charts_ = payload.charts || {};
+  const activities = payload.recentActivities || [];
+  const notifications = payload.notifications || [];
 
-  // Asset by category pie
   const assetByCategory = useMemo(
     () =>
-      Object.entries(assets.byCategory || {}).map(([name, value]) => ({
-        name,
-        value,
+      (distribution.assetByStatus || []).map((a) => ({
+        name: a.name,
+        value: a.value,
       })),
-    [assets],
+    [distribution],
   );
-
-  // Inspection daily trend — last 14 points
+  const teamByStatus = useMemo(
+    () =>
+      (distribution.teamByStatus || []).map((t) => ({
+        name: t.name,
+        value: t.value,
+      })),
+    [distribution],
+  );
   const inspTrend = useMemo(
     () =>
-      (inspections.dailyTrend || []).slice(-14).map((d) => ({
-        ...d,
-        date: d.date?.slice(5), // MM-DD
-      })),
-    [inspections],
+      (charts_.submissionTrend || [])
+        .slice(-14)
+        .map((d) => ({ ...d, date: d.period?.slice(5) || d.period })),
+    [charts_],
   );
-
-  // Team by role bar
-  const teamByRole = useMemo(
-    () =>
-      Object.entries(team.byRole || {}).map(([role, count]) => ({
-        role: role.replace(/_/g, " "),
-        count,
-      })),
-    [team],
-  );
+  const assignTrend = useMemo(() => charts_.assignmentTrend || [], [charts_]);
+  const topPerformers = useMemo(() => payload.topPerformers || [], [payload]);
 
   const statCards = [
     {
       icon: GroupIcon,
       title: "Team Members",
-      value: team.total,
-      sub: `${team.active} active`,
+      value: fmt(summary.totalTeamMembers),
+      sub: `${fmt(summary.activeTeamMembers)} active`,
+      trend: summary.teamGrowth ? `${summary.teamGrowth}%` : null,
+      trendUp: true,
     },
     {
       icon: InventoryIcon,
       title: "Total Assets",
-      value: assets.total,
-      sub: `${assets.active} active · ${assets.inMaintenance || 0} maintenance`,
+      value: fmt(summary.totalAssets),
+      sub: `${fmt(summary.activeAssets)} active · ${fmt(summary.assetsNeedingAttention)} need attention`,
     },
     {
       icon: AssignmentIcon,
       title: "Checklists",
-      value: checklists.total,
-      sub: `${checklists.totalAssignments} assignments sent`,
+      value: fmt(summary.totalChecklists),
+      sub: `${fmt(summary.publishedChecklists)} published`,
     },
     {
       icon: TaskAltIcon,
-      title: "Inspections",
-      value: inspections.total,
-      sub: `${inspections.pendingReview} pending review`,
+      title: "Submissions",
+      value: fmt(
+        summary.pendingSubmissions + (summary.pendingReviewsCount || 0),
+      ),
+      sub: `${fmt(summary.pendingReviewsCount)} pending review`,
       accent: true,
     },
   ];
@@ -832,7 +1323,7 @@ const AdminDashboard = ({ data, loading }) => {
     {
       icon: AddCircleIcon,
       title: "New Checklist",
-      desc: "Create form",
+      desc: "Create custom form",
       path: "/admin/create-checklist/custom",
     },
     {
@@ -857,8 +1348,8 @@ const AdminDashboard = ({ data, loading }) => {
 
   return (
     <Box>
-      {/* Stats */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      {/* ✅ Stat cards: 1-col xs, 2-col sm, 4-col lg */}
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
         {statCards.map((s, i) => (
           <Grid item xs={12} sm={6} lg={3} key={i}>
             <StatCard {...s} loading={loading} />
@@ -866,16 +1357,18 @@ const AdminDashboard = ({ data, loading }) => {
         ))}
       </Grid>
 
-      {/* Charts row 1 */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {/* Inspection trend */}
-        <Grid item xs={12} md={8} sx={{width:"580px"}}>
-          <ChartCard title="Inspection Trend (Daily)">
+      {/* Submission trend + Asset donut */}
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={8}>
+          <ChartCard
+            title="Submission trend"
+            sub="Total vs approved over selected period"
+          >
             {inspTrend.some((d) => d.total > 0) ? (
-              <ResponsiveContainer width="100%" height={240}>
+              <ResponsiveContainer width="100%" height={chartH}>
                 <AreaChart data={inspTrend}>
                   <defs>
-                    <linearGradient id="aG" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="subG" x1="0" y1="0" x2="0" y2="1">
                       <stop
                         offset="5%"
                         stopColor={C.primaryLight}
@@ -895,24 +1388,27 @@ const AdminDashboard = ({ data, loading }) => {
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 10, fill: C.secondary }}
+                    interval="preserveStartEnd"
                   />
                   <YAxis
                     tick={{ fontSize: 10, fill: C.secondary }}
                     allowDecimals={false}
+                    width={32}
                   />
                   <RTooltip
                     contentStyle={{
                       borderRadius: 8,
                       border: `1px solid ${C.outlineVariant}`,
+                      fontSize: "0.75rem",
                     }}
                   />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Area
                     type="monotone"
                     dataKey="total"
                     name="Total"
                     stroke={C.primaryLight}
-                    fill="url(#aG)"
+                    fill="url(#subG)"
                     strokeWidth={2}
                   />
                   <Area
@@ -924,35 +1420,24 @@ const AdminDashboard = ({ data, loading }) => {
                     strokeWidth={1.5}
                     strokeDasharray="4 2"
                   />
-                  <Area
-                    type="monotone"
-                    dataKey="rejected"
-                    name="Rejected"
-                    stroke={C.onErrorContainer}
-                    fill="transparent"
-                    strokeWidth={1.5}
-                    strokeDasharray="4 2"
-                  />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <EmptyChart msg="No inspection data for this period" />
+              <EmptyChart msg="No submission data for this period" />
             )}
           </ChartCard>
         </Grid>
-
-        {/* Asset distribution */}
-        <Grid item xs={12} md={4} sx={{width:"570px"}}>
-          <ChartCard title="Assets by Category">
+        <Grid item xs={12} md={4}>
+          <ChartCard title="Assets by status">
             {assetByCategory.length > 0 ? (
-              <ResponsiveContainer width="100%" height={240}>
+              <ResponsiveContainer width="100%" height={chartH}>
                 <PieChart>
                   <Pie
                     data={assetByCategory}
                     cx="50%"
                     cy="50%"
                     innerRadius="50%"
-                    outerRadius="73%"
+                    outerRadius="72%"
                     dataKey="value"
                     paddingAngle={3}
                     label={({ name, percent }) =>
@@ -974,50 +1459,63 @@ const AdminDashboard = ({ data, loading }) => {
         </Grid>
       </Grid>
 
-      {/* Charts row 2 */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {/* Team by role */}
-        <Grid item xs={12} md={5} sx={{width:"580px"}}>
-          <ChartCard title="Team Members by Role">
-            {teamByRole.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={teamByRole} layout="vertical" barSize={18}>
+      {/* Assignment trend + Top performers */}
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <ChartCard
+            title="Assignment trend"
+            sub="Created, completed and overdue"
+          >
+            {assignTrend.some((d) => d.created > 0) ? (
+              <ResponsiveContainer width="100%" height={chartH}>
+                <BarChart data={assignTrend} barSize={14}>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke={alpha(C.outline, 0.12)}
                   />
                   <XAxis
-                    type="number"
+                    dataKey="period"
                     tick={{ fontSize: 10, fill: C.secondary }}
-                    allowDecimals={false}
+                    interval="preserveStartEnd"
                   />
                   <YAxis
-                    dataKey="role"
-                    type="category"
                     tick={{ fontSize: 10, fill: C.secondary }}
-                    width={100}
+                    allowDecimals={false}
+                    width={32}
                   />
-                  <RTooltip contentStyle={{ borderRadius: 8 }} />
+                  <RTooltip contentStyle={{ borderRadius: 8, fontSize: "0.75rem" }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar
-                    dataKey="count"
-                    name="Members"
+                    dataKey="created"
+                    name="Created"
                     fill={C.primaryLight}
-                    radius={[0, 4, 4, 0]}
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="completed"
+                    name="Completed"
+                    fill={C.success}
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="overdue"
+                    name="Overdue"
+                    fill={C.onErrorContainer}
+                    radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <EmptyChart />
+              <EmptyChart msg="No assignment data for this period" />
             )}
           </ChartCard>
         </Grid>
 
-        {/* Top performers */}
-        <Grid item xs={12} md={7} sx={{width:"576px"}}>
-          <ChartCard title="Top Performing Team Members">
-            {(team.topPerformers || []).length > 0 ? (
+        <Grid item xs={12} md={6}>
+          {topPerformers.length > 0 ? (
+            <ChartCard title="Top performing team members" minH={200}>
               <Stack spacing={1.5}>
-                {team.topPerformers.slice(0, 5).map((m, i) => (
+                {topPerformers.slice(0, 5).map((m, i) => (
                   <Box key={i} display="flex" alignItems="center" gap={1.5}>
                     <Avatar
                       sx={{
@@ -1026,18 +1524,26 @@ const AdminDashboard = ({ data, loading }) => {
                         height: 34,
                         fontSize: "0.75rem",
                         fontWeight: 700,
+                        flexShrink: 0,
                       }}
                     >
                       {m.name?.charAt(0)?.toUpperCase() || "U"}
                     </Avatar>
-                    <Box flex={1}>
+                    <Box flex={1} minWidth={0}>
                       <Box
                         display="flex"
                         justifyContent="space-between"
                         mb={0.3}
+                        gap={1}
                       >
                         <Typography
-                          sx={{ fontWeight: 600, fontSize: "0.78rem" }}
+                          sx={{
+                            fontWeight: 600,
+                            fontSize: "0.78rem",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
                         >
                           {m.name}
                         </Typography>
@@ -1046,6 +1552,7 @@ const AdminDashboard = ({ data, loading }) => {
                             fontWeight: 700,
                             fontSize: "0.78rem",
                             color: C.primaryLight,
+                            flexShrink: 0,
                           }}
                         >
                           {m.completionRate}%
@@ -1078,151 +1585,105 @@ const AdminDashboard = ({ data, loading }) => {
                   </Box>
                 ))}
               </Stack>
-            ) : (
-              <EmptyChart msg="No team performance data" />
-            )}
-          </ChartCard>
+            </ChartCard>
+          ) : (
+            <ChartCard title="Team by status" minH={200}>
+              {teamByStatus.length > 0 ? (
+                <ResponsiveContainer width="100%" height={chartH}>
+                  <PieChart>
+                    <Pie
+                      data={teamByStatus}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius="48%"
+                      outerRadius="70%"
+                      dataKey="value"
+                      paddingAngle={3}
+                      label={({ name, value }) => `${name}: ${value}`}
+                      labelLine={false}
+                    >
+                      {teamByStatus.map((_, i) => (
+                        <Cell
+                          key={i}
+                          fill={PIE_COLORS[i % PIE_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <RTooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyChart />
+              )}
+            </ChartCard>
+          )}
         </Grid>
       </Grid>
 
-      {/* Recent Activities */}
-      <Paper
-        elevation={0}
-        sx={{
-          borderRadius: 1,
-          overflow: "hidden",
-          mb: 3,
-          border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
-        }}
-      >
-        <Box
-          sx={{
-            px: 2.5,
-            py: 2,
-            borderBottom: `1px solid ${alpha(C.outlineVariant, 0.3)}`,
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          <HistoryIcon sx={{ color: C.primaryLight, fontSize: 20 }} />
-          <Typography
-            sx={{ fontWeight: 700, color: C.primary, fontSize: "0.9rem" }}
-          >
-            Recent Activities
-          </Typography>
-          <Chip
-            label={activities.length}
-            size="small"
+      {/* Activities + Notifications */}
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={7}>
+          <Paper
+            elevation={0}
             sx={{
-              ml: "auto",
-              bgcolor: C.surfaceContainerLow,
-              fontWeight: 700,
-              fontSize: "0.7rem",
+              borderRadius: 3,
+              overflow: "hidden",
+              border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
             }}
-          />
-        </Box>
-        <TableContainer sx={{ maxHeight: 320 }}>
-          <Table stickyHeader size="small">
-            <TableHead>
-              <TableRow>
-                {["Activity", "Detail", "Date"].map((h) => (
-                  <TableCell
-                    key={h}
-                    sx={{
-                      fontWeight: 700,
-                      color: C.secondary,
-                      bgcolor: C.surfaceContainerLow,
-                      fontSize: "0.72rem",
-                    }}
-                  >
-                    {h}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {activities.length > 0 ? (
-                activities.map((act, i) => (
-                  <TableRow
-                    key={i}
-                    hover
-                    sx={{ "&:hover": { bgcolor: C.surfaceContainerLow } }}
-                  >
-                    <TableCell>
-                      <Typography
-                        sx={{
-                          fontWeight: 600,
-                          fontSize: "0.75rem",
-                          color: C.primary,
-                        }}
-                      >
-                        {act.title}
-                      </Typography>
-                      <Chip
-                        label={act.type?.replace(/_/g, " ")}
-                        size="small"
-                        sx={{
-                          mt: 0.5,
-                          height: 18,
-                          fontSize: "0.6rem",
-                          bgcolor: alpha(C.primaryLight, 0.08),
-                          color: C.primaryLight,
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography
-                        sx={{ fontSize: "0.72rem", color: C.secondary }}
-                      >
-                        {act.detail || "—"}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography sx={{ fontSize: "0.7rem", color: C.outline }}>
-                        {act.timestamp
-                          ? new Date(act.timestamp).toLocaleDateString(
-                              "en-IN",
-                              {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              },
-                            )
-                          : "N/A"}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
-                    <Typography sx={{ color: C.secondary, fontSize: "0.8rem" }}>
-                      No recent activities
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+          >
+            <Box
+              sx={{
+                px: { xs: 2, sm: 2.5 },
+                py: 2,
+                borderBottom: `1px solid ${alpha(C.outlineVariant, 0.3)}`,
+              }}
+            >
+              <SectionTitle
+                icon={HistoryIcon}
+                title="Recent Activities"
+                chip={activities.length}
+              />
+            </Box>
+            <ActivityTable activities={activities} />
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={5}>
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              p: { xs: 2, sm: 2.5 },
+              border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
+              height: "100%",
+              overflow: "auto",
+            }}
+          >
+            <SectionTitle
+              icon={NotifIcon}
+              title="Notifications"
+              chip={`${notifications.length} unread`}
+            />
+            <NotifList notifications={notifications} />
+          </Paper>
+        </Grid>
+      </Grid>
 
       {/* Quick Actions */}
       <SectionTitle icon={BoltIcon} title="Quick Actions" />
-      <Grid container spacing={2}>
+      {/* ✅ Removed incorrect width:"300px" — now full width, 2-col on xs, 4-col on md */}
+      <Grid container spacing={{ xs: 1.5, sm: 2}}>
         {quickActions.map((act, i) => (
-          <Grid item xs={12} sm={6} md={3} key={i}>
+          <Grid item xs={6} sm={6} md={3} key={i}>
             <Button
               fullWidth
               onClick={() => navigate(act.path)}
               sx={{
                 flexDirection: "column",
                 alignItems: "flex-start",
-                p: 2,
+                p: { xs: 1.5, sm: 2 },
                 bgcolor: C.primaryLight,
                 borderRadius: 3,
-                width:"250px",
+                width:"270px" ,
                 textTransform: "none",
                 "&:hover": {
                   transform: "translateY(-3px)",
@@ -1244,7 +1705,7 @@ const AdminDashboard = ({ data, loading }) => {
                 sx={{
                   color: "#fff",
                   fontWeight: 700,
-                  fontSize: "0.82rem",
+                  fontSize: { xs: "0.75rem", sm: "0.82rem" },
                   mb: 0.25,
                 }}
               >
@@ -1263,16 +1724,18 @@ const AdminDashboard = ({ data, loading }) => {
   );
 };
 
-// ─── TEAM VIEW ────────────────────────────────────────────────────────────────
+// ─── TEAM VIEW ─────────────────────────────────────────────────────────────────
 const TeamDashboard = ({ data, loading }) => {
   const navigate = useNavigate();
+  const chartH = useChartHeight(220, 180);
 
-  const overview = data?.overview || {};
-  const member = data?.memberInfo || {};
-  const upcoming = data?.upcomingTasks || [];
-  const activities = data?.recentActivities || [];
-  const weeklyTrend = data?.charts?.weeklyTrend || [];
-  const dist = data?.charts?.taskDistribution || {};
+  const payload = data?.data || data || {};
+  const overview = payload.overview || {};
+  const member = payload.memberInfo || {};
+  const upcoming = payload.upcomingTasks || [];
+  const activities = payload.recentActivities || [];
+  const weeklyTrend = payload.charts?.weeklyTrend || [];
+  const dist = payload.charts?.taskDistribution || {};
 
   const distData = [
     { name: "Completed", value: dist.completed || 0, fill: C.success },
@@ -1283,43 +1746,64 @@ const TeamDashboard = ({ data, loading }) => {
 
   return (
     <Box>
-      {/* Member info banner */}
+      {/* Member banner */}
       <Paper
         elevation={0}
         sx={{
-          p: 2.5,
+          p: { xs: 2, sm: 2.5 },
           borderRadius: 3,
           mb: 3,
           bgcolor: C.primaryLight,
           border: "none",
         }}
       >
-        <Box display="flex" alignItems="center" gap={2}>
+        {/* ✅ Banner: stack on xs, row on sm */}
+        <Box
+          display="flex"
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          gap={2}
+          flexDirection={{ xs: "row" }}
+          flexWrap="wrap"
+        >
           <Avatar
             sx={{
               bgcolor: alpha("#fff", 0.15),
               color: "#fff",
-              width: 50,
-              height: 50,
+              width: { xs: 42, sm: 50 },
+              height: { xs: 42, sm: 50 },
               fontWeight: 800,
-              fontSize: "1.2rem",
+              fontSize: { xs: "1rem", sm: "1.2rem" },
+              flexShrink: 0,
             }}
           >
             {member.initials || member.name?.charAt(0)?.toUpperCase() || "U"}
           </Avatar>
-          <Box>
+          <Box flex={1} minWidth={0}>
             <Typography
-              sx={{ fontWeight: 800, color: "#fff", fontSize: "1.1rem" }}
+              sx={{
+                fontWeight: 800,
+                color: "#fff",
+                fontSize: { xs: "0.95rem", sm: "1.1rem" },
+              }}
             >
               {member.name || "Team Member"}
             </Typography>
             <Typography sx={{ color: alpha("#fff", 0.7), fontSize: "0.75rem" }}>
-              {member.role} {member.department ? `· ${member.department}` : ""}
+              {member.role}
+              {member.department ? ` · ${member.department}` : ""}
             </Typography>
           </Box>
-          <Box ml="auto" textAlign="right">
+          <Box
+            textAlign="right"
+            flexShrink={0}
+            ml={{ xs: "auto" }}
+          >
             <Typography
-              sx={{ color: "#fff", fontWeight: 800, fontSize: "1.5rem" }}
+              sx={{
+                color: "#fff",
+                fontWeight: 800,
+                fontSize: { xs: "1.2rem", sm: "1.5rem" },
+              }}
             >
               {pct(overview.completionRate)}
             </Typography>
@@ -1332,25 +1816,24 @@ const TeamDashboard = ({ data, loading }) => {
         </Box>
       </Paper>
 
-      {/* Stats */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
         {[
           {
             icon: AssignmentIcon,
             title: "Total Tasks",
-            value: overview.total,
-            sub: `${overview.completed} completed`,
+            value: fmt(overview.total),
+            sub: `${fmt(overview.completed)} completed`,
           },
           {
             icon: HourglassIcon,
             title: "In Progress",
-            value: overview.inProgress,
-            sub: `${overview.pending} pending`,
+            value: fmt(overview.inProgress),
+            sub: `${fmt(overview.pending)} pending`,
           },
           {
             icon: WarningIcon,
             title: "Overdue",
-            value: overview.overdue,
+            value: fmt(overview.overdue),
             sub: "needs attention",
             accent: overview.overdue > 0,
           },
@@ -1367,11 +1850,13 @@ const TeamDashboard = ({ data, loading }) => {
         ))}
       </Grid>
 
-      {/* Charts */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
         <Grid item xs={12} md={7}>
-          <ChartCard title="Weekly Activity (Last 7 Days)">
-            <ResponsiveContainer width="100%" height={220}>
+          <ChartCard
+            title="Weekly activity"
+            sub="Completed vs pending — last 7 days"
+          >
+            <ResponsiveContainer width="100%" height={chartH}>
               <BarChart data={weeklyTrend} barSize={20}>
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -1380,13 +1865,15 @@ const TeamDashboard = ({ data, loading }) => {
                 <XAxis
                   dataKey="date"
                   tick={{ fontSize: 10, fill: C.secondary }}
+                  interval="preserveStartEnd"
                 />
                 <YAxis
                   tick={{ fontSize: 10, fill: C.secondary }}
                   allowDecimals={false}
+                  width={32}
                 />
-                <RTooltip contentStyle={{ borderRadius: 8 }} />
-                <Legend />
+                <RTooltip contentStyle={{ borderRadius: 8, fontSize: "0.75rem" }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar
                   dataKey="completed"
                   name="Completed"
@@ -1403,11 +1890,10 @@ const TeamDashboard = ({ data, loading }) => {
             </ResponsiveContainer>
           </ChartCard>
         </Grid>
-
         <Grid item xs={12} md={5}>
-          <ChartCard title="Task Distribution">
+          <ChartCard title="Task distribution">
             {distData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={chartH}>
                 <PieChart>
                   <Pie
                     data={distData}
@@ -1436,7 +1922,7 @@ const TeamDashboard = ({ data, loading }) => {
         </Grid>
       </Grid>
 
-      {/* Upcoming Tasks */}
+      {/* ✅ Upcoming tasks table: horizontally scrollable on mobile */}
       {upcoming.length > 0 && (
         <Paper
           elevation={0}
@@ -1449,23 +1935,15 @@ const TeamDashboard = ({ data, loading }) => {
         >
           <Box
             sx={{
-              px: 2.5,
+              px: { xs: 2, sm: 2.5 },
               py: 2,
               borderBottom: `1px solid ${alpha(C.outlineVariant, 0.3)}`,
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
             }}
           >
-            <HourglassIcon sx={{ color: C.primaryLight, fontSize: 20 }} />
-            <Typography
-              sx={{ fontWeight: 700, color: C.primary, fontSize: "0.9rem" }}
-            >
-              Upcoming Tasks
-            </Typography>
+            <SectionTitle icon={HourglassIcon} title="Upcoming Tasks" />
           </Box>
-          <TableContainer>
-            <Table size="small">
+          <TableContainer sx={{ overflowX: "auto" }}>
+            <Table size="small" sx={{ minWidth: 480 }}>
               <TableHead>
                 <TableRow>
                   {["Task", "Asset", "Due Date", "Days Left", "Priority"].map(
@@ -1477,6 +1955,7 @@ const TeamDashboard = ({ data, loading }) => {
                           color: C.secondary,
                           bgcolor: C.surfaceContainerLow,
                           fontSize: "0.72rem",
+                          whiteSpace: "nowrap",
                         }}
                       >
                         {h}
@@ -1493,19 +1972,19 @@ const TeamDashboard = ({ data, loading }) => {
                     sx={{ "&:hover": { bgcolor: C.surfaceContainerLow } }}
                   >
                     <TableCell>
-                      <Typography sx={{ fontWeight: 600, fontSize: "0.75rem" }}>
+                      <Typography sx={{ fontWeight: 600, fontSize: "0.75rem", whiteSpace: "nowrap" }}>
                         {t.checklistName}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Typography
-                        sx={{ fontSize: "0.72rem", color: C.secondary }}
+                        sx={{ fontSize: "0.72rem", color: C.secondary, whiteSpace: "nowrap" }}
                       >
                         {t.assetName || "—"}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography sx={{ fontSize: "0.72rem" }}>
+                      <Typography sx={{ fontSize: "0.72rem", whiteSpace: "nowrap" }}>
                         {t.dueDate
                           ? new Date(t.dueDate).toLocaleDateString("en-IN")
                           : "—"}
@@ -1561,9 +2040,9 @@ const TeamDashboard = ({ data, loading }) => {
         </Paper>
       )}
 
-      {/* Quick Actions */}
       <SectionTitle icon={BoltIcon} title="Quick Actions" />
-      <Grid container spacing={2}>
+      {/* ✅ 3 equal columns on all sizes, full-width buttons */}
+      <Grid container spacing={{ xs: 1.5, sm: 2 }}>
         {[
           {
             icon: AssignmentTurnedInIcon,
@@ -1591,7 +2070,7 @@ const TeamDashboard = ({ data, loading }) => {
               sx={{
                 flexDirection: "column",
                 alignItems: "flex-start",
-                p: 2,
+                p: { xs: 1.5, sm: 2 },
                 bgcolor: C.primaryLight,
                 borderRadius: 3,
                 textTransform: "none",
@@ -1615,7 +2094,7 @@ const TeamDashboard = ({ data, loading }) => {
                 sx={{
                   color: "#fff",
                   fontWeight: 700,
-                  fontSize: "0.82rem",
+                  fontSize: { xs: "0.75rem", sm: "0.82rem" },
                   mb: 0.25,
                 }}
               >
@@ -1634,11 +2113,19 @@ const TeamDashboard = ({ data, loading }) => {
   );
 };
 
-// ─── Root Dashboard ───────────────────────────────────────────────────────────
+// ─── Root Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { user } = useAuth();
-  const { dashboardData, loading, error, loadDashboard, clearError, refresh } =
-    useDashboard();
+  const {
+    dashboardData,
+    loading,
+    error,
+    loadDashboard,
+    clearError,
+    refresh,
+    activeFilter,
+  } = useDashboard();
+
   const [anchorEl, setAnchorEl] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [toast, setToast] = useState({
@@ -1648,7 +2135,7 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    loadDashboard();
+    loadDashboard({ preset: "30d" });
   }, [loadDashboard]);
 
   const toast$ = useCallback(
@@ -1659,6 +2146,13 @@ export default function Dashboard() {
   const closeToast = useCallback(
     () => setToast((p) => ({ ...p, open: false })),
     [],
+  );
+
+  const handleFilterChange = useCallback(
+    (filters) => {
+      loadDashboard(filters);
+    },
+    [loadDashboard],
   );
 
   const handleRefresh = useCallback(() => {
@@ -1672,18 +2166,20 @@ export default function Dashboard() {
       setAnchorEl(null);
       try {
         const name = `dashboard_${new Date().toISOString().split("T")[0]}`;
+        const overview =
+          dashboardData?.data?.summary ||
+          dashboardData?.summary ||
+          dashboardData ||
+          {};
         if (type === "csv") {
-          doCSV(dashboardData || {}, name);
-          toast$("CSV exported");
+          doCSV(overview, name);
+          toast$("CSV exported successfully");
+        } else if (type === "excel") {
+          await doExcel(overview, name);
+          toast$("Excel file exported successfully");
         } else {
-          // Build a flat overview for PDF from whatever role data is present
-          const overview =
-            dashboardData?.clients ||
-            dashboardData?.team ||
-            dashboardData?.overview ||
-            {};
           await doPDF(overview, name);
-          toast$("PDF exported");
+          toast$("PDF exported successfully");
         }
       } catch (e) {
         toast$(e.message || "Export failed", "error");
@@ -1703,16 +2199,32 @@ export default function Dashboard() {
         message={error}
         onRetry={() => {
           clearError();
-          loadDashboard();
+          loadDashboard({ preset: "30d" });
         }}
       />
     );
+
+  const filterLabel = (() => {
+    const p = activeFilter?.preset;
+    if (!p || p === "30d") return "Last 30 days";
+    if (p === "today") return "Today";
+    if (p === "7d") return "Last 7 days";
+    if (p === "monthly") return "This month";
+    if (p === "yearly") return "This year";
+    if (p === "custom")
+      return `${activeFilter.startDate} → ${activeFilter.endDate}`;
+    return "";
+  })();
 
   return (
     <Box
       sx={{
         minHeight: "100%",
+        // ✅ Fluid padding: tighter on mobile, comfortable on desktop
         p: { xs: 1.5, sm: 2, md: 3 },
+        // ✅ Prevent horizontal overflow at any viewport
+        overflowX: "hidden",
+        boxSizing: "border-box",
       }}
     >
       {loading && (
@@ -1739,12 +2251,12 @@ export default function Dashboard() {
           gap: 1.5,
         }}
       >
-        <Box>
+        <Box minWidth={0}>
           <Typography
             sx={{
               fontWeight: 800,
               color: C.primary,
-              fontSize: { xs: "1.2rem", sm: "1.5rem" },
+              fontSize: { xs: "1.1rem", sm: "1.35rem", md: "1.5rem" }, // ✅ fluid heading
             }}
           >
             {role === "super_admin"
@@ -1753,54 +2265,136 @@ export default function Dashboard() {
                 ? "Dashboard"
                 : "My Dashboard"}
           </Typography>
-          <Typography sx={{ color: C.secondary, fontSize: "0.72rem" }}>
-            {new Date().toLocaleDateString("en-IN", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </Typography>
+          {/* ✅ Date/filter label: wrap on xs */}
+          <Box
+            display="flex"
+            alignItems="center"
+            gap={1}
+            mt={0.25}
+            flexWrap="wrap"
+          >
+            <Typography
+              sx={{ color: C.secondary, fontSize: "0.72rem" }}
+            >
+              {new Date().toLocaleDateString("en-IN", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </Typography>
+            {filterLabel && (
+              <>
+                <Typography
+                  sx={{ color: C.outlineVariant, fontSize: "0.72rem" }}
+                >
+                  ·
+                </Typography>
+                <Chip
+                  label={filterLabel}
+                  size="small"
+                  icon={<CalendarIcon sx={{ fontSize: "12px !important" }} />}
+                  sx={{
+                    height: 18,
+                    fontSize: "0.62rem",
+                    bgcolor: alpha(C.primaryLight, 0.08),
+                    color: C.primaryLight,
+                    "& .MuiChip-icon": { color: C.primaryLight },
+                  }}
+                />
+              </>
+            )}
+          </Box>
         </Box>
-        <Stack direction="row" spacing={1}>
-          <Tooltip title="Refresh">
+
+        {/* ✅ Action buttons stay on the right even on mobile, shrink gracefully */}
+        <Stack direction="row" spacing={1} flexShrink={0}>
+          <Tooltip title="Refresh data">
             <IconButton
               onClick={handleRefresh}
               disabled={loading}
-              sx={{ bgcolor: C.surfaceContainerLow }}
+              size="small"
+              sx={{
+                bgcolor: C.white,
+                border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
+              }}
             >
-              <RefreshIcon />
+              <RefreshIcon
+                sx={{
+                  fontSize: 20,
+                  color: loading ? C.outline : C.primaryLight,
+                }}
+              />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Export">
+          <Tooltip title="Export dashboard">
             <IconButton
               onClick={(e) => setAnchorEl(e.currentTarget)}
               disabled={exporting || !dashboardData}
-              sx={{ bgcolor: C.surfaceContainerLow }}
+              size="small"
+              sx={{
+                bgcolor: C.white,
+                border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
+              }}
             >
-              {exporting ? <CircularProgress size={20} /> : <DownloadIcon />}
+              {exporting ? (
+                <CircularProgress size={18} />
+              ) : (
+                <DownloadIcon sx={{ fontSize: 20, color: C.primaryLight }} />
+              )}
             </IconButton>
           </Tooltip>
           <Menu
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
             onClose={() => setAnchorEl(null)}
+            PaperProps={{
+              sx: {
+                borderRadius: 2,
+                border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
+                boxShadow: `0 4px 20px ${alpha(C.primary, 0.12)}`,
+              },
+            }}
           >
-            <MenuItem onClick={() => handleExport("csv")}>
-              <ListItemIcon>
-                <CsvIcon />
-              </ListItemIcon>
-              <ListItemText primary="Export as CSV" />
-            </MenuItem>
             <MenuItem onClick={() => handleExport("pdf")}>
               <ListItemIcon>
-                <PdfIcon />
+                <PdfIcon sx={{ color: C.onErrorContainer }} />
               </ListItemIcon>
-              <ListItemText primary="Export as PDF" />
+              <ListItemText
+                primary="Export as PDF"
+                primaryTypographyProps={{ fontSize: "0.8rem" }}
+              />
+            </MenuItem>
+            <MenuItem onClick={() => handleExport("csv")}>
+              <ListItemIcon>
+                <CsvIcon sx={{ color: C.success }} />
+              </ListItemIcon>
+              <ListItemText
+                primary="Export as CSV"
+                primaryTypographyProps={{ fontSize: "0.8rem" }}
+              />
+            </MenuItem>
+            <MenuItem onClick={() => handleExport("excel")}>
+              <ListItemIcon>
+                <SimCardDownloadIcon sx={{ color: C.accent }} />
+              </ListItemIcon>
+              <ListItemText
+                primary="Export as Excel (.xlsx)"
+                primaryTypographyProps={{ fontSize: "0.8rem" }}
+              />
             </MenuItem>
           </Menu>
         </Stack>
       </Box>
+
+      {/* Filter bar — shown for admin and super_admin */}
+      {role !== "team" && (
+        <FilterBar
+          activeFilter={activeFilter}
+          onFilterChange={handleFilterChange}
+          loading={loading}
+        />
+      )}
 
       {/* Role-specific content */}
       {role === "super_admin" && (
@@ -1832,17 +2426,19 @@ export default function Dashboard() {
   );
 }
 
+// ─── Skeleton / Error ──────────────────────────────────────────────────────────
 const LoadingSkeleton = () => (
-  <Box sx={{ p: 3 }}>
+  <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
     <Skeleton variant="text" width={220} height={44} sx={{ mb: 2 }} />
-    <Grid container spacing={2} sx={{ mb: 3 }}>
+    <Skeleton variant="rounded" height={56} sx={{ borderRadius: 2.5, mb: 3 }} />
+    <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
       {[1, 2, 3, 4].map((i) => (
         <Grid item xs={12} sm={6} lg={3} key={i}>
           <Skeleton variant="rounded" height={130} sx={{ borderRadius: 3 }} />
         </Grid>
       ))}
     </Grid>
-    <Grid container spacing={2} sx={{ mb: 3 }}>
+    <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
       {[1, 2].map((i) => (
         <Grid item xs={12} md={6} key={i}>
           <Skeleton variant="rounded" height={280} sx={{ borderRadius: 3 }} />
@@ -1861,10 +2457,11 @@ const ErrorDisplay = ({ message, onRetry }) => (
       alignItems: "center",
       justifyContent: "center",
       minHeight: "60vh",
+      px: 2,
     }}
   >
     <ErrorIcon sx={{ fontSize: 56, color: C.onErrorContainer, mb: 2 }} />
-    <Typography sx={{ fontWeight: 600, color: C.onErrorContainer, mb: 1 }}>
+    <Typography sx={{ fontWeight: 600, color: C.onErrorContainer, mb: 1, textAlign: "center" }}>
       Something went wrong
     </Typography>
     <Typography
@@ -1882,11 +2479,7 @@ const ErrorDisplay = ({ message, onRetry }) => (
       variant="contained"
       onClick={onRetry}
       startIcon={<RefreshIcon />}
-      sx={{
-        bgcolor: C.onErrorContainer,
-        borderRadius: 2,
-        textTransform: "none",
-      }}
+      sx={{ bgcolor: C.primaryLight, borderRadius: 2, textTransform: "none" }}
     >
       Retry
     </Button>

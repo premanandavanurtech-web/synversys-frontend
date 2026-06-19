@@ -213,7 +213,7 @@ const Contact = () => {
     try {
       // First, send the API request to save the inquiry
       const response = await axios.post(
-        `http://localhost:9001/api/v1/contact`,
+        `https://synversys-backend.onrender.com/api/v1/contact`,
         {
           fullName: formData.fullName.trim(),
           email: formData.email.trim(),

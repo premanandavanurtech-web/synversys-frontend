@@ -937,8 +937,8 @@ export default function CreateAssetRequest() {
                 >
                   <MenuItem value="Excellent">Excellent</MenuItem>
                   <MenuItem value="Normal">Normal</MenuItem>
-                  <MenuItem value="Critical">Critical</MenuItem>
                   <MenuItem value="Poor">Poor</MenuItem>
+                  <MenuItem value="Critical">Critical</MenuItem>
                 </Select>
               </FormControl>
 

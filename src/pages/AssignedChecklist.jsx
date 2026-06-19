@@ -1,4 +1,5 @@
-// pages/AssignmentChecklist.jsx - Complete fixed version with admin validation
+// pages/AssignedChecklist.jsx - Complete fixed version with admin validation and navigation
+// ✅ FIXED: Component name matches route import
 
 import React, {
   useState,
@@ -34,6 +35,7 @@ import {
   Tooltip,
   Card,
   CardContent,
+  styled,
   Table,
   TableBody,
   TableCell,
@@ -50,16 +52,10 @@ import {
   Skeleton,
   Fade,
   Zoom,
-  Slide,
   Divider,
   LinearProgress,
 } from "@mui/material";
-import {
-  createTheme,
-  ThemeProvider,
-  alpha,
-  styled,
-} from "@mui/material/styles";
+import { createTheme, ThemeProvider, alpha } from "@mui/material/styles";
 import {
   Close as CloseIcon,
   Search as SearchIcon,
@@ -75,28 +71,27 @@ import {
   Send as SendIcon,
   Warning as WarningIcon,
   Description as DescriptionIcon,
-  CalendarMonth as CalendarMonthIcon,
   SwapHoriz as SwapHorizIcon,
   Clear as ClearIcon,
   Inventory2 as InventoryIcon,
-  FlagOutlined as FlagIcon,
-  NotesOutlined as NotesIcon,
-  PersonSearch as PersonSearchIcon,
   GroupAdd as GroupAddIcon,
   PendingActions as PendingActionsIcon,
   TrendingUp as TrendingUpIcon,
   WarningAmber as WarningAmberIcon,
   Schedule as ScheduleIcon,
+  ArrowForward as ArrowForwardIcon,
+  PersonSearch as PersonSearchIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContexts";
 import { useAssignment } from "../context/AssignmentContext";
+import { useNavigate } from "react-router-dom";
 
 // ─── Modern Theme ─────────────────────────────────────────────────────────────────────
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#1e5887",
-      light: "#084d68",
+      main: "#185677",
+      light: "#134d64",
       dark: "#104661",
       contrastText: "#ffffff",
     },
@@ -200,7 +195,7 @@ const STATUS_CFG = {
   },
   submitted: {
     label: "Submitted",
-    color: "#8b5cf6",
+    color: "#134b7c",
     bg: "#f5f3ff",
     icon: AssignmentIcon,
   },
@@ -268,7 +263,7 @@ const ModernStatCard = ({
   color,
 }) => (
   <Zoom in timeout={300}>
-    <GlassCard sx={{ height: "100%", overflow: "hidden", width: "275px" }}>
+    <GlassCard sx={{ height: "100%", overflow: "hidden" , width:"275px" }}>
       <CardContent sx={{ p: 2.5 }}>
         <Box
           sx={{
@@ -558,6 +553,7 @@ const SelectionModal = ({
                 item.customerName ||
                 item.fullName ||
                 item.email ||
+                item.assetName ||
                 "Unknown";
               const sub = item.email !== name ? item.email : item.role || "";
               const selected = isSelected(id);
@@ -677,9 +673,10 @@ const defaultReassignForm = () => ({
   notes: "",
 });
 
-// ─── Main Component ───────────────────────────────────────────────────────────────
-export default function AssignmentChecklist() {
+// ✅ FIXED: Component name matches route import (AssignedChecklist)
+export default function AssignedChecklist() {
   const { authRequest, user } = useAuth();
+  const navigate = useNavigate();
   const {
     assignToAdmin,
     assignToTeam,
@@ -708,7 +705,6 @@ export default function AssignmentChecklist() {
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
   const [stats, setStats] = useState(null);
-  const [viewMode, setViewMode] = useState("table");
   const [filters, setFilters] = useState({
     status: "",
     priority: "",
@@ -863,6 +859,7 @@ export default function AssignmentChecklist() {
       fetchTeamMembers();
       fetchAssets();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Handlers ──────────────────────────────────────────────────────────
@@ -892,6 +889,13 @@ export default function AssignmentChecklist() {
         setPagination(res.pagination);
       }
     });
+  };
+
+  // ── View Details Handler ──────────────────────────────────────────────────────────
+  const handleViewDetails = (assignment) => {
+    // Admin and super_admin both use the same path
+    const path = `/admin/assigned-checklists/${assignment._id}`;
+    navigate(path);
   };
 
   // ── Assign Handler ──────────────────────────────────────────────────────────
@@ -1369,11 +1373,14 @@ export default function AssignmentChecklist() {
                               <Tooltip title="View Details">
                                 <IconButton
                                   size="small"
-                                  onClick={() => {
-                                    setSelected(asgn);
-                                    setDetailsOpen(true);
+                                  onClick={() => handleViewDetails(asgn)}
+                                  sx={{
+                                    borderRadius: 1.5,
+                                    color: "#084d68",
+                                    "&:hover": {
+                                      bgcolor: alpha("#084d68", 0.08),
+                                    },
                                   }}
-                                  sx={{ borderRadius: 1.5 }}
                                 >
                                   <VisibilityIcon sx={{ fontSize: 18 }} />
                                 </IconButton>
@@ -1590,6 +1597,17 @@ export default function AssignmentChecklist() {
               >
                 Close
               </Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  setDetailsOpen(false);
+                  handleViewDetails(selected);
+                }}
+                startIcon={<ArrowForwardIcon />}
+                sx={{ background: "#084d68" }}
+              >
+                View Full Details
+              </Button>
             </DialogActions>
           </>
         )}
@@ -1690,8 +1708,14 @@ export default function AssignmentChecklist() {
                 onClick={() => openModal("checklist")}
                 startIcon={<DescriptionIcon />}
                 sx={{
-                  borderColor: assignForm.checklistIds.length === 0 ? "#ef4444" : undefined,
-                  color: assignForm.checklistIds.length === 0 ? "#ef4444" : undefined,
+                  borderColor:
+                    assignForm.checklistIds.length === 0
+                      ? "#ef4444"
+                      : undefined,
+                  color:
+                    assignForm.checklistIds.length === 0
+                      ? "#ef4444"
+                      : undefined,
                 }}
               >
                 {assignForm.checklistIds.length === 0
@@ -1699,12 +1723,16 @@ export default function AssignmentChecklist() {
                   : `📋 ${assignForm.checklistIds.length} selected`}
               </Button>
               {assignForm.checklistIds.length === 0 && (
-                <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+                <Typography
+                  variant="caption"
+                  color="error"
+                  sx={{ mt: 0.5, display: "block" }}
+                >
                   Please select at least one checklist
                 </Typography>
               )}
             </Box>
-            
+
             {isSuperAdmin && (
               <Box>
                 <Button
@@ -1717,18 +1745,22 @@ export default function AssignmentChecklist() {
                     color: !assignForm.adminId ? "#ef4444" : undefined,
                   }}
                 >
-                  {assignForm.adminId 
-                    ? `✓ ${admins.find(a => (a._id || a.id) === assignForm.adminId)?.customerName || "Admin selected"}`
+                  {assignForm.adminId
+                    ? `✓ ${admins.find((a) => (a._id || a.id) === assignForm.adminId)?.customerName || "Admin selected"}`
                     : "⚠️ Select Admin (Required)"}
                 </Button>
                 {!assignForm.adminId && (
-                  <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+                  <Typography
+                    variant="caption"
+                    color="error"
+                    sx={{ mt: 0.5, display: "block" }}
+                  >
                     Please select an admin to continue
                   </Typography>
                 )}
               </Box>
             )}
-            
+
             {!isSuperAdmin && (
               <Box>
                 <Button
@@ -1737,8 +1769,14 @@ export default function AssignmentChecklist() {
                   onClick={() => openModal("team")}
                   startIcon={<PeopleIcon />}
                   sx={{
-                    borderColor: assignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined,
-                    color: assignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined,
+                    borderColor:
+                      assignForm.teamMemberIds.length === 0
+                        ? "#ef4444"
+                        : undefined,
+                    color:
+                      assignForm.teamMemberIds.length === 0
+                        ? "#ef4444"
+                        : undefined,
                   }}
                 >
                   {assignForm.teamMemberIds.length === 0
@@ -1746,13 +1784,17 @@ export default function AssignmentChecklist() {
                     : `👥 ${assignForm.teamMemberIds.length} selected`}
                 </Button>
                 {assignForm.teamMemberIds.length === 0 && (
-                  <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+                  <Typography
+                    variant="caption"
+                    color="error"
+                    sx={{ mt: 0.5, display: "block" }}
+                  >
                     Please select at least one team member
                   </Typography>
                 )}
               </Box>
             )}
-            
+
             {!isSuperAdmin && (
               <Box>
                 <Button
@@ -1767,7 +1809,7 @@ export default function AssignmentChecklist() {
                 </Button>
               </Box>
             )}
-            
+
             <Box>
               <TextField
                 fullWidth
@@ -1781,7 +1823,7 @@ export default function AssignmentChecklist() {
                 required
               />
             </Box>
-            
+
             <Box>
               <TextField
                 fullWidth
@@ -1804,11 +1846,19 @@ export default function AssignmentChecklist() {
           <Button
             onClick={handleAssign}
             variant="contained"
-            disabled={submitting || assignLoading || (isSuperAdmin && !assignForm.adminId) || assignForm.checklistIds.length === 0 || (!isSuperAdmin && assignForm.teamMemberIds.length === 0)}
+            disabled={
+              submitting ||
+              assignLoading ||
+              (isSuperAdmin && !assignForm.adminId) ||
+              assignForm.checklistIds.length === 0 ||
+              (!isSuperAdmin && assignForm.teamMemberIds.length === 0)
+            }
             startIcon={
               submitting ? <CircularProgress size={15} /> : <SendIcon />
             }
-            sx={{ background: "linear-gradient(135deg, #1e5f79 0%, #175f7b 100%)" }}
+            sx={{
+              background: "linear-gradient(135deg, #1e5f79 0%, #175f7b 100%)",
+            }}
           >
             {submitting ? "Assigning..." : "Assign"}
           </Button>
@@ -1870,7 +1920,7 @@ export default function AssignmentChecklist() {
                 helperText={!reassignForm.reason.trim() && "Reason is required"}
               />
             </Box>
-            
+
             {isSuperAdmin && (
               <Box>
                 <Button
@@ -1879,22 +1929,28 @@ export default function AssignmentChecklist() {
                   onClick={() => openModal("reassignAdmin")}
                   startIcon={<PersonAddIcon />}
                   sx={{
-                    borderColor: !reassignForm.newAdminId ? "#ef4444" : undefined,
+                    borderColor: !reassignForm.newAdminId
+                      ? "#ef4444"
+                      : undefined,
                     color: !reassignForm.newAdminId ? "#ef4444" : undefined,
                   }}
                 >
-                  {reassignForm.newAdminId 
-                    ? `✓ ${admins.find(a => (a._id || a.id) === reassignForm.newAdminId)?.customerName || "New Admin selected"}`
+                  {reassignForm.newAdminId
+                    ? `✓ ${admins.find((a) => (a._id || a.id) === reassignForm.newAdminId)?.customerName || "New Admin selected"}`
                     : "⚠️ Select New Admin (Required)"}
                 </Button>
                 {!reassignForm.newAdminId && (
-                  <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+                  <Typography
+                    variant="caption"
+                    color="error"
+                    sx={{ mt: 0.5, display: "block" }}
+                  >
                     Please select a new admin to re-assign
                   </Typography>
                 )}
               </Box>
             )}
-            
+
             {!isSuperAdmin && (
               <Box>
                 <Button
@@ -1903,8 +1959,14 @@ export default function AssignmentChecklist() {
                   onClick={() => openModal("reassignTeam")}
                   startIcon={<PeopleIcon />}
                   sx={{
-                    borderColor: reassignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined,
-                    color: reassignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined,
+                    borderColor:
+                      reassignForm.teamMemberIds.length === 0
+                        ? "#ef4444"
+                        : undefined,
+                    color:
+                      reassignForm.teamMemberIds.length === 0
+                        ? "#ef4444"
+                        : undefined,
                   }}
                 >
                   {reassignForm.teamMemberIds.length === 0
@@ -1912,13 +1974,17 @@ export default function AssignmentChecklist() {
                     : `👥 ${reassignForm.teamMemberIds.length} selected`}
                 </Button>
                 {reassignForm.teamMemberIds.length === 0 && (
-                  <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+                  <Typography
+                    variant="caption"
+                    color="error"
+                    sx={{ mt: 0.5, display: "block" }}
+                  >
                     Please select at least one team member
                   </Typography>
                 )}
               </Box>
             )}
-            
+
             {!isSuperAdmin && (
               <Box>
                 <Button
@@ -1933,7 +1999,7 @@ export default function AssignmentChecklist() {
                 </Button>
               </Box>
             )}
-            
+
             <Box>
               <TextField
                 fullWidth
@@ -1946,7 +2012,7 @@ export default function AssignmentChecklist() {
                 InputLabelProps={{ shrink: true }}
               />
             </Box>
-            
+
             <Box>
               <TextField
                 fullWidth
@@ -1975,7 +2041,13 @@ export default function AssignmentChecklist() {
           <Button
             onClick={handleReassign}
             variant="contained"
-            disabled={submitting || assignLoading || !reassignForm.reason.trim() || (isSuperAdmin && !reassignForm.newAdminId) || (!isSuperAdmin && reassignForm.teamMemberIds.length === 0)}
+            disabled={
+              submitting ||
+              assignLoading ||
+              !reassignForm.reason.trim() ||
+              (isSuperAdmin && !reassignForm.newAdminId) ||
+              (!isSuperAdmin && reassignForm.teamMemberIds.length === 0)
+            }
             startIcon={
               submitting ? <CircularProgress size={15} /> : <SwapHorizIcon />
             }
@@ -2004,7 +2076,7 @@ export default function AssignmentChecklist() {
         }
         onDone={() => closeModal("checklist")}
       />
-      
+
       <SelectionModal
         open={modalStates.admin}
         onClose={() => closeModal("admin")}
@@ -2016,7 +2088,7 @@ export default function AssignmentChecklist() {
         onDone={() => closeModal("admin")}
         multiSelect={false}
       />
-      
+
       <SelectionModal
         open={modalStates.reassignAdmin}
         onClose={() => closeModal("reassignAdmin")}
@@ -2028,7 +2100,7 @@ export default function AssignmentChecklist() {
         onDone={() => closeModal("reassignAdmin")}
         multiSelect={false}
       />
-      
+
       <SelectionModal
         open={modalStates.team}
         onClose={() => closeModal("team")}
@@ -2046,7 +2118,7 @@ export default function AssignmentChecklist() {
         }
         onDone={() => closeModal("team")}
       />
-      
+
       <SelectionModal
         open={modalStates.asset}
         onClose={() => closeModal("asset")}
@@ -2064,7 +2136,7 @@ export default function AssignmentChecklist() {
         }
         onDone={() => closeModal("asset")}
       />
-      
+
       <SelectionModal
         open={modalStates.reassignTeam}
         onClose={() => closeModal("reassignTeam")}
@@ -2082,7 +2154,7 @@ export default function AssignmentChecklist() {
         }
         onDone={() => closeModal("reassignTeam")}
       />
-      
+
       <SelectionModal
         open={modalStates.reassignAsset}
         onClose={() => closeModal("reassignAsset")}

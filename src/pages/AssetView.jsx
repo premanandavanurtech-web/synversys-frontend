@@ -23,12 +23,17 @@ import {
   Collapse,
   Tab,
   Tabs,
+  Select,
+  MenuItem,
+  Autocomplete,
+  Slide,
   alpha,
 } from "@mui/material";
 import { styled, keyframes } from "@mui/material/styles";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAsset } from "../context/AssetContext";
 import { useAssetRequest } from "../context/AssetRequestContext";
+import { useAuth } from "../context/AuthContexts";
 
 import {
   ArrowBack,
@@ -72,6 +77,8 @@ import {
   HourglassEmpty,
   Refresh,
   LinkOff,
+  Add,
+  AddCircleOutline,
 } from "@mui/icons-material";
 
 // ─── Animations ──────────────────────────────────────────────────────────────
@@ -344,9 +351,629 @@ const ErrorBanner = ({ message, onRetry }) => (
   </Box>
 );
 
-// ─── Link Asset Dialog (UPDATED to create child request) ─────────────────────────────────
+// ─── Inline Create Request Dialog ─────────────────────────────────────────────
+const SlideUp = React.forwardRef(function SlideUp(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
+
+function AddAssetModal({ open, onClose, onAssetCreated }) {
+  const [AddNewAsset, setAddNewAsset] = useState(null);
+
+  useEffect(() => {
+    if (open && !AddNewAsset) {
+      import("./AddNewAsset")
+        .then((mod) => setAddNewAsset(() => mod.default))
+        .catch(() => setAddNewAsset(null));
+    }
+  }, [open, AddNewAsset]);
+
+  return (
+    <Dialog
+      fullScreen
+      open={open}
+      onClose={onClose}
+      TransitionComponent={SlideUp}
+      sx={{ zIndex: 1700 }}
+      PaperProps={{
+        sx: {
+          bgcolor: T.bg,
+          m: { xs: 0, sm: "12px" },
+          borderRadius: { xs: 0, sm: T.r.lg },
+          height: { xs: "100%", sm: "calc(100% - 24px)" },
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: T.sh.xl,
+        },
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 3,
+          py: 1.25,
+          bgcolor: T.surface,
+          borderBottom: `1px solid ${T.border}`,
+          flexShrink: 0,
+          zIndex: 10,
+        }}
+      >
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Box
+            sx={{
+              width: 30,
+              height: 30,
+              borderRadius: T.r.sm,
+              bgcolor: T.brandLight,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Inventory2 sx={{ fontSize: 15, color: T.brand }} />
+          </Box>
+          <Box>
+            <Typography sx={{ fontWeight: 700, fontSize: "0.875rem", color: T.ink, lineHeight: 1.2 }}>
+              Add New Asset
+            </Typography>
+            <Typography sx={{ fontSize: "0.68rem", color: T.inkMuted }}>
+              Asset will be auto-selected after saving
+            </Typography>
+          </Box>
+        </Stack>
+        <Tooltip title="Close and go back">
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              bgcolor: T.surfaceAlt,
+              color: T.inkMuted,
+              borderRadius: T.r.xs,
+              width: 30,
+              height: 30,
+              "&:hover": { bgcolor: T.redLight, color: T.red },
+            }}
+          >
+            <Close sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
+
+      <Box sx={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+        {open && AddNewAsset ? (
+          <AddNewAsset
+            embeddedMode
+            onEmbeddedSuccess={(newAsset) => {
+              onAssetCreated?.(newAsset);
+              onClose();
+            }}
+          />
+        ) : open ? (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "60vh",
+              gap: 1.5,
+            }}
+          >
+            <CircularProgress size={32} sx={{ color: T.brand }} />
+            <Typography sx={{ color: T.inkMuted, fontSize: "0.875rem", fontWeight: 500 }}>
+              Loading asset form...
+            </Typography>
+          </Box>
+        ) : null}
+      </Box>
+    </Dialog>
+  );
+}
+
+function CreateRequestDialog({ open, onClose, onSuccess }) {
+  const { createParentRequest } = useAssetRequest();
+  const { getAllAssets, assets, loading: assetsLoading } = useAsset();
+
+  const [form, setForm] = useState({
+    assetId: "",
+    requestType: "transfer",
+    description: "",
+    urgency: "medium",
+  });
+  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [addAssetOpen, setAddAssetOpen] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      getAllAssets?.({ limit: 200 });
+      setForm({
+        assetId: "",
+        requestType: "transfer",
+        description: "",
+        urgency: "medium",
+      });
+      setSelectedAsset(null);
+      setFormError("");
+    }
+  }, [open, getAllAssets]);
+
+  const handleAssetChange = (_, newValue) => {
+    if (newValue) {
+      setSelectedAsset(newValue);
+      setForm((p) => ({ ...p, assetId: newValue._id || newValue.id || "" }));
+      setFormError("");
+    } else {
+      setSelectedAsset(null);
+      setForm((p) => ({ ...p, assetId: "" }));
+    }
+  };
+
+  const handleNewAssetCreated = async (newAsset) => {
+    await getAllAssets?.({ limit: 200 });
+    if (newAsset) {
+      setSelectedAsset(newAsset);
+      setForm((p) => ({
+        ...p,
+        assetId: newAsset._id || newAsset.id || "",
+      }));
+      setFormError("");
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!form.assetId) {
+      setFormError("Please select an asset");
+      return;
+    }
+    setSubmitting(true);
+    setFormError("");
+    try {
+      await createParentRequest({
+        assetId: form.assetId,
+        requestType: form.requestType,
+        description: form.description,
+        urgency: form.urgency,
+      });
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      setFormError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to create request",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const labelSx = {
+    fontSize: "0.67rem",
+    fontWeight: 700,
+    color: T.inkMuted,
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
+    mb: 0.75,
+    fontFamily: T.font,
+    display: "block",
+  };
+
+  const inputSx = {
+    "& .MuiOutlinedInput-root": {
+      borderRadius: T.r.md,
+      fontSize: "0.875rem",
+      "& fieldset": { borderColor: T.border },
+      "&:hover fieldset": { borderColor: T.borderStrong },
+      "&.Mui-focused fieldset": { borderColor: T.brand, borderWidth: "1.5px" },
+    },
+  };
+
+  const selectSx = {
+    borderRadius: T.r.md,
+    "& .MuiOutlinedInput-notchedOutline": { borderColor: T.border },
+    "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: T.borderStrong },
+    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+      borderColor: T.brand,
+      borderWidth: "1.5px",
+    },
+  };
+  const assetOptions = [
+    ...(Array.isArray(assets) ? assets : []),
+    { __isAddNew: true, _id: "__add_new__" },
+  ];
+
+  return (
+    <>
+    <Dialog
+      open={open}
+      onClose={() => !submitting && onClose()}
+      maxWidth="sm"
+      fullWidth
+      sx={{ zIndex: 1500 }}
+      PaperProps={{
+        sx: {
+          borderRadius: T.r.lg,
+          border: `1px solid ${T.border}`,
+          bgcolor: T.surface,
+          boxShadow: T.sh.xl,
+          overflow: "hidden",
+          animation: `${popIn} 0.2s ease both`,
+        },
+      }}
+    >
+      {/* Header */}
+      <Box
+        sx={{
+          px: 3,
+          pt: 2.5,
+          pb: 2,
+          borderBottom: `1px solid ${T.border}`,
+          bgcolor: alpha(T.brand, 0.04),
+        }}
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+        >
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Box
+              sx={{
+                width: 38,
+                height: 38,
+                borderRadius: T.r.sm,
+                bgcolor: T.brandLight,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Add sx={{ fontSize: 20, color: T.brand }} />
+            </Box>
+            <Box>
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  fontSize: "1rem",
+                  color: T.ink,
+                  fontFamily: T.font,
+                }}
+              >
+                New Asset Request
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: "0.72rem",
+                  color: T.inkMuted,
+                  fontFamily: T.font,
+                }}
+              >
+                Create a parent request to link this asset to
+              </Typography>
+            </Box>
+          </Stack>
+          <IconButton
+            onClick={onClose}
+            disabled={submitting}
+            size="small"
+            sx={{
+              bgcolor: T.surfaceAlt,
+              borderRadius: T.r.xs,
+              border: `1px solid ${T.border}`,
+              "&:hover": { bgcolor: T.border },
+            }}
+          >
+            <Close sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Stack>
+      </Box>
+
+      {/* Body */}
+      <Box sx={{ p: 3 }}>
+        {formError && (
+          <Alert
+            severity="error"
+            sx={{ mb: 2.5, borderRadius: T.r.md, fontFamily: T.font }}
+          >
+            {formError}
+          </Alert>
+        )}
+        <Stack spacing={2.5}>
+          {/* Asset */}
+          <Box>
+            <Typography sx={labelSx}>Asset *</Typography>
+            <Autocomplete
+  size="small"
+  options={assetOptions}
+  loading={assetsLoading}
+  value={selectedAsset}
+  onChange={(_, val) => {
+    if (val?.__isAddNew) {
+      setAddAssetOpen(true);
+      return;
+    }
+    setSelectedAsset(val);
+    setForm((p) => ({ ...p, assetId: val?._id || val?.id || "" }));
+    if (formError) setFormError("");
+  }}
+  getOptionLabel={(o) => {
+    if (o?.__isAddNew) return "Add New Asset";
+    const name = o?.assetName || o?.name || "Unnamed";
+    const tag = o?.assetId || o?.serialNumber || "";
+    return tag ? `${name} (${tag})` : name;
+  }}
+  isOptionEqualToValue={(o, v) =>
+    !o?.__isAddNew && !v?.__isAddNew && (o?._id || o?.id) === (v?._id || v?.id)
+  }
+  slotProps={{
+    popper: { style: { zIndex: 1600 } }, // higher than the Dialog's 1500
+  }}
+  renderOption={(props, option) => {
+    if (option.__isAddNew) {
+      return (
+        <Box
+          component="li"
+          {...props}
+          key="__add_new__"
+          sx={{
+            borderTop: `1px solid ${T.border}`,
+            mt: 0.5,
+            pt: "10px !important",
+          }}
+        >
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: T.r.sm,
+                bgcolor: T.tealLight,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <AddCircleOutline sx={{ fontSize: 16, color: T.teal }} />
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: "0.875rem", fontWeight: 700, color: T.teal }}>
+                Add New Asset
+              </Typography>
+              <Typography sx={{ fontSize: "0.72rem", color: T.inkMuted }}>
+                Create a new asset and select it
+              </Typography>
+            </Box>
+          </Stack>
+        </Box>
+      );
+    }
+
+    const name = option.assetName || option.name || "Unnamed";
+    const tag = option.assetId || option.serialNumber || "";
+    const status = option.status || "Unknown";
+    const statusCfg = STATUS_CFG[status] || {
+      bg: T.surfaceAlt,
+      color: T.inkMuted,
+    };
+    return (
+      <Box component="li" {...props} key={option._id || option.id}>
+        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ width: "100%" }}>
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: T.r.sm,
+              bgcolor: T.surfaceAlt,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Inventory2 sx={{ fontSize: 16, color: T.inkMuted }} />
+          </Box>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontSize: "0.875rem", fontWeight: 600, color: T.ink }}>
+              {name}
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              {tag && (
+                <Typography sx={{ fontSize: "0.72rem", color: T.inkMuted }}>
+                  {tag}
+                </Typography>
+              )}
+              <Chip
+                label={status}
+                size="small"
+                sx={{
+                  height: 18,
+                  fontSize: 9,
+                  fontWeight: 700,
+                  color: statusCfg.color,
+                  bgcolor: statusCfg.bg,
+                }}
+              />
+            </Stack>
+          </Box>
+        </Stack>
+      </Box>
+    );
+  }}
+  renderInput={(params) => (
+    <TextField {...params} placeholder="Search assets…" sx={inputSx} />
+  )}
+/>
+            {selectedAsset && (
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1}
+                mt={1}
+                sx={{
+                  px: 1.5,
+                  py: 0.75,
+                  borderRadius: T.r.sm,
+                  bgcolor: T.brandLight,
+                  border: `1px solid ${alpha(T.brand, 0.2)}`,
+                }}
+              >
+                <CheckCircleOutline sx={{ fontSize: 14, color: T.brand }} />
+                <Typography
+                  sx={{
+                    fontSize: "0.75rem",
+                    color: T.brand,
+                    fontWeight: 500,
+                    fontFamily: T.font,
+                  }}
+                >
+                  {selectedAsset.assetName || selectedAsset.name}
+                </Typography>
+              </Stack>
+            )}
+          </Box>
+
+          {/* Type + Urgency */}
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <Box flex={1}>
+              <Typography sx={labelSx}>Request Type</Typography>
+              <Select
+                fullWidth
+                size="small"
+                value={form.requestType}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, requestType: e.target.value }))
+                }
+                sx={selectSx}
+              >
+                {["transfer", "maintenance", "repair", "checkout", "other"].map(
+                  (t) => (
+                    <MenuItem
+                      key={t}
+                      value={t}
+                      sx={{ textTransform: "capitalize", fontFamily: T.font }}
+                    >
+                      {t}
+                    </MenuItem>
+                  ),
+                )}
+              </Select>
+            </Box>
+            <Box flex={1}>
+              <Typography sx={labelSx}>Urgency</Typography>
+              <Select
+                fullWidth
+                size="small"
+                value={form.urgency}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, urgency: e.target.value }))
+                }
+                sx={selectSx}
+              >
+                {["low", "medium", "high", "critical"].map((u) => (
+                  <MenuItem
+                    key={u}
+                    value={u}
+                    sx={{ textTransform: "capitalize", fontFamily: T.font }}
+                  >
+                    {u}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Box>
+          </Stack>
+
+          {/* Description */}
+          <Box>
+            <Typography sx={labelSx}>Description</Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              size="small"
+              placeholder="Describe the reason for this request…"
+              value={form.description}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, description: e.target.value }))
+              }
+              inputProps={{ maxLength: 1000 }}
+              sx={inputSx}
+            />
+          </Box>
+        </Stack>
+      </Box>
+
+      {/* Footer */}
+      <Box
+        sx={{
+          px: 3,
+          py: 2.5,
+          borderTop: `1px solid ${T.border}`,
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 1.5,
+          bgcolor: T.surfaceAlt,
+        }}
+      >
+        <Button
+          onClick={onClose}
+          disabled={submitting}
+          sx={{
+            textTransform: "none",
+            borderRadius: T.r.sm,
+            px: 2.5,
+            color: T.inkSecondary,
+            fontFamily: T.font,
+            fontWeight: 600,
+            border: `1px solid ${T.border}`,
+            bgcolor: T.surface,
+            "&:hover": { bgcolor: T.surfaceHover },
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleSubmit}
+          disabled={submitting}
+          startIcon={
+            submitting ? <CircularProgress size={15} color="inherit" /> : null
+          }
+          sx={{
+            textTransform: "none",
+            borderRadius: T.r.sm,
+            bgcolor: T.brand,
+            color: "#fff",
+            fontFamily: T.font,
+            fontWeight: 700,
+            px: 3,
+            boxShadow: `0 2px 8px ${T.brandGlow}`,
+            "&:hover": { bgcolor: T.brandAccent },
+            "&.Mui-disabled": { opacity: 0.45 },
+          }}
+        >
+          {submitting ? "Creating..." : "Create Request"}
+        </Button>
+      </Box>
+    </Dialog>
+    <AddAssetModal
+      open={addAssetOpen}
+      onClose={() => setAddAssetOpen(false)}
+      onAssetCreated={handleNewAssetCreated}
+    />
+    </>
+  );
+}
+
+// ─── Link Asset Dialog ────────────────────────────────────────────────────────
 const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
+  const { user } = useAuth();
   const { fetchRequests, createChildRequest } = useAssetRequest();
+  const canCreateRequests = user?.role !== "admin";
   const [parentRequests, setParentRequests] = useState([]);
   const [loadingParents, setLoadingParents] = useState(false);
   const [parentError, setParentError] = useState("");
@@ -355,14 +982,13 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
   const [searchParent, setSearchParent] = useState("");
   const [linking, setLinking] = useState(false);
   const [snackMsg, setSnackMsg] = useState("");
+  const [createRequestOpen, setCreateRequestOpen] = useState(false);
 
   const loadParentRequests = useCallback(async () => {
     setLoadingParents(true);
     setParentError("");
     try {
       const res = await fetchRequests({ type: "parent", limit: 100 });
-      console.log("Parent requests response:", res);
-
       if (res?.success) {
         setParentRequests(res.requests || []);
       } else if (res?.requests) {
@@ -373,7 +999,6 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
         setParentError(res?.message || "Failed to load parent requests");
       }
     } catch (err) {
-      console.error("Error loading parent requests:", err);
       const status = err?.response?.status;
       if (status === 401 || status === 403) {
         setParentError(
@@ -414,7 +1039,6 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
       ""
     ).toLowerCase();
     const requestTypeStr = (req.requestType || "").toLowerCase();
-
     return (
       assetName.includes(searchLower) ||
       assetIdStr.includes(searchLower) ||
@@ -427,30 +1051,18 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
       setSnackMsg("Please select a parent request");
       return;
     }
-
     setLinking(true);
     try {
-      console.log("Creating child request:", {
-        parentId: selectedParent._id,
-        assetId: assetId,
-        relationshipType
-      });
-      
-      // Create a child request with the linked asset
-      const result = await createChildRequest(selectedParent._id, {
+      await createChildRequest(selectedParent._id, {
         assetId: assetId,
         relationshipType: relationshipType,
         description: `Linked as ${relationshipType} from asset view`,
         urgency: selectedParent.urgency || "medium",
-        requestType: "maintenance"
+        requestType: "maintenance",
       });
-      
-      console.log("Child request created:", result);
-      
       onSuccess?.();
       onClose();
     } catch (err) {
-      console.error("Link error:", err);
       const status = err?.response?.status;
       if (status === 401 || status === 403) {
         setSnackMsg("Authentication failed. Please refresh the page.");
@@ -484,6 +1096,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
           },
         }}
       >
+        {/* Header */}
         <Box
           sx={{
             px: 3,
@@ -650,6 +1263,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                   ))}
                 </Stack>
               ) : filteredParents.length === 0 ? (
+                /* ── Empty State ── */
                 <Box sx={{ py: 6, textAlign: "center" }}>
                   <Box
                     sx={{
@@ -685,12 +1299,36 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                       fontSize: "0.78rem",
                       color: T.inkMuted,
                       fontFamily: T.font,
+                      mb: 3,
                     }}
                   >
                     {searchParent
                       ? "Try a different search term"
-                      : "Create a parent request first before linking"}
+                      : "No parent requests exist yet. Create one to link this asset."}
                   </Typography>
+
+                  {/* ── Add New Request button (only when not searching) ── */}
+                  {!searchParent && canCreateRequests && (
+                    <Button
+                      variant="contained"
+                      startIcon={<Add sx={{ fontSize: 16 }} />}
+                      onClick={() => setCreateRequestOpen(true)}
+                      sx={{
+                        textTransform: "none",
+                        borderRadius: T.r.sm,
+                        bgcolor: T.brand,
+                        color: "#fff",
+                        fontFamily: T.font,
+                        fontWeight: 700,
+                        px: 3,
+                        py: 1,
+                        boxShadow: `0 2px 8px ${T.brandGlow}`,
+                        "&:hover": { bgcolor: T.brandAccent },
+                      }}
+                    >
+                      Add New Request
+                    </Button>
+                  )}
                 </Box>
               ) : (
                 <>
@@ -701,7 +1339,6 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                     {filteredParents.map((req) => {
                       const isSelected = selectedParent?._id === req._id;
                       const sCfg = REQ_STATUS_CFG[req.status] || {};
-
                       return (
                         <Box
                           key={req._id}
@@ -855,7 +1492,33 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                     })}
                   </Stack>
 
-                  {/* Relationship Type Selection */}
+                  {canCreateRequests && (
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      startIcon={<Add sx={{ fontSize: 16 }} />}
+                      onClick={() => setCreateRequestOpen(true)}
+                      sx={{
+                        mt: 1.5,
+                        py: 1.15,
+                        textTransform: "none",
+                        borderRadius: T.r.sm,
+                        borderColor: alpha(T.brand, 0.28),
+                        color: T.brand,
+                        bgcolor: T.brandLight,
+                        fontFamily: T.font,
+                        fontWeight: 700,
+                        "&:hover": {
+                          borderColor: T.brand,
+                          bgcolor: alpha(T.brand, 0.12),
+                        },
+                      }}
+                    >
+                      Add New Request
+                    </Button>
+                  )}
+
+                  {/* Relationship Type */}
                   {selectedParent && (
                     <Box sx={{ mt: 3 }}>
                       <Divider sx={{ my: 2, borderColor: T.border }} />
@@ -914,6 +1577,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
           )}
         </DialogContent>
 
+        {/* Footer */}
         <Box
           sx={{
             px: 3,
@@ -970,6 +1634,16 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
           </Button>
         </Box>
       </Dialog>
+
+      {/* Inline Create Request Dialog */}
+      <CreateRequestDialog
+        open={createRequestOpen}
+        onClose={() => setCreateRequestOpen(false)}
+        onSuccess={() => {
+          setCreateRequestOpen(false);
+          loadParentRequests();
+        }}
+      />
 
       <Snackbar
         open={!!snackMsg}
@@ -1057,7 +1731,6 @@ export default function AssetView() {
   useEffect(() => {
     loadAsset();
   }, [loadAsset]);
-
   useEffect(() => {
     if (asset) loadLinkedRequests();
   }, [asset, loadLinkedRequests]);
@@ -1078,7 +1751,7 @@ export default function AssetView() {
 
   const getImageUrl = (name) =>
     name
-      ? `${import.meta.env?.VITE_API_URL?.replace("/api/v1", "") || "http://localhost:9001"}/uploads/assets/${name}`
+      ? `${import.meta.env?.VITE_API_URL?.replace("/api/v1", "") || "https://synversys-backend.onrender.com"}/uploads/assets/${name}`
       : null;
 
   if (pageLoading) {
@@ -1159,16 +1832,19 @@ export default function AssetView() {
   };
   const conditionCfg =
     CONDITION_CFG[asset.assetCondition] || CONDITION_CFG.Normal;
+  const healthScore = Number.isFinite(Number(asset.healthScore))
+    ? Math.max(0, Math.min(100, Number(asset.healthScore)))
+    : 0;
   const healthColor =
-    asset.healthScore >= 70
+    healthScore >= 70
       ? "#1A6B3C"
-      : asset.healthScore >= 40
+      : healthScore >= 40
         ? "#A0560A"
         : "#A93226";
   const healthBg =
-    asset.healthScore >= 70
+    healthScore >= 70
       ? "#E8F5EE"
-      : asset.healthScore >= 40
+      : healthScore >= 40
         ? "#FEF3E2"
         : "#FCE8E6";
   const category =
@@ -1442,7 +2118,7 @@ export default function AssetView() {
                       >
                         {asset.assetName?.charAt(0)?.toUpperCase() || "A"}
                       </Avatar>
-                      <Typography
+                      {/* <Typography
                         sx={{
                           fontSize: "0.72rem",
                           color: T.inkMuted,
@@ -1450,7 +2126,7 @@ export default function AssetView() {
                         }}
                       >
                         No image
-                      </Typography>
+                      </Typography> */}
                     </Box>
                   )}
                   <Box
@@ -1548,7 +2224,7 @@ export default function AssetView() {
                       letterSpacing: "-0.03em",
                     }}
                   >
-                    {asset.healthScore ?? 0}
+                    {healthScore}
                   </Typography>
                   <Typography
                     sx={{
@@ -1580,9 +2256,9 @@ export default function AssetView() {
                         letterSpacing: "0.06em",
                       }}
                     >
-                      {asset.healthScore >= 70
+                      {healthScore >= 70
                         ? "Good"
-                        : asset.healthScore >= 40
+                        : healthScore >= 40
                           ? "Fair"
                           : "Critical"}
                     </Typography>
@@ -1590,7 +2266,7 @@ export default function AssetView() {
                 </Stack>
                 <LinearProgress
                   variant="determinate"
-                  value={asset.healthScore || 0}
+                  value={healthScore}
                   sx={{
                     height: 8,
                     borderRadius: 4,
@@ -1856,7 +2532,7 @@ export default function AssetView() {
                         }
                         color={T.brand}
                       />
-                      <Field
+                      {/* <Field
                         icon={<AttachMoney />}
                         label="Current Value"
                         value={
@@ -1864,15 +2540,15 @@ export default function AssetView() {
                             ? `₹${asset.currentValue.toLocaleString("en-IN")}`
                             : null
                         }
-                      />
-                      <Field
+                      /> */}
+                      {/* <Field
                         label="Depreciation Rate"
                         value={
                           asset.depreciationRate
                             ? `${asset.depreciationRate}%`
                             : null
                         }
-                      />
+                      /> */}
                       <Field
                         icon={<Shield />}
                         label="Warranty Expiry"
@@ -2249,6 +2925,7 @@ export default function AssetView() {
                                       }}
                                     >
                                       {req.assetId?.assetName ||
+                                        asset?.assetName ||
                                         "Unnamed Asset"}
                                     </Typography>
                                     <Typography
@@ -2258,7 +2935,10 @@ export default function AssetView() {
                                         fontFamily: T.fontMono,
                                       }}
                                     >
-                                      {req.assetId?.assetId} · {req.requestType}
+                                      {req.assetId?.assetId ||
+                                        asset?.assetId ||
+                                        req._id?.slice(-8)}{" "}
+                                      · {req.requestType || req.type || "—"}
                                     </Typography>
                                   </Box>
                                 </Stack>

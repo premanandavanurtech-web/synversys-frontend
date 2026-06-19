@@ -21,6 +21,7 @@ import {
   Skeleton,
   Chip,
   LinearProgress,
+  CircularProgress,
 } from "@mui/material";
 import { styled, keyframes } from "@mui/material/styles";
 import { useTeam } from "../context/TeamContext";
@@ -49,6 +50,7 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import BusinessIcon from "@mui/icons-material/Business";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 
 // ─── Animations ────────────────────────────────────────────────────────────────
 const fadeUp = keyframes`
@@ -264,6 +266,7 @@ const ProfileContent = () => {
     profile,
     loading: teamLoading,
     updateTeamProfile,
+    uploadTeamAvatar,
     changePassword,
     formatDate,
     formatJoinDate,
@@ -278,6 +281,7 @@ const ProfileContent = () => {
   const [passErrors, setPassErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [changingPass, setChangingPass] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => { fetchTeamProfile(); }, [fetchTeamProfile]);
 
@@ -326,6 +330,32 @@ const ProfileContent = () => {
       setPassErrors({});
     } else {
       toast(result.error, "error");
+    }
+  };
+
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast("Please choose an image file", "error");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast("Profile image must be 2MB or smaller", "error");
+      return;
+    }
+
+    setAvatarUploading(true);
+    const result = await uploadTeamAvatar(file);
+    setAvatarUploading(false);
+
+    if (result.success) {
+      toast(result.message || "Profile image updated", "success");
+      await fetchTeamProfile();
+    } else {
+      toast(result.error || "Failed to upload profile image", "error");
     }
   };
 
@@ -452,28 +482,64 @@ const ProfileContent = () => {
 
               <Body sx={{ pt: 0 }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", mt: "-32px", mb: 1.75 }}>
-                  <Badge
-                    overlap="circular"
-                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                    badgeContent={
-                      <Box sx={{
-                        width: 11, height: 11,
-                        bgcolor: isActive ? T.green : T.red,
-                        border: "2px solid #fff", borderRadius: "50%",
-                        animation: isActive ? `${pulse} 2.5s ease infinite` : "none",
-                      }} />
-                    }
-                  >
-                    <Avatar sx={{
-                      width: 64, height: 64,
-                      background: `linear-gradient(135deg, ${T.brand}, ${T.brandMid})`,
-                      border: "3px solid #fff",
-                      boxShadow: `0 3px 10px ${alpha(T.brand, 0.3)}`,
-                      fontSize: "1.2rem", fontWeight: 800,
-                    }}>
-                      {getInitials()}
-                    </Avatar>
-                  </Badge>
+                  <Box sx={{ position: "relative", width: 70, height: 70 }}>
+                    <Badge
+                      overlap="circular"
+                      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                      badgeContent={
+                        <Box sx={{
+                          width: 11, height: 11,
+                          bgcolor: isActive ? T.green : T.red,
+                          border: "2px solid #fff", borderRadius: "50%",
+                          animation: isActive ? `${pulse} 2.5s ease infinite` : "none",
+                        }} />
+                      }
+                    >
+                      <Avatar
+                        src={profile?.avatarUrl || undefined}
+                        sx={{
+                          width: 64, height: 64,
+                          background: `linear-gradient(135deg, ${T.brand}, ${T.brandMid})`,
+                          border: "3px solid #fff",
+                          boxShadow: `0 3px 10px ${alpha(T.brand, 0.3)}`,
+                          fontSize: "1.2rem", fontWeight: 800,
+                        }}
+                      >
+                        {getInitials()}
+                      </Avatar>
+                    </Badge>
+                    <Tooltip title="Upload profile image" arrow>
+                      <IconButton
+                        component="label"
+                        size="small"
+                        disabled={avatarUploading}
+                        sx={{
+                          position: "absolute",
+                          left: -2,
+                          bottom: 0,
+                          width: 26,
+                          height: 26,
+                          bgcolor: "#fff",
+                          color: T.brand,
+                          border: `1px solid ${T.line}`,
+                          boxShadow: `0 2px 8px ${alpha(T.brand, 0.2)}`,
+                          "&:hover": { bgcolor: T.brandGhost },
+                        }}
+                      >
+                        {avatarUploading ? (
+                          <CircularProgress size={14} />
+                        ) : (
+                          <PhotoCameraIcon sx={{ fontSize: 15 }} />
+                        )}
+                        <input
+                          hidden
+                          accept="image/png,image/jpeg,image/jpg,image/webp"
+                          type="file"
+                          onChange={handleAvatarChange}
+                        />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
                   <Chip
                     label={getRoleDisplay()}
                     size="small"
