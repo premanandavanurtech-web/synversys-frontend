@@ -28,6 +28,11 @@ const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+const getApiErrorMessage = (err, fallback) =>
+  err.response?.data?.errors?.[0]?.message ||
+  err.response?.data?.message ||
+  fallback;
+
 export const TeamProvider = ({ children }) => {
   const { token, isAuthenticated, user, logout } = useAuth();
 
@@ -717,7 +722,7 @@ export const TeamProvider = ({ children }) => {
         handleAuthError(err);
         return {
           success: false,
-          error: err.response?.data?.message || "Failed to add team member",
+          error: getApiErrorMessage(err, "Failed to add team member"),
         };
       } finally {
         setActionLoading(false);

@@ -13,6 +13,11 @@ import { useAuth } from "./AuthContexts";
 
 const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
 
+const getApiErrorMessage = (error, fallback) =>
+  error.response?.data?.errors?.[0]?.message ||
+  error.response?.data?.message ||
+  fallback;
+
 // Initial state
 const initialState = {
   clients: [],
@@ -463,15 +468,13 @@ export const ClientProvider = ({ children }) => {
         await fetchClients({ page: 1 });
         return response.data;
       } catch (error) {
-        let errorMessage = "Failed to create client";
+        let errorMessage = getApiErrorMessage(error, "Failed to create client");
         
         if (error.response?.status === 401) {
           errorMessage = "Session expired. Please login again.";
           handleUnauthorized();
         } else if (error.response?.status === 403) {
           errorMessage = "Access denied. You don't have permission to create clients.";
-        } else if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
         }
         
         throw new Error(errorMessage);

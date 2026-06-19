@@ -200,7 +200,13 @@ function QuickCreateDialog({ open, onClose, onCreate, type }) {
   );
 }
 
-export default function AddMemberModal({ open, onClose, onSubmit, loading }) {
+export default function AddMemberModal({
+  open,
+  onClose,
+  onSubmit,
+  loading,
+  onValidationError,
+}) {
   const { roles, fetchRoles, departments, fetchDepartments } = useTeam();
   const { createRole } = useRoles();
   const { createDepartment } = useDepartment();
@@ -251,7 +257,9 @@ export default function AddMemberModal({ open, onClose, onSubmit, loading }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const nextValue =
+      name === "phone" ? value.replace(/\D/g, "").slice(0, 10) : value;
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -325,8 +333,13 @@ export default function AddMemberModal({ open, onClose, onSubmit, loading }) {
     if (!formData.roleId) newErrors.roleId = "Role is required";
     if (!formData.departmentId) newErrors.departmentId = "Department is required";
     if (!formData.location?.trim()) newErrors.location = "Location is required";
+    if (formData.phone?.trim() && !/^\d{10}$/.test(formData.phone.trim())) {
+      newErrors.phone = "Phone number must be exactly 10 digits";
+    }
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const firstError = Object.values(newErrors)[0];
+    if (firstError) onValidationError?.(firstError);
+    return !firstError;
   };
 
   const handleSubmit = async () => {
@@ -461,7 +474,9 @@ export default function AddMemberModal({ open, onClose, onSubmit, loading }) {
                   fullWidth size={fieldSize}
                   label="Phone Number" name="phone"
                   value={formData.phone} onChange={handleChange}
-                  placeholder="+1 234 567 8900"
+                  placeholder="10 digit number"
+                  inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 10 }}
+                  error={!!errors.phone} helperText={errors.phone}
                   InputProps={{
                     startAdornment: <InputAdornment position="start"><PhoneIcon sx={iconSx} /></InputAdornment>,
                   }}

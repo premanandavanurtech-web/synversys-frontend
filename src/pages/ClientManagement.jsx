@@ -87,6 +87,12 @@ const C = {
   text: { primary: "#0f172a", secondary: "#475569", muted: "#94a3b8" },
 };
 
+const getValidationMessage = (err) =>
+  err?.response?.data?.errors?.[0]?.message ||
+  err?.response?.data?.message ||
+  err?.message ||
+  "An unexpected error occurred";
+
 const PLAN_META = {
   free: { label: "Free", color: "#64748b", bg: "#f1f5f9" },
   standard: { label: "Standard", color: "#0d4a5c", bg: "#e6f0f3" },
@@ -641,7 +647,9 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    const nextValue =
+      name === "phone" ? value.replace(/\D/g, "").slice(0, 10) : value;
+    setForm((p) => ({ ...p, [name]: nextValue }));
     if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
   };
 
@@ -652,6 +660,8 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       e.email = "Invalid email";
     if (!form.phone?.trim()) e.phone = "Required";
+    else if (!/^\d{10}$/.test(form.phone.trim()))
+      e.phone = "Phone number must be exactly 10 digits";
     if (
       form.website &&
       !/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i.test(
@@ -667,15 +677,19 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
       else if (!/[0-9]/.test(form.password)) e.password = "Needs number";
     }
     setErrors(e);
-    return Object.keys(e).length === 0;
+    return e;
   };
 
   const handleSubmit = async () => {
-    if (!validate()) {
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
       const hasAcc =
-        errors.customerName || errors.email || errors.phone || errors.website;
+        validationErrors.customerName ||
+        validationErrors.email ||
+        validationErrors.phone ||
+        validationErrors.website;
       if (hasAcc) setTab(0);
-      else if (errors.password) setTab(2);
+      else if (validationErrors.password) setTab(2);
       return;
     }
     await onSave(form);
@@ -770,6 +784,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
             required
             error={!!errors.phone}
             helperText={errors.phone}
+            inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 10 }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -1364,7 +1379,7 @@ export default function ClientManagement() {
     setModalOpen(false);
     fetchClients({ page: 1 });
   } catch (err) {
-    showToast(fmtErr(err), "error");
+    showToast(getValidationMessage(err), "error");
   }
 };
 
@@ -1383,7 +1398,7 @@ export default function ClientManagement() {
     setEditingClient(null);
     fetchClients();
   } catch (err) {
-    showToast(fmtErr(err), "error");
+    showToast(getValidationMessage(err), "error");
   }
 };
 

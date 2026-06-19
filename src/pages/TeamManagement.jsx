@@ -1537,6 +1537,7 @@ export default function TeamManagement() {
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         onSubmit={handleAddMember}
+        onValidationError={(message) => showToast(message, "error")}
         loading={actionLoading}
       />
       <EditMemberModal
