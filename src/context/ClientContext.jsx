@@ -9,6 +9,7 @@ import React, {
   useEffect,
 } from "react";
 import axios from "axios";
+import { useAuth } from "./AuthContexts";
 
 const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
 
@@ -172,6 +173,13 @@ const ClientContext = createContext(null);
 
 export const ClientProvider = ({ children }) => {
   const [state, dispatch] = useReducer(clientReducer, initialState);
+  const {
+    token: authToken,
+    user,
+    loading: authLoading,
+    initialized: authInitialized,
+    isAuthenticated,
+  } = useAuth();
   const activeControllerRef = useRef(null);
   const initialLoadDone = useRef(false);
   const isFetchingRef = useRef(false);
@@ -183,6 +191,27 @@ export const ClientProvider = ({ children }) => {
   const resetState = useCallback(() => {
     dispatch({ type: ACTION_TYPES.RESET_STATE });
   }, []);
+
+  const getCurrentToken = useCallback(() => {
+    return authToken || getToken();
+  }, [authToken]);
+
+  const hasCurrentValidToken = useCallback(() => {
+    const currentToken = getCurrentToken();
+    return !!currentToken && hasValidToken(currentToken);
+  }, [getCurrentToken]);
+
+  const getCurrentAuthHeaders = useCallback(() => {
+    const currentToken = getCurrentToken();
+    if (!currentToken) {
+      return null;
+    }
+
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${currentToken}`,
+    };
+  }, [getCurrentToken]);
 
   // Handle logout and redirect
   const handleUnauthorized = useCallback(() => {
@@ -200,13 +229,16 @@ export const ClientProvider = ({ children }) => {
   // Get all clients
   const getAllClients = useCallback(
     async (params = {}) => {
-      const token = getToken();
+      if (authLoading || !authInitialized) {
+        return null;
+      }
 
-      if (!token || !hasValidToken()) {
+      const token = getCurrentToken();
+
+      if (!isAuthenticated || !token || !hasCurrentValidToken()) {
         const errorMsg = "Authentication required. Please login again.";
         dispatch({ type: ACTION_TYPES.SET_ERROR, payload: errorMsg });
         dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
-        handleUnauthorized();
         return null;
       }
 
@@ -249,7 +281,7 @@ export const ClientProvider = ({ children }) => {
           queryParams.append("membershipPlan", membershipPlan);
 
         const url = `${API_BASE_URL}/clients?${queryParams.toString()}`;
-        const headers = getAuthHeaders();
+        const headers = getCurrentAuthHeaders();
 
         if (!headers) {
           throw new Error("No authentication headers available");
@@ -343,14 +375,24 @@ export const ClientProvider = ({ children }) => {
       state.filters.membershipPlan,
       state.filters.sortBy,
       state.filters.sortOrder,
+      authLoading,
+      authInitialized,
+      isAuthenticated,
+      getCurrentToken,
+      hasCurrentValidToken,
+      getCurrentAuthHeaders,
       handleUnauthorized,
     ]
   );
 
   const fetchClients = useCallback(
     async (params = {}) => {
-      const token = getToken();
-      if (!token) {
+      if (authLoading || !authInitialized) {
+        return null;
+      }
+
+      const token = getCurrentToken();
+      if (!isAuthenticated || !token) {
         dispatch({
           type: ACTION_TYPES.SET_ERROR,
           payload: "Authentication required. Please login again.",
@@ -360,11 +402,11 @@ export const ClientProvider = ({ children }) => {
       }
       return await getAllClients(params);
     },
-    [getAllClients]
+    [authLoading, authInitialized, isAuthenticated, getCurrentToken, getAllClients]
   );
 
   const getClientById = useCallback(async (clientId) => {
-    const token = getToken();
+    const token = getCurrentToken();
     if (!token) {
       throw new Error("Authentication required");
     }
@@ -373,7 +415,7 @@ export const ClientProvider = ({ children }) => {
 
     try {
       const response = await axios.get(`${API_BASE_URL}/clients/${clientId}`, {
-        headers: getAuthHeaders(),
+        headers: getCurrentAuthHeaders(),
       });
 
       const clientData = response.data.client || response.data.data?.client || response.data;
@@ -400,11 +442,11 @@ export const ClientProvider = ({ children }) => {
     } finally {
       dispatch({ type: ACTION_TYPES.SET_LOADING, payload: false });
     }
-  }, [handleUnauthorized]);
+  }, [getCurrentToken, getCurrentAuthHeaders, handleUnauthorized]);
 
   const addClient = useCallback(
     async (clientData) => {
-      const token = getToken();
+      const token = getCurrentToken();
       if (!token) {
         throw new Error("Authentication required. Please login again.");
       }
@@ -415,7 +457,7 @@ export const ClientProvider = ({ children }) => {
         const response = await axios.post(
           `${API_BASE_URL}/clients`,
           clientData,
-          { headers: getAuthHeaders() }
+          { headers: getCurrentAuthHeaders() }
         );
 
         await fetchClients({ page: 1 });
@@ -437,12 +479,12 @@ export const ClientProvider = ({ children }) => {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
       }
     },
-    [fetchClients, handleUnauthorized]
+    [getCurrentToken, getCurrentAuthHeaders, fetchClients, handleUnauthorized]
   );
 
   const editClient = useCallback(
     async (clientId, updateData) => {
-      const token = getToken();
+      const token = getCurrentToken();
       if (!token) {
         throw new Error("Authentication required. Please login again.");
       }
@@ -453,7 +495,7 @@ export const ClientProvider = ({ children }) => {
         const response = await axios.put(
           `${API_BASE_URL}/clients/${clientId}`,
           updateData,
-          { headers: getAuthHeaders() }
+          { headers: getCurrentAuthHeaders() }
         );
 
         // Update selected client if it's the same
@@ -486,12 +528,12 @@ export const ClientProvider = ({ children }) => {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
       }
     },
-    [state.selectedClient, fetchClients, handleUnauthorized]
+    [state.selectedClient, getCurrentToken, getCurrentAuthHeaders, fetchClients, handleUnauthorized]
   );
 
   const changeClientStatus = useCallback(
     async (clientId, status) => {
-      const token = getToken();
+      const token = getCurrentToken();
       if (!token) {
         throw new Error("Authentication required. Please login again.");
       }
@@ -502,7 +544,7 @@ export const ClientProvider = ({ children }) => {
         const response = await axios.patch(
           `${API_BASE_URL}/clients/${clientId}/status`,
           { status },
-          { headers: getAuthHeaders() }
+          { headers: getCurrentAuthHeaders() }
         );
 
         await fetchClients();
@@ -529,12 +571,12 @@ export const ClientProvider = ({ children }) => {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
       }
     },
-    [fetchClients, getClientById, state.selectedClient, handleUnauthorized]
+    [getCurrentToken, getCurrentAuthHeaders, fetchClients, getClientById, state.selectedClient, handleUnauthorized]
   );
 
   const deleteClient = useCallback(
     async (clientId) => {
-      const token = getToken();
+      const token = getCurrentToken();
       if (!token) {
         throw new Error("Authentication required. Please login again.");
       }
@@ -544,7 +586,7 @@ export const ClientProvider = ({ children }) => {
       try {
         const response = await axios.delete(
           `${API_BASE_URL}/clients/${clientId}`,
-          { headers: getAuthHeaders() }
+          { headers: getCurrentAuthHeaders() }
         );
 
         await fetchClients();
@@ -571,12 +613,12 @@ export const ClientProvider = ({ children }) => {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
       }
     },
-    [fetchClients, state.selectedClient, handleUnauthorized]
+    [getCurrentToken, getCurrentAuthHeaders, fetchClients, state.selectedClient, handleUnauthorized]
   );
 
   const renewClientMembership = useCallback(
     async (clientId, extendDays) => {
-      const token = getToken();
+      const token = getCurrentToken();
       if (!token) {
         throw new Error("Authentication required. Please login again.");
       }
@@ -587,7 +629,7 @@ export const ClientProvider = ({ children }) => {
         const response = await axios.post(
           `${API_BASE_URL}/clients/${clientId}/renew`,
           { extendDays },
-          { headers: getAuthHeaders() }
+          { headers: getCurrentAuthHeaders() }
         );
 
         await fetchClients();
@@ -614,7 +656,7 @@ export const ClientProvider = ({ children }) => {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
       }
     },
-    [fetchClients, getClientById, state.selectedClient, handleUnauthorized]
+    [getCurrentToken, getCurrentAuthHeaders, fetchClients, getClientById, state.selectedClient, handleUnauthorized]
   );
 
   const updateFilters = useCallback((filters) => {
@@ -642,28 +684,27 @@ export const ClientProvider = ({ children }) => {
 
   // Initial load
   useEffect(() => {
+    if (authLoading || !authInitialized) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      initialLoadDone.current = false;
+      dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
+      return;
+    }
+
+    if (user?.role !== "super_admin") {
+      initialLoadDone.current = false;
+      dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
+      return;
+    }
+
     if (!initialLoadDone.current) {
       initialLoadDone.current = true;
-      const token = getToken();
-      const hasValidAuthToken = token && hasValidToken();
-
-      if (hasValidAuthToken) {
-        // Small delay to ensure everything is ready
-        setTimeout(() => {
-          fetchClients({ page: 1 });
-        }, 100);
-      } else if (!token) {
-        dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
-      } else if (!hasValidAuthToken) {
-        dispatch({
-          type: ACTION_TYPES.SET_ERROR,
-          payload: "Session expired. Please login again.",
-        });
-        dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
-        handleUnauthorized();
-      }
+      fetchClients({ page: 1 });
     }
-  }, [fetchClients, handleUnauthorized]);
+  }, [authLoading, authInitialized, isAuthenticated, user?.role, fetchClients]);
 
   // Listen for filter changes and refetch
   useEffect(() => {
