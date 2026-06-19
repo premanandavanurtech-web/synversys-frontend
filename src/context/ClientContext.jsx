@@ -130,7 +130,10 @@ const clientReducer = (state, action) => {
 
 // Helper functions with improved token handling
 const getAuthHeaders = () => {
-  const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+  const token =
+    localStorage.getItem("accessToken") ||
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("accessToken");
 
   if (!token || token === "undefined" || token === "null" || token === "") {
     return null;
@@ -143,7 +146,10 @@ const getAuthHeaders = () => {
 };
 
 const getToken = () => {
-  const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+  const token =
+    localStorage.getItem("accessToken") ||
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("accessToken");
   if (!token || token === "undefined" || token === "null" || token === "") {
     return null;
   }
@@ -151,8 +157,7 @@ const getToken = () => {
 };
 
 // Improved admin check that doesn't block API calls
-const hasValidToken = () => {
-  const token = getToken();
+const hasValidToken = (token = getToken()) => {
   if (!token) return false;
   
   try {
@@ -203,7 +208,7 @@ export const ClientProvider = ({ children }) => {
 
   const hasCurrentValidToken = useCallback(() => {
     const currentToken = getCurrentToken();
-    return !!currentToken && hasValidToken(currentToken);
+    return hasValidToken(currentToken);
   }, [getCurrentToken]);
 
   const getCurrentAuthHeaders = useCallback(() => {
