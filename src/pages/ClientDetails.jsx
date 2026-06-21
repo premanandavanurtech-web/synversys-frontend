@@ -315,8 +315,8 @@ const EditModal = ({ open, client, onClose, onSave, loading }) => {
           </IconButton>
         </Box>
       </DialogTitle>
-      <DialogContent sx={{ p: 2.5 }}>
-        <Stack spacing={2}>
+     <DialogContent sx={{ p: 2.5, pt: 4, overflow: 'visible' }}>
+  <Stack spacing={2} sx={{ mt: 2 }}>
           <TextField
             name="customerName"
             label="Customer Name"
@@ -327,6 +327,7 @@ const EditModal = ({ open, client, onClose, onSave, loading }) => {
             required
             error={!!errors.customerName}
             helperText={errors.customerName}
+            InputLabelProps={{ shrink: true }}
           />
           <TextField
             name="phone"
@@ -338,6 +339,7 @@ const EditModal = ({ open, client, onClose, onSave, loading }) => {
             required
             error={!!errors.phone}
             helperText={errors.phone}
+            InputLabelProps={{ shrink: true }}
           />
           <TextField
             name="website"
@@ -349,6 +351,7 @@ const EditModal = ({ open, client, onClose, onSave, loading }) => {
             error={!!errors.website}
             helperText={errors.website}
             placeholder="https://example.com"
+            InputLabelProps={{ shrink: true }}
           />
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
@@ -379,6 +382,7 @@ const EditModal = ({ open, client, onClose, onSave, loading }) => {
                 size="small"
                 error={!!errors.licenseLimit}
                 helperText={errors.licenseLimit}
+                InputLabelProps={{ shrink: true }}
                 InputProps={{ inputProps: { min: 1, max: 10000 } }}
               />
             </Grid>
@@ -392,6 +396,7 @@ const EditModal = ({ open, client, onClose, onSave, loading }) => {
             onChange={handleChange}
             fullWidth
             size="small"
+            InputLabelProps={{ shrink: true }}
           />
         </Stack>
       </DialogContent>
@@ -658,8 +663,8 @@ const DetailSkeleton = () => (
   <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: C.surface, minHeight: "100vh" }}>
     <Skeleton variant="rounded" height={80} sx={{ mb: 2, borderRadius: 2 }} />
     <Grid container spacing={2} sx={{ mb: 2 }}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Grid key={i} item xs={6} sm={2.4}>
+      {[1, 2, 3, 4].map((i) => (
+        <Grid key={i} item xs={6} sm={3} md={3}>
           <Skeleton variant="rounded" height={100} sx={{ borderRadius: 2 }} />
         </Grid>
       ))}
@@ -1151,7 +1156,7 @@ export default function ClientDetails() {
         }}
       >
         <Grid container spacing={{ xs: 1, sm: 1.5 }}>
-          <Grid item xs={6} sm={4} md={2.4} sx={{width:"280px"}}>
+          <Grid item xs={6} sm={3} md={3}>
             <StatTile
               icon={PeopleIcon}
               label="Users"
@@ -1161,7 +1166,7 @@ export default function ClientDetails() {
               loading={isFetching}
             />
           </Grid>
-          <Grid item xs={6} sm={4} md={2.4} sx={{width:"280px"}}>
+          <Grid item xs={6} sm={3} md={3}>
             <StatTile
               icon={AssignmentIcon}
               label="Active Checklist"
@@ -1171,7 +1176,7 @@ export default function ClientDetails() {
               loading={isFetching}
             />
           </Grid>
-          <Grid item xs={6} sm={4} md={2.4} sx={{width:"280px"}}>
+          <Grid item xs={6} sm={3} md={3}>
             <StatTile
               icon={InventoryIcon}
               label="Assets"
@@ -1181,7 +1186,7 @@ export default function ClientDetails() {
               loading={isFetching}
             />
           </Grid>
-          <Grid item xs={6} sm={6} md={2.4} sx={{width:"280px"}}>
+          <Grid item xs={6} sm={3} md={3}>
             <StatTile
               icon={TrendingUpIcon}
               label="Submissions"
@@ -1228,345 +1233,379 @@ export default function ClientDetails() {
       <Box sx={{ p: { xs: 2, sm: 3 } }}>
         {/* Overview Tab */}
         {tab === 0 && (
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6} sx={{ width:"650px"}}>
-              <Card
-                sx={{ borderRadius: 2, border: `1px solid ${C.border}` }}
-                elevation={0}
-              >
-                <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-                  <Typography
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: "0.8rem",
-                      color: C.text.primary,
-                      mb: 2,
-                    }}
-                  >
-                    Account Information
-                  </Typography>
-                  <Stack divider={<Divider sx={{ my: 1 }} />}>
-                    {[
-                      {
-                        label: "Customer ID",
-                        value: client?._id?.slice(-8) || "—",
-                      },
-                      { label: "Email", value: client?.email || "—" },
-                      { label: "Phone", value: client?.phone || "—" },
-                      { label: "Website", value: client?.website || "—" },
-                      {
-                        label: "Start Date",
-                        value: fmtDate(client?.subscriptionStartDate),
-                      },
-                      {
-                        label: "End Date",
-                        value: fmtDate(client?.subscriptionEndDate),
-                      },
-                      { label: "Days Remaining", value: `${daysLeft} days` },
-                    ].map((row) => (
-                      <Box
-                        key={row.label}
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          flexWrap: "wrap",
-                          gap: 0.5,
-                        }}
-                      >
-                        <Typography
-                          sx={{ fontSize: "0.68rem", color: C.text.muted }}
-                        >
-                          {row.label}
-                        </Typography>
-                        <Typography
-                          sx={{
-                            fontSize: "0.72rem",
-                            fontWeight: 500,
-                            color: C.text.secondary,
-                            textAlign: "right",
-                          }}
-                        >
-                          {row.value}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} md={6} sx={{width:"500px"}}>
-              <Card
-                sx={{ borderRadius: 2, border: `1px solid ${C.border}` }}
-                elevation={0}
-              >
-                <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-                  <Typography
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: "0.8rem",
-                      color: C.text.primary,
-                      mb: 2,
-                    }}
-                  >
-                    Usage Overview
-                  </Typography>
-                  <Box sx={{ mb: 2 }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2,
+              width: "100%",
+            }}
+          >
+            <Card
+              sx={{ borderRadius: 2, border: `1px solid ${C.border}`, width: "100%" }}
+              elevation={0}
+            >
+              <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                <Typography
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: "0.8rem",
+                    color: C.text.primary,
+                    mb: 2,
+                  }}
+                >
+                  Account Information
+                </Typography>
+                <Stack divider={<Divider sx={{ my: 1 }} />}>
+                  {[
+                    {
+                      label: "Customer ID",
+                      value: client?._id?.slice(-8) || "—",
+                    },
+                    { label: "Email", value: client?.email || "—" },
+                    { label: "Phone", value: client?.phone || "—" },
+                    { label: "Website", value: client?.website || "—" },
+                    {
+                      label: "Start Date",
+                      value: fmtDate(client?.subscriptionStartDate),
+                    },
+                    {
+                      label: "End Date",
+                      value: fmtDate(client?.subscriptionEndDate),
+                    },
+                    { label: "Days Remaining", value: `${daysLeft} days` },
+                  ].map((row) => (
                     <Box
+                      key={row.label}
                       sx={{
                         display: "flex",
                         justifyContent: "space-between",
-                        mb: 0.5,
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 1,
+                        py: 0.25,
                       }}
                     >
                       <Typography
-                        sx={{ fontSize: "0.7rem", color: C.text.secondary }}
+                        sx={{ fontSize: "0.72rem", color: C.text.muted }}
                       >
-                        User Licenses
+                        {row.label}
                       </Typography>
                       <Typography
                         sx={{
-                          fontSize: "0.7rem",
+                          fontSize: "0.78rem",
                           fontWeight: 600,
-                          color: usagePct > 85 ? C.error : C.text.primary,
+                          color: C.text.primary,
+                          textAlign: "right",
                         }}
                       >
-                        {used} / {limit} ({usagePct}%)
+                        {row.value}
                       </Typography>
                     </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={usagePct}
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
+
+            <Card
+              sx={{ borderRadius: 2, border: `1px solid ${C.border}`, width: "100%" }}
+              elevation={0}
+            >
+              <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                <Typography
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: "0.8rem",
+                    color: C.text.primary,
+                    mb: 2,
+                  }}
+                >
+                  Usage Overview
+                </Typography>
+                <Box
+                  sx={{
+                    p: 2,
+                    bgcolor: C.surface,
+                    borderRadius: 2,
+                    mb: client?.notes ? 2 : 0,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "baseline",
+                      mb: 1,
+                    }}
+                  >
+                    <Typography
+                      sx={{ fontSize: "0.72rem", color: C.text.secondary, fontWeight: 500 }}
+                    >
+                      User Licenses
+                    </Typography>
+                    <Typography
                       sx={{
-                        height: 6,
-                        borderRadius: 3,
-                        bgcolor: "#f1f5f9",
-                        "& .MuiLinearProgress-bar": {
-                          bgcolor: usagePct > 85 ? C.error : C.primary,
-                          borderRadius: 3,
-                        },
+                        fontSize: "0.85rem",
+                        fontWeight: 700,
+                        color: usagePct > 85 ? C.error : C.text.primary,
                       }}
-                    />
+                    >
+                      {used} / {limit}{" "}
+                      <Typography
+                        component="span"
+                        sx={{ fontSize: "0.7rem", fontWeight: 500, color: C.text.muted }}
+                      >
+                        ({usagePct}%)
+                      </Typography>
+                    </Typography>
                   </Box>
-                  {client?.notes && (
-                    <Box sx={{ p: 1.5, bgcolor: C.surface, borderRadius: 2 }}>
-                      <Typography
-                        sx={{
-                          fontSize: "0.6rem",
-                          color: C.text.muted,
-                          mb: 0.5,
-                        }}
-                      >
-                        Notes
-                      </Typography>
-                      <Typography
-                        sx={{ fontSize: "0.7rem", color: C.text.secondary }}
-                      >
-                        {client.notes}
-                      </Typography>
-                    </Box>
-                  )}
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+                  <LinearProgress
+                    variant="determinate"
+                    value={usagePct}
+                    sx={{
+                      height: 8,
+                      borderRadius: 4,
+                      bgcolor: "#e2e8f0",
+                      "& .MuiLinearProgress-bar": {
+                        bgcolor: usagePct > 85 ? C.error : C.primary,
+                        borderRadius: 4,
+                      },
+                    }}
+                  />
+                </Box>
+                {client?.notes && (
+                  <Box sx={{ p: 2, bgcolor: C.surface, borderRadius: 2 }}>
+                    <Typography
+                      sx={{
+                        fontSize: "0.65rem",
+                        color: C.text.muted,
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        mb: 0.75,
+                      }}
+                    >
+                      Notes
+                    </Typography>
+                    <Typography
+                      sx={{ fontSize: "0.78rem", color: C.text.secondary, lineHeight: 1.5 }}
+                    >
+                      {client.notes}
+                    </Typography>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </Box>
         )}
 
         {/* Subscription Tab */}
         {tab === 1 && (
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={7} sx={{ width:"650px"}}>
-              <Card
-                sx={{ borderRadius: 2, border: `1px solid ${C.border}`, mb: 2 }}
-                elevation={0}
-              >
-                <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-                  <Typography
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: "0.8rem",
-                      color: C.text.muted,
-                      mb: 1.5,
-                    }}
-                  >
-                    Current Plan
-                  </Typography>
-                  <Box
-                    sx={{
-                      bgcolor: plan.bg,
-                      borderRadius: 2,
-                      p: { xs: 2, sm: 2.5 },
-                      mb: 2,
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        mb: 2,
-                        flexWrap: "wrap",
-                        gap: 1,
-                      }}
-                    >
-                      <Box>
-                        <Typography
-                          sx={{
-                            fontWeight: 800,
-                            fontSize: "1.3rem",
-                            color: plan.color,
-                          }}
-                        >
-                          {plan.label}
-                        </Typography>
-                        <Typography
-                          sx={{ fontSize: "0.7rem", color: C.text.secondary }}
-                        >
-                          Premium business features
-                        </Typography>
-                      </Box>
-                      <Box sx={{ textAlign: "right" }}>
-                        <Typography
-                          sx={{
-                            fontWeight: 800,
-                            fontSize: "1.4rem",
-                            color: plan.color,
-                          }}
-                        >
-                          {plan.price.split("/")[0]}
-                        </Typography>
-                        <Typography
-                          sx={{ fontSize: "0.65rem", color: C.text.secondary }}
-                        >
-                          per month
-                        </Typography>
-                      </Box>
-                    </Box>
-                    {plan.features.map((f) => (
-                      <Box
-                        key={f}
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          mb: 0.75,
-                        }}
-                      >
-                        <CheckCircleIcon
-                          sx={{ fontSize: "0.85rem", color: plan.color }}
-                        />
-                        <Typography
-                          sx={{ fontSize: "0.72rem", color: C.text.secondary }}
-                        >
-                          {f}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1.6fr 1fr" },
+              gap: 2,
+              width: "100%",
+              alignItems: "start",
+            }}
+          >
+            <Card
+              sx={{ borderRadius: 2, border: `1px solid ${C.border}`, width: "100%" }}
+              elevation={0}
+            >
+              <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                <Typography
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: "0.7rem",
+                    color: C.text.muted,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    mb: 1.5,
+                  }}
+                >
+                  Current Plan
+                </Typography>
+                <Box
+                  sx={{
+                    bgcolor: plan.bg,
+                    borderRadius: 2,
+                    p: { xs: 2, sm: 2.5 },
+                    mb: 2,
+                  }}
+                >
                   <Box
                     sx={{
                       display: "flex",
-                      gap: 1.5,
-                      flexDirection: { xs: "column", sm: "row" },
-                    }}
-                  >
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      startIcon={
-                        <TrendingUpIcon sx={{ fontSize: "0.85rem" }} />
-                      }
-                      onClick={() => setUpgradeOpen(true)}
-                      disabled={actionLoading}
-                      sx={{
-                        bgcolor: C.warning,
-                        textTransform: "none",
-                        borderRadius: "8px",
-                        fontSize: "0.8rem",
-                        "&:hover": { bgcolor: "#ea580c" },
-                      }}
-                    >
-                      Upgrade Plan
-                    </Button>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      onClick={() => setRenewOpen(true)}
-                      disabled={actionLoading}
-                      sx={{
-                        textTransform: "none",
-                        borderRadius: "8px",
-                        fontSize: "0.8rem",
-                        borderColor: C.border,
-                        color: C.text.secondary,
-                      }}
-                    >
-                      Renew Membership
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} md={5} sx={{ width:"500px"}}>
-              <Card
-                sx={{ borderRadius: 2, border: `1px solid ${C.border}` }}
-                elevation={0}
-              >
-                <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-                  <Typography
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: "0.8rem",
-                      color: C.text.muted,
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
                       mb: 2,
+                      flexWrap: "wrap",
+                      gap: 1,
                     }}
                   >
-                    Billing Cycle
-                  </Typography>
-                  <Stack divider={<Divider sx={{ my: 1.25 }} />}>
-                    {[
-                      { label: "Billing Period", value: "Monthly" },
-                      {
-                        label: "Next Bill Date",
-                        value: fmtDate(client?.subscriptionEndDate) || "—",
-                      },
-                      { label: "Amount", value: plan.price.split("/")[0] },
-                      {
-                        label: "Payment Method",
-                        value: client?.paymentMethod || "Not set",
-                      },
-                    ].map((row) => (
-                      <Box
-                        key={row.label}
+                    <Box>
+                      <Typography
                         sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
+                          fontWeight: 800,
+                          fontSize: "1.3rem",
+                          color: plan.color,
                         }}
                       >
-                        <Typography
-                          sx={{ fontSize: "0.7rem", color: C.text.secondary }}
-                        >
-                          {row.label}
-                        </Typography>
-                        <Typography
-                          sx={{
-                            fontSize: "0.72rem",
-                            fontWeight: 600,
-                            color: C.text.primary,
-                          }}
-                        >
-                          {row.value}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+                        {plan.label}
+                      </Typography>
+                      <Typography
+                        sx={{ fontSize: "0.7rem", color: C.text.secondary }}
+                      >
+                        Premium business features
+                      </Typography>
+                    </Box>
+                    <Box sx={{ textAlign: "right" }}>
+                      <Typography
+                        sx={{
+                          fontWeight: 800,
+                          fontSize: "1.4rem",
+                          color: plan.color,
+                        }}
+                      >
+                        {plan.price.split("/")[0]}
+                      </Typography>
+                      <Typography
+                        sx={{ fontSize: "0.65rem", color: C.text.secondary }}
+                      >
+                        per month
+                      </Typography>
+                    </Box>
+                  </Box>
+                  {plan.features.map((f) => (
+                    <Box
+                      key={f}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 0.75,
+                      }}
+                    >
+                      <CheckCircleIcon
+                        sx={{ fontSize: "0.85rem", color: plan.color }}
+                      />
+                      <Typography
+                        sx={{ fontSize: "0.72rem", color: C.text.secondary }}
+                      >
+                        {f}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    gap: 1.5,
+                    flexDirection: { xs: "column", sm: "row" },
+                  }}
+                >
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    startIcon={
+                      <TrendingUpIcon sx={{ fontSize: "0.85rem" }} />
+                    }
+                    onClick={() => setUpgradeOpen(true)}
+                    disabled={actionLoading}
+                    sx={{
+                      bgcolor: C.warning,
+                      textTransform: "none",
+                      borderRadius: "8px",
+                      fontSize: "0.8rem",
+                      "&:hover": { bgcolor: "#ea580c" },
+                    }}
+                  >
+                    Upgrade Plan
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    onClick={() => setRenewOpen(true)}
+                    disabled={actionLoading}
+                    sx={{
+                      textTransform: "none",
+                      borderRadius: "8px",
+                      fontSize: "0.8rem",
+                      borderColor: C.border,
+                      color: C.text.secondary,
+                    }}
+                  >
+                    Renew Membership
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+
+            <Card
+              sx={{ borderRadius: 2, border: `1px solid ${C.border}`, width: "100%" }}
+              elevation={0}
+            >
+              <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                <Typography
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: "0.7rem",
+                    color: C.text.muted,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    mb: 2,
+                  }}
+                >
+                  Billing Cycle
+                </Typography>
+                <Stack divider={<Divider sx={{ my: 0 }} />} spacing={1.5}>
+                  {[
+                    { label: "Billing Period", value: "Monthly" },
+                    {
+                      label: "Next Bill Date",
+                      value: fmtDate(client?.subscriptionEndDate) || "—",
+                    },
+                    { label: "Amount", value: plan.price.split("/")[0] },
+                    {
+                      label: "Payment Method",
+                      value: client?.paymentMethod || "Not set",
+                    },
+                  ].map((row) => (
+                    <Box
+                      key={row.label}
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 2,
+                        pb: 1.5,
+                        borderBottom: `1px solid ${C.border}`,
+                        "&:last-of-type": { borderBottom: "none", pb: 0 },
+                      }}
+                    >
+                      <Typography
+                        sx={{ fontSize: "0.75rem", color: C.text.secondary, whiteSpace: "nowrap" }}
+                      >
+                        {row.label}
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontSize: "0.8rem",
+                          fontWeight: 700,
+                          color: C.text.primary,
+                          textAlign: "right",
+                        }}
+                      >
+                        {row.value}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
+          </Box>
         )}
 
         {/* Settings Tab */}

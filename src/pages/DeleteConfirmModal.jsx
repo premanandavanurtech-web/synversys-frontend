@@ -14,6 +14,7 @@ import {
   Checkbox,
   FormControlLabel,
   Divider,
+  TextField,
 } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
@@ -39,6 +40,8 @@ const DeleteConfirmModal = ({ open, onClose, onConfirm, member, loading: parentL
     }
     setError("");
     onConfirm(permanent);
+    setPermanent(false);
+    setConfirmText("");
   };
 
   const handleClose = () => {
@@ -174,7 +177,7 @@ const DeleteConfirmModal = ({ open, onClose, onConfirm, member, loading: parentL
           <>
             <Divider sx={{ my: 2 }} />
             <Alert severity="error" sx={{ mb: 2, fontSize: '0.75rem' }}>
-              ⚠️ DANGER ZONE: This action is irreversible. All inspection data, 
+               DANGER ZONE: This action is irreversible. All inspection data, 
               assignments, and history for this member will be permanently deleted.
             </Alert>
             <TextField

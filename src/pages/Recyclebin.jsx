@@ -1176,8 +1176,8 @@ export default function RecycleBin() {
                 <WarningAmberIcon sx={{ fontSize: 16, color: "#d35400" }} />
                 <Typography fontSize={12} color="#7c2d12" fontWeight={500}>
                   {isSuperAdmin 
-                    ? "⚠️ Permanently deleted items cannot be recovered" 
-                    : "ℹ️ Only Super Admins can permanently delete items"}
+                    ? " Permanently deleted items cannot be recovered" 
+                    : " Only Super Admins can permanently delete items"}
                 </Typography>
               </Box>
             </Box>

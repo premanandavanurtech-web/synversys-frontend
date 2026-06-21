@@ -47,7 +47,7 @@ const Analytics = () => {
       trend: "up",
       icon: <Devices sx={{ fontSize: { xs: 18, sm: 20, md: 22 } }} />,
       color: "#3b82f6",
-      bgColor: alpha("#3b82f6", 0.1),
+      bgColor: "#3b82f6",
     },
     {
       title: "Active Alerts",
@@ -56,7 +56,7 @@ const Analytics = () => {
       trend: "down",
       icon: <Warning sx={{ fontSize: { xs: 18, sm: 20, md: 22 } }} />,
       color: "#ef4444",
-      bgColor: alpha("#ef4444", 0.1),
+      bgColor: "#ef4444",
     },
     {
       title: "Uptime Rate",
@@ -65,7 +65,7 @@ const Analytics = () => {
       trend: "up",
       icon: <Speed sx={{ fontSize: { xs: 18, sm: 20, md: 22 } }} />,
       color: "#10b981",
-      bgColor: alpha("#10b981", 0.1),
+      bgColor: "#10b981",
     },
     {
       title: "Completed Tasks",
@@ -74,7 +74,7 @@ const Analytics = () => {
       trend: "up",
       icon: <Assignment sx={{ fontSize: { xs: 18, sm: 20, md: 22 } }} />,
       color: "#8b5cf6",
-      bgColor: alpha("#8b5cf6", 0.1),
+      bgColor:"#8b5cf6",
     },
   ];
 

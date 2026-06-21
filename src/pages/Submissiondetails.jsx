@@ -17,6 +17,9 @@ import {
   Alert,
   CircularProgress,
   Rating,
+  Dialog,
+  DialogTitle,
+  DialogContent,
 } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useAuth } from "../context/AuthContexts";
@@ -65,6 +68,82 @@ function StatusChip({ status }) {
   );
 }
 
+const normalizeSubmissionDetails = (submission = {}) => {
+  const submittedBy = submission.submittedBy || {};
+  const clean = (value) => {
+    if (!value || value === "Unknown" || value === "N/A") return "";
+    return value;
+  };
+  const submittedByName =
+    clean(submission.submittedByName) ||
+    clean(submittedBy.name) ||
+    clean(submittedBy.email) ||
+    clean(submission.assignedToTeamMembers?.[0]?.name) ||
+    clean(submission.assignedToTeamMembers?.[0]?.email) ||
+    clean(submission.assignedToTeamMembers?.[0]?.userId?.email) ||
+    "N/A";
+  const submittedByEmail =
+    clean(submission.submittedByEmail) ||
+    clean(submittedBy.email) ||
+    clean(submission.assignedToTeamMembers?.[0]?.email) ||
+    clean(submission.assignedToTeamMembers?.[0]?.userId?.email) ||
+    "";
+
+  return {
+    ...submission,
+    _id: submission._id || submission.submissionId || submission.id,
+    checklistName:
+      submission.checklistName ||
+      submission.checklistResponses?.[0]?.checklistName ||
+      "Checklist Submission",
+    submittedByName,
+    submittedByEmail,
+    status:
+      submission.reviewStatus ||
+      submission.submissionStatus ||
+      submission.status ||
+      "pending_review",
+    completionRate:
+      submission.overallCompletionRate ??
+      submission.completionRate ??
+      submission.completion ??
+      0,
+    overallRating:
+      submission.performanceRating ??
+      submission.overallRating ??
+      (submission.score != null ? Math.round(Number(submission.score) / 20) : 0),
+    uploadedPhotos: submission.uploadedPhotos || submission.images || [],
+  };
+};
+
+const fileUrl = (file) => {
+  let path =
+    typeof file === "string"
+      ? file
+      : file?.url || file?.filePath || file?.path || file?.originalName || file?.name;
+  if (!path) return "";
+  if (/^(https?:|blob:|data:)/i.test(path)) return path;
+  path = path.replace(/\\/g, "/");
+  const publicIndex = path.indexOf("/public/uploads/");
+  if (publicIndex >= 0) path = path.slice(publicIndex + 1);
+  if (path.startsWith("uploads/")) path = `public/${path}`;
+  if (!path.startsWith("public/uploads/")) path = `public/uploads/checklists/${path}`;
+  return `https://synversys-backend.onrender.com/${path.replace(/^\/+/, "")}`;
+};
+
+const isImageFile = (file) => {
+  const name = typeof file === "string" ? file : file?.originalName || file?.name || file?.filePath || "";
+  const mimetype = typeof file === "string" ? "" : file?.mimetype || "";
+  return mimetype.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(name);
+};
+
+const formatAnswer = (value) => {
+  if (Array.isArray(value)) return value.join(", ");
+  if (value == null || value === "") return "N/A";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
+};
+
 export default function SubmissionDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -76,6 +155,10 @@ export default function SubmissionDetails() {
     message: "",
     severity: "success",
   });
+  const [previewImage, setPreviewImage] = useState(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
 
   const fetchSubmissionDetails = useCallback(async () => {
     setLoading(true);
@@ -85,7 +168,7 @@ export default function SubmissionDetails() {
         `/assignments/submissions/${id}`,
       );
       if (response.success) {
-        setSubmission(response);
+        setSubmission(normalizeSubmissionDetails(response.submission || response.data || response));
       } else {
         setSnackbar({
           open: true,
@@ -108,29 +191,79 @@ export default function SubmissionDetails() {
     fetchSubmissionDetails();
   }, [fetchSubmissionDetails]);
 
+  useEffect(() => {
+    return () => {
+      if (previewImageUrl?.startsWith("blob:")) URL.revokeObjectURL(previewImageUrl);
+    };
+  }, [previewImageUrl]);
+
+  const openImagePreview = async (photo) => {
+    setPreviewImage(photo);
+    if (previewImageUrl?.startsWith("blob:")) URL.revokeObjectURL(previewImageUrl);
+    setPreviewImageUrl("");
+    setPreviewError("");
+    setPreviewLoading(true);
+
+    if (photo?._fileType && photo?._fileIndex != null) {
+      try {
+        const token =
+          localStorage.getItem("accessToken") || localStorage.getItem("token");
+        const response = await fetch(
+          `https://synversys-backend.onrender.com/api/v1/assignments/submissions/${id}/files/${photo._fileType}/${photo._fileIndex}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          },
+        );
+        if (response.ok) {
+          const blob = await response.blob();
+          setPreviewImageUrl(URL.createObjectURL(blob));
+          setPreviewLoading(false);
+          return;
+        }
+        const errorText = await response.text();
+        throw new Error(errorText || `Image request failed (${response.status})`);
+      } catch (error) {
+        console.error("Image preview fetch failed:", error);
+        setPreviewError(
+          "Unable to load this image. Please restart the backend server and try again.",
+        );
+        setPreviewLoading(false);
+        return;
+      }
+    }
+
+    setPreviewError("Image file path is missing for this submission.");
+    setPreviewLoading(false);
+  };
+
   const handleExportToExcel = () => {
     if (!submission) return;
 
     const exportData = [
       ["Field", "Value"],
       ["Checklist Name", submission.checklistName || "N/A"],
-      ["Submitted By", submission.assignedToTeamMembers?.[0]?.name || "N/A"],
-      [
-        "Submitted Email",
-        submission.assignedToTeamMembers?.[0]?.userId?.email || "N/A",
-      ],
+      ["Submitted By", submission.submittedByName || "N/A"],
+      ["Submitted Email", submission.submittedByEmail || "N/A"],
       [
         "Submitted Date",
         submission.submittedAt
           ? new Date(submission.submittedAt).toLocaleString()
           : "N/A",
       ],
-      ["Status", submission.submissionStatus || submission.status || "N/A"],
+      ["Status", submission.status || "N/A"],
       ["Completion Rate", `${submission.completionRate || 0}%`],
       ["Overall Rating", submission.overallRating || "Not rated"],
       ["Inspector Notes", submission.inspectorNotes || "No notes"],
       ["Additional Notes", submission.notes || "No notes"],
     ];
+
+    (submission.checklistResponses || []).forEach((checklist) => {
+      exportData.push([]);
+      exportData.push([checklist.checklistName || "Checklist", ""]);
+      (checklist.responses || []).forEach((answer) => {
+        exportData.push([answer.fieldLabel || answer.fieldId || "Field", formatAnswer(answer.value)]);
+      });
+    });
 
     const worksheet = XLSX.utils.aoa_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
@@ -155,6 +288,24 @@ export default function SubmissionDetails() {
   }
 
   const submissionData = submission;
+  const imageAttachments = [
+    ...(submissionData?.uploadedPhotos || []).map((file, index) => ({
+      ...(typeof file === "string" ? { filePath: file } : file),
+      _fileType: "images",
+      _fileIndex: index,
+    })),
+    ...(submissionData?.attachments || [])
+      .map((file, index) => ({ file, index }))
+      .filter(({ file }) => isImageFile(file))
+      .map(({ file, index }) => ({
+        ...(typeof file === "string" ? { filePath: file } : file),
+        _fileType: "attachments",
+        _fileIndex: index,
+      })),
+  ];
+  const documentAttachments = (submissionData?.attachments || []).filter(
+    (file) => !isImageFile(file),
+  );
 
   return (
     <ThemeProvider theme={theme}>
@@ -242,9 +393,7 @@ export default function SubmissionDetails() {
                 <Typography
                   sx={{ fontWeight: 600, fontSize: "0.92rem", color: "#111" }}
                 >
-                  {submissionData?.assignedToTeamMembers?.[0]?.name?.split(
-                    "@",
-                  )[0] || "N/A"}
+                  {submissionData?.submittedByName?.split("@")[0] || "N/A"}
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={3}>
@@ -291,7 +440,7 @@ export default function SubmissionDetails() {
                 </Box>
                 <StatusChip
                   status={
-                    submissionData?.submissionStatus || submissionData?.status
+                    submissionData?.status
                   }
                 />
               </Grid>
@@ -363,8 +512,12 @@ export default function SubmissionDetails() {
                 <Typography
                   sx={{ fontWeight: 600, fontSize: "0.92rem", color: "#111" }}
                 >
-                  {submissionData?.reviewedBy?.email?.split("@")[0] ||
-                    "Not reviewed"}
+                  {submissionData?.reviewedByName ||
+                    submissionData?.reviewedBy?.name ||
+                    submissionData?.reviewedBy?.email?.split("@")[0] ||
+                    (submissionData?.status === "pending_review"
+                      ? "Pending review"
+                      : "Not reviewed")}
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={3}>
@@ -389,7 +542,9 @@ export default function SubmissionDetails() {
                 >
                   {submissionData?.reviewedAt
                     ? new Date(submissionData.reviewedAt).toLocaleString()
-                    : "Not reviewed"}
+                    : submissionData?.status === "pending_review"
+                      ? "Pending review"
+                      : "Not reviewed"}
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={3}>
@@ -419,9 +574,101 @@ export default function SubmissionDetails() {
           </CardContent>
         </Card>
 
+        {/* Checklist Responses
+        {submissionData?.checklistResponses?.length > 0 && (
+          <Card
+            elevation={0}
+            sx={{ border: "1px solid #e8e8e8", borderRadius: 2, mb: 2.5 }}
+          >
+            <CardContent>
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  fontSize: "0.95rem",
+                  color: "#111",
+                  mb: 2,
+                }}
+              >
+                Checklist Responses
+              </Typography>
+              {submissionData.checklistResponses.map((checklist, checklistIndex) => (
+                <Box
+                  key={checklist.checklistId || checklistIndex}
+                  sx={{
+                    mb:
+                      checklistIndex < submissionData.checklistResponses.length - 1
+                        ? 2.5
+                        : 0,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1,
+                      mb: 1,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
+                      {checklist.checklistName || `Checklist ${checklistIndex + 1}`}
+                    </Typography>
+                    <Chip
+                      label={`${checklist.completionRate || 0}% complete`}
+                      size="small"
+                      sx={{
+                        bgcolor: "#eef7f4",
+                        color: TEAL,
+                        fontWeight: 600,
+                        height: 24,
+                      }}
+                    />
+                  </Box>
+                  <Grid container spacing={1.5}>
+                    {(checklist.responses || []).map((answer, answerIndex) => (
+                      <Grid item xs={12} sm={6} md={4} key={answer.fieldId || answerIndex}>
+                        <Box
+                          sx={{
+                            border: "1px solid #edf0f2",
+                            borderRadius: 1.5,
+                            p: 1.5,
+                            height: "100%",
+                            bgcolor: "#fbfcfd",
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontSize: "0.72rem",
+                              color: "#777",
+                              mb: 0.5,
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {answer.fieldLabel || answer.fieldId || "Field"}
+                          </Typography>
+                          <Typography
+                            sx={{
+                              fontSize: "0.86rem",
+                              fontWeight: 600,
+                              color: "#111",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {formatAnswer(answer.value)}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              ))}
+            </CardContent>
+          </Card>
+        )} */}
+
         {/* Attachments */}
-        {(submissionData?.attachments?.length > 0 ||
-          submissionData?.uploadedPhotos?.length > 0) && (
+        {(documentAttachments.length > 0 || imageAttachments.length > 0) && (
           <Card
             elevation={0}
             sx={{ border: "1px solid #e8e8e8", borderRadius: 2, mb: 2.5  }}
@@ -437,7 +684,7 @@ export default function SubmissionDetails() {
               >
                 Attachments & Photos
               </Typography>
-              {submissionData?.attachments?.length > 0 && (
+              {documentAttachments.length > 0 && (
                 <Box sx={{ mb: 2 }}>
                   <Typography
                     sx={{ fontSize: "0.85rem", color: "#555", mb: 1 }}
@@ -445,38 +692,72 @@ export default function SubmissionDetails() {
                     Documents:
                   </Typography>
                   <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                    {submissionData.attachments.map((file, idx) => (
+                    {documentAttachments.map((file, idx) => (
                       <Button
                         key={idx}
                         variant="outlined"
                         size="small"
                         startIcon={<PictureAsPdfIcon />}
-                        onClick={() => window.open(file.url, "_blank")}
+                        onClick={() => window.open(fileUrl(file), "_blank")}
                       >
-                        {file.name}
+                        {file.name || file.originalName || `Document ${idx + 1}`}
                       </Button>
                     ))}
                   </Box>
                 </Box>
               )}
-              {submissionData?.uploadedPhotos?.length > 0 && (
+              {imageAttachments.length > 0 && (
                 <Box>
                   <Typography
                     sx={{ fontSize: "0.85rem", color: "#555", mb: 1 }}
                   >
                     Photos:
                   </Typography>
-                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                    {submissionData.uploadedPhotos.map((photo, idx) => (
-                      <Button
+                  <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
+                    {imageAttachments.map((photo, idx) => (
+                      <Box
                         key={idx}
-                        variant="outlined"
-                        size="small"
-                        startIcon={<ImageIcon />}
-                        onClick={() => window.open(photo, "_blank")}
+                        onClick={() => openImagePreview(photo)}
+                        sx={{
+                          width: 150,
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 1.5,
+                          overflow: "hidden",
+                          cursor: "pointer",
+                          bgcolor: "#fff",
+                          "&:hover": { borderColor: TEAL },
+                        }}
                       >
-                        View Photo {idx + 1}
-                      </Button>
+                        <Box
+                          component="img"
+                          src={fileUrl(photo)}
+                          alt={photo.originalName || `Photo ${idx + 1}`}
+                          sx={{
+                            display: "block",
+                            width: "100%",
+                            height: 96,
+                            objectFit: "cover",
+                            bgcolor: "#f1f5f9",
+                          }}
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
+                        />
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, p: 1 }}>
+                          <ImageIcon sx={{ fontSize: 15, color: TEAL, flexShrink: 0 }} />
+                          <Typography
+                            sx={{
+                              fontSize: "0.72rem",
+                              color: TEAL,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {photo.originalName || `Photo ${idx + 1}`}
+                          </Typography>
+                        </Box>
+                      </Box>
                     ))}
                   </Box>
                 </Box>
@@ -484,6 +765,48 @@ export default function SubmissionDetails() {
             </CardContent>
           </Card>
         )}
+
+        <Dialog
+          open={Boolean(previewImage)}
+          onClose={() => {
+            setPreviewImage(null);
+            if (previewImageUrl?.startsWith("blob:")) URL.revokeObjectURL(previewImageUrl);
+            setPreviewImageUrl("");
+            setPreviewError("");
+            setPreviewLoading(false);
+          }}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle sx={{ fontSize: "0.95rem", fontWeight: 700 }}>
+            {previewImage?.originalName || "Image Preview"}
+          </DialogTitle>
+          <DialogContent sx={{ textAlign: "center", p: 2 }}>
+            {previewLoading && (
+              <Box sx={{ py: 5 }}>
+                <CircularProgress size={28} />
+              </Box>
+            )}
+            {!previewLoading && previewError && (
+              <Alert severity="error" sx={{ textAlign: "left", borderRadius: 2 }}>
+                {previewError}
+              </Alert>
+            )}
+            {!previewLoading && !previewError && previewImageUrl && (
+              <Box
+                component="img"
+                src={previewImageUrl}
+                alt={previewImage.originalName || "Preview"}
+                sx={{
+                  maxWidth: "100%",
+                  maxHeight: "72vh",
+                  borderRadius: 1.5,
+                  objectFit: "contain",
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Additional Notes */}
         {submissionData?.notes && (

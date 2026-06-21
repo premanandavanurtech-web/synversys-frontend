@@ -104,8 +104,8 @@ const TopBar = styled(Box)({
   padding: "14px 28px",
   position: "sticky",
   top: 0,
-  width:"1150px",
-  marginLeft:"25px",
+  width: "1150px",
+  marginLeft: "25px",
   borderRadius: "12px",
   zIndex: 10,
   display: "flex",
@@ -165,6 +165,9 @@ const StyledField = styled(TextField)({
   },
   "& .MuiFormHelperText-root": { fontSize: "0.7rem", marginTop: 3 },
   "& .MuiInputLabel-root": { fontSize: "0.75rem" },
+  "& input[type='password']::-ms-reveal": { display: "none" },
+  "& input[type='password']::-ms-clear": { display: "none" },
+  "& input::-webkit-credentials-auto-fill-button": { display: "none !important" },
 });
 
 const PrimaryBtn = styled(Button)({
@@ -279,6 +282,7 @@ const ProfileContent = () => {
   const [formData, setFormData] = useState({ firstName: "", lastName: "", phone: "", location: "", bio: "", department: "" });
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
   const [passErrors, setPassErrors] = useState({});
+  const [phoneError, setPhoneError] = useState("");
   const [saving, setSaving] = useState(false);
   const [changingPass, setChangingPass] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -296,12 +300,35 @@ const ProfileContent = () => {
         bio: profile.bio || "",
         department: profile.departmentDetails?.name || profile.department || "",
       });
+      setPhoneError("");
     }
   }, [profile]);
 
   const toast = (message, severity = "success") => setSnack({ open: true, message, severity });
 
+  // ── Phone helpers ──
+  const isValidPhone = (value) => !value || value.length === 10;
+
+  const handlePhoneChange = (e) => {
+    // Strip everything that isn't a digit, then hard-cap at 10 digits
+    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setFormData((prev) => ({ ...prev, phone: digitsOnly }));
+
+    if (digitsOnly.length === 0) {
+      setPhoneError(""); // empty is allowed (phone optional)
+    } else if (digitsOnly.length !== 10) {
+      setPhoneError("Phone number must be exactly 10 digits");
+    } else {
+      setPhoneError("");
+    }
+  };
+
   const handleUpdateProfile = async () => {
+    if (!isValidPhone(formData.phone)) {
+      toast("Phone number must be exactly 10 digits", "error");
+      return;
+    }
+
     setSaving(true);
     // Send the raw location/department strings; backend resolves IDs
     const result = await updateTeamProfile(formData);
@@ -372,6 +399,7 @@ const ProfileContent = () => {
 
   const cancelEdit = () => {
     setIsEditing(false);
+    setPhoneError("");
     if (profile) {
       setFormData({
         firstName: profile.firstName || "",
@@ -602,121 +630,121 @@ const ProfileContent = () => {
               </Body>
             </Card>
 
-                          {/* Security card */}
-              <Card sx={{ animationDelay: "200ms" , width:"400px" , mt: 3 }}>
-                <SectionHeader>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-                    <IconBox><KeyIcon /></IconBox>
-                    <Box>
-                      <Typography sx={{ fontWeight: 700, fontSize: "0.85rem", color: T.ink }}>
-                        Security
-                      </Typography>
-                      <Typography sx={{ fontSize: "0.68rem", color: T.ink4 }}>
-                        Update your password to keep the account secure
-                      </Typography>
-                    </Box>
+            {/* Security card */}
+            <Card sx={{ animationDelay: "200ms", width: "400px", mt: 3 }}>
+              <SectionHeader>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                  <IconBox><KeyIcon /></IconBox>
+                  <Box>
+                    <Typography sx={{ fontWeight: 700, fontSize: "0.85rem", color: T.ink }}>
+                      Security
+                    </Typography>
+                    <Typography sx={{ fontSize: "0.68rem", color: T.ink4 }}>
+                      Update your password to keep the account secure
+                    </Typography>
                   </Box>
-                </SectionHeader>
+                </Box>
+              </SectionHeader>
 
-                <Body>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
-                      <Label>Current Password</Label>
-                      <StyledField
-                        fullWidth size="small" name="currentPassword"
-                        type={showPass.current ? "text" : "password"}
-                        placeholder="Current password"
-                        value={passData.currentPassword}
-                        onChange={handlePassChange}
-                        InputProps={{
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton
-                                onClick={() => setShowPass(p => ({ ...p, current: !p.current }))}
-                                edge="end" size="small"
-                              >
-                                {showPass.current
-                                  ? <VisibilityOffIcon sx={{ fontSize: "0.85rem", color: T.ink4 }} />
-                                  : <VisibilityIcon sx={{ fontSize: "0.85rem", color: T.ink4 }} />}
-                              </IconButton>
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} sm={4}>
-                      <Label>New Password</Label>
-                      <StyledField
-                        fullWidth size="small" name="newPassword"
-                        type={showPass.new ? "text" : "password"}
-                        placeholder="Min. 6 characters"
-                        value={passData.newPassword}
-                        onChange={handlePassChange}
-                        error={!!passErrors.newPassword}
-                        helperText={passErrors.newPassword}
-                        InputProps={{
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton
-                                onClick={() => setShowPass(p => ({ ...p, new: !p.new }))}
-                                edge="end" size="small"
-                              >
-                                {showPass.new
-                                  ? <VisibilityOffIcon sx={{ fontSize: "0.85rem", color: T.ink4 }} />
-                                  : <VisibilityIcon sx={{ fontSize: "0.85rem", color: T.ink4 }} />}
-                              </IconButton>
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} sm={4}>
-                      <Label>Confirm New Password</Label>
-                      <StyledField
-                        fullWidth size="small" name="confirmPassword"
-                        type={showPass.confirm ? "text" : "password"}
-                        placeholder="Re-enter new password"
-                        value={passData.confirmPassword}
-                        onChange={handlePassChange}
-                        error={!!passErrors.confirmPassword}
-                        helperText={passErrors.confirmPassword}
-                        InputProps={{
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton
-                                onClick={() => setShowPass(p => ({ ...p, confirm: !p.confirm }))}
-                                edge="end" size="small"
-                              >
-                                {showPass.confirm
-                                  ? <VisibilityOffIcon sx={{ fontSize: "0.85rem", color: T.ink4 }} />
-                                  : <VisibilityIcon sx={{ fontSize: "0.85rem", color: T.ink4 }} />}
-                              </IconButton>
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12}>
-                      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                        <PrimaryBtn
-                          startIcon={<LockIcon sx={{ fontSize: "0.85rem" }} />}
-                          onClick={handleChangePassword}
-                          disabled={
-                            changingPass || !passData.currentPassword ||
-                            !passData.newPassword || !passData.confirmPassword ||
-                            Object.keys(passErrors).length > 0
-                          }
-                        >
-                          {changingPass ? "Updating…" : "Update Password"}
-                        </PrimaryBtn>
-                      </Box>
-                    </Grid>
+              <Body>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <Label>Current Password</Label>
+                    <StyledField
+                      fullWidth size="small" name="currentPassword"
+                      type={showPass.current ? "text" : "password"}
+                      placeholder="Current password"
+                      value={passData.currentPassword}
+                      onChange={handlePassChange}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={() => setShowPass(p => ({ ...p, current: !p.current }))}
+                              edge="end" size="small"
+                            >
+                              {showPass.current
+                                ? <VisibilityOffIcon sx={{ fontSize: "0.85rem", color: T.ink4 }} />
+                                : <VisibilityIcon sx={{ fontSize: "0.85rem", color: T.ink4 }} />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
                   </Grid>
-                </Body>
-              </Card>
+
+                  <Grid item xs={12} sm={4}>
+                    <Label>New Password</Label>
+                    <StyledField
+                      fullWidth size="small" name="newPassword"
+                      type={showPass.new ? "text" : "password"}
+                      placeholder="Min. 6 characters"
+                      value={passData.newPassword}
+                      onChange={handlePassChange}
+                      error={!!passErrors.newPassword}
+                      helperText={passErrors.newPassword}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={() => setShowPass(p => ({ ...p, new: !p.new }))}
+                              edge="end" size="small"
+                            >
+                              {showPass.new
+                                ? <VisibilityOffIcon sx={{ fontSize: "0.85rem", color: T.ink4 }} />
+                                : <VisibilityIcon sx={{ fontSize: "0.85rem", color: T.ink4 }} />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={4}>
+                    <Label>Confirm New Password</Label>
+                    <StyledField
+                      fullWidth size="small" name="confirmPassword"
+                      type={showPass.confirm ? "text" : "password"}
+                      placeholder="Re-enter new password"
+                      value={passData.confirmPassword}
+                      onChange={handlePassChange}
+                      error={!!passErrors.confirmPassword}
+                      helperText={passErrors.confirmPassword}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={() => setShowPass(p => ({ ...p, confirm: !p.confirm }))}
+                              edge="end" size="small"
+                            >
+                              {showPass.confirm
+                                ? <VisibilityOffIcon sx={{ fontSize: "0.85rem", color: T.ink4 }} />
+                                : <VisibilityIcon sx={{ fontSize: "0.85rem", color: T.ink4 }} />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                      <PrimaryBtn
+                        startIcon={<LockIcon sx={{ fontSize: "0.85rem" }} />}
+                        onClick={handleChangePassword}
+                        disabled={
+                          changingPass || !passData.currentPassword ||
+                          !passData.newPassword || !passData.confirmPassword ||
+                          Object.keys(passErrors).length > 0
+                        }
+                      >
+                        {changingPass ? "Updating…" : "Update Password"}
+                      </PrimaryBtn>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Body>
+            </Card>
           </Grid>
 
           {/* ── Right: Details + Security ── */}
@@ -724,7 +752,7 @@ const ProfileContent = () => {
             <Stack spacing={3}>
 
               {/* Personal information */}
-              <Card sx={{ animationDelay: "120ms" , width:"730px"}}>
+              <Card sx={{ animationDelay: "120ms", width: "730px" }}>
                 <SectionHeader>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
                     <IconBox><PersonOutlineIcon /></IconBox>
@@ -755,7 +783,7 @@ const ProfileContent = () => {
 
                 <Body>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6} sx={{ width:"300px"}}>
+                    <Grid item xs={12} sm={6} sx={{ width: "300px" }}>
                       <Label>First Name</Label>
                       <StyledField
                         fullWidth size="small" name="firstName" placeholder="First name"
@@ -763,7 +791,7 @@ const ProfileContent = () => {
                         onChange={e => setFormData({ ...formData, firstName: e.target.value })}
                       />
                     </Grid>
-                    <Grid item xs={12} sm={6} sx={{ width:"300px"}}>
+                    <Grid item xs={12} sm={6} sx={{ width: "300px" }}>
                       <Label>Last Name</Label>
                       <StyledField
                         fullWidth size="small" name="lastName" placeholder="Last name"
@@ -772,7 +800,7 @@ const ProfileContent = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sx={{ width:"300px"}}>
+                    <Grid item xs={12} sx={{ width: "300px" }}>
                       <Label>Email Address</Label>
                       <StyledField
                         fullWidth size="small" type="email"
@@ -797,12 +825,25 @@ const ProfileContent = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6} sx={{ width:"300px"}}>
+                    {/* ── PHONE NUMBER FIELD (fixed) ── */}
+                    <Grid item xs={12} sm={6} sx={{ width: "300px" }}>
                       <Label>Phone Number</Label>
                       <StyledField
-                        fullWidth size="small" name="phone" placeholder="Enter phone number"
-                        value={formData.phone} disabled={!isEditing}
-                        onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                        fullWidth
+                        size="small"
+                        name="phone"
+                        type="tel"
+                        placeholder="10-digit phone number"
+                        value={formData.phone}
+                        disabled={!isEditing}
+                        onChange={handlePhoneChange}
+                        error={!!phoneError}
+                        helperText={phoneError}
+                        inputProps={{
+                          maxLength: 10,
+                          inputMode: "numeric",
+                          pattern: "[0-9]*",
+                        }}
                         InputProps={{
                           startAdornment: (
                             <InputAdornment position="start">
@@ -813,7 +854,7 @@ const ProfileContent = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6} sx={{ width:"300px"}}>
+                    <Grid item xs={12} sm={6} sx={{ width: "300px" }}>
                       <Label>Department</Label>
                       <StyledField
                         fullWidth size="small" name="department" placeholder="Your department"
@@ -829,7 +870,7 @@ const ProfileContent = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sx={{ width:"300px"}}>
+                    <Grid item xs={12} sx={{ width: "300px" }}>
                       <Label>Location</Label>
                       <StyledField
                         fullWidth size="small" name="location" placeholder="City or region"
@@ -845,7 +886,7 @@ const ProfileContent = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sx={{ width:"350px"}}>
+                    <Grid item xs={12} sx={{ width: "350px" }}>
                       <Label>About Me</Label>
                       {isEditing ? (
                         <StyledField
@@ -881,7 +922,8 @@ const ProfileContent = () => {
                       <OutlineBtn onClick={cancelEdit} disabled={saving}>Cancel</OutlineBtn>
                       <PrimaryBtn
                         startIcon={<SaveIcon sx={{ fontSize: "0.85rem" }} />}
-                        onClick={handleUpdateProfile} disabled={saving}
+                        onClick={handleUpdateProfile}
+                        disabled={saving || !!phoneError}
                       >
                         {saving ? "Saving…" : "Save changes"}
                       </PrimaryBtn>

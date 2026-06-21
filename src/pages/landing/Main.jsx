@@ -1,6 +1,7 @@
 // Main.jsx - Updated with Dark Mode Support
 import React, { useState, useEffect } from "react";
 import { ThemeProvider, createTheme, CssBaseline, Box } from "@mui/material";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import Hero from "./Home";
 import Analytics from "./Analytics";
@@ -108,6 +109,8 @@ const darkTheme = createTheme({
 });
 
 function Main() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("home");
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -157,6 +160,21 @@ function Main() {
       });
     }
   };
+
+  useEffect(() => {
+    const sectionId = location.state?.scrollTo || location.hash?.replace("#", "");
+    if (!sectionId) return;
+
+    const timer = setTimeout(() => {
+      scrollToSection(sectionId);
+      setActiveSection(sectionId);
+      if (location.state?.scrollTo) {
+        navigate(location.pathname, { replace: true });
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [location.hash, location.pathname, location.state, navigate]);
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);

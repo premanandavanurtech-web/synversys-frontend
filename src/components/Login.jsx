@@ -23,7 +23,6 @@ import {
   Divider,
   Tooltip,
   Fade,
-  Collapse,
   Zoom,
   Slide,
   Dialog,
@@ -36,7 +35,9 @@ import {
   Visibility,
   VisibilityOff,
   CheckCircle,
+  CheckCircleOutline,
   Error as ErrorIcon,
+  ErrorOutline,
   Google,
   Microsoft,
   Apple,
@@ -45,6 +46,7 @@ import {
   ShieldOutlined,
   Close as CloseIcon,
   WarningAmberOutlined,
+  LockResetOutlined,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContexts";
@@ -179,15 +181,28 @@ const validatePassword = (v) => {
 };
 
 // ─── Forgot Password Modal ───────────────────────────────────────────────────
+// Redesigned: icon-led header, error state that only colors the border (not
+// the field text), and a dedicated success view instead of an inline Alert.
 function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [touched, setTouched] = useState(false);
 
+  const handleClose = () => {
+    onClose();
+    setTimeout(() => {
+      setEmail("");
+      setError("");
+      setSuccess("");
+      setTouched(false);
+    }, 200);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const emailError = validateEmail(email);
+    setTouched(true);
     if (emailError) {
       setError(emailError);
       return;
@@ -195,28 +210,26 @@ function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
 
     const result = await onForgotPassword(email);
     if (result.success) {
-      setSuccess(result.message);
+      setSuccess(result.message || "Check your inbox for the reset link.");
       setError("");
-      setTimeout(() => {
-        onClose();
-        setEmail("");
-        setSuccess("");
-      }, 3000);
+      setTimeout(handleClose, 3000);
     } else {
-      setError(result.error);
+      setError(result.error || "Something went wrong. Please try again.");
       setSuccess("");
     }
   };
 
+  const hasError = touched && !!error;
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth="sm"
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: "20px",
+          borderRadius: "16px",
           boxShadow: C.shadowLg,
           overflow: "hidden",
         },
@@ -224,112 +237,253 @@ function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
     >
       <DialogTitle
         sx={{
-          p: { xs: 2, sm: 2.5 },
-          pb: 1,
+          p: { xs: 2.5, sm: 3 },
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "space-between",
-          borderBottom: `1px solid ${C.border}`,
+          gap: 2,
         }}
       >
-        <Typography
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: "10px",
+              bgcolor: C.brandPale,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <LockResetOutlined sx={{ fontSize: 20, color: C.brand }} />
+          </Box>
+          <Box>
+            <Typography
+              sx={{
+                fontSize: { xs: "1rem", sm: "1.1rem" },
+                fontWeight: 700,
+                color: C.ink,
+                fontFamily: C.font,
+                lineHeight: 1.3,
+              }}
+            >
+              Reset your password
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: "0.75rem",
+                color: C.inkMut,
+                fontFamily: C.font,
+                mt: 0.25,
+              }}
+            >
+              We'll email you a secure link
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton
+          onClick={handleClose}
+          size="small"
           sx={{
-            fontSize: { xs: "1.1rem", sm: "1.25rem" },
-            fontWeight: 700,
-            color: C.ink,
-            fontFamily: C.font,
+            mt: 0.25,
+            color: C.inkMut,
+            "&:hover": { bgcolor: C.brandPale, color: C.brand },
           }}
         >
-          Reset Password
-        </Typography>
-        <IconButton onClick={onClose} size="small">
-          <CloseIcon sx={{ fontSize: 20, color: C.inkMut }} />
+          <CloseIcon sx={{ fontSize: 18 }} />
         </IconButton>
       </DialogTitle>
 
+      <Box sx={{ borderTop: `1px solid ${C.border}` }} />
+
       <form onSubmit={handleSubmit}>
-        <DialogContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-          <Typography
-            sx={{
-              fontSize: { xs: "0.8rem", sm: "0.85rem" },
-              color: C.inkSec,
-              mb: 2.5,
-              fontFamily: C.font,
-            }}
-          >
-            Enter your email address and we'll send you a link to reset your
-            password.
-          </Typography>
-
-          <TextField
-            fullWidth
-            label="Email Address"
-            type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (touched) {
-                setError(validateEmail(e.target.value));
-              }
-            }}
-            onBlur={() => {
-              setTouched(true);
-              setError(validateEmail(email));
-            }}
-            error={!!error && touched}
-            helperText={touched ? error : ""}
-            disabled={loading}
-            sx={inputSx(!!error && touched)}
-          />
-
-          {success && (
-            <Fade in={!!success}>
-              <Alert
-                severity="success"
+        <DialogContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+          {!success ? (
+            <>
+              <Typography
                 sx={{
-                  mt: 2,
-                  borderRadius: "10px",
-                  fontSize: "0.8rem",
+                  fontSize: "0.85rem",
+                  color: C.inkSec,
+                  mb: 2.5,
+                  fontFamily: C.font,
+                  lineHeight: 1.6,
                 }}
               >
-                {success}
-              </Alert>
+                Enter the email address associated with your account and
+                we'll send a link to reset your password.
+              </Typography>
+
+              <Typography
+                sx={{
+                  fontSize: "0.67rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  color: C.inkSec,
+                  textTransform: "uppercase",
+                  display: "block",
+                  mb: 0.75,
+                  fontFamily: C.font,
+                }}
+              >
+                Email address
+              </Typography>
+              <TextField
+                fullWidth
+                placeholder="you@company.com"
+                type="email"
+                value={email}
+                autoFocus
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (touched) setError(validateEmail(e.target.value));
+                }}
+                onBlur={() => {
+                  setTouched(true);
+                  setError(validateEmail(email));
+                }}
+                error={hasError}
+                disabled={loading}
+                InputProps={{
+                  startAdornment: (
+                    <MailOutline
+                      sx={{
+                        fontSize: 17,
+                        color: hasError ? C.red : C.inkMut,
+                        mr: 1,
+                      }}
+                    />
+                  ),
+                }}
+                sx={inputSx(hasError)}
+              />
+
+              <Fade in={hasError}>
+                <Box
+                  sx={{
+                    display: hasError ? "flex" : "none",
+                    alignItems: "center",
+                    gap: 0.75,
+                    mt: 1,
+                  }}
+                >
+                  <ErrorOutline sx={{ fontSize: 14, color: C.red }} />
+                  <Typography
+                    sx={{ fontSize: "0.75rem", color: C.red, fontFamily: C.font }}
+                  >
+                    {error}
+                  </Typography>
+                </Box>
+              </Fade>
+            </>
+          ) : (
+            <Fade in={!!success}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  textAlign: "center",
+                  py: 2,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: "50%",
+                    bgcolor: C.greenBg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 2,
+                  }}
+                >
+                  <CheckCircleOutline sx={{ fontSize: 26, color: C.green }} />
+                </Box>
+                <Typography
+                  sx={{
+                    fontSize: "0.95rem",
+                    fontWeight: 700,
+                    color: C.ink,
+                    fontFamily: C.font,
+                    mb: 0.5,
+                  }}
+                >
+                  Check your inbox
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: "0.82rem",
+                    color: C.inkSec,
+                    fontFamily: C.font,
+                    maxWidth: 320,
+                  }}
+                >
+                  {success}
+                </Typography>
+              </Box>
             </Fade>
           )}
         </DialogContent>
 
-        <DialogActions sx={{ p: { xs: 2, sm: 2.5 }, pt: 0 }}>
-          <Button
-            onClick={onClose}
+        {!success && (
+          <DialogActions
             sx={{
-              textTransform: "none",
-              fontFamily: C.font,
-              fontSize: "0.85rem",
-              color: C.inkSec,
+              p: { xs: 2.5, sm: 3 },
+              pt: 0.5,
+              gap: 1,
             }}
           >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading || !!error || !email}
-            sx={{
-              textTransform: "none",
-              fontFamily: C.font,
-              fontSize: "0.85rem",
-              fontWeight: 600,
-              bgcolor: C.brand,
-              borderRadius: "8px",
-              px: 3,
-              "&:hover": {
-                bgcolor: C.brandDark,
-              },
-            }}
-          >
-            {loading ? <CircularProgress size={20} /> : "Send Reset Link"}
-          </Button>
-        </DialogActions>
+            <Button
+              onClick={handleClose}
+              sx={{
+                textTransform: "none",
+                fontFamily: C.font,
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: C.inkSec,
+                px: 2,
+                borderRadius: "8px",
+                "&:hover": { bgcolor: C.bg },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disableElevation
+              disabled={loading || !email}
+              sx={{
+                textTransform: "none",
+                fontFamily: C.font,
+                fontSize: "0.85rem",
+                fontWeight: 700,
+                bgcolor: C.brand,
+                borderRadius: "8px",
+                px: 3,
+                py: 1,
+                boxShadow: `0 4px 14px ${alpha(C.brand, 0.25)}`,
+                "&:hover": {
+                  bgcolor: C.brandDark,
+                  boxShadow: `0 6px 18px ${alpha(C.brand, 0.3)}`,
+                },
+                "&.Mui-disabled": {
+                  bgcolor: alpha(C.brand, 0.4),
+                  color: "#fff",
+                },
+              }}
+            >
+              {loading ? (
+                <CircularProgress size={18} thickness={3} sx={{ color: "#fff" }} />
+              ) : (
+                "Send reset link"
+              )}
+            </Button>
+          </DialogActions>
+        )}
       </form>
     </Dialog>
   );
@@ -366,10 +520,11 @@ export default function LoginPage() {
     password: "",
     remember: false,
   });
-  const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
+  const [fieldErrors, setFieldErrors] = useState({ email: "", password: "", remember: "" });
   const [fieldTouched, setFieldTouched] = useState({
     email: false,
     password: false,
+    remember: false,
   });
   const [shakeField, setShakeField] = useState(null);
   const [networkError, setNetworkError] = useState(false);
@@ -475,15 +630,24 @@ export default function LoginPage() {
 
     const emailErr = validateEmail(formData.email);
     const passwordErr = validatePassword(formData.password);
+    const rememberErr = !formData.remember
+      ? "You must check this box to continue"
+      : "";
 
-    setFieldTouched({ email: true, password: true });
-    setFieldErrors({ email: emailErr, password: passwordErr });
+    setFieldTouched({ email: true, password: true, remember: true });
+    // remember error is shown via toast, not stored inline
+    setFieldErrors({ email: emailErr, password: passwordErr, remember: "" });
 
-    if (emailErr || passwordErr) {
-      setErrorMsg(emailErr || passwordErr);
-      setErrOpen(true);
-      if (emailErr) setShakeField("email");
-      if (passwordErr) setShakeField("password");
+    if (emailErr || passwordErr || rememberErr) {
+      if (emailErr) {
+        setShakeField("email");
+      } else if (passwordErr) {
+        setShakeField("password");
+      } else if (rememberErr) {
+        setShakeField("remember");
+        setErrorMsg(rememberErr);
+        setErrOpen(true);
+      }
       setTimeout(() => setShakeField(null), 500);
       return;
     }
@@ -845,7 +1009,7 @@ export default function LoginPage() {
                   width: "100%",
                 }}
               >
-                {networkError && (
+                {/* {networkError && (
                   <Fade in={networkError}>
                     <Alert
                       severity="warning"
@@ -865,7 +1029,7 @@ export default function LoginPage() {
                       </Typography>
                     </Alert>
                   </Fade>
-                )}
+                )} */}
 
                 <Box
                   mb={{ xs: 3, sm: 3.5 }}
@@ -1093,17 +1257,23 @@ export default function LoginPage() {
                       />
                     </Box>
 
-                    <Box sx={{ animation: `${fadeUp} 0.45s 0.18s ease both` }}>
+                    <Box
+                      sx={{
+                        animation: `${fadeUp} 0.45s 0.18s ease both`,
+                        ...getAnimationStyle("remember"),
+                      }}
+                    >
                       <FormControlLabel
+                        sx={{ ml: 0, alignItems: "center" }}
                         control={
                           <Checkbox
                             checked={formData.remember}
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setFormData((p) => ({
                                 ...p,
                                 remember: e.target.checked,
-                              }))
-                            }
+                              }));
+                            }}
                             disabled={isDisabled}
                             size="small"
                             sx={{
@@ -1116,50 +1286,37 @@ export default function LoginPage() {
                           />
                         }
                         label={
-                          <Typography
+                          <Box
                             sx={{
-                              fontSize: { xs: "0.78rem", sm: "0.82rem" },
-                              color: C.inkSec,
-                              fontFamily: C.font,
+                              display: "flex",
+                              alignItems: "baseline",
+                              whiteSpace: "nowrap",
                             }}
                           >
-                            Remember me
-                          </Typography>
+                            <Typography
+                              sx={{
+                                fontSize: { xs: "0.78rem", sm: "0.82rem" },
+                                color: C.inkSec,
+                                fontFamily: C.font,
+                              }}
+                            >
+                              Remember me
+                            </Typography>
+                            <Typography
+                              component="span"
+                              sx={{
+                                color: C.red,
+                                fontSize: { xs: "0.78rem", sm: "0.82rem" },
+                                ml: 0.4,
+                                lineHeight: 1,
+                              }}
+                            >
+                              *
+                            </Typography>
+                          </Box>
                         }
                       />
                     </Box>
-
-                    <Collapse in={!!errorMsg && !errOpen}>
-                      <Box
-                        sx={{
-                          p: "10px 14px",
-                          borderRadius: "9px",
-                          bgcolor: C.redBg,
-                          border: `1px solid ${alpha(C.red, 0.2)}`,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                        }}
-                      >
-                        <ErrorIcon
-                          sx={{
-                            fontSize: { xs: 15, sm: 16 },
-                            color: C.red,
-                            flexShrink: 0,
-                          }}
-                        />
-                        <Typography
-                          sx={{
-                            fontSize: { xs: "0.75rem", sm: "0.8rem" },
-                            color: C.red,
-                            fontFamily: C.font,
-                            fontWeight: 500,
-                          }}
-                        >
-                          {errorMsg}
-                        </Typography>
-                      </Box>
-                    </Collapse>
 
                     <Box sx={{ animation: `${fadeUp} 0.45s 0.23s ease both` }}>
                       <Button
@@ -1212,7 +1369,7 @@ export default function LoginPage() {
                   </Stack>
                 </Box>
 
-                <Divider
+                {/* <Divider
                   sx={{
                     my: { xs: 2.5, sm: 3 },
                     "& .MuiDivider-wrapper": { px: 1.5 },
@@ -1229,9 +1386,9 @@ export default function LoginPage() {
                   >
                     or continue with
                   </Typography>
-                </Divider>
+                </Divider> */}
 
-                <Stack
+                {/* <Stack
                   direction="row"
                   spacing={1.5}
                   justifyContent="center"
@@ -1287,38 +1444,7 @@ export default function LoginPage() {
                       </Zoom>
                     </Tooltip>
                   ))}
-                </Stack>
-
-                <Box textAlign="center">
-                  <Typography
-                    sx={{
-                      fontSize: { xs: "0.78rem", sm: "0.82rem" },
-                      color: C.inkSec,
-                      fontFamily: C.font,
-                    }}
-                  >
-                    Don't have an account?{" "}
-                    <Link
-                      component="button"
-                      type="button"
-                      onClick={() => navigate("/signup")}
-                      underline="hover"
-                      sx={{
-                        color: C.brand,
-                        fontWeight: 700,
-                        fontFamily: C.font,
-                        cursor: "pointer",
-                        background: "none",
-                        border: "none",
-                        p: 0,
-                        fontSize: "inherit",
-                        "&:hover": { color: C.brandDark },
-                      }}
-                    >
-                      Sign up free
-                    </Link>
-                  </Typography>
-                </Box>
+                </Stack> */}
               </Box>
             </Box>
           </Paper>

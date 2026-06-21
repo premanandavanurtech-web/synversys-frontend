@@ -22,6 +22,7 @@ import SecurityIcon from "@mui/icons-material/Security";
 import StarIcon from "@mui/icons-material/Star";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import PlayCircleIcon from "@mui/icons-material/PlayCircle";
+import { Navigate, useNavigate } from "react-router-dom";
 
 const Hero = ({ scrollToSection }) => {
   const theme = useTheme();
@@ -29,6 +30,7 @@ const Hero = ({ scrollToSection }) => {
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
   const isDarkMode = theme.palette.mode === "dark";
+   const navigate = useNavigate()
 
   const features = [
     { icon: <VerifiedIcon />, label: "Real-time Tracking", color: "#3b82f6" },
@@ -42,6 +44,8 @@ const Hero = ({ scrollToSection }) => {
     { value: "50K+", label: "Assets Managed" },
     { value: "99.9%", label: "Uptime SLA" },
   ];
+
+
 
   return (
     <Box
@@ -257,6 +261,7 @@ const Hero = ({ scrollToSection }) => {
               sx={{ mb: { xs: 3, sm: 4, md: 5, lg: 6 } }}
             >
               <Button
+             onClick={() => navigate("/login", { replace: true })}
                 variant="contained"
                 size={isMobile ? "small" : "medium"}
                 endIcon={

@@ -1,6 +1,6 @@
 // src/pages/AssetManagement.jsx
 // ── Pixel-faithful recreation of the screenshot ──────────────────────────────
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -34,8 +34,6 @@ import {
   DialogActions,
   CircularProgress,
   LinearProgress,
-  Collapse,
-  Badge,
   alpha,
   useMediaQuery,
   useTheme,
@@ -48,7 +46,6 @@ import {
   Add,
   GridView,
   ViewList,
-  AssignmentTurnedIn,
   Close,
   ClearAll,
   FileDownload,
@@ -56,7 +53,6 @@ import {
   Refresh,
   Category,
   Edit,
-  FilterList,
   ErrorOutline,
   Inbox,
   SearchOff,
@@ -111,6 +107,17 @@ const STATUS_CFG = {
   "In Transit": { bg: "#0369a1", color: "#ffffff" },
 };
 
+// Statuses shown in the Status filter dropdown — kept separate from
+// STATUS_CFG so the pills can still render any status color coming from the
+// backend, while the filter only exposes the ones requested.
+const STATUS_FILTER_OPTIONS = [
+  "Active",
+  "In Maintenance",
+  "Retired",
+  "In Transit",
+  "Reserved",
+];
+
 const StatusPill = ({ status = "" }) => {
   const cfg = STATUS_CFG[status] || { bg: "#6b7280", color: "#fff" };
   return (
@@ -134,6 +141,16 @@ const StatusPill = ({ status = "" }) => {
   );
 };
 
+// ── Helpers for robust, normalized comparisons ───────────────────────────────
+// Lowercase + trim so "Active " / "active" / "ACTIVE" are treated the same.
+const norm = (v) => (v ?? "").toString().trim().toLowerCase();
+
+const getAssetCategoryName = (asset) =>
+  asset?.assetCategoryId?.name || asset?.assetCategory || "";
+
+const getAssetCategoryId = (asset) =>
+  asset?.assetCategoryId?._id || asset?.assetCategoryId || "";
+
 // ── Asset Card — matches screenshot cards exactly ────────────────────────────
 const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
   const canClone = !asset.isClone && asset.canBeCloned !== false;
@@ -147,19 +164,7 @@ const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
     }
   };
 
-  const lastInspection =
-    asset.inspectionSystems?.amcInspection?.lastInspectionDate ||
-    asset.inspectionSystems?.camcInspection?.lastInspectionDate ||
-    asset.acquisitionDate ||
-    null;
-
-  const nextDue =
-    asset.inspectionSystems?.amcInspection?.nextDueDate ||
-    asset.inspectionSystems?.camcInspection?.nextDueDate ||
-    asset.warrantyExpiry ||
-    null;
-
-  const category = asset.assetCategoryId?.name || asset.assetCategory || "—";
+  const category = getAssetCategoryName(asset) || "—";
 
   return (
     <Box
@@ -240,7 +245,7 @@ const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
         ))}
       </Box>
 
-      {/* Action row — only shown on hover via parent, hidden by default like the design */}
+      {/* Action row */}
       {(isAdmin || canClone) && (
         <Stack
           direction="row"
@@ -413,14 +418,40 @@ const ghostBtn = {
   "&:hover": { bgcolor: "#f8fafc", borderColor: "#cbd5e1" },
 };
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Export helpers ────────────────────────────────────────────────────────────
+const formatExportDate = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().split("T")[0];
+};
+
+const escapeCsvCell = (value) => {
+  if (value === null || value === undefined) return "";
+  const text = String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+const downloadCsv = (rows, filename) => {
+  const csv = rows.map((row) => row.map(escapeCsvCell).join(",")).join("\r\n");
+  const blob = new Blob([`\uFEFF${csv}`], {
+    type: "text/csv;charset=utf-8;",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
 export default function AssetManagement() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
-  const isTeam = user?.role === "team";
 
   const { getAllAssets, cloneAsset, deleteAsset, assetStats } = useAsset();
 
@@ -439,13 +470,12 @@ export default function AssetManagement() {
   const [viewMode, setViewMode] = useState("grid");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState(""); // stores category NAME
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(12);
   const [orderBy, setOrderBy] = useState("createdAt");
   const [order, setOrder] = useState("desc");
-  const [showFilters, setShowFilters] = useState(false);
 
   const [cloneOpen, setCloneOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -500,12 +530,16 @@ export default function AssetManagement() {
         limit: pag.limit || rowsPerPage,
       });
 
+      // Build the category dropdown options from whatever asset shapes we see.
+      // Handles BOTH populated refs (assetCategoryId: {_id,name}) AND plain
+      // string categories (assetCategory: "Furniture") — previously only the
+      // first shape was captured, so the dropdown stayed empty for the
+      // string-based assets shown in the screenshot.
       (data.assets || []).forEach((a) => {
-        if (a.assetCategoryId?._id && a.assetCategoryId?.name) {
-          allCategoriesRef.current.set(a.assetCategoryId._id, {
-            _id: a.assetCategoryId._id,
-            name: a.assetCategoryId.name,
-          });
+        const name = getAssetCategoryName(a);
+        const id = getAssetCategoryId(a) || name; // fall back to name as key
+        if (name) {
+          allCategoriesRef.current.set(id, { _id: id, name });
         }
       });
       setCategories([...allCategoriesRef.current.values()]);
@@ -532,13 +566,28 @@ export default function AssetManagement() {
     fetchAssets();
   }, [fetchAssets]);
 
+  // ── CLIENT-SIDE SAFETY-NET FILTER ────────────────────────────────────────
+  // Always re-applies status/category filtering on whatever the server
+  // returned. This guarantees correct on-screen results even if the backend
+  // ignores or mis-handles the `status` / `category` query params.
+  // NOTE: this does not fix server-side pagination totals — see the
+  // "still TODO" note below.
+  const visibleAssets = useMemo(() => {
+    return assets.filter((a) => {
+      const statusOk =
+        !statusFilter || norm(a.status) === norm(statusFilter);
+      const categoryOk =
+        !categoryFilter || norm(getAssetCategoryName(a)) === norm(categoryFilter);
+      return statusOk && categoryOk;
+    });
+  }, [assets, statusFilter, categoryFilter]);
+
   const clearFilters = () => {
     setCategoryFilter("");
     setStatusFilter("");
     setSearch("");
     setDebouncedSearch("");
     setPage(0);
-    setShowFilters(false);
   };
 
   const handleSort = (col) => {
@@ -605,6 +654,49 @@ export default function AssetManagement() {
     }
   };
 
+  const handleExportAssets = () => {
+    if (!visibleAssets.length) {
+      toast("No assets available to export", "warning");
+      return;
+    }
+
+    const rows = [
+      [
+        "Asset Name",
+        "Tag Number",
+        "Category",
+        "Status",
+        "Location",
+        "Purchase Cost",
+        "Purchase Date",
+        "Warranty Expiry",
+        "Last Inspection",
+        "Created At",
+      ],
+      ...visibleAssets.map((asset) => [
+        asset.assetName || "",
+        asset.tagNumber || "",
+        getAssetCategoryName(asset),
+        asset.status || "",
+        asset.currentLocation || "",
+        asset.purchaseCost ?? "",
+        formatExportDate(asset.purchaseDate || asset.acquisitionDate),
+        formatExportDate(asset.warrantyExpiry),
+        formatExportDate(
+          asset.inspectionSystems?.amcInspection?.lastInspectionDate ||
+            asset.inspectionSystems?.camcInspection?.lastInspectionDate,
+        ),
+        formatExportDate(asset.createdAt),
+      ]),
+    ];
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadCsv(rows, `assets-export-${stamp}.csv`);
+    toast(
+      `Exported ${visibleAssets.length} asset${visibleAssets.length === 1 ? "" : "s"}`,
+    );
+  };
+
   const hasFilters = !!(categoryFilter || statusFilter || debouncedSearch);
   const stats = assetStats || {};
 
@@ -637,7 +729,6 @@ export default function AssetManagement() {
           alignItems={{ xs: "flex-start", sm: "center" }}
           spacing={2}
         >
-          {/* Title */}
           <Box>
             <Typography
               fontWeight={800}
@@ -652,17 +743,12 @@ export default function AssetManagement() {
             </Typography>
           </Box>
 
-          {/* Action buttons — matching screenshot: My Asset Requests, Clone Asset, + Add Asset */}
           <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap>
             <Button
               variant="outlined"
               onClick={() => navigate("/admin/asset-requests")}
               startIcon={<Visibility sx={{ fontSize: 15 }} />}
-              sx={{
-                ...ghostBtn,
-                px: 2,
-                py: 0.9,
-              }}
+              sx={{ ...ghostBtn, px: 2, py: 0.9 }}
             >
               {!isMobile && "My Asset Requests"}
             </Button>
@@ -766,15 +852,21 @@ export default function AssetManagement() {
                 >
                   Category ▾
                 </MenuItem>
-                {categories.map((c) => (
-                  <MenuItem
-                    key={c._id}
-                    value={c.name}
-                    sx={{ fontSize: "0.85rem" }}
-                  >
-                    {c.name}
+                {categories.length === 0 ? (
+                  <MenuItem disabled sx={{ fontSize: "0.8rem" }}>
+                    No categories found
                   </MenuItem>
-                ))}
+                ) : (
+                  categories.map((c) => (
+                    <MenuItem
+                      key={c._id}
+                      value={c.name}
+                      sx={{ fontSize: "0.85rem" }}
+                    >
+                      {c.name}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
 
@@ -802,7 +894,7 @@ export default function AssetManagement() {
                 >
                   Status ▾
                 </MenuItem>
-                {Object.keys(STATUS_CFG).map((s) => (
+                {STATUS_FILTER_OPTIONS.map((s) => (
                   <MenuItem key={s} value={s} sx={{ fontSize: "0.85rem" }}>
                     {s}
                   </MenuItem>
@@ -847,7 +939,7 @@ export default function AssetManagement() {
               {
                 icon: <FileDownload sx={{ fontSize: 15 }} />,
                 tip: "Export",
-                fn: () => toast("Export initiated", "info"),
+                fn: handleExportAssets,
               },
             ].map(({ icon, tip, fn }) => (
               <Tooltip key={tip} title={tip}>
@@ -946,7 +1038,7 @@ export default function AssetManagement() {
                     </Grid>
                   ))}
               </Grid>
-            ) : assets.length === 0 ? (
+            ) : visibleAssets.length === 0 ? (
               <EmptyState
                 hasFilters={hasFilters}
                 onClear={clearFilters}
@@ -954,7 +1046,7 @@ export default function AssetManagement() {
               />
             ) : (
               <Grid container spacing={2.5}>
-                {assets.map((asset) => (
+                {visibleAssets.map((asset) => (
                   <Grid item xs={12} sm={6} md={4} key={asset.id || asset._id}>
                     <AssetCard
                       asset={asset}
@@ -977,7 +1069,7 @@ export default function AssetManagement() {
               </Grid>
             )}
 
-            {pagination.pages > 1 && !loading && assets.length > 0 && (
+            {pagination.pages > 1 && !loading && visibleAssets.length > 0 && (
               <Stack alignItems="center" mt={4}>
                 <Pagination
                   count={pagination.pages}
@@ -1044,7 +1136,7 @@ export default function AssetManagement() {
                 <TableBody>
                   {loading ? (
                     <TableSkeleton />
-                  ) : assets.length === 0 ? (
+                  ) : visibleAssets.length === 0 ? (
                     <TableRow>
                       <TableCell
                         colSpan={7}
@@ -1057,7 +1149,7 @@ export default function AssetManagement() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    assets.map((asset) => (
+                    visibleAssets.map((asset) => (
                       <TableRow
                         hover
                         key={asset.id || asset._id}
@@ -1105,9 +1197,7 @@ export default function AssetManagement() {
                         </TableCell>
                         <TableCell sx={cellSx}>
                           <Typography fontSize="0.78rem">
-                            {asset.assetCategoryId?.name ||
-                              asset.assetCategory ||
-                              "—"}
+                            {getAssetCategoryName(asset) || "—"}
                           </Typography>
                         </TableCell>
                         <TableCell sx={cellSx}>

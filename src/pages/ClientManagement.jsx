@@ -736,7 +736,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
   });
 
   const TabAccountInfo = (
-    <Stack spacing={2} sx={{ mt: 2 }}>
+    <Stack spacing={2} sx={{ mt: 2}}>
       <TextField
         name="customerName"
         label="Customer name"

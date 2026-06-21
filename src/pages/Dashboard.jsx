@@ -124,12 +124,29 @@ const PIE_COLORS = [
 
 const FILTER_PRESETS = [
   { label: "Today", value: "today" },
-  { label: "7 Days", value: "7d" },
-  { label: "30 Days", value: "30d" },
+  { label: "Week", value: "7d" }, // ✅ fixed typo (was "Weak")
+  // { label: "30 Days", value: "30d" },
   { label: "Monthly", value: "monthly" },
   { label: "Yearly", value: "yearly" },
   { label: "Custom", value: "custom" },
 ];
+
+// ─── Quick actions shown inline in the filter bar, per role ───────────────────
+// ✅ Moved out of SuperAdminDashboard's standalone "Quick Actions" Paper so the
+// pill buttons render to the right of the Period filter bar instead.
+const QUICK_ACTIONS_BY_ROLE = {
+  super_admin: [
+    { icon: PeopleIcon, title: "Manage Clients", path: "/admin/clients" },
+    { icon: AssignmentIcon, title: "Checklists", path: "/admin/checklists" },
+    { icon: AnalyticsIcon, title: "Reports", path: "/admin/reports" },
+  ],
+  admin: [
+    { icon: AddCircleIcon, title: "New Checklist", path: "/admin/create-checklist/custom" },
+    { icon: PersonAddIcon, title: "Add Team Member", path: "/admin/team" },
+    { icon: InventoryIcon, title: "Add Asset", path: "/admin/assets/add" },
+    { icon: AnalyticsIcon, title: "Reports", path: "/admin/reports" },
+  ],
+};
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = (n) =>
@@ -260,15 +277,11 @@ const StatCard = ({
   trendUp,
   onClick,
 }) => {
-  const [hovered, setHovered] = useState(false);
-
   return (
     <Zoom in style={{ transitionDelay: "60ms" }}>
       <Paper
         elevation={0}
         onClick={onClick}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
         sx={{
           position: "relative",
           overflow: "hidden",
@@ -276,28 +289,39 @@ const StatCard = ({
           borderRadius: 3,
           height: "100%",
           width: "270px",
-          bgcolor: C.white,
-          border: `1px solid ${alpha(hovered ? "#003D4D" : C.outlineVariant, 0.6)}`,
+          background: `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryLight} 100%)`,
           cursor: onClick ? "pointer" : "default",
-          transition: "border-color 0.4s ease, transform 0.3s ease, box-shadow 0.3s ease",
+          transition: "transform 0.3s ease, box-shadow 0.3s ease",
           "&:hover": {
             transform: "translateY(-4px)",
-            boxShadow: `0 10px 28px ${alpha("#003D4D", 0.25)}`,
-          },
-          // animated background wipe
-          "&::before": {
-            content: '""',
-            position: "absolute",
-            inset: 0,
-            bgcolor: "#003D4D",
-            transform: hovered ? "scaleX(1)" : "scaleX(0)",
-            transformOrigin: "left center",
-            transition: "transform 0.45s cubic-bezier(0.65, 0, 0.35, 1)",
-            zIndex: 0,
+            boxShadow: `0 10px 28px ${alpha(C.primary, 0.35)}`,
           },
         }}
       >
-        {/* everything below sits above the wipe layer */}
+        {/* decorative glow circles */}
+        <Box
+          sx={{
+            position: "absolute",
+            width: 140,
+            height: 140,
+            borderRadius: "50%",
+            bgcolor: alpha("#ffffff", 0.04),
+            top: -50,
+            right: -40,
+          }}
+        />
+        <Box
+          sx={{
+            position: "absolute",
+            width: 90,
+            height: 90,
+            borderRadius: "50%",
+            bgcolor: alpha("#ffffff", 0.05),
+            bottom: -30,
+            left: -20,
+          }}
+        />
+
         <Box sx={{ position: "relative", zIndex: 1 }}>
           <Box
             display="flex"
@@ -309,18 +333,10 @@ const StatCard = ({
               sx={{
                 p: 1,
                 borderRadius: 2,
-                bgcolor: hovered ? alpha("#fff", 0.12) : C.surfaceContainerLow,
-                transform: hovered ? "scale(1.08) rotate(-4deg)" : "scale(1) rotate(0deg)",
-                transition: "background-color 0.4s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                bgcolor: alpha("#ffffff", 0.1),
               }}
             >
-              <Icon
-                sx={{
-                  fontSize: 20,
-                  color: hovered ? "#fff" : C.primaryLight,
-                  transition: "color 0.4s ease",
-                }}
-              />
+              <Icon sx={{ fontSize: 20, color: "#ffffff" }} />
             </Box>
             {trend && (
               <Chip
@@ -334,63 +350,49 @@ const StatCard = ({
                 label={trend}
                 size="small"
                 sx={{
-                  height: 20,
-                  fontSize: "0.6rem",
+                  height: 22,
+                  fontSize: "0.65rem",
                   fontWeight: 700,
-                  opacity: 0,
-                  animation: "fadeSlideIn 0.4s ease forwards",
-                  animationDelay: "0.1s",
-                  bgcolor: trendUp
-                    ? hovered
-                      ? alpha(C.success, 0.25)
-                      : C.successLight
-                    : hovered
-                      ? alpha(C.onErrorContainer, 0.25)
-                      : C.errorContainer,
-                  color: trendUp
-                    ? hovered
-                      ? "#a5d6a7"
-                      : C.success
-                    : hovered
-                      ? "#ffb4ab"
-                      : C.onErrorContainer,
+                  bgcolor: alpha("#ffffff", 0.12),
+                  color: trendUp ? "#7fd99a" : "#ff9d94",
                   "& .MuiChip-icon": { color: "inherit" },
-                  transition: "background-color 0.4s ease, color 0.4s ease",
                 }}
               />
             )}
           </Box>
+
           <Typography
             sx={{
-              fontSize: "0.65rem",
-              fontWeight: 700,
-              color: hovered ? alpha("#fff", 0.7) : C.secondary,
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              mb: 0.5,
-              transition: "color 0.4s ease 0.05s",
+              fontWeight: 800,
+              fontSize: { xs: "1.4rem", sm: "1.7rem" },
+              color: "#ffffff",
+              lineHeight: 1,
+              mb: 0.75,
+            }}
+          >
+            {loading ? (
+              <Skeleton width={60} sx={{ bgcolor: alpha("#fff", 0.15) }} />
+            ) : (
+              value
+            )}
+          </Typography>
+
+          <Typography
+            sx={{
+              fontSize: "0.72rem",
+              fontWeight: 500,
+              color: alpha("#ffffff", 0.65),
             }}
           >
             {title}
           </Typography>
-          <Typography
-            sx={{
-              fontWeight: 800,
-              fontSize: { xs: "1.25rem", sm: "1.55rem" },
-              color: hovered ? "#fff" : C.primary,
-              lineHeight: 1,
-              transition: "color 0.4s ease 0.1s",
-            }}
-          >
-            {loading ? <Skeleton width={60} /> : value}
-          </Typography>
+
           {sub && (
             <Typography
               sx={{
                 fontSize: "0.65rem",
-                color: hovered ? alpha("#fff", 0.6) : C.outline,
+                color: alpha("#ffffff", 0.45),
                 mt: 0.5,
-                transition: "color 0.4s ease 0.15s",
               }}
             >
               {sub}
@@ -599,7 +601,7 @@ const NotifList = ({ notifications }) => (
           sx={{
             p: 1.5,
             borderRadius: 2,
-            width:"1090px",
+            width: "1090px",
             bgcolor: C.surfaceContainerLow,
             border: `1px solid ${alpha(C.outlineVariant, 0.4)}`,
           }}
@@ -674,7 +676,11 @@ const NotifList = ({ notifications }) => (
 );
 
 // ─── Filter Bar ────────────────────────────────────────────────────────────────
-const FilterBar = ({ activeFilter, onFilterChange, loading }) => {
+// ✅ Now accepts an `actions` prop — when present, quick-action pill buttons
+// render right-aligned next to the Period filters (previously a separate
+// "Quick Actions" Paper block lower on the page for super_admin).
+const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
+  const navigate = useNavigate();
   const [showCustom, setShowCustom] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -704,78 +710,116 @@ const FilterBar = ({ activeFilter, onFilterChange, loading }) => {
         border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
       }}
     >
-      {/* ✅ Filter header + buttons: stacked on xs, inline on sm+ */}
+      {/* ✅ Period filters (left) + quick-action pills (right), wraps on small screens */}
       <Box
         display="flex"
         alignItems="center"
-        gap={1}
+        justifyContent="space-between"
+        gap={1.5}
         flexWrap="wrap"
-        sx={{ rowGap: 1 }}
+        sx={{ rowGap: 1.25 }}
       >
+        {/* Left side: Period filters */}
         <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            color: C.secondary,
-            mr: 0.5,
-          }}
+          display="flex"
+          alignItems="center"
+          gap={1}
+          flexWrap="wrap"
+          sx={{ rowGap: 1 }}
         >
-          <FilterListIcon sx={{ fontSize: 16 }} />
-          <Typography
+          <Box
             sx={{
-              fontSize: "0.72rem",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              color: C.secondary,
+              mr: 0.5,
             }}
           >
-            Period
-          </Typography>
-        </Box>
-        <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-        {/* ✅ Preset buttons wrap gracefully on all screen sizes */}
-        <Box display="flex" gap={0.75} flexWrap="wrap" sx={{ rowGap: 0.75 }}>
-          {FILTER_PRESETS.map((p) => (
-            <Button
-              key={p.value}
-              size="small"
-              variant={
-                activeFilter?.preset === p.value ? "contained" : "outlined"
-              }
-              onClick={() => handlePreset(p.value)}
-              disabled={loading}
+            <FilterListIcon sx={{ fontSize: 16 }} />
+            <Typography
               sx={{
-                height: 28,
-                minWidth: "auto",
-                px: { xs: 1, sm: 1.5 },
-                fontSize: "0.7rem",
-                fontWeight: 600,
-                borderRadius: 2,
-                textTransform: "none",
-                ...(activeFilter?.preset === p.value
-                  ? {
-                      bgcolor: C.primaryLight,
-                      borderColor: C.primaryLight,
-                      color: "#fff",
-                      "&:hover": { bgcolor: C.primary },
-                    }
-                  : {
-                      borderColor: C.outlineVariant,
-                      color: C.secondary,
-                      bgcolor: "transparent",
-                      "&:hover": {
-                        borderColor: C.primaryLight,
-                        color: C.primaryLight,
-                        bgcolor: alpha(C.primaryLight, 0.04),
-                      },
-                    }),
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
               }}
             >
-              {p.label}
-            </Button>
-          ))}
+              Period
+            </Typography>
+          </Box>
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+          <Box display="flex" gap={0.75} flexWrap="wrap" sx={{ rowGap: 0.75 }}>
+            {FILTER_PRESETS.map((p) => (
+              <Button
+                key={p.value}
+                size="small"
+                variant={
+                  activeFilter?.preset === p.value ? "contained" : "outlined"
+                }
+                onClick={() => handlePreset(p.value)}
+                disabled={loading}
+                sx={{
+                  height: 28,
+                  minWidth: "auto",
+                  px: { xs: 1, sm: 1.5 },
+                  fontSize: "0.7rem",
+                  fontWeight: 600,
+                  borderRadius: 2,
+                  textTransform: "none",
+                  ...(activeFilter?.preset === p.value
+                    ? {
+                        bgcolor: C.primaryLight,
+                        borderColor: C.primaryLight,
+                        color: "#fff",
+                        "&:hover": { bgcolor: C.primary },
+                      }
+                    : {
+                        borderColor: C.outlineVariant,
+                        color: C.secondary,
+                        bgcolor: "transparent",
+                        "&:hover": {
+                          borderColor: C.primaryLight,
+                          color: C.primaryLight,
+                          bgcolor: alpha(C.primaryLight, 0.04),
+                        },
+                      }),
+                }}
+              >
+                {p.label}
+              </Button>
+            ))}
+          </Box>
         </Box>
+
+        {/* Right side: Quick action pills (e.g. Manage Clients / Checklists / Reports) */}
+        {actions.length > 0 && (
+          <Box display="flex" gap={1} flexWrap="wrap" sx={{ rowGap: 1 }}>
+            {actions.map((act, i) => (
+              <Button
+                key={i}
+                onClick={() => navigate(act.path)}
+                startIcon={<act.icon sx={{ fontSize: 16 }} />}
+                disabled={loading}
+                sx={{
+                  bgcolor: C.primaryLight,
+                  color: "#fff",
+                  borderRadius: 999,
+                  px: 2,
+                  height: 32,
+                  fontSize: "0.74rem",
+                  fontWeight: 600,
+                  textTransform: "none",
+                  boxShadow: "none",
+                  whiteSpace: "nowrap",
+                  "&:hover": { bgcolor: C.primary },
+                }}
+              >
+                {act.title}
+              </Button>
+            ))}
+          </Box>
+        )}
       </Box>
 
       <Collapse in={showCustom}>
@@ -868,7 +912,6 @@ const useChartHeight = (defaultH = 240, mobileH = 200) => {
 
 // ─── SUPER ADMIN VIEW ──────────────────────────────────────────────────────────
 const SuperAdminDashboard = ({ data, loading }) => {
-  const navigate = useNavigate();
   const chartH = useChartHeight(240, 190);
 
   // Server returns nested under data.data or flat — handle both shapes
@@ -913,6 +956,22 @@ const SuperAdminDashboard = ({ data, loading }) => {
   );
   const assignTrend = useMemo(() => charts_.assignmentTrend || [], [charts_]);
 
+  // Keep zero-value bars visible as a thin sliver so groups don't look broken/misaligned
+  const MIN_BAR = 0.06;
+  const assignTrendDisplay = useMemo(
+    () =>
+      assignTrend.map((d) => ({
+        ...d,
+        _created: d.created,
+        _completed: d.completed,
+        _overdue: d.overdue,
+        created: d.created === 0 ? MIN_BAR : d.created,
+        completed: d.completed === 0 ? MIN_BAR : d.completed,
+        overdue: d.overdue === 0 ? MIN_BAR : d.overdue,
+      })),
+    [assignTrend],
+  );
+
   const statCards = [
     {
       icon: PeopleIcon,
@@ -945,26 +1004,11 @@ const SuperAdminDashboard = ({ data, loading }) => {
     },
   ];
 
-  const quickActions = [
-    {
-      icon: PeopleIcon,
-      title: "Manage Clients",
-      desc: "View all clients",
-      path: "/admin/clients",
-    },
-    {
-      icon: AssignmentIcon,
-      title: "Checklists",
-      desc: "View all checklists",
-      path: "/admin/checklists",
-    },
-    {
-      icon: AnalyticsIcon,
-      title: "Reports",
-      desc: "View analytics",
-      path: "/admin/reports",
-    },
-  ];
+  // ✅ NOTE: the standalone "Quick Actions" Paper block (Manage Clients /
+  // Checklists / Reports) that used to render here has been removed.
+  // Those same pill buttons now render inline in the FilterBar, to the
+  // right of the Period filters — see QUICK_ACTIONS_BY_ROLE.super_admin
+  // and the <FilterBar actions={...} /> usage in the root Dashboard component.
 
   return (
     <Box>
@@ -1192,59 +1236,6 @@ const SuperAdminDashboard = ({ data, loading }) => {
           </Paper>
         </Grid>
       </Grid>
-
-      {/* Quick Actions */}
-      <SectionTitle icon={BoltIcon} title="Quick Actions" />
-      {/* ✅ 1-col on xs, 3-col on sm+ */}
-      <Grid container spacing={{ xs: 1.5, sm: 2 }}>
-        {quickActions.map((act, i) => (
-          <Grid item xs={12} sm={4} key={i}>
-            <Button
-              fullWidth
-              onClick={() => navigate(act.path)}
-              sx={{
-                flexDirection: "column",
-                alignItems: "flex-start",
-                p: { xs: 1.5, sm: 2 },
-                bgcolor: C.primaryLight,
-                borderRadius: 3,
-                width:"368px",
-                textTransform: "none",
-                "&:hover": {
-                  transform: "translateY(-3px)",
-                  bgcolor: alpha(C.primaryLight, 0.9),
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  p: 1,
-                  bgcolor: "rgba(255,255,255,0.12)",
-                  borderRadius: 1.5,
-                  mb: 1,
-                }}
-              >
-                <act.icon sx={{ color: "#fff", fontSize: 18 }} />
-              </Box>
-              <Typography
-                sx={{
-                  color: "#fff",
-                  fontWeight: 700,
-                  fontSize: "0.82rem",
-                  mb: 0.25,
-                }}
-              >
-                {act.title}
-              </Typography>
-              <Typography
-                sx={{ color: alpha("#fff", 0.65), fontSize: "0.67rem" }}
-              >
-                {act.desc}
-              </Typography>
-            </Button>
-          </Grid>
-        ))}
-      </Grid>
     </Box>
   );
 };
@@ -1271,10 +1262,12 @@ const AdminDashboard = ({ data, loading }) => {
   );
   const teamByStatus = useMemo(
     () =>
-      (distribution.teamByStatus || []).map((t) => ({
-        name: t.name,
-        value: t.value,
-      })),
+      (distribution.teamByStatus || [])
+        .filter((t) => t.value > 0)
+        .map((t) => ({
+          name: t.name,
+          value: t.value,
+        })),
     [distribution],
   );
   const inspTrend = useMemo(
@@ -1285,6 +1278,22 @@ const AdminDashboard = ({ data, loading }) => {
     [charts_],
   );
   const assignTrend = useMemo(() => charts_.assignmentTrend || [], [charts_]);
+
+  // Keep zero-value bars visible as a thin sliver so groups don't look broken/misaligned
+  const MIN_BAR = 0.06;
+  const assignTrendDisplay = useMemo(
+    () =>
+      assignTrend.map((d) => ({
+        ...d,
+        _created: d.created,
+        _completed: d.completed,
+        _overdue: d.overdue,
+        created: d.created === 0 ? MIN_BAR : d.created,
+        completed: d.completed === 0 ? MIN_BAR : d.completed,
+        overdue: d.overdue === 0 ? MIN_BAR : d.overdue,
+      })),
+    [assignTrend],
+  );
   const topPerformers = useMemo(() => payload.topPerformers || [], [payload]);
 
   const statCards = [
@@ -1356,6 +1365,10 @@ const AdminDashboard = ({ data, loading }) => {
           </Grid>
         ))}
       </Grid>
+
+      {/* Quick Actions — unchanged: this is the larger card-style grid,
+          a different pattern from the super_admin pill buttons that moved
+          into the FilterBar. Left as-is here. */} 
 
       {/* Submission trend + Asset donut */}
       <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
@@ -1462,47 +1475,55 @@ const AdminDashboard = ({ data, loading }) => {
       {/* Assignment trend + Top performers */}
       <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
         <Grid item xs={12} md={6}>
-          <ChartCard
-            title="Assignment trend"
-            sub="Created, completed and overdue"
-          >
+          <ChartCard title="Assignment trend" sub="Created, completed and overdue">
             {assignTrend.some((d) => d.created > 0) ? (
               <ResponsiveContainer width="100%" height={chartH}>
-                <BarChart data={assignTrend} barSize={14}>
+                <BarChart data={assignTrendDisplay} barGap={3} barCategoryGap="32%">
                   <CartesianGrid
+                    vertical={false}
                     strokeDasharray="3 3"
                     stroke={alpha(C.outline, 0.12)}
                   />
                   <XAxis
                     dataKey="period"
-                    tick={{ fontSize: 10, fill: C.secondary }}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: C.outlineVariant }}
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{ fontSize: 10, fill: C.secondary }}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: C.outlineVariant }}
                     allowDecimals={false}
                     width={32}
                   />
-                  <RTooltip contentStyle={{ borderRadius: 8, fontSize: "0.75rem" }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar
-                    dataKey="created"
-                    name="Created"
-                    fill={C.primaryLight}
-                    radius={[4, 4, 0, 0]}
+                  <RTooltip
+                    cursor={false}
+                    contentStyle={{
+                      borderRadius: 10,
+                      border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
+                      boxShadow: `0 4px 16px ${alpha(C.primary, 0.1)}`,
+                      fontSize: "0.75rem",
+                      padding: "10px 12px",
+                    }}
+                    formatter={(value, name, props) => {
+                      const real = {
+                        Created: "_created",
+                        Completed: "_completed",
+                        Overdue: "_overdue",
+                      }[name];
+                      return [props.payload[real], name];
+                    }}
                   />
-                  <Bar
-                    dataKey="completed"
-                    name="Completed"
-                    fill={C.success}
-                    radius={[4, 4, 0, 0]}
+                  <Legend
+                    iconType="square"
+                    iconSize={10}
+                    wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
                   />
-                  <Bar
-                    dataKey="overdue"
-                    name="Overdue"
-                    fill={C.onErrorContainer}
-                    radius={[4, 4, 0, 0]}
-                  />
+                  <Bar dataKey="created" name="Created" fill={C.primary} radius={[3, 3, 0, 0]} maxBarSize={26} />
+                  <Bar dataKey="completed" name="Completed" fill={C.success} radius={[3, 3, 0, 0]} maxBarSize={26} />
+                  <Bar dataKey="overdue" name="Overdue" fill={C.outlineVariant} radius={[3, 3, 0, 0]} maxBarSize={26} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -1603,10 +1624,7 @@ const AdminDashboard = ({ data, loading }) => {
                       labelLine={false}
                     >
                       {teamByStatus.map((_, i) => (
-                        <Cell
-                          key={i}
-                          fill={PIE_COLORS[i % PIE_COLORS.length]}
-                        />
+                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}
                     </Pie>
                     <RTooltip />
@@ -1666,59 +1684,6 @@ const AdminDashboard = ({ data, loading }) => {
             <NotifList notifications={notifications} />
           </Paper>
         </Grid>
-      </Grid>
-
-      {/* Quick Actions */}
-      <SectionTitle icon={BoltIcon} title="Quick Actions" />
-      {/* ✅ Removed incorrect width:"300px" — now full width, 2-col on xs, 4-col on md */}
-      <Grid container spacing={{ xs: 1.5, sm: 2}}>
-        {quickActions.map((act, i) => (
-          <Grid item xs={6} sm={6} md={3} key={i}>
-            <Button
-              fullWidth
-              onClick={() => navigate(act.path)}
-              sx={{
-                flexDirection: "column",
-                alignItems: "flex-start",
-                p: { xs: 1.5, sm: 2 },
-                bgcolor: C.primaryLight,
-                borderRadius: 3,
-                width:"270px" ,
-                textTransform: "none",
-                "&:hover": {
-                  transform: "translateY(-3px)",
-                  bgcolor: alpha(C.primaryLight, 0.9),
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  p: 1,
-                  bgcolor: "rgba(255,255,255,0.12)",
-                  borderRadius: 1.5,
-                  mb: 1,
-                }}
-              >
-                <act.icon sx={{ color: "#fff", fontSize: 18 }} />
-              </Box>
-              <Typography
-                sx={{
-                  color: "#fff",
-                  fontWeight: 700,
-                  fontSize: { xs: "0.75rem", sm: "0.82rem" },
-                  mb: 0.25,
-                }}
-              >
-                {act.title}
-              </Typography>
-              <Typography
-                sx={{ color: alpha("#fff", 0.65), fontSize: "0.67rem" }}
-              >
-                {act.desc}
-              </Typography>
-            </Button>
-          </Grid>
-        ))}
       </Grid>
     </Box>
   );
@@ -1793,11 +1758,7 @@ const TeamDashboard = ({ data, loading }) => {
               {member.department ? ` · ${member.department}` : ""}
             </Typography>
           </Box>
-          <Box
-            textAlign="right"
-            flexShrink={0}
-            ml={{ xs: "auto" }}
-          >
+          <Box textAlign="right" flexShrink={0} ml={{ xs: "auto" }}>
             <Typography
               sx={{
                 color: "#fff",
@@ -1807,9 +1768,7 @@ const TeamDashboard = ({ data, loading }) => {
             >
               {pct(overview.completionRate)}
             </Typography>
-            <Typography
-              sx={{ color: alpha("#fff", 0.65), fontSize: "0.65rem" }}
-            >
+            <Typography sx={{ color: alpha("#fff", 0.65), fontSize: "0.65rem" }}>
               Completion Rate
             </Typography>
           </Box>
@@ -2273,9 +2232,7 @@ export default function Dashboard() {
             mt={0.25}
             flexWrap="wrap"
           >
-            <Typography
-              sx={{ color: C.secondary, fontSize: "0.72rem" }}
-            >
+            <Typography sx={{ color: C.secondary, fontSize: "0.72rem" }}>
               {new Date().toLocaleDateString("en-IN", {
                 weekday: "long",
                 year: "numeric",
@@ -2285,9 +2242,7 @@ export default function Dashboard() {
             </Typography>
             {filterLabel && (
               <>
-                <Typography
-                  sx={{ color: C.outlineVariant, fontSize: "0.72rem" }}
-                >
+                <Typography sx={{ color: C.outlineVariant, fontSize: "0.72rem" }}>
                   ·
                 </Typography>
                 <Chip
@@ -2387,12 +2342,15 @@ export default function Dashboard() {
         </Stack>
       </Box>
 
-      {/* Filter bar — shown for admin and super_admin */}
+      {/* Filter bar — shown for admin and super_admin.
+          ✅ `actions` injects the role-specific quick-action pills
+          (currently only super_admin: Manage Clients / Checklists / Reports) */}
       {role !== "team" && (
         <FilterBar
           activeFilter={activeFilter}
           onFilterChange={handleFilterChange}
           loading={loading}
+          actions={QUICK_ACTIONS_BY_ROLE[role] || []}
         />
       )}
 

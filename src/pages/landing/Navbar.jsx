@@ -49,6 +49,8 @@ const Navbar = ({
   const handleNavClick = (sectionId) => {
     if (scrollToSection) {
       scrollToSection(sectionId);
+    } else {
+      navigate("/", { state: { scrollTo: sectionId } });
     }
     setDrawerOpen(false);
   };

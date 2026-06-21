@@ -1292,7 +1292,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                   >
                     {searchParent
                       ? "No matching requests"
-                      : "No parent requests found"}
+                      : "No requests yet"}
                   </Typography>
                   <Typography
                     sx={{
@@ -1304,7 +1304,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                   >
                     {searchParent
                       ? "Try a different search term"
-                      : "No parent requests exist yet. Create one to link this asset."}
+                      : "Team members haven't sent any requests to link yet!"}
                   </Typography>
 
                   {/* ── Add New Request button (only when not searching) ── */}

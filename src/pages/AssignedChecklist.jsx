@@ -1,5 +1,12 @@
 // pages/AssignedChecklist.jsx - Complete fixed version with admin validation and navigation
 // ✅ FIXED: Component name matches route import
+// ✅ FIXED: Pagination "page" filter no longer resets itself back to 1
+// ✅ FIXED: Stat cards no longer force a fixed 275px width, so all 4 fit in one row
+// ✅ FIXED: Required-field validation errors (red borders / helper text) in the
+//           Assign and Re-assign modals no longer show the instant the modal opens.
+//           They only appear after the user clicks Assign / Re-assign and a
+//           required field is still empty ("touched" pattern via assignTouched /
+//           reassignTouched state).
 
 import React, {
   useState,
@@ -253,6 +260,10 @@ const GradientText = styled(Typography)(({ theme }) => ({
 }));
 
 // ─── Stat Card Component ──────────────────────────────────────────────────────────
+// NOTE: width is "100%" (not a fixed px value) so the card always fills
+// whatever Grid cell it's placed in. A fixed width here (e.g. "275px") would
+// force 4 cards to need 1100px+ of container space, which causes the 4th
+// card to wrap onto a second row whenever the container is narrower than that.
 const ModernStatCard = ({
   label,
   value,
@@ -263,7 +274,7 @@ const ModernStatCard = ({
   color,
 }) => (
   <Zoom in timeout={300}>
-    <GlassCard sx={{ height: "100%", overflow: "hidden" , width:"275px" }}>
+    <GlassCard sx={{ height: "100%", width: "100%", overflow: "hidden" }}>
       <CardContent sx={{ p: 2.5 }}>
         <Box
           sx={{
@@ -722,6 +733,13 @@ export default function AssignedChecklist() {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // ── Validation "touched" State ──────────────────────────────────────────
+  // These stay false until the user actually clicks Assign / Re-assign.
+  // Required-field error UI (red borders, helper text) is gated behind
+  // these flags so the modal doesn't open already looking "invalid".
+  const [assignTouched, setAssignTouched] = useState(false);
+  const [reassignTouched, setReassignTouched] = useState(false);
+
   // ── Data State ──────────────────────────────────────────────────────────
   const [checklists, setChecklists] = useState([]);
   const [checklistsLoading, setChecklistsLoading] = useState(false);
@@ -863,8 +881,16 @@ export default function AssignedChecklist() {
   }, []);
 
   // ── Handlers ──────────────────────────────────────────────────────────
+  // FIX: previously this always forced `page: 1` after setting `[key]: value`,
+  // which meant clicking a pagination button (key === "page") got its own
+  // value immediately overwritten back to 1 by the trailing `page: 1`. Now we
+  // only reset to page 1 when a *different* filter (search/status/priority)
+  // changes — changing the page itself just sets that page number.
   const handleFilterChange = (key, value) => {
-    const newFilters = { ...filters, [key]: value, page: 1 };
+    const newFilters =
+      key === "page"
+        ? { ...filters, page: value }
+        : { ...filters, [key]: value, page: 1 };
     setFilters(newFilters);
     getAssignments(newFilters).then((res) => {
       if (res?.success) {
@@ -898,8 +924,40 @@ export default function AssignedChecklist() {
     navigate(path);
   };
 
+  // ── Open / Close Assign Modal ────────────────────────────────────────────
+  const openAssignModal = () => {
+    setAssignForm(defaultAssignForm());
+    setAssignTouched(false); // reset so errors don't show on open
+    setAssignOpen(true);
+  };
+
+  const closeAssignModal = () => {
+    setAssignOpen(false);
+    setAssignTouched(false);
+  };
+
+  // ── Open / Close Reassign Modal ──────────────────────────────────────────
+  const openReassignModal = (asgn) => {
+    setSelected(asgn);
+    setReassignForm({
+      ...defaultReassignForm(),
+      dueDate: asgn.dueDate?.split("T")[0] ?? "",
+      priority: asgn.priority ?? "medium",
+    });
+    setReassignTouched(false); // reset so errors don't show on open
+    setReassignOpen(true);
+  };
+
+  const closeReassignModal = () => {
+    setReassignOpen(false);
+    setSelected(null);
+    setReassignTouched(false);
+  };
+
   // ── Assign Handler ──────────────────────────────────────────────────────────
   const handleAssign = async () => {
+    setAssignTouched(true); // now it's OK to show field errors
+
     if (!assignForm.checklistIds.length) {
       toast("Select at least one checklist", "error");
       return;
@@ -936,7 +994,7 @@ export default function AssignedChecklist() {
       }
       if (result?.success) {
         toast("Checklist assigned successfully!");
-        setAssignOpen(false);
+        closeAssignModal();
         setAssignForm(defaultAssignForm());
         fetchAssignments();
         fetchStats();
@@ -953,6 +1011,8 @@ export default function AssignedChecklist() {
   // ── Reassign Handler ──────────────────────────────────────────────────────────
   const handleReassign = async () => {
     if (!selected) return;
+    setReassignTouched(true); // now it's OK to show field errors
+
     if (!reassignForm.reason.trim()) {
       toast("Provide a reason for re-assignment", "error");
       return;
@@ -989,8 +1049,7 @@ export default function AssignedChecklist() {
       }
       if (result?.success) {
         toast("Re-assigned successfully!");
-        setReassignOpen(false);
-        setSelected(null);
+        closeReassignModal();
         setReassignForm(defaultReassignForm());
         fetchAssignments();
         fetchStats();
@@ -1124,7 +1183,7 @@ export default function AssignedChecklist() {
                       startIcon={
                         isSuperAdmin ? <PersonSearchIcon /> : <GroupAddIcon />
                       }
-                      onClick={() => setAssignOpen(true)}
+                      onClick={openAssignModal}
                       sx={{
                         borderRadius: 2,
                         background:
@@ -1389,16 +1448,7 @@ export default function AssignedChecklist() {
                                 <Tooltip title="Re-assign">
                                   <IconButton
                                     size="small"
-                                    onClick={() => {
-                                      setSelected(asgn);
-                                      setReassignForm({
-                                        ...defaultReassignForm(),
-                                        dueDate:
-                                          asgn.dueDate?.split("T")[0] ?? "",
-                                        priority: asgn.priority ?? "medium",
-                                      });
-                                      setReassignOpen(true);
-                                    }}
+                                    onClick={() => openReassignModal(asgn)}
                                     sx={{ borderRadius: 1.5, color: "#084d68" }}
                                   >
                                     <SwapHorizIcon sx={{ fontSize: 18 }} />
@@ -1649,25 +1699,35 @@ export default function AssignedChecklist() {
           >
             Cancel
           </Button>
-          <Button
-            onClick={handleSoftDelete}
-            variant="contained"
-            color="error"
-            disabled={deleting}
-            startIcon={
-              deleting ? <CircularProgress size={15} /> : <DeleteIcon />
-            }
-            sx={{ background: "#084d68" }}
-          >
-            {deleting ? "Deleting..." : "Delete"}
-          </Button>
+       <Button
+  onClick={handleSoftDelete}
+  variant="contained"
+  color="error"
+  disabled={deleting}
+  startIcon={
+    deleting ? <CircularProgress size={15} /> : <DeleteIcon />
+  }
+  sx={{
+    background: "#d21e1e",
+    transition: "background-color 0.2s ease, box-shadow 0.2s ease",
+    "&:hover": {
+      background: "#b71414",
+      boxShadow: "0 4px 12px rgba(210, 30, 30, 0.35)",
+    },
+    "&:active": {
+      background: "#9c1010",
+    },
+  }}
+>
+  {deleting ? "Deleting..." : "Delete"}
+</Button>
         </DialogActions>
       </Dialog>
 
       {/* ─── Assign Modal ────────────────────────────────────────────────────────── */}
       <Dialog
         open={assignOpen}
-        onClose={() => setAssignOpen(false)}
+        onClose={closeAssignModal}
         maxWidth="sm"
         fullWidth
         PaperProps={{ sx: { borderRadius: 2 } }}
@@ -1692,7 +1752,7 @@ export default function AssignedChecklist() {
             </Typography>
           </Box>
           <IconButton
-            onClick={() => setAssignOpen(false)}
+            onClick={closeAssignModal}
             size="small"
             sx={{ color: "white", bgcolor: alpha("#fff", 0.15) }}
           >
@@ -1709,20 +1769,20 @@ export default function AssignedChecklist() {
                 startIcon={<DescriptionIcon />}
                 sx={{
                   borderColor:
-                    assignForm.checklistIds.length === 0
+                    assignTouched && assignForm.checklistIds.length === 0
                       ? "#ef4444"
                       : undefined,
                   color:
-                    assignForm.checklistIds.length === 0
+                    assignTouched && assignForm.checklistIds.length === 0
                       ? "#ef4444"
                       : undefined,
                 }}
               >
                 {assignForm.checklistIds.length === 0
-                  ? "⚠️ Select Checklists (Required)"
+                  ? "Select Checklists (Required)"
                   : `📋 ${assignForm.checklistIds.length} selected`}
               </Button>
-              {assignForm.checklistIds.length === 0 && (
+              {assignTouched && assignForm.checklistIds.length === 0 && (
                 <Typography
                   variant="caption"
                   color="error"
@@ -1741,15 +1801,21 @@ export default function AssignedChecklist() {
                   onClick={() => openModal("admin")}
                   startIcon={<PersonAddIcon />}
                   sx={{
-                    borderColor: !assignForm.adminId ? "#ef4444" : undefined,
-                    color: !assignForm.adminId ? "#ef4444" : undefined,
+                    borderColor:
+                      assignTouched && !assignForm.adminId
+                        ? "#ef4444"
+                        : undefined,
+                    color:
+                      assignTouched && !assignForm.adminId
+                        ? "#ef4444"
+                        : undefined,
                   }}
                 >
                   {assignForm.adminId
                     ? `✓ ${admins.find((a) => (a._id || a.id) === assignForm.adminId)?.customerName || "Admin selected"}`
-                    : "⚠️ Select Admin (Required)"}
+                    : "Select Admin (Required)"}
                 </Button>
-                {!assignForm.adminId && (
+                {assignTouched && !assignForm.adminId && (
                   <Typography
                     variant="caption"
                     color="error"
@@ -1770,20 +1836,20 @@ export default function AssignedChecklist() {
                   startIcon={<PeopleIcon />}
                   sx={{
                     borderColor:
-                      assignForm.teamMemberIds.length === 0
+                      assignTouched && assignForm.teamMemberIds.length === 0
                         ? "#ef4444"
                         : undefined,
                     color:
-                      assignForm.teamMemberIds.length === 0
+                      assignTouched && assignForm.teamMemberIds.length === 0
                         ? "#ef4444"
                         : undefined,
                   }}
                 >
                   {assignForm.teamMemberIds.length === 0
-                    ? "⚠️ Select Team Members (Required)"
+                    ? "Select Team Members (Required)"
                     : `👥 ${assignForm.teamMemberIds.length} selected`}
                 </Button>
-                {assignForm.teamMemberIds.length === 0 && (
+                {assignTouched && assignForm.teamMemberIds.length === 0 && (
                   <Typography
                     variant="caption"
                     color="error"
@@ -1840,19 +1906,13 @@ export default function AssignedChecklist() {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 0, gap: 1 }}>
-          <Button onClick={() => setAssignOpen(false)} variant="outlined">
+          <Button onClick={closeAssignModal} variant="outlined">
             Cancel
           </Button>
           <Button
             onClick={handleAssign}
             variant="contained"
-            disabled={
-              submitting ||
-              assignLoading ||
-              (isSuperAdmin && !assignForm.adminId) ||
-              assignForm.checklistIds.length === 0 ||
-              (!isSuperAdmin && assignForm.teamMemberIds.length === 0)
-            }
+            disabled={submitting || assignLoading}
             startIcon={
               submitting ? <CircularProgress size={15} /> : <SendIcon />
             }
@@ -1868,10 +1928,7 @@ export default function AssignedChecklist() {
       {/* ─── Reassign Modal ──────────────────────────────────────────────────────── */}
       <Dialog
         open={reassignOpen}
-        onClose={() => {
-          setReassignOpen(false);
-          setSelected(null);
-        }}
+        onClose={closeReassignModal}
         maxWidth="sm"
         fullWidth
         PaperProps={{ sx: { borderRadius: 2 } }}
@@ -1892,10 +1949,7 @@ export default function AssignedChecklist() {
             </Typography>
           </Box>
           <IconButton
-            onClick={() => {
-              setReassignOpen(false);
-              setSelected(null);
-            }}
+            onClick={closeReassignModal}
             size="small"
             sx={{ color: "white", bgcolor: alpha("#fff", 0.15) }}
           >
@@ -1916,8 +1970,12 @@ export default function AssignedChecklist() {
                 }
                 placeholder="Why is this being re-assigned?"
                 required
-                error={!reassignForm.reason.trim()}
-                helperText={!reassignForm.reason.trim() && "Reason is required"}
+                error={reassignTouched && !reassignForm.reason.trim()}
+                helperText={
+                  reassignTouched &&
+                  !reassignForm.reason.trim() &&
+                  "Reason is required"
+                }
               />
             </Box>
 
@@ -1929,17 +1987,21 @@ export default function AssignedChecklist() {
                   onClick={() => openModal("reassignAdmin")}
                   startIcon={<PersonAddIcon />}
                   sx={{
-                    borderColor: !reassignForm.newAdminId
-                      ? "#ef4444"
-                      : undefined,
-                    color: !reassignForm.newAdminId ? "#ef4444" : undefined,
+                    borderColor:
+                      reassignTouched && !reassignForm.newAdminId
+                        ? "#ef4444"
+                        : undefined,
+                    color:
+                      reassignTouched && !reassignForm.newAdminId
+                        ? "#ef4444"
+                        : undefined,
                   }}
                 >
                   {reassignForm.newAdminId
                     ? `✓ ${admins.find((a) => (a._id || a.id) === reassignForm.newAdminId)?.customerName || "New Admin selected"}`
-                    : "⚠️ Select New Admin (Required)"}
+                    : "Select New Admin (Required)"}
                 </Button>
-                {!reassignForm.newAdminId && (
+                {reassignTouched && !reassignForm.newAdminId && (
                   <Typography
                     variant="caption"
                     color="error"
@@ -1960,28 +2022,31 @@ export default function AssignedChecklist() {
                   startIcon={<PeopleIcon />}
                   sx={{
                     borderColor:
+                      reassignTouched &&
                       reassignForm.teamMemberIds.length === 0
                         ? "#ef4444"
                         : undefined,
                     color:
+                      reassignTouched &&
                       reassignForm.teamMemberIds.length === 0
                         ? "#ef4444"
                         : undefined,
                   }}
                 >
                   {reassignForm.teamMemberIds.length === 0
-                    ? "⚠️ Select Team Members (Required)"
+                    ? "Select Team Members (Required)"
                     : `👥 ${reassignForm.teamMemberIds.length} selected`}
                 </Button>
-                {reassignForm.teamMemberIds.length === 0 && (
-                  <Typography
-                    variant="caption"
-                    color="error"
-                    sx={{ mt: 0.5, display: "block" }}
-                  >
-                    Please select at least one team member
-                  </Typography>
-                )}
+                {reassignTouched &&
+                  reassignForm.teamMemberIds.length === 0 && (
+                    <Typography
+                      variant="caption"
+                      color="error"
+                      sx={{ mt: 0.5, display: "block" }}
+                    >
+                      Please select at least one team member
+                    </Typography>
+                  )}
               </Box>
             )}
 
@@ -2029,25 +2094,13 @@ export default function AssignedChecklist() {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 0, gap: 1 }}>
-          <Button
-            onClick={() => {
-              setReassignOpen(false);
-              setSelected(null);
-            }}
-            variant="outlined"
-          >
+          <Button onClick={closeReassignModal} variant="outlined">
             Cancel
           </Button>
           <Button
             onClick={handleReassign}
             variant="contained"
-            disabled={
-              submitting ||
-              assignLoading ||
-              !reassignForm.reason.trim() ||
-              (isSuperAdmin && !reassignForm.newAdminId) ||
-              (!isSuperAdmin && reassignForm.teamMemberIds.length === 0)
-            }
+            disabled={submitting || assignLoading}
             startIcon={
               submitting ? <CircularProgress size={15} /> : <SwapHorizIcon />
             }

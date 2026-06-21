@@ -304,7 +304,7 @@ export const AuthProvider = ({ children }) => {
         {
           headers: { "Content-Type": "application/json" },
           withCredentials: true,
-          timeout: 15000,
+          timeout: 45000,
         },
       );
 
@@ -328,7 +328,8 @@ export const AuthProvider = ({ children }) => {
       if (error.code === "ECONNABORTED") {
         return {
           success: false,
-          error: "Request timed out. Please try again.",
+          error:
+            "The reset email service is taking too long to respond. Please try again in a minute.",
         };
       }
 

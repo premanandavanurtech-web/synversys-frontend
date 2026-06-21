@@ -93,6 +93,19 @@ const T = {
   fontMono: "'JetBrains Mono', 'Fira Code', monospace",
 };
 
+const EMPTY_AUDIT_FILTERS = {
+  action: "",
+  resource: "",
+  actorRole: "",
+  status: "",
+  startDate: null,
+  endDate: null,
+  search: "",
+};
+
+const hasActiveAuditFilters = (filters = {}) =>
+  Object.entries(EMPTY_AUDIT_FILTERS).some(([key]) => Boolean(filters[key]));
+
 /* ─── Action config ─── */
 const ACTION_CONFIG = {
   CREATE: {
@@ -268,7 +281,7 @@ const ROLE_CONFIG = {
 
 const STATUS_CONFIG = {
   success: { label: "Success", bg: "#f0fdf4", color: "#16a34a" },
-  failed: { label: "Failed", bg: "#fef2f2", color: "#dc2626" },
+  failure: { label: "Failed", bg: "#fef2f2", color: "#dc2626" },
 };
 
 /* ─── Helpers ─── */
@@ -557,6 +570,7 @@ function ExportButton({ onExport, exporting, disabled }) {
 function FilterBar({
   filters,
   onChange,
+  onApply,
   onReset,
   onExport,
   onRefresh,
@@ -565,6 +579,9 @@ function FilterBar({
   dateKey,
   isSuperAdmin,
   isAdmin,
+  open,
+  onToggle,
+  showReset,
 }) {
   const isMobile = useMediaQuery("(max-width:600px)");
   const placeholder = isSuperAdmin
@@ -584,222 +601,264 @@ function FilterBar({
         mb: 2,
       }}
     >
-      {/* Header row */}
       <Box
         sx={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          mb: 1.5,
+          mb: open ? 1.5 : 0,
           flexWrap: "wrap",
           gap: 1,
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-          <FilterListIcon sx={{ fontSize: 14, color: T.textMuted }} />
-          <Typography fontSize={12} fontWeight={600} color={T.textSecondary}>
-            Filters
-          </Typography>
-        </Box>
         <Button
           size="small"
-          startIcon={<ClearIcon sx={{ fontSize: 12 }} />}
-          onClick={onReset}
-          sx={{ fontSize: 11, color: T.textMuted, textTransform: "none" }}
+          startIcon={<FilterListIcon sx={{ fontSize: 14 }} />}
+          onClick={onToggle}
+          sx={{
+            px: 0,
+            minWidth: 0,
+            fontSize: 12,
+            fontWeight: 600,
+            color: T.textSecondary,
+            textTransform: "none",
+            "&:hover": { bgcolor: "transparent", color: T.accent },
+          }}
         >
-          Reset
+          Filters
         </Button>
+        {showReset && (
+          <Button
+            size="small"
+            startIcon={<ClearIcon sx={{ fontSize: 12 }} />}
+            onClick={onReset}
+            sx={{ fontSize: 11, color: T.textMuted, textTransform: "none" }}
+          >
+            Reset
+          </Button>
+        )}
       </Box>
 
-      {/* Controls */}
-      <Box
-        sx={{ display: "flex", flexWrap: "wrap", gap: 1, alignItems: "center" }}
-      >
-        {/* Search */}
-        <TextField
-          size="small"
-          placeholder={placeholder}
-          value={filters.search || ""}
-          onChange={(e) => onChange("search", e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 14, color: T.textMuted }} />
-              </InputAdornment>
-            ),
-            sx: {
-              fontSize: 12,
-              borderRadius: "8px",
-              width: isMobile ? "100%" : 220,
-            },
+      {open && (
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 1,
+            alignItems: "center",
           }}
-        />
+        >
+          {/* Search */}
+          <TextField
+            size="small"
+            placeholder={placeholder}
+            value={filters.search || ""}
+            onChange={(e) => onChange("search", e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 14, color: T.textMuted }} />
+                </InputAdornment>
+              ),
+              sx: {
+                fontSize: 12,
+                borderRadius: "8px",
+                width: isMobile ? "100%" : 220,
+              },
+            }}
+          />
 
-        {/* Action */}
-        <FormControl size="small" sx={{ minWidth: isMobile ? "100%" : 150 }}>
-          <InputLabel sx={{ fontSize: 12 }}>Action</InputLabel>
-          <Select
-            value={filters.action || ""}
-            label="Action"
-            onChange={(e) => onChange("action", e.target.value)}
-            sx={{ fontSize: 12, borderRadius: "8px" }}
-          >
-            <MenuItem value="" sx={{ fontSize: 12 }}>
-              All
-            </MenuItem>
-            {Object.entries(ACTION_CONFIG)
-              .filter(([k]) => k !== "default")
-              .map(([k, v]) => (
-                <MenuItem key={k} value={k} sx={{ fontSize: 12 }}>
-                  {v.label}
-                </MenuItem>
-              ))}
-          </Select>
-        </FormControl>
-
-        {/* Resource */}
-        <FormControl size="small" sx={{ minWidth: isMobile ? "100%" : 130 }}>
-          <InputLabel sx={{ fontSize: 12 }}>Resource</InputLabel>
-          <Select
-            value={filters.resource || ""}
-            label="Resource"
-            onChange={(e) => onChange("resource", e.target.value)}
-            sx={{ fontSize: 12, borderRadius: "8px" }}
-          >
-            <MenuItem value="" sx={{ fontSize: 12 }}>
-              All
-            </MenuItem>
-            {[
-              "user",
-              "asset",
-              "checklist",
-              "client",
-              "team",
-              "assignment",
-              "category",
-              "location",
-              "role",
-            ].map((r) => (
-              <MenuItem
-                key={r}
-                value={r}
-                sx={{ fontSize: 12, textTransform: "capitalize" }}
-              >
-                {r}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        {/* Status */}
-        <FormControl size="small" sx={{ minWidth: isMobile ? "100%" : 120 }}>
-          <InputLabel sx={{ fontSize: 12 }}>Status</InputLabel>
-          <Select
-            value={filters.status || ""}
-            label="Status"
-            onChange={(e) => onChange("status", e.target.value)}
-            sx={{ fontSize: 12, borderRadius: "8px" }}
-          >
-            <MenuItem value="" sx={{ fontSize: 12 }}>
-              All
-            </MenuItem>
-            <MenuItem value="success" sx={{ fontSize: 12 }}>
-              Success
-            </MenuItem>
-            <MenuItem value="failed" sx={{ fontSize: 12 }}>
-              Failed
-            </MenuItem>
-          </Select>
-        </FormControl>
-
-        {/* Role filter — super admin only */}
-        {isSuperAdmin && (
-          <FormControl size="small" sx={{ minWidth: isMobile ? "100%" : 130 }}>
-            <InputLabel sx={{ fontSize: 12 }}>Role</InputLabel>
+          {/* Action */}
+          <FormControl size="small" sx={{ minWidth: isMobile ? "100%" : 150 }}>
+            <InputLabel sx={{ fontSize: 12 }}>Action</InputLabel>
             <Select
-              value={filters.actorRole || ""}
-              label="Role"
-              onChange={(e) => onChange("actorRole", e.target.value)}
+              value={filters.action || ""}
+              label="Action"
+              onChange={(e) => onChange("action", e.target.value)}
               sx={{ fontSize: 12, borderRadius: "8px" }}
             >
               <MenuItem value="" sx={{ fontSize: 12 }}>
                 All
               </MenuItem>
-              <MenuItem value="super_admin" sx={{ fontSize: 12 }}>
-                Super Admin
+              {Object.entries(ACTION_CONFIG)
+                .filter(([k]) => k !== "default")
+                .map(([k, v]) => (
+                  <MenuItem key={k} value={k} sx={{ fontSize: 12 }}>
+                    {v.label}
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
+
+          {/* Resource */}
+          <FormControl size="small" sx={{ minWidth: isMobile ? "100%" : 130 }}>
+            <InputLabel sx={{ fontSize: 12 }}>Resource</InputLabel>
+            <Select
+              value={filters.resource || ""}
+              label="Resource"
+              onChange={(e) => onChange("resource", e.target.value)}
+              sx={{ fontSize: 12, borderRadius: "8px" }}
+            >
+              <MenuItem value="" sx={{ fontSize: 12 }}>
+                All
               </MenuItem>
-              <MenuItem value="admin" sx={{ fontSize: 12 }}>
-                Admin
+              {[
+                "user",
+                "asset",
+                "checklist",
+                "client",
+                "team",
+                "assignment",
+                "category",
+                "location",
+                "role",
+              ].map((r) => (
+                <MenuItem
+                  key={r}
+                  value={r}
+                  sx={{ fontSize: 12, textTransform: "capitalize" }}
+                >
+                  {r}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Status */}
+          <FormControl size="small" sx={{ minWidth: isMobile ? "100%" : 120 }}>
+            <InputLabel sx={{ fontSize: 12 }}>Status</InputLabel>
+            <Select
+              value={filters.status || ""}
+              label="Status"
+              onChange={(e) => onChange("status", e.target.value)}
+              sx={{ fontSize: 12, borderRadius: "8px" }}
+            >
+              <MenuItem value="" sx={{ fontSize: 12 }}>
+                All
               </MenuItem>
-              <MenuItem value="team" sx={{ fontSize: 12 }}>
-                Team
+              <MenuItem value="success" sx={{ fontSize: 12 }}>
+                Success
+              </MenuItem>
+              <MenuItem value="failure" sx={{ fontSize: 12 }}>
+                Failed
               </MenuItem>
             </Select>
           </FormControl>
-        )}
 
-        {/* Date range */}
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <DatePicker
-            key={`s-${dateKey}`}
-            label="From"
-            value={filters.startDate}
-            onChange={(d) => onChange("startDate", d)}
-            slotProps={{
-              textField: {
-                size: "small",
-                sx: {
-                  width: isMobile ? "100%" : 140,
-                  "& .MuiInputBase-root": { fontSize: 12, borderRadius: "8px" },
-                },
-              },
-            }}
-          />
-          <DatePicker
-            key={`e-${dateKey}`}
-            label="To"
-            value={filters.endDate}
-            onChange={(d) => onChange("endDate", d)}
-            slotProps={{
-              textField: {
-                size: "small",
-                sx: {
-                  width: isMobile ? "100%" : 140,
-                  "& .MuiInputBase-root": { fontSize: 12, borderRadius: "8px" },
-                },
-              },
-            }}
-          />
-        </LocalizationProvider>
+          {/* Role filter — super admin only */}
+          {isSuperAdmin && (
+            <FormControl
+              size="small"
+              sx={{ minWidth: isMobile ? "100%" : 130 }}
+            >
+              <InputLabel sx={{ fontSize: 12 }}>Role</InputLabel>
+              <Select
+                value={filters.actorRole || ""}
+                label="Role"
+                onChange={(e) => onChange("actorRole", e.target.value)}
+                sx={{ fontSize: 12, borderRadius: "8px" }}
+              >
+                <MenuItem value="" sx={{ fontSize: 12 }}>
+                  All
+                </MenuItem>
+                <MenuItem value="super_admin" sx={{ fontSize: 12 }}>
+                  Super Admin
+                </MenuItem>
+                <MenuItem value="admin" sx={{ fontSize: 12 }}>
+                  Admin
+                </MenuItem>
+                <MenuItem value="team" sx={{ fontSize: 12 }}>
+                  Team
+                </MenuItem>
+              </Select>
+            </FormControl>
+          )}
 
-        {/* Action buttons */}
-        <Box sx={{ display: "flex", gap: 0.75, ml: "auto", flexShrink: 0 }}>
-          <ExportButton onExport={onExport} exporting={exporting} />
-          <Button
-            size="small"
-            variant="contained"
-            disableElevation
-            startIcon={
-              loading ? (
-                <CircularProgress size={11} sx={{ color: "#fff" }} />
-              ) : (
-                <RefreshIcon sx={{ fontSize: 13 }} />
-              )
-            }
-            onClick={onRefresh}
-            disabled={loading}
-            sx={{
-              fontSize: 11,
-              fontWeight: 600,
-              textTransform: "none",
-              borderRadius: "8px",
-              bgcolor: T.accent,
-            }}
-          >
-            Refresh
-          </Button>
+          {/* Date range */}
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <DatePicker
+              key={`s-${dateKey}`}
+              label="From"
+              value={filters.startDate}
+              onChange={(d) => onChange("startDate", d)}
+              slotProps={{
+                textField: {
+                  size: "small",
+                  sx: {
+                    width: isMobile ? "100%" : 140,
+                    "& .MuiInputBase-root": {
+                      fontSize: 12,
+                      borderRadius: "8px",
+                    },
+                  },
+                },
+              }}
+            />
+            <DatePicker
+              key={`e-${dateKey}`}
+              label="To"
+              value={filters.endDate}
+              onChange={(d) => onChange("endDate", d)}
+              slotProps={{
+                textField: {
+                  size: "small",
+                  sx: {
+                    width: isMobile ? "100%" : 140,
+                    "& .MuiInputBase-root": {
+                      fontSize: 12,
+                      borderRadius: "8px",
+                    },
+                  },
+                },
+              }}
+            />
+          </LocalizationProvider>
+
+          {/* Action buttons */}
+          <Box sx={{ display: "flex", gap: 0.75, ml: "auto", flexShrink: 0 }}>
+            <Button
+              size="small"
+              variant="contained"
+              disableElevation
+              startIcon={<FilterListIcon sx={{ fontSize: 13 }} />}
+              onClick={onApply}
+              sx={{
+                fontSize: 11,
+                fontWeight: 600,
+                textTransform: "none",
+                borderRadius: "8px",
+                bgcolor: T.accent,
+              }}
+            >
+              Apply
+            </Button>
+            <ExportButton onExport={onExport} exporting={exporting} />
+            <Button
+              size="small"
+              variant="contained"
+              disableElevation
+              startIcon={
+                loading ? (
+                  <CircularProgress size={11} sx={{ color: "#fff" }} />
+                ) : (
+                  <RefreshIcon sx={{ fontSize: 13 }} />
+                )
+              }
+              onClick={onRefresh}
+              disabled={loading}
+              sx={{
+                fontSize: 11,
+                fontWeight: 600,
+                textTransform: "none",
+                borderRadius: "8px",
+                bgcolor: T.accent,
+              }}
+            >
+              Refresh
+            </Button>
+          </Box>
         </Box>
-      </Box>
+      )}
     </Box>
   );
 }
@@ -1274,6 +1333,8 @@ const AuditLogs = () => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [datePickerKey, setDatePickerKey] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState(filters);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -1289,6 +1350,10 @@ const AuditLogs = () => {
     if (isSuperAdmin) fetchAuditStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage, filters]);
+
+  useEffect(() => {
+    setDraftFilters(filters);
+  }, [filters]);
 
   /* ── Derived stats for non-super-admin (computed from loaded page) ── */
   const derivedStats = useMemo(() => {
@@ -1343,14 +1408,23 @@ const AuditLogs = () => {
 
   /* ── Filters ── */
   const handleFilterChange = (field, value) => {
-    updateFilters({ [field]: value });
+    setDraftFilters((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleApplyFilters = () => {
+    updateFilters(draftFilters);
     setPage(0);
+    fetchAuditLogs(1, rowsPerPage, draftFilters);
+    if (isSuperAdmin) fetchAuditStats();
   };
 
   const handleReset = () => {
+    setDraftFilters(EMPTY_AUDIT_FILTERS);
     resetFilters();
     setPage(0);
     setDatePickerKey((p) => p + 1);
+    fetchAuditLogs(1, rowsPerPage, EMPTY_AUDIT_FILTERS);
+    if (isSuperAdmin) fetchAuditStats();
   };
 
   const handleRefresh = () => {
@@ -1406,7 +1480,6 @@ const AuditLogs = () => {
   const cols = useMemo(() => {
     const base = [
       { id: "createdAt", label: "Timestamp", sortable: true, width: "140px" },
-      { id: "action", label: "Action", sortable: false, width: "130px" },
     ];
     if (!isTeam)
       base.push({
@@ -1432,12 +1505,13 @@ const AuditLogs = () => {
         hideOnMobile: true,
       },
       { id: "status", label: "Status", sortable: false, width: "90px" },
-      { id: "_view", label: "", sortable: false, width: "46px" },
+      { id: "_view", label: "Action", sortable: false, width: "70px" },
     );
     return base;
   }, [isTeam]);
 
   const visibleCols = cols.filter((c) => !(isMobile && c.hideOnMobile));
+  const showResetFilters = hasActiveAuditFilters(filters);
 
   /* ── Loading skeleton ── */
   if (loading && (auditLogs?.length ?? 0) === 0) {
@@ -1587,8 +1661,9 @@ const AuditLogs = () => {
 
       {/* Filter bar */}
       <FilterBar
-        filters={filters}
+        filters={draftFilters}
         onChange={handleFilterChange}
+        onApply={handleApplyFilters}
         onReset={handleReset}
         onExport={handleExport}
         onRefresh={handleRefresh}
@@ -1597,6 +1672,9 @@ const AuditLogs = () => {
         dateKey={datePickerKey}
         isSuperAdmin={isSuperAdmin}
         isAdmin={isAdmin}
+        open={filtersOpen}
+        onToggle={() => setFiltersOpen((open) => !open)}
+        showReset={showResetFilters}
       />
 
       {/* Table */}
@@ -1693,11 +1771,6 @@ const AuditLogs = () => {
                       >
                         {fmtTime(log.createdAt)}
                       </Typography>
-                    </TableCell>
-
-                    {/* Action */}
-                    <TableCell sx={cellSx} onClick={(e) => e.stopPropagation()}>
-                      <ActionChip action={log.action} />
                     </TableCell>
 
                     {/* User — hidden for team role and on mobile */}

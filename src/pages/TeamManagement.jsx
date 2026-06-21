@@ -1081,11 +1081,11 @@ export default function TeamManagement() {
     return result;
   };
 
-  const handleDeleteMember = async () => {
+  const handleDeleteMember = async (permanent = false) => {
     if (!selectedMember) return;
     const result = await deleteTeamMember(
       selectedMember.id || selectedMember._id,
-      true,
+      permanent,
     );
     if (result.success) {
       showToast(result.message);

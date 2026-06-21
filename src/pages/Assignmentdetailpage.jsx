@@ -36,7 +36,6 @@ import {
   Description as DescriptionIcon,
   People as PeopleIcon,
   Schedule as ScheduleIcon,
-  Edit as EditFieldIcon,
   Inventory2 as AssetIcon,
 } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
@@ -95,6 +94,78 @@ const StatusBadge = ({ status }) => makeBadge(STATUS_MAP, status, status);
 const PriorityBadge = ({ priority }) =>
   makeBadge(PRIORITY_MAP, priority, priority);
 
+const normalizeSubmissionRow = (sub = {}) => {
+  const submittedBy = sub.submittedBy || {};
+  const submittedByName =
+    sub.submittedByName ||
+    submittedBy.name ||
+    sub.assignedToTeamMembers?.[0]?.name ||
+    "Unknown";
+  const submittedByEmail =
+    sub.submittedByEmail ||
+    submittedBy.email ||
+    sub.assignedToTeamMembers?.[0]?.userId?.email ||
+    "";
+
+  return {
+    ...sub,
+    _id: sub._id || sub.submissionId || sub.id,
+    submittedByName,
+    submittedByEmail,
+    reviewStatus:
+      sub.reviewStatus || sub.submissionStatus || sub.status || "pending_review",
+    overallCompletionRate:
+      sub.overallCompletionRate ?? sub.completionRate ?? sub.completion ?? 0,
+    score: sub.score ?? sub.overallRating ?? 0,
+  };
+};
+
+const csvValue = (value) => {
+  const text = value == null ? "" : String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+const downloadCsv = (rows, filename) => {
+  const csv = rows.map((row) => row.map(csvValue).join(",")).join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+const buildSubmissionCsvRows = (items) => [
+  [
+    "Submitted By",
+    "Email",
+    "Submitted Date",
+    "Status",
+    "Completion Rate",
+    "Score",
+    "Passed",
+    "Failed",
+    "N/A",
+  ],
+  ...items.map((item) => {
+    const sub = normalizeSubmissionRow(item);
+    return [
+      sub.submittedByName,
+      sub.submittedByEmail,
+      sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("en-IN") : "",
+      STATUS_MAP[sub.reviewStatus]?.label || sub.reviewStatus,
+      `${sub.overallCompletionRate}%`,
+      sub.score || "",
+      sub.itemsPassed || 0,
+      sub.itemsFailed || 0,
+      sub.itemsNA || 0,
+    ];
+  }),
+];
+
 // ── User avatar ───────────────────────────────────────────────────────────────
 const UserAvatar = ({ name, email, size = 34 }) => {
   const raw = name && name !== "Unknown" ? name : email || "?";
@@ -132,7 +203,7 @@ const StatCard = ({ icon: Icon, iconBg, value, label, sub }) => (
       borderRadius: 3,
       border: "0.5px solid",
       borderColor: "divider",
-      width:"278px",
+      width: "100%",
       boxShadow: "none",
       p: { xs: 1.75, md: 2.5 },
       height: "100%",
@@ -219,7 +290,7 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
       const result = await getRecentSubmissions(assignmentId);
       if (!mounted.current) return;
       if (result.success) {
-        setSubmissions(result.submissions || []);
+        setSubmissions((result.submissions || []).map(normalizeSubmissionRow));
         setPagination(result.pagination || null);
       } else {
         setError(result.error || "Failed to load submissions");
@@ -235,6 +306,22 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
   useEffect(() => {
     fetchSubmissions();
   }, [fetchSubmissions]);
+
+  const handleExportAll = () => {
+    if (!submissions.length) return;
+    downloadCsv(
+      buildSubmissionCsvRows(submissions),
+      `assignment-${assignmentId}-submissions.csv`,
+    );
+  };
+
+  const handleDownloadSubmission = (sub) => {
+    const normalized = normalizeSubmissionRow(sub);
+    downloadCsv(
+      buildSubmissionCsvRows([normalized]),
+      `submission-${normalized._id || normalized.inspectionId || "details"}.csv`,
+    );
+  };
 
   if (loading)
     return (
@@ -306,6 +393,8 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
           size="small"
           startIcon={<DownloadIcon />}
           variant="outlined"
+          onClick={handleExportAll}
+          disabled={!submissions.length}
           sx={{
             borderRadius: 2,
             textTransform: "none",
@@ -484,7 +573,11 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Download">
-                      <IconButton size="small" sx={{ color: "text.secondary" }}>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDownloadSubmission(sub)}
+                        sx={{ color: "text.secondary" }}
+                      >
                         <DownloadIcon sx={{ fontSize: 16 }} />
                       </IconButton>
                     </Tooltip>
@@ -546,6 +639,13 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
                         }}
                       >
                         <VisibilityIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDownloadSubmission(sub)}
+                        sx={{ color: "text.secondary" }}
+                      >
+                        <DownloadIcon sx={{ fontSize: 16 }} />
                       </IconButton>
                     </Box>
                   </Box>
@@ -837,14 +937,6 @@ const FormStructureTab = ({ checklistData }) => {
                               ` · ${field.validation.min}–${field.validation.max}`}
                           </Typography>
                         </Box>
-                        {!isMobile && (
-                          <IconButton
-                            size="small"
-                            sx={{ color: "text.secondary", flexShrink: 0 }}
-                          >
-                            <EditFieldIcon sx={{ fontSize: 14 }} />
-                          </IconButton>
-                        )}
                       </Box>
                     </Card>
                   ))}

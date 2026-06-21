@@ -24,7 +24,10 @@ import {
   Modal,
   IconButton,
   Select,
+  Menu,
   MenuItem,
+  ListItemIcon,
+  ListItemText,
   FormControl,
   InputLabel,
   useMediaQuery,
@@ -74,6 +77,7 @@ import {
   RequestPage as RequestPageIcon,
   Menu as MenuIcon,
   ContentCopy as ContentCopyIcon,
+  MoreVert as MoreVertIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContexts";
 import { useChecklistBuilder } from "../context/ChecklistBuilderContext";
@@ -778,24 +782,26 @@ const MobileRequestCard = ({ row, onView, onDelete, isSuperAdmin }) => (
         Submitted: {fmt(row.requestDate || row.createdAt)}
       </Typography>
       <Box sx={{ display: "flex", gap: 1 }}>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<VisibilityIcon sx={{ fontSize: 13 }} />}
-          onClick={() => onView(row)}
-        >
-          View
-        </Button>
-        {(isSuperAdmin || !row.isDeleted) && (
-          <Button
+        <Tooltip title="View">
+          <IconButton
             size="small"
-            variant="outlined"
-            color="error"
-            startIcon={<DeleteIcon sx={{ fontSize: 13 }} />}
-            onClick={() => onDelete(row._id)}
+            onClick={() => onView(row)}
+            sx={{ border: "1px solid", borderColor: "divider" }}
           >
-            Delete
-          </Button>
+            <VisibilityIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Tooltip>
+        {(isSuperAdmin || !row.isDeleted) && (
+          <Tooltip title="Delete">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => onDelete(row._id)}
+              sx={{ border: "1px solid", borderColor: "error.light" }}
+            >
+              <DeleteIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
         )}
       </Box>
     </Box>
@@ -1346,6 +1352,19 @@ export default function ChecklistPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isSmallMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  // Action menu state (three-dot menu in checklist table)
+  const [actionMenuAnchor, setActionMenuAnchor] = useState(null);
+  const [actionMenuRow, setActionMenuRow] = useState(null);
+
+  const openActionMenu = (e, row) => {
+    setActionMenuAnchor(e.currentTarget);
+    setActionMenuRow(row);
+  };
+  const closeActionMenu = () => {
+    setActionMenuAnchor(null);
+    setActionMenuRow(null);
+  };
+
   const {
     getAllChecklists,
     getChecklistById,
@@ -1436,8 +1455,6 @@ export default function ChecklistPage() {
       setListLoading(false);
     }
   }, [getAllChecklists, listFilters, showSnack, isSmallMobile]);
-
-  console.log("setChecklist----====>>",checklists)
 
   // Fetch Requests
   const fetchRequests = useCallback(async () => {
@@ -1921,17 +1938,19 @@ export default function ChecklistPage() {
                   <Stack direction="row" spacing={0.75} alignItems="center">
                     <RequestPageIcon sx={{ fontSize: 16 }} />
                     <span>Requests</span>
-                    {reqStats.pending > 0 && (
+                    {!requestsLoading && (
                       <Chip
-                        label={reqStats.pending}
+                        label={requestsPagination.total ?? requests.length}
                         size="small"
                         sx={{
                           height: 18,
                           fontSize: 10,
                           ml: 0.5,
                           bgcolor:
-                            tab === 1 ? alpha("#fff", 0.25) : "#ed6c0220",
-                          color: tab === 1 ? "white" : "warning.main",
+                            tab === 1
+                              ? alpha("#fff", 0.25)
+                              : alpha(theme.palette.primary.main, 0.12),
+                          color: tab === 1 ? "white" : "primary.main",
                         }}
                       />
                     )}
@@ -2183,58 +2202,13 @@ export default function ChecklistPage() {
                                 </Typography>
                               </TD>
                               <TD>
-                                <Stack direction="row" spacing={0.75}>
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    startIcon={
-                                      <VisibilityIcon sx={{ fontSize: 13 }} />
-                                    }
-                                    onClick={() => openViewChecklist(row)}
-                                    disabled={loadingView}
-                                    sx={{ fontSize: 12 }}
-                                  >
-                                    View
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    startIcon={
-                                      <ContentCopyIcon sx={{ fontSize: 13 }} />
-                                    }
-                                    onClick={() => openCloneModal(row)}
-                                    sx={{ fontSize: 12 }}
-                                  >
-                                    Clone
-                                  </Button>
-                                  {(isSuperAdmin || isAdmin) && (
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      startIcon={
-                                        <AssignmentIcon sx={{ fontSize: 13 }} />
-                                      }
-                                      onClick={() => openAssign(row)}
-                                      sx={{ fontSize: 12 }}
-                                    >
-                                      Assign
-                                    </Button>
-                                  )}
-                                  {(isSuperAdmin || isAdmin) && (
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      color="error"
-                                      startIcon={
-                                        <DeleteIcon sx={{ fontSize: 13 }} />
-                                      }
-                                      onClick={() => handleDeleteClick(row)}
-                                      sx={{ fontSize: 12 }}
-                                    >
-                                      Delete
-                                    </Button>
-                                  )}
-                                </Stack>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => openActionMenu(e, row)}
+                                  sx={{ border: "1px solid", borderColor: "divider" }}
+                                >
+                                  <MoreVertIcon fontSize="small" />
+                                </IconButton>
                               </TD>
                             </TableRow>
                           ))}
@@ -2261,6 +2235,84 @@ export default function ChecklistPage() {
                     </Table>
                   </TableContainer>
                 )}
+
+                {/* Three-dot action menu (Checklists tab) */}
+                <Menu
+                  anchorEl={actionMenuAnchor}
+                  open={Boolean(actionMenuAnchor)}
+                  onClose={closeActionMenu}
+                  PaperProps={{
+                    sx: {
+                      borderRadius: 2,
+                      minWidth: 170,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    },
+                  }}
+                >
+                  <MenuItem
+                    onClick={() => {
+                      openViewChecklist(actionMenuRow);
+                      closeActionMenu();
+                    }}
+                  >
+                    <ListItemIcon>
+                      <VisibilityIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primaryTypographyProps={{ fontSize: 13 }}>
+                      View
+                    </ListItemText>
+                  </MenuItem>
+
+                  <MenuItem
+                    onClick={() => {
+                      openCloneModal(actionMenuRow);
+                      closeActionMenu();
+                    }}
+                  >
+                    <ListItemIcon>
+                      <ContentCopyIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primaryTypographyProps={{ fontSize: 13 }}>
+                      Clone
+                    </ListItemText>
+                  </MenuItem>
+
+                  {(isSuperAdmin || isAdmin) && (
+                    <MenuItem
+                      onClick={() => {
+                        openAssign(actionMenuRow);
+                        closeActionMenu();
+                      }}
+                    >
+                      <ListItemIcon>
+                        <AssignmentIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText primaryTypographyProps={{ fontSize: 13 }}>
+                        Assign
+                      </ListItemText>
+                    </MenuItem>
+                  )}
+
+                  {(isSuperAdmin || isAdmin) && (
+                    <MenuItem
+                      onClick={() => {
+                        handleDeleteClick(actionMenuRow);
+                        closeActionMenu();
+                      }}
+                      sx={{ color: "error.main" }}
+                    >
+                      <ListItemIcon>
+                        <DeleteIcon fontSize="small" color="error" />
+                      </ListItemIcon>
+                      <ListItemText primaryTypographyProps={{ fontSize: 13 }}>
+                        Delete
+                      </ListItemText>
+                    </MenuItem>
+                  )}
+                </Menu>
+
                 <PaginationComponent
                   pagination={listPagination}
                   onPageChange={(p) =>
@@ -2535,34 +2587,36 @@ export default function ChecklistPage() {
                               )}
                               <TD>
                                 <Stack direction="row" spacing={0.75}>
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    startIcon={
-                                      <VisibilityIcon sx={{ fontSize: 13 }} />
-                                    }
-                                    onClick={() => openViewRequest(row)}
-                                    disabled={loadingView}
-                                    sx={{ fontSize: 12 }}
-                                  >
-                                    View
-                                  </Button>
+                                  <Tooltip title="View">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => openViewRequest(row)}
+                                      disabled={loadingView}
+                                      sx={{
+                                        border: "1px solid",
+                                        borderColor: "divider",
+                                      }}
+                                    >
+                                      <VisibilityIcon sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                  </Tooltip>
                                   {(isSuperAdmin || isAdmin) &&
                                     !row.isDeleted && (
-                                      <Button
-                                        size="small"
-                                        variant="outlined"
-                                        color="error"
-                                        startIcon={
-                                          <DeleteIcon sx={{ fontSize: 13 }} />
-                                        }
-                                        onClick={() =>
-                                          handleSoftDeleteRequest(row._id)
-                                        }
-                                        sx={{ fontSize: 12 }}
-                                      >
-                                        Delete
-                                      </Button>
+                                      <Tooltip title="Delete">
+                                        <IconButton
+                                          size="small"
+                                          color="error"
+                                          onClick={() =>
+                                            handleSoftDeleteRequest(row._id)
+                                          }
+                                          sx={{
+                                            border: "1px solid",
+                                            borderColor: "error.light",
+                                          }}
+                                        >
+                                          <DeleteIcon sx={{ fontSize: 16 }} />
+                                        </IconButton>
+                                      </Tooltip>
                                     )}
                                 </Stack>
                               </TD>
@@ -2812,102 +2866,6 @@ export default function ChecklistPage() {
                 </Box>
               </Box>
 
-              <Grid container spacing={1.5} sx={{ display: "none" }}>
-                <Grid item xs={6} sm={3}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    display="block"
-                    sx={{ mb: 0.5 }}
-                  >
-                    Status
-                  </Typography>
-                  <StatusBadge status={viewRequest?.status} />
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    display="block"
-                    sx={{ mb: 0.5 }}
-                  >
-                    Urgency
-                  </Typography>
-                  <PriorityBadge priority={viewRequest?.urgencyLevel} />
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    display="block"
-                    sx={{ mb: 0.5 }}
-                  >
-                    Category
-                  </Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {viewRequest?.category || "—"}
-                  </Typography>
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    display="block"
-                    sx={{ mb: 0.5 }}
-                  >
-                    Usage Frequency
-                  </Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {viewRequest?.expectedUsageFrequency || "—"}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    display="block"
-                    sx={{ mb: 0.5 }}
-                  >
-                    Detailed Description
-                  </Typography>
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      bgcolor: "#f7f9fa",
-                      borderRadius: 2,
-                      border: "1px solid",
-                      borderColor: "divider",
-                    }}
-                  >
-                    <Typography variant="body2">
-                      {viewRequest?.detailedDescription || "—"}
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    display="block"
-                    sx={{ mb: 0.5 }}
-                  >
-                    Business Justification
-                  </Typography>
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      bgcolor: "#f7f9fa",
-                      borderRadius: 2,
-                      border: "1px solid",
-                      borderColor: "divider",
-                    }}
-                  >
-                    <Typography variant="body2">
-                      {viewRequest?.businessJustification || "—"}
-                    </Typography>
-                  </Box>
-                </Grid>
-              </Grid>
               {viewRequest?.status === "rejected" &&
                 viewRequest?.rejectionReason && (
                   <Alert severity="error" sx={{ borderRadius: 2 }}>
