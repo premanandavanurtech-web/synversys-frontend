@@ -93,6 +93,19 @@ const T = {
   fontMono: "'JetBrains Mono', 'Fira Code', monospace",
 };
 
+/* ─── Shared chip geometry — keeps every badge in the table on the same rhythm ─── */
+const CHIP_SX = {
+  display: "inline-flex",
+  alignItems: "center",
+  px: "8px",
+  py: "2px",
+  borderRadius: "6px",
+  fontSize: 10.5,
+  fontWeight: 600,
+  lineHeight: 1.6,
+  whiteSpace: "nowrap",
+};
+
 const EMPTY_AUDIT_FILTERS = {
   action: "",
   resource: "",
@@ -330,12 +343,13 @@ function StatCard({ label, value, icon, color, loading, subtitle }) {
       >
         {icon}
       </Box>
-      <Box>
+      <Box sx={{ minWidth: 0 }}>
         <Typography
           fontSize={11}
           color={T.textMuted}
           fontWeight={500}
           lineHeight={1.2}
+          noWrap
         >
           {label}
         </Typography>
@@ -348,7 +362,7 @@ function StatCard({ label, value, icon, color, loading, subtitle }) {
           {(value ?? 0).toLocaleString()}
         </Typography>
         {subtitle && (
-          <Typography fontSize={10} color={T.textMuted}>
+          <Typography fontSize={10} color={T.textMuted} noWrap>
             {subtitle}
           </Typography>
         )}
@@ -363,17 +377,11 @@ function ActionChip({ action }) {
   return (
     <Box
       sx={{
-        display: "inline-flex",
-        alignItems: "center",
+        ...CHIP_SX,
         gap: 0.5,
-        px: "7px",
-        py: "2px",
-        borderRadius: "6px",
         bgcolor: cfg.bg,
         color: cfg.color,
         fontSize: 11,
-        fontWeight: 600,
-        whiteSpace: "nowrap",
       }}
     >
       {cfg.icon}
@@ -386,19 +394,7 @@ function ActionChip({ action }) {
 function RoleChip({ role }) {
   const cfg = ROLE_CONFIG[role] || ROLE_CONFIG.default;
   return (
-    <Box
-      sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        px: "6px",
-        py: "1px",
-        borderRadius: "5px",
-        bgcolor: cfg.bg,
-        color: cfg.color,
-        fontSize: 10,
-        fontWeight: 600,
-      }}
-    >
+    <Box sx={{ ...CHIP_SX, bgcolor: cfg.bg, color: cfg.color }}>
       {cfg.label}
     </Box>
   );
@@ -418,20 +414,31 @@ function StatusChip({ status }) {
     color: "#6b7280",
   };
   return (
+    <Box sx={{ ...CHIP_SX, fontSize: 11, bgcolor: cfg.bg, color: cfg.color }}>
+      {cfg.label}
+    </Box>
+  );
+}
+
+/* ─── ResourceChip ─── */
+function ResourceChip({ resource }) {
+  if (!resource)
+    return (
+      <Typography fontSize={12} color={T.textMuted}>
+        —
+      </Typography>
+    );
+  return (
     <Box
       sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        px: "7px",
-        py: "2px",
-        borderRadius: "6px",
-        bgcolor: cfg.bg,
-        color: cfg.color,
+        ...CHIP_SX,
         fontSize: 11,
-        fontWeight: 600,
+        bgcolor: "#f3f4f6",
+        color: T.textSecondary,
+        textTransform: "capitalize",
       }}
     >
-      {cfg.label}
+      {resource}
     </Box>
   );
 }
@@ -509,6 +516,7 @@ function ExportButton({ onExport, exporting, disabled }) {
           fontWeight: 600,
           textTransform: "none",
           borderRadius: "8px",
+          whiteSpace: "nowrap",
         }}
       >
         Export
@@ -815,7 +823,16 @@ function FilterBar({
           </LocalizationProvider>
 
           {/* Action buttons */}
-          <Box sx={{ display: "flex", gap: 0.75, ml: "auto", flexShrink: 0 }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 0.75,
+              ml: isMobile ? 0 : "auto",
+              flexShrink: 0,
+              width: isMobile ? "100%" : "auto",
+              flexWrap: "wrap",
+            }}
+          >
             <Button
               size="small"
               variant="contained"
@@ -930,7 +947,15 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
             Log Details
           </Typography>
         </Box>
-        <IconButton size="small" onClick={onClose} sx={{ color: T.textMuted }}>
+        <IconButton
+          size="small"
+          onClick={onClose}
+          sx={{
+            color: `${T.textMuted} !important`,
+            bgcolor: "transparent !important",
+            "&:hover": { bgcolor: "#f3f4f6 !important" },
+          }}
+        >
           <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
@@ -1437,7 +1462,7 @@ const AuditLogs = () => {
     setExporting(true);
     const date = format(new Date(), "yyyy-MM-dd");
     const roleLabel = isSuperAdmin ? "Super Admin" : isAdmin ? "Admin" : "Team";
-    const includeActor = !isTeam; // team sees only own logs; omit actor column
+    const includeActor = true; // show actor/user column for every role
     try {
       if (fmt === "csv")
         exportCSV(sortedLogs, `audit-logs-${date}.csv`, includeActor);
@@ -1469,48 +1494,55 @@ const AuditLogs = () => {
 
   const handleExportSingle = (log, fmt) => {
     try {
-      exportSingleLog(log, fmt, !isTeam);
+      exportSingleLog(log, fmt, true);
       showSnackbar(`Log exported as ${fmt.toUpperCase()}`, "success");
     } catch {
       showSnackbar("Export failed.", "error");
     }
   };
 
-  /* ── Table columns ── */
-  const cols = useMemo(() => {
-    const base = [
-      { id: "createdAt", label: "Timestamp", sortable: true, width: "140px" },
-    ];
-    if (!isTeam)
-      base.push({
+  /* ── Table columns ──
+     Percentage widths always sum to 100% so the table never leaves a gap,
+     regardless of which columns are visible for the current role/breakpoint. */
+  const cols = useMemo(
+    () => [
+      { id: "createdAt", label: "Timestamp", sortable: true, width: "15%" },
+      {
         id: "actor",
         label: "User",
         sortable: false,
-        width: "170px",
+        width: "24%",
         hideOnMobile: true,
-      });
-    base.push(
+      },
       {
         id: "resource",
         label: "Resource",
         sortable: true,
-        width: "110px",
+        width: "12%",
         hideOnMobile: true,
       },
       {
         id: "description",
         label: "Description",
         sortable: false,
-        width: "auto",
+        width: "31%",
         hideOnMobile: true,
       },
-      { id: "status", label: "Status", sortable: false, width: "90px" },
-      { id: "_view", label: "Action", sortable: false, width: "70px" },
-    );
-    return base;
-  }, [isTeam]);
+      { id: "status", label: "Status", sortable: false, width: "10%" },
+      { id: "_view", label: "Action", sortable: false, width: "8%" },
+    ],
+    [],
+  );
 
-  const visibleCols = cols.filter((c) => !(isMobile && c.hideOnMobile));
+  // On mobile only Timestamp / Status / Action survive — redistribute width
+  // evenly across whatever remains so there's never dead space in the header.
+  const visibleCols = useMemo(() => {
+    const filtered = cols.filter((c) => !(isMobile && c.hideOnMobile));
+    if (!isMobile) return filtered;
+    const evenWidth = `${100 / filtered.length}%`;
+    return filtered.map((c) => ({ ...c, width: evenWidth }));
+  }, [cols, isMobile]);
+
   const showResetFilters = hasActiveAuditFilters(filters);
 
   /* ── Loading skeleton ── */
@@ -1541,6 +1573,7 @@ const AuditLogs = () => {
     px: "12px",
     borderBottom: "1px solid #f3f4f6",
     color: T.textPrimary,
+    overflow: "hidden",
   };
   const headCellSx = {
     ...cellSx,
@@ -1641,7 +1674,15 @@ const AuditLogs = () => {
 
       {/* Total chip */}
       {pagination && (
-        <Box sx={{ mb: 1.5, display: "flex", alignItems: "center", gap: 1 }}>
+        <Box
+          sx={{
+            mb: 1.5,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            flexWrap: "wrap",
+          }}
+        >
           <Typography fontSize={12} color={T.textSecondary}>
             {isSuperAdmin ? "System" : isAdmin ? "Organization" : "Personal"}{" "}
             activity
@@ -1690,7 +1731,13 @@ const AuditLogs = () => {
         {loading && <LinearProgress sx={{ height: 2 }} />}
 
         <TableContainer sx={{ overflowX: "auto" }}>
-          <Table sx={{ minWidth: isMobile ? 360 : 640 }}>
+          <Table
+            sx={{
+              width: "100%",
+              minWidth: isMobile ? 360 : 720,
+              tableLayout: "fixed",
+            }}
+          >
             <TableHead>
               <TableRow>
                 {visibleCols.map((col) => (
@@ -1773,11 +1820,16 @@ const AuditLogs = () => {
                       </Typography>
                     </TableCell>
 
-                    {/* User — hidden for team role and on mobile */}
-                    {!isTeam && !isMobile && (
+                    {/* User — shown for every role, hidden only on mobile */}
+                    {!isMobile && (
                       <TableCell sx={cellSx}>
                         <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            minWidth: 0,
+                          }}
                         >
                           <Box
                             sx={{
@@ -1796,13 +1848,12 @@ const AuditLogs = () => {
                           >
                             {(log.actor?.email?.[0] || "U").toUpperCase()}
                           </Box>
-                          <Box>
+                          <Box sx={{ minWidth: 0 }}>
                             <Typography
                               fontSize={11.5}
                               fontWeight={500}
                               color={T.textPrimary}
                               noWrap
-                              sx={{ maxWidth: 130 }}
                             >
                               {log.actor?.email || "Unknown"}
                             </Typography>
@@ -1815,27 +1866,13 @@ const AuditLogs = () => {
                     {/* Resource */}
                     {!isMobile && (
                       <TableCell sx={cellSx}>
-                        <Box
-                          sx={{
-                            display: "inline-block",
-                            px: "7px",
-                            py: "2px",
-                            borderRadius: "6px",
-                            bgcolor: "#f3f4f6",
-                            color: T.textSecondary,
-                            fontSize: 11,
-                            fontWeight: 600,
-                            textTransform: "capitalize",
-                          }}
-                        >
-                          {log.resource}
-                        </Box>
+                        <ResourceChip resource={log.resource} />
                       </TableCell>
                     )}
 
                     {/* Description */}
                     {!isMobile && (
-                      <TableCell sx={{ ...cellSx, maxWidth: 200 }}>
+                      <TableCell sx={cellSx}>
                         <Typography
                           fontSize={11.5}
                           color={T.textSecondary}
@@ -1866,15 +1903,18 @@ const AuditLogs = () => {
                             setDetailsOpen(true);
                           }}
                           sx={{
-                            width: 26,
-                            height: 26,
-                            borderRadius: "7px",
-                            bgcolor: alpha(T.accent, 0.07),
-                            color: T.accent,
+                            width: 28,
+                            height: 28,
+                            borderRadius: "8px",
+                            bgcolor: `${alpha(T.accent, 0.08)} !important`,
+                            color: `${T.accent} !important`,
+                            "&:hover": {
+                              bgcolor: `${alpha(T.accent, 0.16)} !important`,
+                            },
                           }}
                           aria-label="View log details"
                         >
-                          <VisibilityIcon sx={{ fontSize: 13 }} />
+                          <VisibilityIcon sx={{ fontSize: 14 }} />
                         </IconButton>
                       </Tooltip>
                     </TableCell>
@@ -1900,7 +1940,11 @@ const AuditLogs = () => {
                 setPage(0);
               }}
               sx={{
-                "& .MuiTablePagination-toolbar": { minHeight: 44, px: 1.5 },
+                "& .MuiTablePagination-toolbar": {
+                  minHeight: 44,
+                  px: 1.5,
+                  flexWrap: "wrap",
+                },
                 "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
                   {
                     fontSize: 11.5,

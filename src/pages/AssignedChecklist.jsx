@@ -184,7 +184,7 @@ const GradientText = styled(Typography)(() => ({
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 const ModernStatCard = ({ label, value, icon: Icon, trend, subtitle, loading, color }) => (
   <Zoom in timeout={300}>
-    <GlassCard sx={{ height: "100%", width: "100%", overflow: "hidden" }}>
+    <GlassCard sx={{ height: "100%", width: "277px", overflow: "hidden" }}>
       <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <Box sx={{ minWidth: 0, flex: 1, mr: 1 }}>
@@ -299,7 +299,7 @@ const ProgressBar = ({ value }) => {
 
 // ─── Mobile Assignment Card ───────────────────────────────────────────────────
 const MobileAssignmentCard = ({ asgn, canManage, onView, onReassign, onDelete }) => (
-  <Card sx={{ mb: 2, borderRadius: 3, border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+  <Card sx={{ mb: 2, borderRadius: 1, border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
     <CardContent sx={{ pb: 1 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
         <Box sx={{ flex: 1, minWidth: 0, mr: 1 }}>
