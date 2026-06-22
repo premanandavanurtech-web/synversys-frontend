@@ -697,7 +697,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
             size="small"
             sx={{
               position: "absolute",
-              right: -12,
+              right: -9,
               top: "50%",
               transform: "translateY(-50%)",
               bgcolor: "#fff",

@@ -102,8 +102,6 @@ const TopBar = styled(Box)({
   background: T.surface,
   borderBottom: `1px solid ${T.line}`,
   padding: "14px 28px",
-  position: "sticky",
-  top: 0,
   width: "1150px",
   marginLeft: "25px",
   borderRadius: "12px",

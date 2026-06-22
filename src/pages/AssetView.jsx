@@ -988,7 +988,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
     setLoadingParents(true);
     setParentError("");
     try {
-      const res = await fetchRequests({ type: "parent", limit: 100 });
+      const res = await fetchRequests({ type: "all", limit: 100 });
       if (res?.success) {
         setParentRequests(res.requests || []);
       } else if (res?.requests) {
@@ -996,7 +996,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
       } else if (Array.isArray(res)) {
         setParentRequests(res);
       } else {
-        setParentError(res?.message || "Failed to load parent requests");
+        setParentError(res?.message || "Failed to load requests");
       }
     } catch (err) {
       const status = err?.response?.status;
@@ -1008,7 +1008,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
         setParentError(
           err?.response?.data?.message ||
             err?.message ||
-            "Failed to load parent requests",
+            "Failed to load requests",
         );
       }
     } finally {
@@ -1145,7 +1145,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                     fontFamily: T.font,
                   }}
                 >
-                  Select a parent request to link this asset
+                  Select a request to link this asset
                 </Typography>
               </Box>
             </Stack>
@@ -1214,8 +1214,8 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
               lineHeight: 1.6,
             }}
           >
-            Choose a parent request to link this asset to. The asset will become
-            a child of the selected request.
+            Choose a request to link this asset to. The asset will become a
+            child of the selected request.
           </Typography>
 
           {parentError ? (
@@ -1456,6 +1456,20 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                                         fontWeight: 500,
                                         bgcolor: T.violetLight,
                                         color: T.violet,
+                                        fontFamily: T.font,
+                                      }}
+                                    />
+                                  )}
+                                  {req.isChildRequest && (
+                                    <Chip
+                                      label="child"
+                                      size="small"
+                                      sx={{
+                                        height: 18,
+                                        fontSize: "0.62rem",
+                                        fontWeight: 500,
+                                        bgcolor: T.tealLight,
+                                        color: T.teal,
                                         fontFamily: T.font,
                                       }}
                                     />

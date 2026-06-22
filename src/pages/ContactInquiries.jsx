@@ -1332,7 +1332,7 @@ export default function ContactInquiries() {
                     },
                     { id: "createdAt", label: "Date", sort: true },
                     { id: "status", label: "Status", sort: false },
-                    { id: "_actions", label: "", sort: false, width: 90 },
+                    { id: "_actions", label: "Actions", sort: false, width: 90 },
                   ].map((col) =>
                     col.hideMobile && isMobile ? null : (
                       <TableCell
