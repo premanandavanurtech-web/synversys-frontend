@@ -1683,6 +1683,7 @@ export default function AssetView() {
   const navigate = useNavigate();
   const { getAssetById, deleteAsset, loading: assetLoading } = useAsset();
   const { getRequestsByAsset } = useAssetRequest();
+  const { user } = useAuth();
 
   const [asset, setAsset] = useState(null);
   const [pageLoading, setPageLoading] = useState(true);
@@ -2024,25 +2025,27 @@ export default function AssetView() {
             flexWrap="wrap"
             sx={{ flexShrink: 0 }}
           >
-            <Button
-              onClick={() => setLinkOpen(true)}
-              variant="outlined"
-              size="small"
-              startIcon={<AddLink sx={{ fontSize: 15 }} />}
-              sx={{
-                textTransform: "none",
-                borderRadius: T.r.sm,
-                border: `1.5px solid ${T.brand}`,
-                color: T.brand,
-                fontFamily: T.font,
-                fontWeight: 700,
-                fontSize: "0.78rem",
-                px: 2,
-                "&:hover": { bgcolor: T.brandLight },
-              }}
-            >
-              Link Asset
-            </Button>
+            {user?.role === "admin" && (
+  <Button
+    onClick={() => setLinkOpen(true)}
+    variant="outlined"
+    size="small"
+    startIcon={<AddLink sx={{ fontSize: 15 }} />}
+    sx={{
+      textTransform: "none",
+      borderRadius: T.r.sm,
+      border: `1.5px solid ${T.brand}`,
+      color: T.brand,
+      fontFamily: T.font,
+      fontWeight: 700,
+      fontSize: "0.78rem",
+      px: 2,
+      "&:hover": { bgcolor: T.brandLight },
+    }}
+  >
+    Link Asset
+  </Button>
+)}
             <Button
               onClick={() => navigate(`/admin/assets/edit/${id}`)}
               variant="outlined"
@@ -2870,6 +2873,7 @@ export default function AssetView() {
                           Link this asset to a parent request to start tracking
                           relationships.
                         </Typography>
+                        {user?.role === "admin" && (
                         <Button
                           onClick={() => setLinkOpen(true)}
                           variant="contained"
@@ -2887,6 +2891,7 @@ export default function AssetView() {
                         >
                           Link Asset
                         </Button>
+                        )}
                       </Box>
                     ) : (
                       <Stack spacing={2}>
