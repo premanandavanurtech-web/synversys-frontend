@@ -408,9 +408,10 @@ const StatusBadge = ({ status }) => {
     <Chip
       icon={cfg.icon}
       label={cfg.label}
+
       size="small"
       color={cfg.color}
-      sx={{ height: 24, "& .MuiChip-label": { fontSize: 11, px: 0.75 } }}
+      sx={{ height: 24, "& .MuiChip-label": { fontSize: 11, px: 0.75 }, }}
     />
   );
 };
@@ -2750,13 +2751,13 @@ export default function ChecklistPage() {
               </IconButton>
             </Box>
           </DialogTitle>
-          <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <DialogContent sx={{ p: { xs: 2, sm: 3 } ,mt:2 ,}}>
             <Stack spacing={2.5}>
-              <Grid container spacing={1.5}>
+              <Grid container spacing={1.5} >
                 {[
                   {
                     label: "Status",
-                    content: <StatusBadge status={viewRequest?.status} />,
+                    content: <StatusBadge  status={viewRequest?.status} />,
                   },
                   {
                     label: "Urgency",
@@ -2782,7 +2783,7 @@ export default function ChecklistPage() {
                   },
                 ].map(({ label, content }) => (
                   <Grid item xs={6} sm={3} key={label}>
-                    <InfoTile sx={{ height: "100%" }}>
+                    <InfoTile sx={{ height: "100%" ,width:{xs:"132px",md:"203px"}}}>
                       <Typography
                         variant="caption"
                         color="text.secondary"

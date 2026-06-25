@@ -288,7 +288,7 @@ const StatCard = ({
           p: { xs: 2, sm: 2.5 },
           borderRadius: 3,
           height: "100%",
-          width: "270px",
+          width: {xs:"327px",md:"276px"},
           background: `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryLight} 100%)`,
           cursor: onClick ? "pointer" : "default",
           transition: "transform 0.3s ease, box-shadow 0.3s ease",
@@ -433,7 +433,7 @@ const ChartCard = ({ title, sub, children, minH = 280, action }) => (
       p: { xs: 2, sm: 2.5 },
       borderRadius: 3,
       height: "100%",
-      width: "555px", // ✅ was hardcoded 560px
+      width: {xs:"325px",md:"567px"},
       bgcolor: C.white,
       border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
       minHeight: { xs: 240, sm: minH }, // ✅ smaller minimum on mobile
@@ -472,36 +472,34 @@ const EmptyChart = ({ msg = "No data available" }) => (
 );
 
 // ✅ ActivityTable: wrapped in overflow scroll container for mobile
-const ActivityTable = ({ activities }) => (
-  <TableContainer sx={{ maxHeight: 500, overflowX: "auto" }}>
-    <Table stickyHeader size="small" sx={{ minWidth: 1130 }}>
-      <TableHead>
-        <TableRow>
-          {["Action", "Description", "User", "Role", "When"].map((h) => (
-            <TableCell
-              key={h}
+// ─── REPLACE ActivityTable ─────────────────────────────────────────────────────
+const ActivityTable = ({ activities }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [showAll, setShowAll] = useState(false);
+
+  const displayed = isMobile
+    ? showAll
+      ? activities
+      : activities.slice(0, 3)
+    : activities;
+
+  if (isMobile) {
+    return (
+      <Box>
+        <Stack spacing={1} sx={{ p: 1.5 }}>
+          {displayed.map((act, i) => (
+            <Box
+              key={i}
               sx={{
-                fontWeight: 700,
-                color: C.secondary,
+                p: 1.5,
+                borderRadius: 2,
                 bgcolor: C.surfaceContainerLow,
-                fontSize: "0.72rem",
-                whiteSpace: "nowrap",
+                border: `1px solid ${alpha(C.outlineVariant, 0.4)}`,
               }}
             >
-              {h}
-            </TableCell>
-          ))}
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {activities.length > 0 ? (
-          activities.map((act, i) => (
-            <TableRow
-              key={i}
-              hover
-              sx={{ "&:hover": { bgcolor: C.surfaceContainerLow } }}
-            >
-              <TableCell>
+              {/* Row 1: Action chip + When */}
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.75}>
                 <Chip
                   label={act.action?.replace(/_/g, " ")}
                   size="small"
@@ -509,7 +507,6 @@ const ActivityTable = ({ activities }) => (
                     height: 18,
                     fontSize: "0.6rem",
                     fontWeight: 700,
-                    whiteSpace: "nowrap",
                     bgcolor:
                       act.action === "CREATE"
                         ? C.successLight
@@ -517,7 +514,7 @@ const ActivityTable = ({ activities }) => (
                           ? C.errorContainer
                           : act.action === "EMAIL_SENT"
                             ? alpha(C.accent, 0.12)
-                            : C.surfaceContainerLow,
+                            : C.surfaceVariant,
                     color:
                       act.action === "CREATE"
                         ? C.success
@@ -528,45 +525,7 @@ const ActivityTable = ({ activities }) => (
                             : C.secondary,
                   }}
                 />
-              </TableCell>
-              <TableCell sx={{ maxWidth: { xs: 140, sm: 220 } }}>
-                <Typography sx={{ fontSize: "0.72rem", color: C.secondary }}>
-                  {act.description || act.desc || "—"}
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Typography
-                  sx={{
-                    fontSize: "0.72rem",
-                    color: C.primary,
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {act.actor?.email || act.actor || "—"}
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Chip
-                  label={act.actor?.role || act.role || "—"}
-                  size="small"
-                  sx={{
-                    height: 18,
-                    fontSize: "0.6rem",
-                    bgcolor: alpha(C.primaryLight, 0.08),
-                    color: C.primaryLight,
-                    whiteSpace: "nowrap",
-                  }}
-                />
-              </TableCell>
-              <TableCell>
-                <Typography
-                  sx={{
-                    fontSize: "0.7rem",
-                    color: C.outline,
-                    whiteSpace: "nowrap",
-                  }}
-                >
+                <Typography sx={{ fontSize: "0.65rem", color: C.outline }}>
                   {act.timestamp
                     ? new Date(act.timestamp).toLocaleDateString("en-IN", {
                         day: "2-digit",
@@ -575,23 +534,182 @@ const ActivityTable = ({ activities }) => (
                       })
                     : "—"}
                 </Typography>
+              </Box>
+              {/* Row 2: Description */}
+              <Typography sx={{ fontSize: "0.72rem", color: C.secondary, mb: 0.5 }}>
+                {act.description || act.desc || "—"}
+              </Typography>
+              {/* Row 3: User + Role chip */}
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography sx={{ fontSize: "0.7rem", color: C.primary, fontWeight: 600 }}>
+                  {act.actor?.email || act.actor || "—"}
+                </Typography>
+                <Chip
+                  label={act.actor?.role || act.role || "—"}
+                  size="small"
+                  sx={{
+                    height: 16,
+                    fontSize: "0.58rem",
+                    bgcolor: alpha(C.primaryLight, 0.08),
+                    color: C.primaryLight,
+                  }}
+                />
+              </Box>
+            </Box>
+          ))}
+        </Stack>
+
+        {/* View All / collapse toggle */}
+        {activities.length > 3 && (
+          <Box
+            onClick={() => setShowAll((p) => !p)}
+            sx={{
+              py: 1.25,
+              textAlign: "center",
+              borderTop: `1px solid ${alpha(C.outlineVariant, 0.3)}`,
+              cursor: "pointer",
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                color: C.primaryLight,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              {showAll ? "Show Less" : "View All Activities"}
+            </Typography>
+          </Box>
+        )}
+      </Box>
+    );
+  }
+
+  // ── Desktop: original table, unchanged ──
+  return (
+    <TableContainer sx={{ maxHeight: 500, overflowX: "auto" }}>
+      <Table stickyHeader size="small" sx={{ minWidth: 1130 }}>
+        <TableHead>
+          <TableRow>
+            {["Action", "Description", "User", "Role", "When"].map((h) => (
+              <TableCell
+                key={h}
+                sx={{
+                  fontWeight: 700,
+                  color: C.secondary,
+                  bgcolor: C.surfaceContainerLow,
+                  fontSize: "0.72rem",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {h}
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {activities.length > 0 ? (
+            activities.map((act, i) => (
+              <TableRow
+                key={i}
+                hover
+                sx={{ "&:hover": { bgcolor: C.surfaceContainerLow } }}
+              >
+                <TableCell>
+                  <Chip
+                    label={act.action?.replace(/_/g, " ")}
+                    size="small"
+                    sx={{
+                      height: 18,
+                      fontSize: "0.6rem",
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                      bgcolor:
+                        act.action === "CREATE"
+                          ? C.successLight
+                          : act.action?.includes("DELETE")
+                            ? C.errorContainer
+                            : act.action === "EMAIL_SENT"
+                              ? alpha(C.accent, 0.12)
+                              : C.surfaceContainerLow,
+                      color:
+                        act.action === "CREATE"
+                          ? C.success
+                          : act.action?.includes("DELETE")
+                            ? C.onErrorContainer
+                            : act.action === "EMAIL_SENT"
+                              ? C.accent
+                              : C.secondary,
+                    }}
+                  />
+                </TableCell>
+                <TableCell sx={{ maxWidth: { xs: 140, sm: 220 } }}>
+                  <Typography sx={{ fontSize: "0.72rem", color: C.secondary }}>
+                    {act.description || act.desc || "—"}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography
+                    sx={{
+                      fontSize: "0.72rem",
+                      color: C.primary,
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {act.actor?.email || act.actor || "—"}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Chip
+                    label={act.actor?.role || act.role || "—"}
+                    size="small"
+                    sx={{
+                      height: 18,
+                      fontSize: "0.6rem",
+                      bgcolor: alpha(C.primaryLight, 0.08),
+                      color: C.primaryLight,
+                      whiteSpace: "nowrap",
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Typography
+                    sx={{
+                      fontSize: "0.7rem",
+                      color: C.outline,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {act.timestamp
+                      ? new Date(act.timestamp).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "—"}
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                <Typography sx={{ color: C.secondary, fontSize: "0.8rem" }}>
+                  No recent activities
+                </Typography>
               </TableCell>
             </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-              <Typography sx={{ color: C.secondary, fontSize: "0.8rem" }}>
-                No recent activities
-              </Typography>
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
-  </TableContainer>
-);
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
 
+// ─── REPLACE NotifList — only change: remove width: "1090px" → width: "100%" ──
 const NotifList = ({ notifications }) => (
   <Stack spacing={1}>
     {notifications.length > 0 ? (
@@ -601,24 +719,15 @@ const NotifList = ({ notifications }) => (
           sx={{
             p: 1.5,
             borderRadius: 2,
-            width: "1090px",
+            width: {xs:"100%",md:"1090px"},          // ← was "1090px"
             bgcolor: C.surfaceContainerLow,
             border: `1px solid ${alpha(C.outlineVariant, 0.4)}`,
           }}
         >
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="flex-start"
-          >
+          {/* rest unchanged */}
+          <Box display="flex" justifyContent="space-between" alignItems="flex-start">
             <Typography
-              sx={{
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                color: C.primary,
-                flex: 1,
-                pr: 1,
-              }}
+              sx={{ fontSize: "0.75rem", fontWeight: 700, color: C.primary, flex: 1, pr: 1 }}
             >
               {n.title}
             </Typography>
@@ -662,12 +771,7 @@ const NotifList = ({ notifications }) => (
       ))
     ) : (
       <Typography
-        sx={{
-          fontSize: "0.8rem",
-          color: C.secondary,
-          textAlign: "center",
-          py: 2,
-        }}
+        sx={{ fontSize: "0.8rem", color: C.secondary, textAlign: "center", py: 2 }}
       >
         No notifications
       </Typography>
@@ -1113,7 +1217,7 @@ const SuperAdminDashboard = ({ data, loading }) => {
 
       {/* Assignment trend + Request urgency */}
       <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={7}>
+        <Grid item xs={12} md={8}>
           <ChartCard
             title="Assignment overview"
             sub="Created vs completed over period"
@@ -1192,7 +1296,7 @@ const SuperAdminDashboard = ({ data, loading }) => {
       {/* Activities + Notifications side by side */}
       {/* ✅ Stack vertically on mobile */}
       <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={7}>
+        <Grid item xs={12} md={8}>
           <Paper
             elevation={0}
             sx={{

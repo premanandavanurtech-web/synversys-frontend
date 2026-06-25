@@ -157,6 +157,7 @@ const StatTile = ({
       <Box
         sx={{
           bgcolor: "white",
+          
           border: `1px solid ${C.border}`,
           borderRadius: 2,
           p: 2,
@@ -176,6 +177,7 @@ const StatTile = ({
       sx={{
         bgcolor: "white",
         border: `1px solid ${C.border}`,
+        width:{xs:"320px",md:"279px"},
         borderRadius: 2,
         p: { xs: 1.5, sm: 2 },
         height: "100%",
@@ -1156,7 +1158,7 @@ export default function ClientDetails() {
         }}
       >
         <Grid container spacing={{ xs: 1, sm: 1.5 }}>
-          <Grid item xs={6} sm={3} md={3}>
+          <Grid item xs={12} sm={6} md={4}>
             <StatTile
               icon={PeopleIcon}
               label="Users"
@@ -1166,7 +1168,7 @@ export default function ClientDetails() {
               loading={isFetching}
             />
           </Grid>
-          <Grid item xs={6} sm={3} md={3}>
+          <Grid item xs={12} sm={6} md={4}>
             <StatTile
               icon={AssignmentIcon}
               label="Active Checklist"
@@ -1176,7 +1178,7 @@ export default function ClientDetails() {
               loading={isFetching}
             />
           </Grid>
-          <Grid item xs={6} sm={3} md={3}>
+          <Grid item xs={12} sm={6} md={4}>
             <StatTile
               icon={InventoryIcon}
               label="Assets"
@@ -1186,7 +1188,7 @@ export default function ClientDetails() {
               loading={isFetching}
             />
           </Grid>
-          <Grid item xs={6} sm={3} md={3}>
+          <Grid item xs={12} sm={6} md={4}>
             <StatTile
               icon={TrendingUpIcon}
               label="Submissions"

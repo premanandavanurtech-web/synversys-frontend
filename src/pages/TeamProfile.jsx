@@ -416,7 +416,7 @@ const ProfileContent = () => {
         <Box sx={{
           background: T.surface,
           border: `1px solid ${T.line}`,
-          borderRadius: 3,
+          borderRadius: 1,
           p: { xs: "12px 16px", sm: "14px 24px" },
           mb: 3,
           display: "flex",

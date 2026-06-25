@@ -184,7 +184,7 @@ const GradientText = styled(Typography)(() => ({
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 const ModernStatCard = ({ label, value, icon: Icon, trend, subtitle, loading, color }) => (
   <Zoom in timeout={300}>
-    <GlassCard sx={{ height: "100%", width: "277px", overflow: "hidden" }}>
+    <GlassCard sx={{ height: "100%", width:{xs: "377px",md: "273px"}, overflow: "hidden" }}>
       <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <Box sx={{ minWidth: 0, flex: 1, mr: 1 }}>
@@ -390,7 +390,7 @@ const SelectionModal = ({ open, onClose, title, items, loading, selectedIds, onT
         <TextField
           fullWidth size="small" placeholder="Search..."
           value={search} onChange={(e) => setSearch(e.target.value)}
-          sx={{ bgcolor: "white", borderRadius: 2, "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+          sx={{ bgcolor: "white", borderRadius: 2, "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
           InputProps={{
             startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment>,
           }}
@@ -731,7 +731,7 @@ export default function AssignedChecklist() {
 </Grid>
 
           {/* ── Filters Bar ── */}
-          <Paper sx={{ mb: 2.5, p: { xs: 1.5, md: 2 }, borderRadius: 3 }}>
+          <Paper sx={{ mb: 2.5, p: { xs: 1.5, md: 2 }, borderRadius: 1 }}>
             {/* Mobile: search + filter toggle */}
             {isMobile ? (
               <>

@@ -94,7 +94,7 @@ const StatCard = ({ title, value, color }) => (
     elevation={0}
     sx={{
       p: { xs: 1.5, sm: 2 },
-      borderRadius: 2.5,
+      borderRadius: 1,
       border: "1px solid #e2e8f0",
       height: "100%",
       width:"285px"
@@ -280,7 +280,7 @@ export default function InspectionHistory() {
             sx={{
               mb: 2.5,
               p: 1.5,
-              borderRadius: 2.5,
+              borderRadius: 1,
               border: "1px solid #e2e8f0",
             }}
           >
@@ -407,7 +407,7 @@ export default function InspectionHistory() {
               elevation={0}
               sx={{
                 overflow: "hidden",
-                borderRadius: 2.5,
+                borderRadius: 1,
                 border: "1px solid #e2e8f0",
               }}
             >

@@ -3,6 +3,8 @@
 // • Added "Add New Asset" option in the asset select inside CreateParentDialog
 // • Clicking "Add New Asset" opens AddNewAsset page as a full-screen modal
 // • After asset is created, the dialog refreshes the asset list and auto-selects it
+// • Replaced the table view with a card-based "My Requests" style layout
+// • Added Parent / Child tabs to filter requests by isChildRequest
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -10,12 +12,6 @@ import {
   Box,
   Typography,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Chip,
   IconButton,
   TextField,
@@ -44,29 +40,27 @@ import {
   Divider,
   Autocomplete,
   Slide,
-  AppBar,
-  Toolbar,
-  alpha,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import {
   Search,
-  Visibility,
   CheckCircle,
   Cancel,
   HourglassEmpty,
   DoneAll,
   Refresh,
-  ArrowUpward,
-  ArrowDownward,
   Add,
   AccountTree,
   Link as LinkIcon,
   FiberNew,
   TrendingUp,
   Inventory2,
-  FilterList,
   Close,
   AddCircleOutline,
+  CalendarToday,
+  Person,
+  PlaceOutlined,
 } from "@mui/icons-material";
 import { styled, keyframes } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
@@ -136,23 +130,21 @@ const FilterPaper = styled(Paper)({
   background: T.surface,
 });
 
-const StyledTableContainer = styled(TableContainer)({
-  borderRadius: 14,
+const RequestCard = styled(Card)({
+  borderRadius: 16,
   border: `1px solid ${T.border}`,
   boxShadow: "none",
   background: T.surface,
-  overflowX: "auto",
-});
-
-const ActionBtn = styled(IconButton)(({ hovercolor, hoverbg }) => ({
-  borderRadius: 8,
-  padding: 6,
-  transition: "background 0.14s, color 0.14s",
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
+  transition: "transform 0.16s, box-shadow 0.16s, border-color 0.16s",
   "&:hover": {
-    backgroundColor: hoverbg,
-    color: hovercolor,
+    transform: "translateY(-2px)",
+    boxShadow: "0 10px 28px rgba(13,27,42,0.08)",
+    borderColor: T.tealMid,
   },
-}));
+});
 
 // ─── Status / type chip helpers ────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -841,6 +833,199 @@ function CreateParentDialog({ open, onClose, onSuccess }) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// REQUEST CARD (replaces table row)
+// ──────────────────────────────────────────────────────────────────────────────
+// Mirrors the fields visible in the admin table (Image 1): asset name/id,
+// requester, request type ("Category"), urgency, status, created date
+// ("Last Inspection"-style date), plus the description as the location-style
+// subtext line under the asset name.
+function RequestCardItem({ r, onOpen, onChild, onLinkAsset }) {
+  const fmt = (d) =>
+    d
+      ? new Date(d).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })
+      : "—";
+
+  const assetName =
+    r.assetId?.name || r.assetId?.assetName || "Unnamed Asset";
+  const assetTag =
+    r.assetId?.assetTag || r.assetId?.serialNumber || r.assetId?._id?.slice(-8);
+
+  return (
+    <RequestCard>
+      <CardContent sx={{ p: 2.25, flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* Header row: asset name + status */}
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="flex-start"
+          spacing={1}
+          mb={0.5}
+        >
+          <Box minWidth={0}>
+            <Typography
+              fontWeight={700}
+              fontSize="0.95rem"
+              color={T.text}
+              noWrap
+              title={assetName}
+            >
+              {assetName}
+            </Typography>
+            <Stack direction="row" spacing={0.5} alignItems="center" mt={0.25}>
+              <PlaceOutlined sx={{ fontSize: 13, color: T.textMuted }} />
+              <Typography
+                sx={{ fontSize: 11.5, color: T.textMuted, fontFamily: "monospace" }}
+                noWrap
+              >
+                {assetTag ? `Tag: ${assetTag}` : `#${r._id?.slice(-10)}`}
+              </Typography>
+            </Stack>
+          </Box>
+          <StatusChip status={r.status} />
+        </Stack>
+
+        <Divider sx={{ my: 1.25 }} />
+
+        {/* Category row (request type) */}
+        <Stack direction="row" justifyContent="space-between" mb={0.9}>
+          <Typography sx={{ fontSize: 12, color: T.textMuted, fontWeight: 600 }}>
+            Category:
+          </Typography>
+          <RequestTypeChip type={r.requestType} />
+        </Stack>
+
+        {/* Urgency row */}
+        <Stack direction="row" justifyContent="space-between" mb={0.9}>
+          <Typography sx={{ fontSize: 12, color: T.textMuted, fontWeight: 600 }}>
+            Urgency:
+          </Typography>
+          <UrgencyChip urgency={r.urgency} />
+        </Stack>
+
+        {/* Requester + date, mirroring "Last Inspection / Next Due" two-column layout */}
+        <Stack direction="row" spacing={2} mb={r.description ? 1 : 0}>
+          <Box flex={1} minWidth={0}>
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              <Person sx={{ fontSize: 13, color: T.textMuted }} />
+              <Typography sx={{ fontSize: 11, color: T.textMuted, fontWeight: 600 }}>
+                Requester
+              </Typography>
+            </Stack>
+            <Typography
+              sx={{ fontSize: 12.5, color: T.text, fontWeight: 600, mt: 0.25 }}
+              noWrap
+              title={r.requestedBy?.email}
+            >
+              {r.requestedBy?.email?.split("@")[0] || "Unknown"}
+            </Typography>
+          </Box>
+          <Box flex={1} minWidth={0}>
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              <CalendarToday sx={{ fontSize: 12, color: T.textMuted }} />
+              <Typography sx={{ fontSize: 11, color: T.textMuted, fontWeight: 600 }}>
+                Created
+              </Typography>
+            </Stack>
+            <Typography sx={{ fontSize: 12.5, color: T.text, fontWeight: 600, mt: 0.25 }}>
+              {fmt(r.createdAt)}
+            </Typography>
+          </Box>
+        </Stack>
+
+        {r.description && (
+          <Typography
+            sx={{
+              fontSize: 12,
+              color: T.textSub,
+              lineHeight: 1.5,
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              mb: 0.5,
+            }}
+          >
+            {r.description}
+          </Typography>
+        )}
+
+        {r.isChildRequest && (
+          <Chip
+            label="Child Request"
+            size="small"
+            sx={{
+              alignSelf: "flex-start",
+              height: 20,
+              fontSize: 10,
+              fontWeight: 700,
+              bgcolor: T.blueBg,
+              color: T.blue,
+              mb: 0.5,
+            }}
+          />
+        )}
+
+        <Box flex={1} />
+
+        {/* Footer actions */}
+        <Stack direction="row" spacing={1} mt={1.5}>
+          <Button
+            fullWidth
+            size="small"
+            variant="outlined"
+            onClick={() => onOpen(r._id)}
+            sx={{
+              borderRadius: 1,
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: 12.5,
+              borderColor: T.border,
+              paddingY:1,
+              color: T.text,
+              "&:hover": { borderColor: T.teal, bgcolor: T.tealLight, color: T.tealDark },
+            }}
+          >
+            View Details
+          </Button>
+          {/* <Tooltip title="Create child request">
+            <IconButton
+              size="small"
+              onClick={() => onChild(r._id)}
+              sx={{
+                borderRadius: 1.5,
+                border: `1px solid ${T.border}`,
+                color: T.blue,
+                "&:hover": { bgcolor: T.blueBg, borderColor: T.blue },
+              }}
+            >
+              <AccountTree sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Link asset">
+            <IconButton
+              size="small"
+              onClick={() => onLinkAsset(r._id)}
+              sx={{
+                borderRadius: 1.5,
+                border: `1px solid ${T.border}`,
+                color: T.green,
+                "&:hover": { bgcolor: T.greenBg, borderColor: T.green },
+              }}
+            >
+              <LinkIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip> */}
+        </Stack>
+      </CardContent>
+    </RequestCard>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ──────────────────────────────────────────────────────────────────────────────
 export default function AssetRequests() {
@@ -877,6 +1062,9 @@ export default function AssetRequests() {
     message: "",
     severity: "success",
   });
+
+  // Parent / Child tab — mirrors "Parent Asset Add Request" / "Child Asset Add Request"
+  const [requestKindTab, setRequestKindTab] = useState("parent");
 
   const [createParentOpen, setCreateParentOpen] = useState(false);
   const [createChildOpen, setCreateChildOpen] = useState(false);
@@ -960,73 +1148,20 @@ export default function AssetRequests() {
     setPagination((p) => ({ ...p, page: 1 }));
   };
 
-  const handleSort = (field) => {
-    if (sortField === field)
-      setSortOrder((p) => (p === "asc" ? "desc" : "asc"));
-    else {
-      setSortField(field);
-      setSortOrder("asc");
-    }
-  };
+  // Apply the Parent/Child tab on top of whatever the server returned.
+  // (Server-side `filters.type` filter still applies separately via the Type select.)
+  const tabFiltered = requests.filter((r) =>
+    requestKindTab === "child" ? !!r.isChildRequest : !r.isChildRequest,
+  );
 
-  const sorted = [...requests].sort((a, b) => {
+  const sorted = [...tabFiltered].sort((a, b) => {
     const av = sortField === "createdAt" ? new Date(a.createdAt) : a[sortField];
     const bv = sortField === "createdAt" ? new Date(b.createdAt) : b[sortField];
     return sortOrder === "asc" ? (av > bv ? 1 : -1) : av < bv ? 1 : -1;
   });
 
-  const fmt = (d) =>
-    d
-      ? new Date(d).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })
-      : "—";
-  const initial = (email) => email?.charAt(0).toUpperCase() || "?";
-
-  const SortIcon = ({ field }) =>
-    sortField === field ? (
-      sortOrder === "asc" ? (
-        <ArrowUpward sx={{ fontSize: 13, ml: 0.4 }} />
-      ) : (
-        <ArrowDownward sx={{ fontSize: 13, ml: 0.4 }} />
-      )
-    ) : null;
-
-  const TH = ({ children, sortKey, width, align }) => (
-    <TableCell
-      sx={{
-        fontWeight: 700,
-        fontSize: "0.72rem",
-        textTransform: "uppercase",
-        letterSpacing: "0.05em",
-        color: T.textMuted,
-        bgcolor: "#f8fafc",
-        py: 1.25,
-        width,
-        textAlign: align,
-      }}
-    >
-      {sortKey ? (
-        <Box
-          onClick={() => handleSort(sortKey)}
-          sx={{
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            userSelect: "none",
-            "&:hover": { color: T.teal },
-          }}
-        >
-          {children}
-          <SortIcon field={sortKey} />
-        </Box>
-      ) : (
-        children
-      )}
-    </TableCell>
-  );
+  const parentCount = requests.filter((r) => !r.isChildRequest).length;
+  const childCount = requests.filter((r) => r.isChildRequest).length;
 
   const statDefs = [
     {
@@ -1065,149 +1200,6 @@ export default function AssetRequests() {
       iconColor: T.blue,
     },
   ];
-
-  const MobileCard = ({ r }) => (
-    <Card
-      sx={{
-        mb: 1.5,
-        borderRadius: 3,
-        border: `1px solid ${T.border}`,
-        boxShadow: "none",
-        cursor: "pointer",
-        "&:hover": {
-          borderColor: T.teal,
-          boxShadow: "0 2px 12px rgba(12,71,64,0.08)",
-        },
-      }}
-      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
-    >
-      <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="flex-start"
-          mb={1}
-        >
-          <Box>
-            <Typography
-              sx={{ fontFamily: "monospace", fontSize: 10, color: T.textMuted }}
-            >
-              #{r._id?.slice(-10)}
-            </Typography>
-            <Typography
-              variant="body2"
-              fontWeight={700}
-              color={T.text}
-              mt={0.25}
-              noWrap
-              sx={{ maxWidth: 180 }}
-            >
-              {r.assetId?.name ||
-                r.assetId?.assetName ||
-                `Asset …${r.assetId?._id?.slice(-6) || "N/A"}`}
-            </Typography>
-          </Box>
-          <StatusChip status={r.status} />
-        </Stack>
-        <Stack direction="row" spacing={0.75} mb={1} flexWrap="wrap" gap={0.5}>
-          <RequestTypeChip type={r.requestType} />
-          <UrgencyChip urgency={r.urgency} />
-          {r.isChildRequest && (
-            <Chip
-              label="Child"
-              size="small"
-              sx={{
-                height: 22,
-                fontSize: 10,
-                bgcolor: T.blueBg,
-                color: T.blue,
-              }}
-            />
-          )}
-        </Stack>
-        {r.description && (
-          <Typography
-            sx={{
-              fontSize: 12,
-              color: T.textSub,
-              mb: 1,
-              lineHeight: 1.5,
-              overflow: "hidden",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-            }}
-          >
-            {r.description}
-          </Typography>
-        )}
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-        >
-          <Stack direction="row" spacing={0.75} alignItems="center">
-            <Avatar
-              sx={{ width: 24, height: 24, bgcolor: T.teal, fontSize: 10 }}
-            >
-              {initial(r.requestedBy?.email)}
-            </Avatar>
-            <Typography sx={{ fontSize: 11, color: T.textMuted }}>
-              {r.requestedBy?.email?.split("@")[0] || "Unknown"}
-            </Typography>
-          </Stack>
-          <Typography sx={{ fontSize: 10, color: T.textMuted }}>
-            {fmt(r.createdAt)}
-          </Typography>
-        </Stack>
-        <Stack
-          direction="row"
-          spacing={0.75}
-          mt={1.25}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Button
-            size="small"
-            startIcon={<AccountTree sx={{ fontSize: 12 }} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedRequestId(r._id);
-              setCreateChildOpen(true);
-            }}
-            sx={{
-              borderRadius: 1.5,
-              textTransform: "none",
-              fontSize: 10,
-              py: 0.4,
-              color: T.blue,
-              border: `1px solid ${T.blue}`,
-            }}
-          >
-            Child
-          </Button>
-          <Button
-            size="small"
-            startIcon={<LinkIcon sx={{ fontSize: 12 }} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedRequestId(r._id);
-              setLinkAssetOpen(true);
-            }}
-            sx={{
-              borderRadius: 1.5,
-              textTransform: "none",
-              fontSize: 10,
-              py: 0.4,
-              color: T.green,
-              border: `1px solid ${T.green}`,
-            }}
-          >
-            Link Asset
-          </Button>
-        </Stack>
-      </CardContent>
-    </Card>
-  );
 
   if (loading && requests.length === 0) {
     return (
@@ -1248,14 +1240,22 @@ export default function AssetRequests() {
             />
           ))}
         </Box>
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Skeleton
-            key={i}
-            variant="rounded"
-            height={52}
-            sx={{ mb: 1, borderRadius: 2 }}
-          />
-        ))}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "1fr 1fr 1fr" },
+            gap: 2,
+          }}
+        >
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton
+              key={i}
+              variant="rounded"
+              height={220}
+              sx={{ borderRadius: 3 }}
+            />
+          ))}
+        </Box>
       </PageWrap>
     );
   }
@@ -1291,7 +1291,7 @@ export default function AssetRequests() {
               startIcon={<Add sx={{ fontSize: 17 }} />}
               onClick={() => setCreateParentOpen(true)}
               sx={{
-                borderRadius: 2.5,
+                borderRadius: 1,
                 textTransform: "none",
                 fontWeight: 600,
                 fontSize: "0.82rem",
@@ -1372,6 +1372,42 @@ export default function AssetRequests() {
         ))}
       </Box>
 
+      {/* ── Parent / Child Tabs ── */}
+      <Tabs
+        value={requestKindTab}
+        onChange={(_, v) => setRequestKindTab(v)}
+        sx={{
+          mb: 2,
+          minHeight: 40,
+          "& .MuiTabs-indicator": { display: "none" },
+        }}
+      >
+        {[
+          { value: "parent", label: "Parent Asset Add Request", count: parentCount },
+          { value: "child", label: "Child Asset Add Request", count: childCount },
+        ].map((t) => (
+          <Tab
+            key={t.value}
+            value={t.value}
+            label={`${t.label}${t.count ? ` (${t.count})` : ""}`}
+            sx={{
+              minHeight: 40,
+              textTransform: "none",
+              fontWeight: 700,
+              fontSize: "0.82rem",
+              borderRadius: 2,
+              mr: 1,
+              color: T.textMuted,
+              bgcolor: "#eef2f5",
+              "&.Mui-selected": {
+                color: T.teal,
+                bgcolor: T.tealLight,
+              },
+            }}
+          />
+        ))}
+      </Tabs>
+
       {/* ── Filters ── */}
       <FilterPaper>
         <Stack
@@ -1396,19 +1432,6 @@ export default function AssetRequests() {
               ),
             }}
           />
-          <FormControl size="small" sx={{ flex: 1, minWidth: 130 }}>
-            <InputLabel>Type</InputLabel>
-            <Select
-              value={filters.type}
-              label="Type"
-              sx={{ borderRadius: 2.5 }}
-              onChange={(e) => handleFilterChange("type", e.target.value)}
-            >
-              <MenuItem value="all">All Types</MenuItem>
-              <MenuItem value="parent">Parent Only</MenuItem>
-              <MenuItem value="child">Child Only</MenuItem>
-            </Select>
-          </FormControl>
           <FormControl size="small" sx={{ flex: 1, minWidth: 130 }}>
             <InputLabel>Status</InputLabel>
             <Select
@@ -1447,218 +1470,53 @@ export default function AssetRequests() {
         </Stack>
       </FilterPaper>
 
-      {/* ── Table / Mobile ── */}
-      {isMobile ? (
-        <Box>
-          {sorted.length === 0 && !loading ? (
-            <Paper
-              sx={{
-                p: 5,
-                textAlign: "center",
-                borderRadius: 3,
-                border: `1px solid ${T.border}`,
-                boxShadow: "none",
-              }}
-            >
-              <FiberNew sx={{ fontSize: 38, color: T.textMuted, mb: 1 }} />
-              <Typography fontWeight={600} color="textSecondary">
-                No requests found
-              </Typography>
-              <Typography variant="caption" color="textSecondary">
-                Adjust your filters or create a new request
-              </Typography>
-            </Paper>
-          ) : (
-            sorted.map((r) => <MobileCard key={r._id} r={r} />)
-          )}
-        </Box>
+      {/* ── Card Grid ── */}
+      {sorted.length === 0 && !loading ? (
+        <Paper
+          sx={{
+            p: 5,
+            textAlign: "center",
+            borderRadius: 3,
+            border: `1px solid ${T.border}`,
+            boxShadow: "none",
+          }}
+        >
+          <FiberNew sx={{ fontSize: 38, color: T.textMuted, mb: 1 }} />
+          <Typography fontWeight={600} color="textSecondary">
+            No {requestKindTab === "child" ? "child" : "parent"} requests found
+          </Typography>
+          <Typography variant="caption" color="textSecondary">
+            Adjust your filters or create a new request
+          </Typography>
+        </Paper>
       ) : (
-        <StyledTableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TH width={150}>Request ID</TH>
-                <TH width={190}>Asset</TH>
-                <TH width={190}>Requester</TH>
-                <TH width={110}>Type</TH>
-                <TH width={95}>Urgency</TH>
-                <TH width={100}>Status</TH>
-                <TH sortKey="createdAt" width={110}>
-                  Created
-                </TH>
-                <TH width={120} align="center">
-                  Actions
-                </TH>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {sorted.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} sx={{ textAlign: "center", py: 6 }}>
-                    <FiberNew
-                      sx={{ fontSize: 36, color: T.textMuted, mb: 1 }}
-                    />
-                    <Typography
-                      fontWeight={600}
-                      color="textSecondary"
-                      display="block"
-                    >
-                      No requests found
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      Adjust filters or create a new request
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                sorted.map((r) => (
-                  <TableRow
-                    key={r._id}
-                    hover
-                    sx={{
-                      cursor: "pointer",
-                      "&:hover td": { bgcolor: "#f8fffe" },
-                    }}
-                  >
-                    <TableCell
-                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
-                    >
-                      <Typography
-                        sx={{
-                          fontFamily: "monospace",
-                          fontSize: 11,
-                          color: T.textSub,
-                        }}
-                      >
-                        #{r._id?.slice(-10)}
-                      </Typography>
-                      {r.isChildRequest && (
-                        <Chip
-                          label="Child"
-                          size="small"
-                          sx={{
-                            mt: 0.4,
-                            height: 17,
-                            fontSize: 9,
-                            bgcolor: T.blueBg,
-                            color: T.blue,
-                          }}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell
-                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
-                    >
-                      <Typography
-                        variant="body2"
-                        fontWeight={600}
-                        color={T.text}
-                        noWrap
-                        sx={{ maxWidth: 170 }}
-                      >
-                        {r.assetId?.name || r.assetId?.assetName || "—"}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontFamily: "monospace",
-                          fontSize: 10,
-                          color: T.textMuted,
-                        }}
-                      >
-                        {r.assetId?._id?.slice(-10) ||
-                          r.assetId?.slice?.(-10) ||
-                          "—"}
-                      </Typography>
-                    </TableCell>
-                    <TableCell
-                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
-                    >
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Avatar
-                          sx={{
-                            width: 28,
-                            height: 28,
-                            bgcolor: T.teal,
-                            fontSize: 11,
-                          }}
-                        >
-                          {initial(r.requestedBy?.email)}
-                        </Avatar>
-                        <Box minWidth={0}>
-                          <Typography
-                            variant="body2"
-                            fontWeight={600}
-                            noWrap
-                            sx={{ maxWidth: 130 }}
-                          >
-                            {r.requestedBy?.email?.split("@")[0] || "Unknown"}
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontSize: 10,
-                              color: T.textMuted,
-                              maxWidth: 130,
-                            }}
-                            noWrap
-                          >
-                            {r.requestedBy?.email || "—"}
-                          </Typography>
-                        </Box>
-                      </Stack>
-                    </TableCell>
-                    <TableCell
-                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
-                    >
-                      <RequestTypeChip type={r.requestType} />
-                    </TableCell>
-                    <TableCell
-                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
-                    >
-                      <UrgencyChip urgency={r.urgency} />
-                    </TableCell>
-                    <TableCell
-                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
-                    >
-                      <StatusChip status={r.status} />
-                    </TableCell>
-                    <TableCell
-                      onClick={() => navigate(`/admin/asset-requests/${r._id}`)}
-                    >
-                      <Typography
-                        variant="body2"
-                        color={T.textSub}
-                        sx={{ fontSize: 12 }}
-                      >
-                        {fmt(r.createdAt)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Stack
-                        direction="row"
-                        spacing={0.5}
-                        justifyContent="center"
-                      >
-                        <Tooltip title="View Details">
-                          <ActionBtn
-                            size="small"
-                            onClick={() =>
-                              navigate(`/admin/asset-requests/${r._id}`)
-                            }
-                            sx={{ color: T.teal, bgcolor: T.tealLight }}
-                            hovercolor={T.tealDark}
-                            hoverbg={T.tealMid}
-                          >
-                            <Visibility sx={{ fontSize: 15 }} />
-                          </ActionBtn>
-                        </Tooltip>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </StyledTableContainer>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "1fr 1fr",
+              md: "1fr 1fr 1fr",
+            },
+            gap: 2,
+          }}
+        >
+          {sorted.map((r) => (
+            <RequestCardItem
+              key={r._id}
+              r={r}
+              onOpen={(id) => navigate(`/admin/asset-requests/${id}`)}
+              onChild={(id) => {
+                setSelectedRequestId(id);
+                setCreateChildOpen(true);
+              }}
+              onLinkAsset={(id) => {
+                setSelectedRequestId(id);
+                setLinkAssetOpen(true);
+              }}
+            />
+          ))}
+        </Box>
       )}
 
       {pagination.pages > 1 && (

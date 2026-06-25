@@ -110,10 +110,13 @@ const T = {
   tealLight: "#E3F3F6",
   gold: "#B8953A",
   goldLight: "#FBF4E3",
+  goldDeep: "#8A6A22",
+  goldLine: "linear-gradient(90deg, rgba(184,149,58,0) 0%, rgba(184,149,58,0.55) 50%, rgba(184,149,58,0) 100%)",
   violet: "#6B4E9E",
   violetLight: "#F0EBF8",
   font: "'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   fontMono: "'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+  serif: "'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif",
   r: { xs: "6px", sm: "10px", md: "14px", lg: "20px", xl: "28px" },
   sh: {
     sm: "0 1px 3px rgba(26,26,24,0.07), 0 1px 2px rgba(26,26,24,0.04)",
@@ -177,7 +180,17 @@ const Card = styled(Paper)({
   border: `1px solid ${T.border}`,
   boxShadow: T.sh.sm,
   overflow: "hidden",
-  transition: "box-shadow 0.2s ease, transform 0.2s ease",
+  position: "relative",
+  transition: "box-shadow 0.25s ease, transform 0.25s ease",
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    background: T.goldLine,
+  },
   "&:hover": { boxShadow: T.sh.md },
 });
 
@@ -209,8 +222,9 @@ const SectionTitle = ({ children, icon, action }) => (
   </Stack>
 );
 
+// ── FIX #4: use "1 / -1" so fullWidth spans ALL columns (2 or 3) ──
 const Field = ({ label, value, mono, icon, fullWidth, color, badge }) => (
-  <Box sx={{ gridColumn: fullWidth ? "span 2" : undefined }}>
+  <Box sx={{ gridColumn: fullWidth ? "1 / -1" : undefined }}>
     <Typography
       sx={{
         fontSize: "0.67rem",
@@ -710,7 +724,7 @@ function CreateRequestDialog({ open, onClose, onSuccess }) {
     !o?.__isAddNew && !v?.__isAddNew && (o?._id || o?.id) === (v?._id || v?.id)
   }
   slotProps={{
-    popper: { style: { zIndex: 1600 } }, // higher than the Dialog's 1500
+    popper: { style: { zIndex: 1600 } },
   }}
   renderOption={(props, option) => {
     if (option.__isAddNew) {
@@ -1263,7 +1277,6 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                   ))}
                 </Stack>
               ) : filteredParents.length === 0 ? (
-                /* ── Empty State ── */
                 <Box sx={{ py: 6, textAlign: "center" }}>
                   <Box
                     sx={{
@@ -1290,9 +1303,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                       mb: 0.5,
                     }}
                   >
-                    {searchParent
-                      ? "No matching requests"
-                      : "No requests yet"}
+                    {searchParent ? "No matching requests" : "No requests yet"}
                   </Typography>
                   <Typography
                     sx={{
@@ -1307,7 +1318,6 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                       : "Team members haven't sent any requests to link yet!"}
                   </Typography>
 
-                  {/* ── Add New Request button (only when not searching) ── */}
                   {!searchParent && canCreateRequests && (
                     <Button
                       variant="contained"
@@ -1703,6 +1713,16 @@ export default function AssetView() {
   const toast = (msg, sev = "success") =>
     setSnackbar({ open: true, message: msg, severity: sev });
 
+  useEffect(() => {
+    if (document.getElementById("fraunces-font-link")) return;
+    const link = document.createElement("link");
+    link.id = "fraunces-font-link";
+    link.rel = "stylesheet";
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap";
+    document.head.appendChild(link);
+  }, []);
+
   const loadAsset = useCallback(async () => {
     setPageLoading(true);
     try {
@@ -1769,9 +1789,11 @@ export default function AssetView() {
       ? `${import.meta.env?.VITE_API_URL?.replace("/api/v1", "") || "https://synversys-backend.onrender.com"}/uploads/assets/${name}`
       : null;
 
+  // ── SKELETON LOADING STATE ────────────────────────────────────────────────
   if (pageLoading) {
     return (
-      <Box sx={{ minHeight: "100vh", fontFamily: T.font }}>
+      <Box sx={{ minHeight: "100vh", fontFamily: T.font, overflowX: "hidden" }}>
+        {/* Top bar skeleton */}
         <Box
           sx={{
             px: { xs: 2, sm: 3, md: 4 },
@@ -1804,18 +1826,13 @@ export default function AssetView() {
             </Stack>
           </Stack>
         </Box>
-        <Box
-          sx={{
-            px: { xs: 2, sm: 3, md: 4 },
-            py: 3,
-            maxWidth: 1200,
-            mx: "auto",
-          }}
-        >
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={4} lg={3.5}>
+        {/* Body skeleton — matches new proportions */}
+        <Box sx={{ px: { xs: 2, sm: 3, md: 4, xl: 6 }, py: 3, overflowX: "hidden" }}>
+          <Grid container spacing={3} sx={{ width: "100%", m: 0 }}>
+            {/* FIX #2 applied to skeleton too */}
+            <Grid item xs={12} md={3} lg={2.5}>
               <Stack spacing={2.5}>
-                {[360, 130, 200].map((h, i) => (
+                {[300, 130, 200].map((h, i) => (
                   <Skeleton
                     key={i}
                     variant="rounded"
@@ -1825,7 +1842,7 @@ export default function AssetView() {
                 ))}
               </Stack>
             </Grid>
-            <Grid item xs={12} md={8} lg={8.5}>
+            <Grid item xs={12} md={9} lg={9.5}>
               <Skeleton
                 variant="rounded"
                 height={520}
@@ -1871,21 +1888,32 @@ export default function AssetView() {
         minHeight: "100vh",
         fontFamily: T.font,
         animation: `${fadeUp} 0.4s ease both`,
+        overflowX: "hidden",
+        width: "100%",
       }}
     >
-      {/* Top Bar */}
+      {/* ── TOP BAR ──────────────────────────────────────────────────────── */}
+      {/* FIX #5: removed inner maxWidth wrapper — bar now stretches full width */}
       <Box
         sx={{
           bgcolor: T.surface,
           borderBottom: `1px solid ${T.border}`,
-          px: { xs: 2, sm: 3, md: 4 },
+          px: { xs: 2, sm: 3, md: 4, xl: 6 },
           py: { xs: 2, sm: 2.5 },
           position: "sticky",
           top: 0,
-          width: "1100px",
-          marginLeft: "50px",
+          width: "100%",
           zIndex: 100,
-          borderRadius: 2,
+          boxSizing: "border-box",
+          "&::after": {
+            content: '""',
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: -1,
+            height: 2,
+            background: T.goldLine,
+          },
         }}
       >
         <Stack
@@ -1894,11 +1922,12 @@ export default function AssetView() {
           justifyContent="space-between"
           spacing={{ xs: 1.5, sm: 0 }}
         >
+          {/* Left: back + title */}
           <Stack
             direction="row"
             alignItems="center"
             spacing={2}
-            sx={{ minWidth: 0, flex: 1 }}
+            sx={{ minWidth: 0, flex: 1, width: { xs: "100%", sm: "auto" } }}
           >
             <IconButton
               onClick={() => navigate("/admin/assets")}
@@ -1918,7 +1947,7 @@ export default function AssetView() {
             >
               <ArrowBack sx={{ fontSize: 17 }} />
             </IconButton>
-            <Box sx={{ minWidth: 0 }}>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
               <Stack
                 direction="row"
                 alignItems="center"
@@ -1927,15 +1956,15 @@ export default function AssetView() {
               >
                 <Typography
                   sx={{
-                    fontSize: { xs: "1.05rem", sm: "1.2rem" },
-                    fontWeight: 700,
+                    fontSize: { xs: "1.15rem", sm: "1.35rem" },
+                    fontWeight: 600,
                     color: T.ink,
-                    fontFamily: T.font,
-                    letterSpacing: "-0.02em",
+                    fontFamily: T.serif,
+                    letterSpacing: "-0.01em",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
-                    maxWidth: { xs: "180px", sm: "320px", md: "auto" },
+                    maxWidth: { xs: "140px", sm: "240px", md: "400px", lg: "600px" },
                   }}
                 >
                   {asset.assetName}
@@ -2019,33 +2048,34 @@ export default function AssetView() {
             </Box>
           </Stack>
 
+          {/* Right: action buttons */}
           <Stack
             direction="row"
             spacing={1}
             flexWrap="wrap"
-            sx={{ flexShrink: 0 }}
+            sx={{ flexShrink: 0, width: { xs: "100%", sm: "auto" } }}
           >
             {user?.role === "admin" && (
-  <Button
-    onClick={() => setLinkOpen(true)}
-    variant="outlined"
-    size="small"
-    startIcon={<AddLink sx={{ fontSize: 15 }} />}
-    sx={{
-      textTransform: "none",
-      borderRadius: T.r.sm,
-      border: `1.5px solid ${T.brand}`,
-      color: T.brand,
-      fontFamily: T.font,
-      fontWeight: 700,
-      fontSize: "0.78rem",
-      px: 2,
-      "&:hover": { bgcolor: T.brandLight },
-    }}
-  >
-    Link Asset
-  </Button>
-)}
+              <Button
+                onClick={() => setLinkOpen(true)}
+                variant="outlined"
+                size="small"
+                startIcon={<AddLink sx={{ fontSize: 15 }} />}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: T.r.sm,
+                  border: `1.5px solid ${T.brand}`,
+                  color: T.brand,
+                  fontFamily: T.font,
+                  fontWeight: 700,
+                  fontSize: "0.78rem",
+                  px: 2,
+                  "&:hover": { bgcolor: T.brandLight },
+                }}
+              >
+                Link Asset
+              </Button>
+            )}
             <Button
               onClick={() => navigate(`/admin/assets/edit/${id}`)}
               variant="outlined"
@@ -2088,22 +2118,33 @@ export default function AssetView() {
         </Stack>
       </Box>
 
-      {/* Body */}
+      {/* ── BODY ─────────────────────────────────────────────────────────── */}
+      {/* FIX #1: removed maxWidth constraint — content now fills full available width */}
       <Box
-        sx={{ px: { xs: 2, sm: 3, md: 4 }, py: 3, maxWidth: 1200, mx: "auto" }}
+        sx={{
+          px: { xs: 2, sm: 3, md: 4, xl: 6 },
+          py: 3,
+          overflowX: "hidden",
+          boxSizing: "border-box",
+          width: "100%",
+        }}
       >
-        <Grid container spacing={3}>
-          {/* LEFT SIDEBAR */}
-          <Grid item xs={12} md={4} lg={3.5} sx={{ width: "300px" }}>
+        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ width: "100%", m: 0 }}>
+
+          {/* ── LEFT SIDEBAR ─────────────────────────────────────────────── */}
+          {/* FIX #2: narrowed sidebar from md={4} lg={3} → md={3} lg={2.5} */}
+          <Grid item xs={12} md={3} lg={2.5}>
             <Stack spacing={2.5}>
+
               {/* Image Panel */}
               <Card
                 elevation={0}
                 sx={{ animation: `${slideIn} 0.4s 0.05s ease both` }}
               >
+                {/* FIX #7: taller image on large screens */}
                 <Box
                   sx={{
-                    height: 240,
+                    height: { xs: 200, md: 220, lg: 260 },
                     bgcolor: T.surfaceAlt,
                     display: "flex",
                     alignItems: "center",
@@ -2135,15 +2176,6 @@ export default function AssetView() {
                       >
                         {asset.assetName?.charAt(0)?.toUpperCase() || "A"}
                       </Avatar>
-                      {/* <Typography
-                        sx={{
-                          fontSize: "0.72rem",
-                          color: T.inkMuted,
-                          fontFamily: T.font,
-                        }}
-                      >
-                        No image
-                      </Typography> */}
                     </Box>
                   )}
                   <Box
@@ -2387,6 +2419,9 @@ export default function AssetView() {
                               fontFamily: T.font,
                               textAlign: "right",
                               maxWidth: "55%",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
                             }}
                           >
                             {value}
@@ -2429,8 +2464,9 @@ export default function AssetView() {
             </Stack>
           </Grid>
 
-          {/* MAIN CONTENT */}
-          <Grid item xs={12} md={8} lg={8.5} sx={{ width: "780px" }}>
+          {/* ── MAIN CONTENT ─────────────────────────────────────────────── */}
+          {/* FIX #2: widened main from md={8} lg={9} → md={9} lg={9.5} */}
+          <Grid item xs={12} md={9} lg={9.5} sx={{ minWidth: 0 }}>
             <Stack spacing={2.5}>
               <Box
                 sx={{
@@ -2444,6 +2480,9 @@ export default function AssetView() {
                 <Tabs
                   value={activeTab}
                   onChange={(_, v) => setActiveTab(v)}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  allowScrollButtonsMobile
                   sx={{
                     px: 2,
                     borderBottom: `1px solid ${T.border}`,
@@ -2489,13 +2528,18 @@ export default function AssetView() {
                   <Tab label="History" />
                 </Tabs>
 
-                {/* TAB 0: OVERVIEW */}
+                {/* ── TAB 0: OVERVIEW ──────────────────────────────────── */}
                 {activeTab === 0 && (
                   <Box sx={{ p: { xs: 2, sm: 3 } }}>
+                    {/* FIX #3: 3-column grid on large screens fills the wider panel */}
                     <Box
                       sx={{
                         display: "grid",
-                        gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                        gridTemplateColumns: {
+                          xs: "1fr",
+                          sm: "1fr 1fr",
+                          lg: "1fr 1fr 1fr",
+                        },
                         gap: 2.5,
                       }}
                     >
@@ -2549,23 +2593,6 @@ export default function AssetView() {
                         }
                         color={T.brand}
                       />
-                      {/* <Field
-                        icon={<AttachMoney />}
-                        label="Current Value"
-                        value={
-                          asset.currentValue
-                            ? `₹${asset.currentValue.toLocaleString("en-IN")}`
-                            : null
-                        }
-                      /> */}
-                      {/* <Field
-                        label="Depreciation Rate"
-                        value={
-                          asset.depreciationRate
-                            ? `${asset.depreciationRate}%`
-                            : null
-                        }
-                      /> */}
                       <Field
                         icon={<Shield />}
                         label="Warranty Expiry"
@@ -2594,6 +2621,7 @@ export default function AssetView() {
                               : null
                         }
                       />
+                      {/* FIX #4: "1 / -1" spans ALL columns whether 2 or 3 */}
                       <Field
                         icon={<Description />}
                         label="Description"
@@ -2704,7 +2732,7 @@ export default function AssetView() {
                     <SectionTitle icon={<Person sx={{ fontSize: 15 }} />}>
                       User Assignment
                     </SectionTitle>
-                    <Grid container spacing={2}>
+                    <Grid container spacing={2} sx={{ width: "100%", m: 0 }}>
                       {[
                         {
                           role: "Primary User",
@@ -2729,6 +2757,7 @@ export default function AssetView() {
                               borderRadius: T.r.md,
                               border: `1px solid ${T.border}`,
                               bgcolor: T.surfaceAlt,
+                              height: "100%",
                             }}
                           >
                             <Typography
@@ -2813,10 +2842,10 @@ export default function AssetView() {
                   </Box>
                 )}
 
-                {/* TAB 1: SPECIALIST DATA */}
+                {/* ── TAB 1: SPECIALIST DATA ───────────────────────────── */}
                 {activeTab === 1 && (
                   <Box sx={{ p: { xs: 2, sm: 3 } }}>
-                    <Grid container spacing={2.5}>
+                    <Grid container spacing={2.5} sx={{ width: "100%", m: 0 }}>
                       <Grid item xs={12}>
                         <Typography
                           sx={{ color: T.inkMuted, textAlign: "center", py: 4 }}
@@ -2828,7 +2857,7 @@ export default function AssetView() {
                   </Box>
                 )}
 
-                {/* TAB 2: REQUESTS */}
+                {/* ── TAB 2: REQUESTS ──────────────────────────────────── */}
                 {activeTab === 2 && (
                   <Box sx={{ p: { xs: 2, sm: 3 } }}>
                     {linkedRequests.length === 0 ? (
@@ -2874,23 +2903,23 @@ export default function AssetView() {
                           relationships.
                         </Typography>
                         {user?.role === "admin" && (
-                        <Button
-                          onClick={() => setLinkOpen(true)}
-                          variant="contained"
-                          startIcon={<AddLink />}
-                          sx={{
-                            textTransform: "none",
-                            borderRadius: T.r.sm,
-                            bgcolor: T.brand,
-                            fontFamily: T.font,
-                            fontWeight: 700,
-                            px: 3,
-                            boxShadow: `0 2px 8px ${T.brandGlow}`,
-                            "&:hover": { bgcolor: T.brandAccent },
-                          }}
-                        >
-                          Link Asset
-                        </Button>
+                          <Button
+                            onClick={() => setLinkOpen(true)}
+                            variant="contained"
+                            startIcon={<AddLink />}
+                            sx={{
+                              textTransform: "none",
+                              borderRadius: T.r.sm,
+                              bgcolor: T.brand,
+                              fontFamily: T.font,
+                              fontWeight: 700,
+                              px: 3,
+                              boxShadow: `0 2px 8px ${T.brandGlow}`,
+                              "&:hover": { bgcolor: T.brandAccent },
+                            }}
+                          >
+                            Link Asset
+                          </Button>
                         )}
                       </Box>
                     ) : (
@@ -2912,11 +2941,14 @@ export default function AssetView() {
                                 alignItems="flex-start"
                                 justifyContent="space-between"
                                 mb={2}
+                                flexWrap="wrap"
+                                gap={1}
                               >
                                 <Stack
                                   direction="row"
                                   alignItems="center"
                                   spacing={1.5}
+                                  sx={{ minWidth: 0 }}
                                 >
                                   <Box
                                     sx={{
@@ -2941,6 +2973,9 @@ export default function AssetView() {
                                         fontWeight: 700,
                                         color: T.ink,
                                         fontFamily: T.font,
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
                                       }}
                                     >
                                       {req.assetId?.assetName ||
@@ -2952,6 +2987,9 @@ export default function AssetView() {
                                         fontSize: "0.7rem",
                                         color: T.inkMuted,
                                         fontFamily: T.fontMono,
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
                                       }}
                                     >
                                       {req.assetId?.assetId ||
@@ -2980,7 +3018,11 @@ export default function AssetView() {
                               <Box
                                 sx={{
                                   display: "grid",
-                                  gridTemplateColumns: "repeat(3, 1fr)",
+                                  gridTemplateColumns: {
+                                    xs: "repeat(2, 1fr)",
+                                    sm: "repeat(3, 1fr)",
+                                    md: "repeat(4, 1fr)",
+                                  },
                                   gap: 1.5,
                                 }}
                               >
@@ -3046,6 +3088,22 @@ export default function AssetView() {
                                       </Typography>
                                     ),
                                   },
+                                  {
+                                    label: "Type",
+                                    content: (
+                                      <Typography
+                                        sx={{
+                                          fontSize: "0.8rem",
+                                          fontWeight: 500,
+                                          color: T.ink,
+                                          fontFamily: T.font,
+                                          textTransform: "capitalize",
+                                        }}
+                                      >
+                                        {req.requestType || req.type || "—"}
+                                      </Typography>
+                                    ),
+                                  },
                                 ].map(({ label, content }) => (
                                   <Box key={label}>
                                     <Typography
@@ -3094,7 +3152,7 @@ export default function AssetView() {
                   </Box>
                 )}
 
-                {/* TAB 3: HISTORY */}
+                {/* ── TAB 3: HISTORY ───────────────────────────────────── */}
                 {activeTab === 3 && (
                   <Box sx={{ p: { xs: 2, sm: 3 } }}>
                     {!asset.statusHistory?.length ? (
@@ -3160,12 +3218,13 @@ export default function AssetView() {
                                   }}
                                 />
                               </Box>
-                              <Box sx={{ flex: 1, pb: 3 }}>
+                              <Box sx={{ flex: 1, pb: 3, minWidth: 0 }}>
                                 <Stack
                                   direction="row"
                                   alignItems="center"
                                   spacing={1.25}
                                   mb={0.5}
+                                  flexWrap="wrap"
                                 >
                                   <Chip
                                     label={entry.status}
@@ -3224,7 +3283,7 @@ export default function AssetView() {
         </Grid>
       </Box>
 
-      {/* Link Asset Dialog */}
+      {/* ── LINK ASSET DIALOG ────────────────────────────────────────────── */}
       <LinkAssetDialog
         open={linkOpen}
         onClose={() => setLinkOpen(false)}
@@ -3235,7 +3294,7 @@ export default function AssetView() {
         }}
       />
 
-      {/* Delete Dialog */}
+      {/* ── DELETE DIALOG ────────────────────────────────────────────────── */}
       <Dialog
         open={deleteOpen}
         onClose={() => !deleting && setDeleteOpen(false)}
@@ -3354,7 +3413,7 @@ export default function AssetView() {
         </Box>
       </Dialog>
 
-      {/* Snackbar */}
+      {/* ── SNACKBAR ─────────────────────────────────────────────────────── */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={5000}

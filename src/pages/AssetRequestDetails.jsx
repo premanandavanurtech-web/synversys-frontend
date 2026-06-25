@@ -108,8 +108,7 @@ const TopBar = styled(Box)(({ theme }) => ({
   justifyContent: "space-between",
   flexWrap: "wrap",
   gap: 12,
-  position: "sticky",
-  top: 0,
+  
   width: "1100px",
   marginLeft: "26px",
   borderRadius: "12px",
@@ -1566,7 +1565,7 @@ export default function AssetRequestDetails() {
                     <Typography sx={{ fontSize: 12.5, color: C.textMuted }}>
                       No child requests yet
                     </Typography>
-                    {/* Child button available to ALL users */}
+                
                     <Button
                       size="small"
                       startIcon={<AccountTree sx={{ fontSize: 13 }} />}

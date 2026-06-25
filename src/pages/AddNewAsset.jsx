@@ -963,8 +963,6 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
           bgcolor: T.bgCard,
           px: { xs: 2, sm: 3, md: 4 },
           py: { xs: 1.5, sm: 2 },
-          position: "sticky",
-          top: 0,
           width: "100%",
           zIndex: 100,
           boxSizing: "border-box",

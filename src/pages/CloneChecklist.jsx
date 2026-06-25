@@ -180,7 +180,7 @@ const StatCard = ({ label, value, sub, icon, accent, loading }) => {
       p: { xs: 1.5, sm: 2.25 }, 
       height: "100%", 
       border: "1px solid", 
-      width: "270px",
+      width: {md:"275px",xs:"310px"},
       borderColor: "divider", 
       borderRadius: "16px", 
       position: "relative", 
@@ -472,7 +472,7 @@ const ViewCloneDialog = ({ open, checklist, onClose, onClone }) => {
               { label: "Created", val: fmt(checklist.createdAt) },
             ].map(({ label, val }) => (
               <Grid item xs={6} sm={3} key={label}>
-                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.04), border: "1px solid", borderColor: alpha(theme.palette.primary.main, 0.1) }}>
+                <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: alpha(theme.palette.primary.main, 0.04), border: "1px solid", borderColor: alpha(theme.palette.primary.main, 0.1),width:{xs:"280px",md:"259px"} }}>
                   <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mb: 0.25 }}>
                     {label}
                   </Typography>
@@ -489,7 +489,7 @@ const ViewCloneDialog = ({ open, checklist, onClose, onClone }) => {
               <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: "0.07em", display: "block", mb: 1 }}>
                 Description
               </Typography>
-              <Box sx={{ p: 2, bgcolor: "#f7f9fa", borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
+              <Box sx={{ p: 2, bgcolor: "#f7f9fa", borderRadius: 1, border: "1px solid", borderColor: "divider" }}>
                 <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.75 }}>
                   {checklist.description}
                 </Typography>
@@ -504,7 +504,7 @@ const ViewCloneDialog = ({ open, checklist, onClose, onClone }) => {
               </Typography>
               <Stack spacing={1}>
                 {fields.map((field, idx) => (
-                  <Box key={field._id || idx} sx={{ display: "flex", alignItems: "center", gap: 1.5, p: 1.5, borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
+                  <Box key={field._id || idx} sx={{ display: "flex", alignItems: "center", gap: 1.5, p: 1.5, borderRadius: 1, border: "1px solid", borderColor: "divider" }}>
                     <Avatar sx={{ width: 28, height: 28, fontSize: 11, fontWeight: 700, bgcolor: alpha(theme.palette.primary.main, 0.1), color: "primary.main" }}>
                       {idx + 1}
                     </Avatar>
@@ -721,6 +721,18 @@ export default function CloneChecklist() {
         </Box>
 
         <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
+           <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+            {[
+              { label: "Total Cloneable", value: stats.total, sub: "Available to duplicate", icon: <LayersIcon sx={{ fontSize: { xs: 18, sm: 20 } }} /> },
+              { label: "Published", value: stats.published, sub: "Active & ready to clone", icon: <CheckCircleIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.success.main },
+              { label: "Drafts", value: stats.drafts, sub: "Awaiting publishing", icon: <DescriptionIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.warning.main },
+              { label: "Total Fields", value: stats.totalFields, sub: "Across all checklists", icon: <ListAltIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.info.main }
+            ].map((s) => (
+              <Grid item xs={6} sm={3} key={s.label}>
+                <StatCard {...s} loading={listLoading && allRows.length === 0} />
+              </Grid>
+            ))}
+          </Grid>
           <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2 }, mb: 3, border: "1px solid", borderColor: "divider" }}>
             <TextField 
               fullWidth 
@@ -736,18 +748,7 @@ export default function CloneChecklist() {
             />
           </Paper>
 
-          <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
-            {[
-              { label: "Total Cloneable", value: stats.total, sub: "Available to duplicate", icon: <LayersIcon sx={{ fontSize: { xs: 18, sm: 20 } }} /> },
-              { label: "Published", value: stats.published, sub: "Active & ready to clone", icon: <CheckCircleIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.success.main },
-              { label: "Drafts", value: stats.drafts, sub: "Awaiting publishing", icon: <DescriptionIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.warning.main },
-              { label: "Total Fields", value: stats.totalFields, sub: "Across all checklists", icon: <ListAltIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.info.main }
-            ].map((s) => (
-              <Grid item xs={6} sm={3} key={s.label}>
-                <StatCard {...s} loading={listLoading && allRows.length === 0} />
-              </Grid>
-            ))}
-          </Grid>
+         
 
           {!listLoading && !fetchError && rows.length > 0 && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
