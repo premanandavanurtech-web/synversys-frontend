@@ -179,100 +179,162 @@ function FieldLabel({ label, required }) {
   );
 }
 
+
 // ── Signature Pad (Touch Optimized) ──────────────────────────────────────────
 function SignaturePad({ value, onChange }) {
   const canvasRef = useRef(null);
-  const [drawing, setDrawing] = useState(false);
+  const containerRef = useRef(null);
+  const drawingRef = useRef(false);   // use ref instead of state to avoid re-render lag
+  const lastRef = useRef(null);
+  const activePointerRef = useRef(null);
   const [hasSig, setHasSig] = useState(false);
-  const last = useRef(null);
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const getPos = (e, canvas) => {
+  // ── Sync canvas pixel buffer to its CSS size ──────────────────────────────
+  // Must run AFTER layout so getBoundingClientRect() is accurate.
+  const syncCanvasSize = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return false;
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    if (!rect.width || !rect.height) return false;
+    // Only resize if dimensions actually changed (avoids clearing on every call)
+    if (canvas.width !== Math.floor(rect.width) || canvas.height !== Math.floor(rect.height)) {
+      // Snapshot current drawing before the resize clears the buffer
+      const snapshot = hasSig ? canvas.toDataURL() : null;
+      canvas.width = Math.floor(rect.width);
+      canvas.height = Math.floor(rect.height);
+      if (snapshot) {
+        const img = new Image();
+        img.src = snapshot;
+        img.onload = () => canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      }
+    }
+    return true;
+  }, [hasSig]);
+
+  // Run after first paint and on every resize
+  useEffect(() => {
+    syncCanvasSize();
+    const ro = new ResizeObserver(() => syncCanvasSize());
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [syncCanvasSize]);
+
+  // Restore value prop into canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !value) return;
+    // Wait until canvas has real dimensions
+    const tryDraw = () => {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width) { requestAnimationFrame(tryDraw); return; }
+      syncCanvasSize();
+      const img = new Image();
+      img.src = value;
+      img.onload = () => {
+        canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        setHasSig(true);
+      };
+    };
+    tryDraw();
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Coordinate helper — no scaling needed, buffer matches CSS size 1:1 ──
+  const getPos = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
     const src = e.touches ? e.touches[0] : e;
-    let x = (src.clientX - rect.left) * scaleX;
-    let y = (src.clientY - rect.top) * scaleY;
-    x = Math.max(0, Math.min(canvas.width, x));
-    y = Math.max(0, Math.min(canvas.height, y));
-    return { x, y };
+    const scaleX = rect.width ? canvas.width / rect.width : 1;
+    const scaleY = rect.height ? canvas.height / rect.height : 1;
+    return {
+      x: Math.max(0, Math.min(canvas.width,  (src.clientX - rect.left) * scaleX)),
+      y: Math.max(0, Math.min(canvas.height, (src.clientY - rect.top) * scaleY)),
+    };
   };
 
   const start = (e) => {
     e.preventDefault();
-    const canvas = canvasRef.current;
-    const pos = getPos(e, canvas);
-    last.current = pos;
-    setDrawing(true);
+    // Re-sync on every stroke start — catches any layout shifts since last sync
+    syncCanvasSize();
+    const pos = getPos(e);
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+    // Draw a dot so single taps/clicks are visible
+    ctx.arc(pos.x, pos.y, (isMobile ? 2.5 : 1.8) / 2, 0, Math.PI * 2);
+    ctx.fillStyle = "#1a3a47";
+    ctx.fill();
+    lastRef.current = pos;
+    drawingRef.current = true;
+    activePointerRef.current = e.pointerId ?? null;
+    e.currentTarget?.setPointerCapture?.(e.pointerId);
   };
 
   const move = (e) => {
     e.preventDefault();
-    if (!drawing) return;
+    if (!drawingRef.current || !lastRef.current) return;
+    if (activePointerRef.current !== null && e.pointerId !== activePointerRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-    const pos = getPos(e, canvas);
+    const pos = getPos(e);
+
     ctx.beginPath();
-    ctx.moveTo(last.current.x, last.current.y);
+    ctx.moveTo(lastRef.current.x, lastRef.current.y);
     ctx.lineTo(pos.x, pos.y);
     ctx.strokeStyle = "#1a3a47";
     ctx.lineWidth = isMobile ? 2.5 : 1.8;
     ctx.lineCap = "round";
+    ctx.lineJoin = "round";
     ctx.stroke();
-    last.current = pos;
+
+    lastRef.current = pos;
     setHasSig(true);
-    onChange && onChange(canvasRef.current.toDataURL());
   };
 
-  const end = () => setDrawing(false);
+  const end = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!drawingRef.current || !canvas) return;
+    if (activePointerRef.current !== null && e?.pointerId !== activePointerRef.current) return;
+
+    e?.currentTarget?.releasePointerCapture?.(e.pointerId);
+    drawingRef.current = false;
+    lastRef.current = null;
+    activePointerRef.current = null;
+    setHasSig(true);
+    onChange && onChange(canvas.toDataURL());
+  }, [onChange]);
+
+  const cancel = useCallback(() => {
+    drawingRef.current = false;
+    lastRef.current = null;
+    activePointerRef.current = null;
+  }, []);
 
   const clear = () => {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
     setHasSig(false);
+    drawingRef.current = false;
+    lastRef.current = null;
+    activePointerRef.current = null;
     onChange && onChange(null);
   };
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas && value) {
-      const img = new Image();
-      img.src = value;
-      img.onload = () => {
-        const ctx = canvas.getContext("2d");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        setHasSig(true);
-      };
-    }
-  }, [value]);
-
   return (
     <Box
-      sx={{
-        border: "1px solid #dde3e8",
-        borderRadius: "10px",
-        background: "#fff",
-        overflow: "hidden",
-      }}
+      ref={containerRef}
+      sx={{ border: "1px solid #dde3e8", borderRadius: "10px", background: "#fff", overflow: "hidden" }}
     >
-      <Box
-        sx={{ position: "relative", textAlign: "center", bgcolor: "#fafafa" }}
-      >
+      <Box sx={{ position: "relative", bgcolor: "#fafafa" }}>
         {!hasSig && (
           <Typography
             sx={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
+              position: "absolute", top: "50%", left: "50%",
               transform: "translate(-50%,-50%)",
               fontSize: { xs: "0.6875rem", sm: "0.8125rem" },
-              color: "#9ca3af",
-              pointerEvents: "none",
-              zIndex: 1,
-              textAlign: "center",
+              color: "#9ca3af", pointerEvents: "none", zIndex: 1,
+              textAlign: "center", whiteSpace: "nowrap",
             }}
           >
             {isMobile ? "Tap and drag to sign" : "Draw your signature here"}
@@ -280,15 +342,10 @@ function SignaturePad({ value, onChange }) {
         )}
         <canvas
           ref={canvasRef}
-          width={isMobile ? 400 : 580}
-          height={isMobile ? 100 : 120}
-          onMouseDown={start}
-          onMouseMove={move}
-          onMouseUp={end}
-          onMouseLeave={end}
-          onTouchStart={start}
-          onTouchMove={move}
-          onTouchEnd={end}
+          onPointerDown={start}
+          onPointerMove={move}
+          onPointerUp={end}
+          onPointerCancel={cancel}
           style={{
             display: "block",
             cursor: "crosshair",
@@ -300,35 +357,15 @@ function SignaturePad({ value, onChange }) {
         />
       </Box>
       <Divider />
-      <Box
-        sx={{
-          px: { xs: 1.5, sm: 2 },
-          py: 1,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 1,
-        }}
-      >
-        <Typography
-          sx={{ fontSize: { xs: "0.625rem", sm: "0.75rem" }, color: "#144c5c" }}
-        >
-          {isMobile
-            ? "Use finger or stylus to sign"
-            : "Sign above using mouse or touch"}
+      <Box sx={{ px: { xs: 1.5, sm: 2 }, py: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Typography sx={{ fontSize: { xs: "0.625rem", sm: "0.75rem" }, color: "#144c5c" }}>
+          {isMobile ? "Use finger or stylus to sign" : "Sign above using mouse or touch"}
         </Typography>
         {hasSig && (
           <Button
-            size="small"
-            onClick={clear}
-            sx={{
-              fontSize: { xs: "0.6875rem", sm: "0.75rem" },
-              color: "#9ca3af",
-              minWidth: 0,
-              p: 0,
-              "&:hover": { color: "#dc2626", background: "transparent" },
-            }}
+            size="small" onClick={clear}
+            sx={{ fontSize: { xs: "0.6875rem", sm: "0.75rem" }, color: "#9ca3af", minWidth: 0, p: 0,
+              "&:hover": { color: "#dc2626", background: "transparent" } }}
           >
             Clear
           </Button>
@@ -337,7 +374,6 @@ function SignaturePad({ value, onChange }) {
     </Box>
   );
 }
-
 // ── Dynamic Field Renderer (Mobile Optimized) ─────────────────────────────────
 function DynamicField({ field, value, onChange }) {
   const handleChange = (val) => onChange(field._id || field.label, val);

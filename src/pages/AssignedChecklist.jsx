@@ -837,12 +837,12 @@ export default function AssignedChecklist() {
 
           {/* ── Content ── */}
           {loading ? (
-            <Paper sx={{ p: 6, textAlign: "center", borderRadius: 3 }}>
+            <Paper sx={{ p: 6, textAlign: "center", borderRadius: 1 }}>
               <CircularProgress sx={{ color: "#084d68" }} />
               <Skeleton height={60} sx={{ mt: 3 }} /><Skeleton height={60} /><Skeleton height={60} />
             </Paper>
           ) : assignments.length === 0 ? (
-            <Paper sx={{ p: { xs: 5, md: 8 }, textAlign: "center", borderRadius: 3 }}>
+            <Paper sx={{ p: { xs: 5, md: 8 }, textAlign: "center", borderRadius: 1 }}>
               <Avatar sx={{ width: 80, height: 80, bgcolor: alpha("#084d68", 0.1), mx: "auto", mb: 2 }}>
                 <AssignmentIcon sx={{ fontSize: 40, color: "#084d68" }} />
               </Avatar>

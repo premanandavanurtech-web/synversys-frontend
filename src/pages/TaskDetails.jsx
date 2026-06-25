@@ -171,58 +171,83 @@ const InfoPill = ({ icon: Icon, label, value }) => (
 // ─── Signature Canvas ─────────────────────────────────────────────────────────
 function SignatureCanvas({ value, onChange }) {
   const canvasRef = useRef(null);
+  const wrapperRef = useRef(null);
   const drawing = useRef(false);
   const lastPos = useRef(null);
+  const activePointer = useRef(null);
 
   const getPos = (e, canvas) => {
     const rect = canvas.getBoundingClientRect();
-    const src = e.touches ? e.touches[0] : e;
-    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+    const scaleX = rect.width ? canvas.width / rect.width : 1;
+    const scaleY = rect.height ? canvas.height / rect.height : 1;
+    return {
+      x: Math.max(0, Math.min(canvas.width, (e.clientX - rect.left) * scaleX)),
+      y: Math.max(0, Math.min(canvas.height, (e.clientY - rect.top) * scaleY)),
+    };
   };
+
+  const setupContext = (canvas) => {
+    const ctx = canvas.getContext("2d");
+    ctx.strokeStyle = "#111827";
+    ctx.fillStyle = "#111827";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    return ctx;
+  };
+
+  const syncCanvasSize = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    const nextWidth = Math.floor(rect.width);
+    const nextHeight = Math.floor(rect.height);
+    if (canvas.width === nextWidth && canvas.height === nextHeight) return;
+
+    const snapshot = value ? canvas.toDataURL() : null;
+    canvas.width = nextWidth;
+    canvas.height = nextHeight;
+    setupContext(canvas);
+
+    if (snapshot) {
+      const img = new Image();
+      img.onload = () => {
+        const ctx = setupContext(canvas);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+      img.src = snapshot;
+    }
+  }, [value]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d");
-    ctx.strokeStyle = "#111827";
-    ctx.lineWidth = 1.8;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
+    syncCanvasSize();
+    setupContext(canvas);
+    const ro = new ResizeObserver(syncCanvasSize);
+    if (wrapperRef.current) ro.observe(wrapperRef.current);
+    return () => ro.disconnect();
+  }, [syncCanvasSize]);
 
-    const onTouchStart = (e) => {
-      e.preventDefault();
-      drawing.current = true;
-      lastPos.current = getPos(e, canvas);
-    };
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !value) return;
 
-    const onTouchMove = (e) => {
-      if (!drawing.current) return;
-      e.preventDefault();
-      const pos = getPos(e, canvas);
-      ctx.beginPath();
-      ctx.moveTo(lastPos.current.x, lastPos.current.y);
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
-      lastPos.current = pos;
-    };
-
-    const onTouchEnd = () => {
-      if (!drawing.current) return;
-      drawing.current = false;
-      onChange(canvas.toDataURL());
-    };
-
-    canvas.addEventListener("touchstart", onTouchStart, { passive: false });
-    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
-    canvas.addEventListener("touchend", onTouchEnd, { passive: false });
-
-    return () => {
-      canvas.removeEventListener("touchstart", onTouchStart);
-      canvas.removeEventListener("touchmove", onTouchMove);
-      canvas.removeEventListener("touchend", onTouchEnd);
-    };
-  }, [onChange]);
+    requestAnimationFrame(() => {
+      syncCanvasSize();
+      const img = new Image();
+      img.onload = () => {
+        const ctx = setupContext(canvas);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+      img.src = value;
+    });
+  }, [value, syncCanvasSize]);
 
   const onMouseDown = (e) => {
     drawing.current = true;

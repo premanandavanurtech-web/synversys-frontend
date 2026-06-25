@@ -413,7 +413,7 @@ export default function InspectionHistoryDetails() {
               >
                 Print the Data
               </Button>
-              <Button
+              {/* <Button
                 size="small"
                 startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
                 onClick={() => handleBackendExport("excel")}
@@ -426,7 +426,7 @@ export default function InspectionHistoryDetails() {
                 }}
               >
                 Export in Excel
-              </Button>
+              </Button> */}
             </Stack>
           </Box>
 

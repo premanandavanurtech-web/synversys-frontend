@@ -53,7 +53,6 @@ import { useAuth } from "../context/AuthContexts";
 import Navbar from "../pages/landing/Navbar";
 import { keyframes } from "@mui/material/styles";
 
-// ─── Animations ───────────────────────────────────────────────────────────────
 const fadeUp = keyframes`
   from { opacity: 0; transform: translateY(18px); }
   to { opacity: 1; transform: translateY(0); }
@@ -80,7 +79,6 @@ const shake = keyframes`
   75% { transform: translateX(4px); }
 `;
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
   brand: "#1C3F5E",
   brandDark: "#0F2A40",
@@ -108,7 +106,6 @@ const C = {
   font: "'Sora', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
 };
 
-// ─── Shared input sx ─────────────────────────────────────────────────────────
 const inputSx = (hasError) => ({
   "& .MuiOutlinedInput-root": {
     bgcolor: C.bg,
@@ -150,14 +147,12 @@ const inputSx = (hasError) => ({
   },
 });
 
-// ─── Feature list for left panel ─────────────────────────────────────────────
 const FEATURES = [
   "Real-time asset tracking across all locations",
   "Role-based access for teams of any size",
   "Audit-ready reports with one click",
 ];
 
-// ─── Derive redirect path from role ──────────────────────────────────────────
 const getRedirectPath = (role) => {
   if (!role) return "/dashboard";
   const r = role.toLowerCase();
@@ -166,7 +161,6 @@ const getRedirectPath = (role) => {
   return "/dashboard";
 };
 
-// ─── Validation Functions ────────────────────────────────────────────────────
 const validateEmail = (v) => {
   if (!v) return "Email is required";
   if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v))
@@ -180,9 +174,6 @@ const validatePassword = (v) => {
   return "";
 };
 
-// ─── Forgot Password Modal ───────────────────────────────────────────────────
-// Redesigned: icon-led header, error state that only colors the border (not
-// the field text), and a dedicated success view instead of an inline Alert.
 function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -520,11 +511,10 @@ export default function LoginPage() {
     password: "",
     remember: false,
   });
-  const [fieldErrors, setFieldErrors] = useState({ email: "", password: "", remember: "" });
+  const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
   const [fieldTouched, setFieldTouched] = useState({
     email: false,
     password: false,
-    remember: false,
   });
   const [shakeField, setShakeField] = useState(null);
   const [networkError, setNetworkError] = useState(false);
@@ -561,7 +551,7 @@ export default function LoginPage() {
     checkBackend();
   }, []);
 
-  // FIXED: Redirect already-authenticated users - Only run once on mount
+  // Redirect already-authenticated users
   useEffect(() => {
     if (!initialCheckDone) return;
     if (submitting || redirectInProgress.current) return;
@@ -630,23 +620,15 @@ export default function LoginPage() {
 
     const emailErr = validateEmail(formData.email);
     const passwordErr = validatePassword(formData.password);
-    const rememberErr = !formData.remember
-      ? "You must check this box to continue"
-      : "";
 
-    setFieldTouched({ email: true, password: true, remember: true });
-    // remember error is shown via toast, not stored inline
-    setFieldErrors({ email: emailErr, password: passwordErr, remember: "" });
+    setFieldTouched({ email: true, password: true });
+    setFieldErrors({ email: emailErr, password: passwordErr });
 
-    if (emailErr || passwordErr || rememberErr) {
+    if (emailErr || passwordErr) {
       if (emailErr) {
         setShakeField("email");
       } else if (passwordErr) {
         setShakeField("password");
-      } else if (rememberErr) {
-        setShakeField("remember");
-        setErrorMsg(rememberErr);
-        setErrOpen(true);
       }
       setTimeout(() => setShakeField(null), 500);
       return;
@@ -1009,28 +991,6 @@ export default function LoginPage() {
                   width: "100%",
                 }}
               >
-                {/* {networkError && (
-                  <Fade in={networkError}>
-                    <Alert
-                      severity="warning"
-                      icon={<WarningAmberOutlined />}
-                      sx={{
-                        mb: 2.5,
-                        borderRadius: "10px",
-                        fontSize: "0.75rem",
-                        bgcolor: C.orangeBg,
-                        color: C.orange,
-                        "& .MuiAlert-icon": { color: C.orange },
-                      }}
-                    >
-                      <Typography sx={{ fontSize: "0.75rem", fontWeight: 500 }}>
-                        Backend connection may be slow. Please check your
-                        network and try again.
-                      </Typography>
-                    </Alert>
-                  </Fade>
-                )} */}
-
                 <Box
                   mb={{ xs: 3, sm: 3.5 }}
                   sx={{ animation: `${fadeUp} 0.45s ease both` }}
@@ -1260,7 +1220,6 @@ export default function LoginPage() {
                     <Box
                       sx={{
                         animation: `${fadeUp} 0.45s 0.18s ease both`,
-                        ...getAnimationStyle("remember"),
                       }}
                     >
                       <FormControlLabel
@@ -1286,34 +1245,15 @@ export default function LoginPage() {
                           />
                         }
                         label={
-                          <Box
+                          <Typography
                             sx={{
-                              display: "flex",
-                              alignItems: "baseline",
-                              whiteSpace: "nowrap",
+                              fontSize: { xs: "0.78rem", sm: "0.82rem" },
+                              color: C.inkSec,
+                              fontFamily: C.font,
                             }}
                           >
-                            <Typography
-                              sx={{
-                                fontSize: { xs: "0.78rem", sm: "0.82rem" },
-                                color: C.inkSec,
-                                fontFamily: C.font,
-                              }}
-                            >
-                              Remember me
-                            </Typography>
-                            <Typography
-                              component="span"
-                              sx={{
-                                color: C.red,
-                                fontSize: { xs: "0.78rem", sm: "0.82rem" },
-                                ml: 0.4,
-                                lineHeight: 1,
-                              }}
-                            >
-                              *
-                            </Typography>
-                          </Box>
+                            Remember me
+                          </Typography>
                         }
                       />
                     </Box>
@@ -1368,83 +1308,6 @@ export default function LoginPage() {
                     </Box>
                   </Stack>
                 </Box>
-
-                {/* <Divider
-                  sx={{
-                    my: { xs: 2.5, sm: 3 },
-                    "& .MuiDivider-wrapper": { px: 1.5 },
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontSize: { xs: "0.65rem", sm: "0.68rem" },
-                      color: C.inkMut,
-                      letterSpacing: "0.07em",
-                      textTransform: "uppercase",
-                      fontFamily: C.font,
-                    }}
-                  >
-                    or continue with
-                  </Typography>
-                </Divider> */}
-
-                {/* <Stack
-                  direction="row"
-                  spacing={1.5}
-                  justifyContent="center"
-                  mb={3}
-                  sx={{
-                    flexWrap: "wrap",
-                    gap: 1,
-                  }}
-                >
-                  {[
-                    {
-                      tip: "Sign in with Google",
-                      Icon: Google,
-                      color: "#DB4437",
-                    },
-                    {
-                      tip: "Sign in with Microsoft",
-                      Icon: Microsoft,
-                      color: "#0078D4",
-                    },
-                    { tip: "Sign in with Apple", Icon: Apple, color: "#000" },
-                  ].map(({ tip, Icon, color }) => (
-                    <Tooltip key={tip} title={tip} placement="top" arrow>
-                      <Zoom in={true}>
-                        <IconButton
-                          disabled={isDisabled}
-                          sx={{
-                            border: `1.5px solid ${C.border}`,
-                            borderRadius: "10px",
-                            p: { xs: 1, sm: 1.25 },
-                            width: { xs: 42, sm: 48 },
-                            height: { xs: 42, sm: 48 },
-                            bgcolor: C.surface,
-                            transition: "all 0.18s",
-                            "&:hover": {
-                              bgcolor: C.brandPale,
-                              borderColor: alpha(color, 0.35),
-                              transform: "translateY(-2px)",
-                            },
-                            "&:active": {
-                              transform: "translateY(0)",
-                            },
-                            "&.Mui-disabled": { opacity: 0.45 },
-                          }}
-                        >
-                          <Icon
-                            sx={{
-                              fontSize: { xs: 18, sm: 20 },
-                              color: isDisabled ? C.inkMut : color,
-                            }}
-                          />
-                        </IconButton>
-                      </Zoom>
-                    </Tooltip>
-                  ))}
-                </Stack> */}
               </Box>
             </Box>
           </Paper>

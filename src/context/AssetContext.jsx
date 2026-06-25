@@ -137,7 +137,7 @@ export const AssetProvider = ({ children }) => {
           if (v !== undefined && v !== "" && v !== null) params.append(k, v);
         });
 
-        const url = `/assets`;
+        const url = `/assets${params.toString() ? `?${params}` : ""}`;
         const res = await api.get(url, { signal: abortRef.current.signal });
 
         if (res.data?.success) {

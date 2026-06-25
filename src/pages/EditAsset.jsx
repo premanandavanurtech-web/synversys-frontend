@@ -13,14 +13,18 @@ import {
   Avatar,
   LinearProgress,
   MenuItem,
+  Select,
+  FormControl,
   Divider,
   Chip,
   Autocomplete,
   TextField,
+  Dialog,
 } from "@mui/material";
 import { styled, keyframes } from "@mui/material/styles";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAsset } from "../context/AssetContext";
+import { useAssetCategory } from "../context/AssetCategoryContexts";
 import { useTeam } from "../context/TeamContext";
 import { useAuth } from "../context/AuthContexts";
 import CurrencyRupeeIcon from "@mui/icons-material/CurrencyRupee";
@@ -47,6 +51,9 @@ import {
   PhotoCamera,
   Close,
   CheckCircle,
+  AddCircleOutline,
+  CheckCircleOutline,
+  CategoryOutlined,
 } from "@mui/icons-material";
 
 // ─── Animations ───────────────────────────────────────────────
@@ -438,6 +445,169 @@ const assignedUserInputSx = {
 };
 
 // ─── Main Component ───────────────────────────────────────────
+const categorySelectSx = {
+  minHeight: 38,
+  fontSize: 13,
+  fontWeight: 500,
+  color: C.dark,
+  background: "#fafaf8",
+  borderRadius: "9px",
+  fontFamily: "'DM Sans', sans-serif",
+  "& .MuiOutlinedInput-notchedOutline": { border: `1.5px solid ${C.border}` },
+  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: C.border },
+  "&.Mui-focused": {
+    background: C.white,
+    "& .MuiOutlinedInput-notchedOutline": { borderColor: C.teal },
+  },
+  "& .MuiSelect-select": {
+    padding: "9px 13px",
+    minHeight: "18px",
+  },
+};
+
+const categoryMenuProps = {
+  sx: { zIndex: 2300 },
+  PaperProps: {
+    sx: {
+      border: `1px solid ${C.border}`,
+      borderRadius: 2,
+      boxShadow: "0 12px 30px rgba(26,26,24,0.14)",
+    },
+  },
+};
+
+const getCategoryId = (category) => category?._id || category?.id || "";
+
+function QuickCategoryDialog({
+  open,
+  onClose,
+  onCreate,
+  categories = [],
+  onSelectExisting,
+}) {
+  const [form, setForm] = useState({ name: "", description: "" });
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setForm({ name: "", description: "" });
+      setError("");
+    }
+  }, [open]);
+
+  const handleCreate = async () => {
+    const name = form.name.trim();
+    if (!name) {
+      setError("Category name is required");
+      return;
+    }
+    if (name.length < 2) {
+      setError("Category name must be at least 2 characters");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await onCreate({
+        name,
+        description: form.description.trim(),
+        isActive: true,
+      });
+      if (result?.success === false) {
+        setError(result?.error || result?.message || "Failed to create category");
+        return;
+      }
+      onClose();
+    } catch (err) {
+      const message = err?.message || "Failed to create category";
+      const existing = categories.find(
+        (cat) => cat?.name?.trim().toLowerCase() === name.toLowerCase(),
+      );
+      if (/duplicate key|already exists|E11000/i.test(message) && existing) {
+        onSelectExisting?.(existing);
+        onClose();
+        return;
+      }
+      setError(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={submitting ? undefined : onClose}
+      maxWidth="sm"
+      fullWidth
+      sx={{ zIndex: 2400 }}
+      PaperProps={{ sx: { borderRadius: 2.5, overflow: "hidden" } }}
+    >
+      <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${C.border}`, bgcolor: "#fafaf8" }}>
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: 1.5,
+              bgcolor: "rgba(23,79,96,0.1)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CategoryOutlined sx={{ fontSize: 18, color: C.teal }} />
+          </Box>
+          <Typography sx={{ fontWeight: 700, fontSize: 16, color: C.dark }}>
+            Add New Category
+          </Typography>
+        </Stack>
+      </Box>
+
+      <Box sx={{ p: 3 }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+            {error}
+          </Alert>
+        )}
+        <Stack spacing={2.5}>
+          <Field label="Category Name" icon={<Category sx={{ fontSize: 13 }} />} required>
+            <StyledInput
+              autoFocus
+              value={form.name}
+              onChange={(e) => {
+                setForm((prev) => ({ ...prev, name: e.target.value }));
+                if (error) setError("");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleCreate()}
+              placeholder="e.g. Electronics, Vehicles..."
+            />
+          </Field>
+          <Field label="Description" icon={<Description sx={{ fontSize: 13 }} />}>
+            <StyledTextarea
+              value={form.description}
+              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+              placeholder="Brief description of this category..."
+              rows={2}
+            />
+          </Field>
+        </Stack>
+      </Box>
+
+      <Box sx={{ px: 3, pb: 2.5, pt: 1.5, borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
+        <CancelBtn onClick={onClose} disabled={submitting}>
+          Cancel
+        </CancelBtn>
+        <SaveBtn onClick={handleCreate} disabled={submitting}>
+          {submitting ? "Creating..." : "Create Category"}
+        </SaveBtn>
+      </Box>
+    </Dialog>
+  );
+}
+
 export default function EditAsset() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -455,6 +625,12 @@ export default function EditAsset() {
     uploadAssetImages,
     loading: ctxLoading,
   } = useAsset();
+  const {
+    categories = [],
+    getAllCategories,
+    createCategory,
+    loading: catLoading,
+  } = useAssetCategory();
   const isTeam = user?.role === "team";
   const currentUserId = user?._id || user?.id;
 
@@ -463,6 +639,7 @@ export default function EditAsset() {
   const [activeImage, setActiveImage] = useState(null);
   const [imageError, setImageError] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -562,6 +739,10 @@ export default function EditAsset() {
     fetchTeamMembers?.({ limit: 100 });
   }, [fetchTeamMembers]);
 
+  useEffect(() => {
+    getAllCategories?.({ limit: 100 });
+  }, [getAllCategories]);
+
   const fetchAsset = async () => {
     setPageLoading(true);
     try {
@@ -619,6 +800,27 @@ export default function EditAsset() {
     setForm((f) => ({ ...f, [field]: e.target.value }));
   const setCheck = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.checked }));
+
+  const handleCreateCategory = async (data) => {
+    const result = await createCategory(data);
+    await getAllCategories?.({ limit: 100 });
+    const newId =
+      result?.category?._id ||
+      result?.category?.id ||
+      result?.data?.category?._id ||
+      result?.data?.category?.id ||
+      result?.data?.data?._id ||
+      result?.data?.data?.id ||
+      result?.data?._id ||
+      result?.data?.id ||
+      result?._id ||
+      result?.id;
+
+    if (newId) {
+      setForm((prev) => ({ ...prev, assetCategoryId: newId }));
+    }
+    return result;
+  };
 
   // ─── Image Handlers ───────────────────────────────────────
   const handleFileUpload = async (e) => {
@@ -1034,14 +1236,76 @@ export default function EditAsset() {
                 />
               </Field>
               <Field
-                label="Category ID"
+                label="Asset Category"
                 icon={<Category sx={{ fontSize: 13 }} />}
               >
-                <StyledInput
-                  value={form.assetCategoryId}
-                  onChange={set("assetCategoryId")}
-                  placeholder="Category ID or name"
-                />
+                {catLoading ? (
+                  <Stack direction="row" alignItems="center" spacing={1} sx={{ py: 1 }}>
+                    <CircularProgress size={18} />
+                    <Typography sx={{ fontSize: 12, color: C.muted }}>
+                      Loading categories...
+                    </Typography>
+                  </Stack>
+                ) : (
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={form.assetCategoryId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "other") {
+                          setCategoryDialogOpen(true);
+                          return;
+                        }
+                        setForm((prev) => ({ ...prev, assetCategoryId: val }));
+                      }}
+                      displayEmpty
+                      sx={categorySelectSx}
+                      MenuProps={categoryMenuProps}
+                      renderValue={(val) => {
+                        if (!val) {
+                          return <span style={{ color: "#9a978d" }}>Select category...</span>;
+                        }
+                        const cat = categories.find((item) => getCategoryId(item) === val);
+                        return cat?.name || <span style={{ color: "#9a978d" }}>Unknown category</span>;
+                      }}
+                    >
+                      {Array.isArray(categories) && categories.length > 0 ? (
+                        categories.map((cat) => {
+                          const categoryId = getCategoryId(cat);
+                          return (
+                            <MenuItem key={categoryId} value={categoryId}>
+                              <Stack>
+                                <Typography sx={{ fontSize: 13, fontWeight: 600, color: C.dark }}>
+                                  {cat.name}
+                                </Typography>
+                                {cat.description && (
+                                  <Typography sx={{ fontSize: 11, color: C.muted }}>
+                                    {cat.description}
+                                  </Typography>
+                                )}
+                              </Stack>
+                            </MenuItem>
+                          );
+                        })
+                      ) : (
+                        <MenuItem disabled>
+                          <Typography sx={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>
+                            No categories available
+                          </Typography>
+                        </MenuItem>
+                      )}
+                      <Divider sx={{ my: 0.5 }} />
+                      <MenuItem value="other">
+                        <Stack direction="row" alignItems="center" spacing={0.75}>
+                          <AddCircleOutline sx={{ fontSize: 16, color: C.teal }} />
+                          <Typography sx={{ color: C.teal, fontSize: 13, fontWeight: 700 }}>
+                            Add New Category
+                          </Typography>
+                        </Stack>
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
+                )}
               </Field>
             </FieldGrid>
           </FormCard>
@@ -1386,6 +1650,17 @@ export default function EditAsset() {
       </BodyLayout>
 
       {/* ─── Snackbar ─── */}
+      <QuickCategoryDialog
+        open={categoryDialogOpen}
+        onClose={() => setCategoryDialogOpen(false)}
+        onCreate={handleCreateCategory}
+        categories={categories}
+        onSelectExisting={(category) => {
+          setForm((prev) => ({ ...prev, assetCategoryId: getCategoryId(category) }));
+          showSnackbar(`Selected existing category "${category.name}"`, "info");
+        }}
+      />
+
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}

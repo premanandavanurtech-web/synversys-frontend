@@ -151,6 +151,24 @@ const getAssetCategoryName = (asset) =>
 const getAssetCategoryId = (asset) =>
   asset?.assetCategoryId?._id || asset?.assetCategoryId || "";
 
+const getSearchText = (asset) =>
+  [
+    asset?.assetName,
+    asset?.assetId,
+    asset?.tagNumber,
+    asset?.serialNumber,
+    asset?.modelNumber,
+    asset?.currentLocation,
+    asset?.department,
+    asset?.description,
+    asset?.status,
+    getAssetCategoryName(asset),
+    getAssetCategoryId(asset),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
 // ── Asset Card — matches screenshot cards exactly ────────────────────────────
 const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
   const canClone = !asset.isClone && asset.canBeCloned !== false;
@@ -573,14 +591,16 @@ export default function AssetManagement() {
   // NOTE: this does not fix server-side pagination totals — see the
   // "still TODO" note below.
   const visibleAssets = useMemo(() => {
+    const searchTerm = norm(debouncedSearch);
     return assets.filter((a) => {
+      const searchOk = !searchTerm || getSearchText(a).includes(searchTerm);
       const statusOk =
         !statusFilter || norm(a.status) === norm(statusFilter);
       const categoryOk =
         !categoryFilter || norm(getAssetCategoryName(a)) === norm(categoryFilter);
-      return statusOk && categoryOk;
+      return searchOk && statusOk && categoryOk;
     });
-  }, [assets, statusFilter, categoryFilter]);
+  }, [assets, debouncedSearch, statusFilter, categoryFilter]);
 
   const clearFilters = () => {
     setCategoryFilter("");

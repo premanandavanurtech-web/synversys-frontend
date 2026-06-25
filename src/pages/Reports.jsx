@@ -312,15 +312,17 @@ const ColHead = ({ children, align = "left" }) => (
       borderBottom: `1px solid ${T.border}`,
       whiteSpace: "nowrap",
       py: { xs: 1, sm: 1.2 },
+      px: { xs: 1.25, sm: 1.6 },
       letterSpacing: "0.05em",
       textTransform: "uppercase",
+      minWidth: 120,
     }}
   >
     {children}
   </TableCell>
 );
 
-const DataCell = ({ children, bold, align = "left", mono }) => (
+const DataCell = ({ children, bold, align = "left", mono, noWrap }) => (
   <TableCell
     align={align}
     sx={{
@@ -331,8 +333,14 @@ const DataCell = ({ children, bold, align = "left", mono }) => (
       color: bold ? T.ink : T.inkMid,
       borderBottom: `1px solid ${T.border}`,
       py: { xs: 0.8, sm: 1.1 },
+      px: { xs: 1.25, sm: 1.6 },
       fontFamily: mono ? "'SF Mono', 'Courier New', monospace" : "inherit",
-      wordBreak: "break-word",
+      minWidth: noWrap ? 120 : 140,
+      maxWidth: noWrap ? 180 : 260,
+      whiteSpace: noWrap ? "nowrap" : "normal",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      overflowWrap: "anywhere",
     }}
   >
     {children}
@@ -1351,6 +1359,7 @@ const GenericTable = ({ data }) => {
     [data, isMobile],
   );
   const paged = (data || []).slice(pg * rpp, pg * rpp + rpp);
+  const tableMinWidth = Math.max(isMobile ? 640 : 900, cols.length * 170);
 
   if (!data?.length)
     return (
@@ -1372,7 +1381,7 @@ const GenericTable = ({ data }) => {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        <Table stickyHeader size="small" sx={{ minWidth: { xs: 420, sm: "auto" } }}>
+        <Table stickyHeader size="small" sx={{ minWidth: tableMinWidth, tableLayout: "fixed" }}>
           <TableHead>
             <TableRow>
               {cols.map((c) => (
@@ -1389,7 +1398,7 @@ const GenericTable = ({ data }) => {
                   if (typeof val === "string")
                     val = fmtShort(val, isMobile ? 15 : 40);
                   return (
-                    <DataCell key={c} bold={j === 0}>
+                    <DataCell key={c} bold={j === 0} mono={j === 0} noWrap={j === 0}>
                       {String(val ?? "—")}
                     </DataCell>
                   );
