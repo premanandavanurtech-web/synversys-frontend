@@ -1407,7 +1407,7 @@ export default function AssetRequestDetails() {
             </SectionCard>
 
             {/* Linked Assets */}
-            <SectionCard>
+            {/* <SectionCard>
               <SectionHead
                 sx={{ cursor: "pointer" }}
                 onClick={() => setLinkedExpanded((p) => !p)}
@@ -1442,7 +1442,7 @@ export default function AssetRequestDetails() {
                     <Typography sx={{ fontSize: 12.5, color: C.textMuted }}>
                       No assets linked yet
                     </Typography>
-                    {/* Link button available to ALL users */}
+                   
                     <Button
                       size="small"
                       startIcon={<LinkIcon sx={{ fontSize: 13 }} />}
@@ -1527,10 +1527,10 @@ export default function AssetRequestDetails() {
                   ))
                 )}
               </Collapse>
-            </SectionCard>
+            </SectionCard> */}
 
             {/* Child Requests */}
-            <SectionCard>
+            {/* <SectionCard>
               <SectionHead
                 sx={{ cursor: "pointer" }}
                 onClick={() => setChildrenExpanded((p) => !p)}
@@ -1666,7 +1666,7 @@ export default function AssetRequestDetails() {
                   })
                 )}
               </Collapse>
-            </SectionCard>
+            </SectionCard> */}
           </Grid>
 
           {/* ── Sidebar ── */}
