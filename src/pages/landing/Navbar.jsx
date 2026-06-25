@@ -554,7 +554,7 @@ const Navbar = ({
                 {/* Mobile CTA Section */}
                 <Stack spacing={1.5}>
                   {/* Theme Toggle for Mobile */}
-                  <Button
+                  {/* <Button
                     onClick={() => {
                       toggleTheme();
                     }}
@@ -579,7 +579,7 @@ const Navbar = ({
                     }}
                   >
                     {isDarkMode ? "Light Mode" : "Dark Mode"}
-                  </Button>
+                  </Button> */}
 
                   <Button
                     onClick={() => {
