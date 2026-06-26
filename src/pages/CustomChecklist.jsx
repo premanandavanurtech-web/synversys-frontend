@@ -379,18 +379,17 @@ function DynamicField({ field, value, onChange }) {
   const handleChange = (val) => onChange(field._id || field.label, val);
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [filePreview, setFilePreview] = useState([]);
+  const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    if (
-      Array.isArray(value) &&
-      value.length > 0 &&
-      field.type === "image_upload"
-    ) {
-      const previews = value.map((file) => URL.createObjectURL(file));
-      setFilePreview(previews);
-      return () => previews.forEach(URL.revokeObjectURL);
-    }
-  }, [value, field.type]);
+useEffect(() => {
+  if (Array.isArray(value) && value.length > 0 && field.type === "image_upload") {
+    const previews = value.map((file) => URL.createObjectURL(file));
+    setFilePreview(previews);
+    return () => previews.forEach(URL.revokeObjectURL);
+  } else {
+    setFilePreview([]);
+  }
+}, [value, field.type]);
 
   switch (field.type) {
     case "text_input":
@@ -590,6 +589,7 @@ function DynamicField({ field, value, onChange }) {
             }}
           >
             <input
+            ref={fileInputRef}
               type="file"
               hidden
               accept={field.type === "image_upload" ? "image/*" : "*"}
@@ -649,27 +649,53 @@ function DynamicField({ field, value, onChange }) {
               sx={{ mt: 1.5, flexWrap: "wrap", gap: 1 }}
             >
               {filePreview.slice(0, 3).map((preview, idx) => (
-                <Box
-                  key={idx}
-                  sx={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: "8px",
-                    overflow: "hidden",
-                    border: "1px solid #e8ecef",
-                  }}
-                >
-                  <img
-                    src={preview}
-                    alt={`Preview ${idx}`}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                </Box>
-              ))}
+  <Box
+    key={idx}
+    sx={{
+      width: 60,
+      height: 60,
+      borderRadius: "8px",
+      overflow: "visible",
+      border: "1px solid #e8ecef",
+      position: "relative",
+    }}
+  >
+    <img
+      src={preview}
+      alt={`Preview ${idx}`}
+      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "8px" }}
+    />
+    <Box
+     onClick={() => {
+  const newFiles = (value || []).filter((_, i) => i !== idx);
+  handleChange(newFiles);
+  if (fileInputRef.current) fileInputRef.current.value = "";
+}}
+      sx={{
+        position: "absolute",
+        top: -6,
+        right: -6,
+        width: 18,
+        height: 18,
+        borderRadius: "50%",
+        bgcolor: "#dc2626",
+        color: "#fff",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        fontSize: "0.625rem",
+        fontWeight: 700,
+        lineHeight: 1,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+        "&:hover": { bgcolor: "#b91c1c" },
+        zIndex: 1,
+      }}
+    >
+      ✕
+    </Box>
+  </Box>
+))}
               {filePreview.length > 3 && (
                 <Box
                   sx={{

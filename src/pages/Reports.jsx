@@ -2079,10 +2079,10 @@ const ReportsDashboard = () => {
               {/* Summary KPIs */}
               {Object.keys(reportData.summary || {}).length > 0 && (
                 <Grid container spacing={1.5} mb={2.5}>
-                  {Object.entries(reportData.summary)
-                    .filter(([, v]) => typeof v !== "object" && v !== null)
-                    .slice(0, 6)
-                    .map(([k, v]) => (
+                 {Object.entries(reportData.summary)
+  .filter(([k, v]) => typeof v !== "object" && v !== null && k !== "suspendedClients")
+  .slice(0, 6)
+  .map(([k, v]) => (
                       <Grid item xs={6} sm={4} md={2} key={k}>
                         <StatCard
                           label={k.replace(/([A-Z])/g, " $1").trim()}
