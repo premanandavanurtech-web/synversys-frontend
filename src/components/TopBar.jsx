@@ -51,7 +51,7 @@ function PulsingBadge({ count, children }) {
   const badgeMinW = count > 99 ? 26 : count >= 10 ? 22 : 18;
 
   return (
-    <Box sx={{ position: "relative", display: "inline-flex" }}>
+    <Box sx={{ position: "relative", display: "inline-flex"  }}>
       {children}
       {hasNew && (
         <>

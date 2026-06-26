@@ -58,6 +58,7 @@ import {
 import CurrencyRupeeIcon from "@mui/icons-material/CurrencyRupee";
 import { useAuth } from "../context/AuthContexts";
 import { useReport } from "../context/ReportContext";
+import AssetSearchField from "../components/AssetSearchField";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -613,22 +614,18 @@ const ClientsTable = ({ data }) => {
           alignItems: { xs: "stretch", sm: "center" },
         }}
       >
-        <TextField
-          size="small"
-          placeholder="Search name or email…"
+        <AssetSearchField
+          placeholder="Search name or email..."
           value={q}
           onChange={(e) => {
             setQ(e.target.value);
             setPg(0);
           }}
-          sx={{ flex: 1, minWidth: 0 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 15, color: T.inkLight }} />
-              </InputAdornment>
-            ),
+          onClear={() => {
+            setQ("");
+            setPg(0);
           }}
+          sx={{ flex: 1, minWidth: 0 }}
         />
         <Typography
           sx={{
@@ -1005,22 +1002,18 @@ const AssetsTable = ({ data }) => {
           alignItems: { xs: "stretch", sm: "center" },
         }}
       >
-        <TextField
-          size="small"
-          placeholder="Search name, tag, serial…"
+        <AssetSearchField
+          placeholder="Search name, tag, serial..."
           value={q}
           onChange={(e) => {
             setQ(e.target.value);
             setPg(0);
           }}
-          sx={{ flex: 1, minWidth: 0 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 15, color: T.inkLight }} />
-              </InputAdornment>
-            ),
+          onClear={() => {
+            setQ("");
+            setPg(0);
           }}
+          sx={{ flex: 1, minWidth: 0 }}
         />
         <Typography
           sx={{
@@ -2285,15 +2278,14 @@ const ReportsDashboard = () => {
                     )}
                   </Select>
                 </FormControl>
-                <TextField
-                  size="small"
+                <AssetSearchField
                   label="Search"
-                  placeholder="Name, tag, serial…"
-                  fullWidth
+                  placeholder="Name, tag, serial..."
                   value={filters.search || ""}
                   onChange={(e) =>
                     setFilters((p) => ({ ...p, search: e.target.value }))
                   }
+                  onClear={() => setFilters((p) => ({ ...p, search: "" }))}
                 />
               </>
             )}

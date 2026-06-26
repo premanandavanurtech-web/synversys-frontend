@@ -547,7 +547,9 @@ const ProfileContent = () => {
                     <InfoRow icon={BadgeIcon} label="Role" value={getRoleDisplay()} />
                     <InfoRow icon={CalendarTodayIcon} label="Joined" value={formatJoinDate(profile?.joinDate || profile?.createdAt)} />
                     {(profile?.lastActiveAt || profile?.lastLogin) && (
-                      <InfoRow icon={AccessTimeIcon} label="Last active" value={formatDate(profile?.lastActiveAt || profile?.lastLogin)} />
+                      <Box sx={{ pb: 3 }}>
+                        <InfoRow icon={AccessTimeIcon} label="Last active" value={formatDate(profile?.lastActiveAt || profile?.lastLogin)} />
+                      </Box>
                     )}
                   </Stack>
 

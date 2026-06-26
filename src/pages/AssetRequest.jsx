@@ -67,6 +67,8 @@ import { useNavigate } from "react-router-dom";
 import { useAssetRequest } from "../context/AssetRequestContext";
 import { useAuth } from "../context/AuthContexts";
 import { useAsset } from "../context/AssetContext";
+import AssetSearchField from "../components/AssetSearchField";
+import PageHeading from "../components/PageHeading";
 
 // ─── Animations ────────────────────────────────────────────────────────────────
 const fadeSlideIn = keyframes`
@@ -1270,19 +1272,12 @@ export default function AssetRequests() {
         mb={3}
         gap={2}
       >
-        <Box>
-          <Typography
-            variant="h5"
-            fontWeight={800}
-            color={T.text}
-            letterSpacing="-0.3px"
-          >
-            Asset Requests
-          </Typography>
-          <Typography sx={{ fontSize: "0.85rem", color: T.textMuted, mt: 0.4 }}>
-            Manage transfers, maintenance, repairs &amp; more
-          </Typography>
-        </Box>
+        <PageHeading
+          title="Asset Requests"
+          subtitle="Manage transfers, maintenance, repairs & more"
+          titleColor={T.text}
+          subtitleColor={T.textMuted}
+        />
         {!hideCreateRequest && (
           <Stack direction="row" spacing={1.5} flexWrap="wrap">
             <Button
@@ -1415,22 +1410,12 @@ export default function AssetRequests() {
           spacing={1.5}
           alignItems={{ xs: "stretch", sm: "center" }}
         >
-          <TextField
-            size="small"
-            placeholder="Search requests, assets, requesters…"
-            defaultValue={filters.search}
+          <AssetSearchField
+            placeholder="Search requests, assets, requesters..."
+            value={filters.search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            sx={{
-              flex: 2,
-              "& .MuiOutlinedInput-root": { borderRadius: 2.5, bgcolor: T.bg },
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search sx={{ fontSize: 18, color: T.textMuted }} />
-                </InputAdornment>
-              ),
-            }}
+            onClear={() => handleSearchChange("")}
+            sx={{ flex: 2 }}
           />
           <FormControl size="small" sx={{ flex: 1, minWidth: 130 }}>
             <InputLabel>Status</InputLabel>

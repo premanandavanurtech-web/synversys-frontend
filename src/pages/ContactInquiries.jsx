@@ -69,6 +69,7 @@ import {
 } from "@mui/icons-material";
 import { useContactInquiry } from "../context/InquiryContext";
 import { useAuth } from "../context/AuthContexts";
+import AssetSearchField from "../components/AssetSearchField";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -738,7 +739,7 @@ const AGE_FILTERS = [
   { value: "all", label: "All" },
   { value: "new", label: "New (≤7d)" },
   { value: "pending", label: "Pending" },
-  { value: "archived", label: "Archived" },
+  // { value: "archived", label: "Archived" },
 ];
 
 const cellSx = {
@@ -758,6 +759,7 @@ const headCellSx = {
   bgcolor: C.canvas,
   py: "9px",
   borderBottom: `0.5px solid ${C.line}`,
+  
 };
 
 export default function ContactInquiries() {
@@ -1032,12 +1034,12 @@ export default function ContactInquiries() {
             icon: ScheduleIcon,
             color: C.amber,
           },
-          {
-            label: "Archived",
-            value: stats.archived,
-            icon: ArchiveIcon,
-            color: C.inkMuted,
-          },
+          // {
+          //   label: "Archived",
+          //   value: stats.archived,
+          //   icon: ArchiveIcon,
+          //   color: C.inkMuted,
+          // },
         ].map((s) => (
           <StatCard
             key={s.label}
@@ -1069,16 +1071,10 @@ export default function ContactInquiries() {
           <Box
             sx={{
               display: "flex",
-              border: C.border,
-              borderRadius: "8px",
-              overflow: "hidden",
+              gap: 1,
               flexGrow: 1,
-              maxWidth: 380,
-              bgcolor: C.canvas,
-              "&:focus-within": {
-                outline: `2px solid ${C.accentGlow}`,
-                borderColor: C.accent,
-              },
+              maxWidth: "100%",
+              alignItems: "center",
             }}
           >
             <Button
@@ -1086,14 +1082,15 @@ export default function ContactInquiries() {
               onClick={(e) => setSfAnchor(e.currentTarget)}
               endIcon={<ArrowDownIcon sx={{ fontSize: 12 }} />}
               sx={{
-                px: 1.25,
+                px: 3.25,
                 py: 0.75,
                 fontSize: 11,
                 fontWeight: 600,
                 textTransform: "none",
                 color: C.inkSoft,
-                borderRight: C.border,
-                borderRadius: 0,
+                border: C.border,
+                borderRadius: "10px",
+                bgcolor: "#f8fafc",
                 whiteSpace: "nowrap",
                 gap: 0.5,
                 minWidth: 0,
@@ -1103,36 +1100,19 @@ export default function ContactInquiries() {
               {curSearchField && <curSearchField.Icon sx={{ fontSize: 13 }} />}
               {curSearchField?.label}
             </Button>
-            <TextField
-              variant="standard"
-              fullWidth
-              placeholder={`Search by ${curSearchField?.label.toLowerCase()}…`}
+            <AssetSearchField
+              placeholder={`Search by ${curSearchField?.label.toLowerCase()}...`}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setPage(0);
               }}
-              InputProps={{
-                disableUnderline: true,
-                sx: { fontSize: 12, px: 1.25, py: 0.7, color: C.ink },
-                endAdornment: search ? (
-                  <InputAdornment position="end">
-                    <IconButton
-                      size="small"
-                      onClick={() => setSearch("")}
-                      sx={{ color: C.inkMuted }}
-                    >
-                      <ClearIcon sx={{ fontSize: 13 }} />
-                    </IconButton>
-                  </InputAdornment>
-                ) : (
-                  <InputAdornment position="end">
-                    <SearchIcon
-                      sx={{ fontSize: 14, color: C.inkMuted, mr: 0.5 }}
-                    />
-                  </InputAdornment>
-                ),
+              onClear={() => {
+                setSearch("");
+                setPage(0);
               }}
+              sx={{  width:{xs:"100%",md:"780px"} }}
+              inputSx={{ fontSize: 12 }}
             />
           </Box>
 
@@ -1165,6 +1145,7 @@ export default function ContactInquiries() {
                   sx={{
                     fontSize: 14,
                     color: searchField === value ? C.accent : C.inkMuted,
+                    
                   }}
                 />
                 {label}

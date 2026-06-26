@@ -41,6 +41,7 @@ import {
 import { createTheme, ThemeProvider, styled } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import { useChecklistBuilder } from "../context/ChecklistBuilderContext";
+import AssetSearchField from "../components/AssetSearchField";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SearchIcon from "@mui/icons-material/Search";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -734,17 +735,12 @@ export default function CloneChecklist() {
             ))}
           </Grid>
           <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2 }, mb: 3, border: "1px solid", borderColor: "divider" }}>
-            <TextField 
-              fullWidth 
-              size="small" 
-              placeholder="Search by name, category, or description…" 
-              value={search} 
-              onChange={(e) => setSearch(e.target.value)} 
-              InputProps={{ 
-                startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: "text.disabled", fontSize: { xs: 18, sm: 19 } }} /></InputAdornment>, 
-                endAdornment: search && <InputAdornment position="end"><IconButton size="small" onClick={() => setSearch("")}><CloseIcon sx={{ fontSize: { xs: 14, sm: 16 } }} /></IconButton></InputAdornment> 
-              }} 
-              sx={{ "& .MuiInputBase-input": { fontSize: { xs: 13, sm: 14 } } }} 
+            <AssetSearchField
+              placeholder="Search by name, category, or description..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onClear={() => setSearch("")}
+              inputSx={{ "& .MuiInputBase-input": { fontSize: { xs: 13, sm: 14 } } }}
             />
           </Paper>
 

@@ -650,7 +650,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
           display: "flex",
           alignItems: "center",
           gap: 1.5,
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          // borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
           justifyContent: isCollapsed ? "center" : "flex-start",
           position: "relative",
         }}

@@ -85,6 +85,8 @@ import { useRequestChecklist } from "../context/RequestChecklistContext";
 import { useAssignment } from "../context/AssignmentContext";
 import RequestChecklistModal from "./Requestchecklistmodal";
 import AssignmentModal from "./Assignchecklistmodal";
+import AssetSearchField from "../components/AssetSearchField";
+import PageHeading from "../components/PageHeading";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const theme = createTheme({
@@ -474,8 +476,11 @@ const PriorityBadge = ({ priority }) => {
 };
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
-const StatCard = ({ label, value, sub, accent, icon, loading }) => (
-  <Card sx={{ height: "100%", border: "1px solid", borderColor: "divider" , width: "270px" }}>
+const StatCard = ({ label, value, sub, accent, icon, loading,changeCartWidth}) => (
+  
+  <Card sx={{ height: "100%", border: "1px solid", borderColor: "divider",
+   width: changeCartWidth === 1 ? { xs: "325px", md: "280px" } : { xs: "325px", md: "374px" }
+  }}>
     <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
       <Box
         sx={{
@@ -1416,6 +1421,7 @@ export default function ChecklistPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [changeCartWidth,setChangeCartWidth]=useState(tab)
 
   // Clone modal state
   const [cloneModalOpen, setCloneModalOpen] = useState(false);
@@ -1606,6 +1612,10 @@ export default function ChecklistPage() {
     fetchRequests();
   }, [fetchRequests]);
 
+  useEffect(() => {
+  setChangeCartWidth(tab);
+}, [tab]);
+
   const stats = {
     total: listPagination.total ?? checklists.length,
     active: checklists.filter(
@@ -1631,6 +1641,8 @@ export default function ChecklistPage() {
   const updateReqFilter = (k, v) =>
     setRequestsFilters((p) => ({ ...p, [k]: v, page: 1 }));
 
+  console.log("tab===>",tab)
+
   const mobileFilters = (
     <Box sx={{ p: 2, width: 280 }}>
       <Box
@@ -1649,12 +1661,11 @@ export default function ChecklistPage() {
       <Stack spacing={2}>
         {tab === 0 ? (
           <>
-            <TextField
-              size="small"
-              placeholder="Search checklists…"
+            <AssetSearchField
+              placeholder="Search checklists..."
               value={listFilters.search}
               onChange={(e) => updateListFilter("search", e.target.value)}
-              fullWidth
+              onClear={() => updateListFilter("search", "")}
             />
             <FormControl size="small" fullWidth>
               <InputLabel>Status</InputLabel>
@@ -1688,12 +1699,11 @@ export default function ChecklistPage() {
           </>
         ) : (
           <>
-            <TextField
-              size="small"
-              placeholder="Search requests…"
+            <AssetSearchField
+              placeholder="Search requests..."
               value={requestsFilters.search}
               onChange={(e) => updateReqFilter("search", e.target.value)}
-              fullWidth
+              onClear={() => updateReqFilter("search", "")}
             />
             <FormControl size="small" fullWidth>
               <InputLabel>Status</InputLabel>
@@ -1767,23 +1777,12 @@ export default function ChecklistPage() {
               mb: 3,
             }}
           >
-            <Box>
-              <Typography
-                variant={isMobile ? "h6" : "h5"}
-                fontWeight={800}
-                color="text.primary"
-                sx={{ letterSpacing: "-0.02em" }}
-              >
-                Checklist Management
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5 }}
-              >
-                Build, manage, and assign inspection checklists for your team
-              </Typography>
-            </Box>
+            <PageHeading
+              title="Checklist Management"
+              subtitle="Build, manage, and assign inspection checklists for your team"
+              titleColor="text.primary"
+              subtitleColor="text.secondary"
+            />
             <Stack direction="row" spacing={1} flexWrap="wrap">
               {(isSuperAdmin || isAdmin) && (
                 <Button
@@ -1847,16 +1846,16 @@ export default function ChecklistPage() {
                   accent: "info.main",
                   icon: <CheckBoxIcon />,
                 },
-                {
-                  label: "Draft / Pending",
-                  value: stats.pending,
-                  sub: "Awaiting action",
-                  accent: "warning.main",
-                  icon: <PendingIcon />,
-                },
+                // {
+                //   label: "Draft / Pending",
+                //   value: stats.pending,
+                //   sub: "Awaiting action",
+                //   accent: "warning.main",
+                //   icon: <PendingIcon />,
+                // },
               ].map((s) => (
                 <Grid item xs={6} sm={3} key={s.label}>
-                  <StatCard {...s} loading={listLoading} />
+                  <StatCard {...s} loading={listLoading} changeCartWidth={changeCartWidth}/>
                 </Grid>
               ))}
             </Grid>
@@ -1894,7 +1893,7 @@ export default function ChecklistPage() {
                 },
               ].map((s) => (
                 <Grid item xs={6} sm={3} key={s.label}>
-                  <StatCard {...s} loading={requestsLoading} />
+                  <StatCard {...s} loading={requestsLoading} changeCartWidth={changeCartWidth} />
                 </Grid>
               ))}
             </Grid>
@@ -1984,22 +1983,12 @@ export default function ChecklistPage() {
                     bgcolor: "#fafbfc",
                   }}
                 >
-                  <TextField
-                    size="small"
-                    placeholder="Search checklists…"
+                  <AssetSearchField
+                    placeholder="Search checklists..."
                     value={listFilters.search}
                     onChange={(e) => updateListFilter("search", e.target.value)}
-                    sx={{ minWidth: { xs: "100%", sm: 200 } }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon
-                            fontSize="small"
-                            sx={{ color: "text.disabled" }}
-                          />
-                        </InputAdornment>
-                      ),
-                    }}
+                    onClear={() => updateListFilter("search", "")}
+                    sx={{ width: { xs: "100%", sm: 735 } }}
                   />
                   {!isMobile && (
                     <>
@@ -2338,22 +2327,12 @@ export default function ChecklistPage() {
                     bgcolor: "#fafbfc",
                   }}
                 >
-                  <TextField
-                    size="small"
-                    placeholder="Search requests…"
+                  <AssetSearchField
+                    placeholder="Search requests..."
                     value={requestsFilters.search}
                     onChange={(e) => updateReqFilter("search", e.target.value)}
-                    sx={{ minWidth: { xs: "100%", sm: 200 } }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon
-                            fontSize="small"
-                            sx={{ color: "text.disabled" }}
-                          />
-                        </InputAdornment>
-                      ),
-                    }}
+                    onClear={() => updateReqFilter("search", "")}
+                    sx={{ width: { xs: "100%", sm: 620 } }}
                   />
                   {!isMobile && (
                     <>

@@ -73,6 +73,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useClient } from "../context/ClientContext";
 import { useAuth } from "../context/AuthContexts";
+import AssetSearchField from "../components/AssetSearchField";
 
 const C = {
   primary: "#075971",
@@ -345,6 +346,8 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
   const pct = Math.min(100, Math.round((used / limit) * 100));
   const expiring = daysLeft > 0 && daysLeft <= 7;
 
+  console.log("client====>>>>",client)
+
   return (
     <Card
       sx={{
@@ -399,7 +402,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
                 whiteSpace: "nowrap",
               }}
             >
-              {client.customerName}
+              {client.customerName} ({client.status})
             </Typography>
             <Typography
               sx={{
@@ -1615,30 +1618,14 @@ export default function ClientManagement() {
             alignItems: "center",
           }}
         >
-          <TextField
-            fullWidth
-            size="small"
+          <AssetSearchField
             placeholder="Search customers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onClear={() => setSearch("")}
             sx={{
               flex: 1,
               minWidth: { xs: "100%", sm: 200 },
-              "& .MuiOutlinedInput-root": { borderRadius: 2 },
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon
-                    sx={{ fontSize: "0.9rem", color: C.text.muted }}
-                  />
-                </InputAdornment>
-              ),
-              endAdornment: search && (
-                <IconButton size="small" onClick={() => setSearch("")}>
-                  <ClearIcon sx={{ fontSize: "0.8rem" }} />
-                </IconButton>
-              ),
             }}
           />
           <Box

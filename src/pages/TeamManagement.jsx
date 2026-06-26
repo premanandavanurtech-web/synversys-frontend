@@ -61,6 +61,8 @@ import { useTeam } from "../context/TeamContext";
 import AddMemberModal from "./AddMemberModal";
 import EditMemberModal from "./EditMemberModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
+import AssetSearchField from "../components/AssetSearchField";
+import PageHeading from "../components/PageHeading";
 
 // ─── Google Font ──────────────────────────────────────────────────────────────
 if (!document.head.querySelector('[href*="Inter"]')) {
@@ -1163,22 +1165,12 @@ export default function TeamManagement() {
               mb: 2.5,
             }}
           >
-            <Box>
-              <Typography
-                sx={{
-                  fontWeight: 700,
-                  fontSize: { xs: "1.25rem", sm: "1.5rem" },
-                  color: C.text.primary,
-                  letterSpacing: "-0.02em",
-                  mb: 0.5,
-                }}
-              >
-                Team Management
-              </Typography>
-              <Typography sx={{ color: C.text.secondary, fontSize: "0.85rem" }}>
-                Manage your inspection team and track performance
-              </Typography>
-            </Box>
+            <PageHeading
+              title="Team Management"
+              subtitle="Manage your inspection team and track performance"
+              titleColor={C.text.primary}
+              subtitleColor={C.text.secondary}
+            />
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -1267,49 +1259,20 @@ export default function TeamManagement() {
             spacing={1.5}
             alignItems={{ xs: "stretch", sm: "center" }}
           >
-            <TextField
-              fullWidth
-              placeholder="Search by name, email, role, or department…"
-              variant="standard"
+            <AssetSearchField
+              placeholder="Search by name, email, role, or department..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
                 setCurrentPage(0);
               }}
-              InputProps={{
-                disableUnderline: true,
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon
-                      sx={{
-                        color: searchTerm ? C.primary : C.text.muted,
-                        fontSize: 20,
-                        transition: "color 0.2s",
-                      }}
-                    />
-                  </InputAdornment>
-                ),
-                endAdornment: searchTerm ? (
-                  <InputAdornment position="end">
-                    <Tooltip title="Clear search" arrow>
-                      <IconButton
-                        size="small"
-                        onClick={handleClearSearch}
-                        sx={{ p: 0.4 }}
-                      >
-                        <CloseIcon sx={{ fontSize: 15, color: C.text.muted }} />
-                      </IconButton>
-                    </Tooltip>
-                  </InputAdornment>
-                ) : null,
-                sx: {
-                  fontSize: "0.9rem",
-                  color: C.text.primary,
-                  py: 0.8,
-                  px: 1,
-                },
-              }}
+              onClear={handleClearSearch}
               sx={{ flex: 2, minWidth: 200 }}
+              inputSx={{ fontSize: "0.9rem", color: C.text.primary }}
+              searchIconSx={{
+                color: searchTerm ? C.primary : C.text.muted,
+                fontSize: 20,
+              }}
             />
             <Divider
               orientation="vertical"

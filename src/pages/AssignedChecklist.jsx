@@ -94,6 +94,7 @@ import {
 import { useAuth } from "../context/AuthContexts";
 import { useAssignment } from "../context/AssignmentContext";
 import { useNavigate } from "react-router-dom";
+import AssetSearchField from "../components/AssetSearchField";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const theme = createTheme({
@@ -387,13 +388,12 @@ const SelectionModal = ({ open, onClose, title, items, loading, selectedIds, onT
             <CloseIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Box>
-        <TextField
-          fullWidth size="small" placeholder="Search..."
-          value={search} onChange={(e) => setSearch(e.target.value)}
-          sx={{ bgcolor: "white", borderRadius: 2, "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
-          InputProps={{
-            startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment>,
-          }}
+        <AssetSearchField
+          placeholder="Search..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onClear={() => setSearch("")}
+          sx={{ bgcolor: "white", borderRadius: 2 }}
         />
       </Box>
 
@@ -736,18 +736,11 @@ export default function AssignedChecklist() {
             {isMobile ? (
               <>
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <TextField
-                    size="small"
-                    fullWidth
+                  <AssetSearchField
                     placeholder="Search..."
                     value={filters.search}
                     onChange={(e) => handleFilterChange("search", e.target.value)}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment>,
-                      endAdornment: filters.search && (
-                        <IconButton size="small" onClick={() => handleFilterChange("search", "")}><ClearIcon sx={{ fontSize: 16 }} /></IconButton>
-                      ),
-                    }}
+                    onClear={() => handleFilterChange("search", "")}
                   />
                   <IconButton
                     onClick={() => setFiltersOpen((p) => !p)}
@@ -790,18 +783,12 @@ export default function AssignedChecklist() {
             ) : (
               // Desktop: all filters in one row
               <Stack direction="row" spacing={2} alignItems="center">
-                <TextField
-                  size="small"
+                <AssetSearchField
                   placeholder="Search by checklist or assignee..."
                   value={filters.search}
                   onChange={(e) => handleFilterChange("search", e.target.value)}
+                  onClear={() => handleFilterChange("search", "")}
                   sx={{ flex: 2, minWidth: 200 }}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment>,
-                    endAdornment: filters.search && (
-                      <IconButton size="small" onClick={() => handleFilterChange("search", "")}><ClearIcon sx={{ fontSize: 16 }} /></IconButton>
-                    ),
-                  }}
                 />
                 <FormControl size="small" sx={{ minWidth: 140 }}>
                   <Select value={filters.status} onChange={(e) => handleFilterChange("status", e.target.value)} displayEmpty>
@@ -875,7 +862,7 @@ export default function AssignedChecklist() {
             </Box>
           ) : (
             // ── Desktop: Table ──
-            <Paper sx={{ borderRadius: 3, overflow: "hidden" }}>
+            <Paper sx={{ borderRadius: 1, overflow: "hidden" }}>
               <TableContainer sx={{ overflowX: "auto" }}>
                 <Table>
                   <TableHead>

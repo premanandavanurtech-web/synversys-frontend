@@ -74,6 +74,7 @@ import {
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAudit } from "../context/AuditContext";
+import AssetSearchField from "../components/AssetSearchField";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -657,23 +658,14 @@ function FilterBar({
           }}
         >
           {/* Search */}
-          <TextField
-            size="small"
+          <AssetSearchField
             placeholder={placeholder}
             value={filters.search || ""}
             onChange={(e) => onChange("search", e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 14, color: T.textMuted }} />
-                </InputAdornment>
-              ),
-              sx: {
-                fontSize: 12,
-                borderRadius: "8px",
-                width: isMobile ? "100%" : 220,
-              },
-            }}
+            onClear={() => onChange("search", "")}
+            sx={{ width: isMobile ? "100%" : 708 }}
+            inputSx={{ fontSize: 12 }}
+            searchIconSx={{ fontSize: 14, color: T.textMuted }}
           />
 
           {/* Action */}
