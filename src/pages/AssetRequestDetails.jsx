@@ -109,8 +109,8 @@ const TopBar = styled(Box)(({ theme }) => ({
   flexWrap: "wrap",
   gap: 12,
   
-  width: "1100px",
-  marginLeft: "26px",
+  width: "100%",
+  marginLeft: 0,
   borderRadius: "12px",
   zIndex: 200,
   [theme.breakpoints.down("sm")]: { padding: "10px 12px" },
@@ -1850,6 +1850,7 @@ export default function AssetRequestDetails() {
           justifyContent="flex-end"
           spacing={1.5}
           mt={3}
+          mb={5}
           flexWrap="wrap"
         >
           <Button
