@@ -304,7 +304,7 @@ export const AuthProvider = ({ children }) => {
         {
           headers: { "Content-Type": "application/json" },
           withCredentials: true,
-          timeout: 45000,
+          // timeout: 45000,
         },
       );
 
