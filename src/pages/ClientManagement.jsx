@@ -279,7 +279,7 @@ const StatCard = ({ icon: Icon, label, value, color, loading }) => {
       sx={{
         borderRadius: 2,
         height: "100%",
-        width:{xs:"171px",md:"275px"},
+        width:{xs:"172px",md:"275px"},
         border: `1px solid ${C.border}`,
         transition: "all 0.2s",
         "&:hover": { transform: "translateY(-2px)", boxShadow: 2 },

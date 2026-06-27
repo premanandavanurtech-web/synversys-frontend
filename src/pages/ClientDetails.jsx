@@ -162,6 +162,7 @@ const StatTile = ({
           borderRadius: 2,
           p: 2,
           height: "100%",
+        
         }}
       >
         <Skeleton variant="circular" width={28} height={28} sx={{ mb: 1 }} />
@@ -177,7 +178,7 @@ const StatTile = ({
       sx={{
         bgcolor: "white",
         border: `1px solid ${C.border}`,
-        width:{xs:"320px",md:"279px"},
+        width:{xs:"173px",md:"279px"},
         borderRadius: 2,
         p: { xs: 1.5, sm: 2 },
         height: "100%",
