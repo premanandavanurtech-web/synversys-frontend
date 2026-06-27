@@ -185,7 +185,7 @@ const GradientText = styled(Typography)(() => ({
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 const ModernStatCard = ({ label, value, icon: Icon, trend, subtitle, loading, color }) => (
   <Zoom in timeout={300}>
-    <GlassCard sx={{ height: "100%", width:{xs: "377px",md: "273px"}, overflow: "hidden" }}>
+    <GlassCard sx={{ height: "100%", width:{xs: "173px",md: "273px"}, overflow: "hidden" }}>
       <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <Box sx={{ minWidth: 0, flex: 1, mr: 1 }}>

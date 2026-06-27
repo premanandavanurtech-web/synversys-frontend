@@ -62,42 +62,49 @@ export const buildFilterParams = (filters = {}) => {
   const today = new Date();
   const fmt = (d) => d.toISOString().split("T")[0];
 
-  switch (preset) {
-    case "today":
-      return {
-        startDate: fmt(today),
-        endDate: fmt(today),
-        period: "daily",
-      };
-    case "7d":
-      const s7 = new Date(today);
-      s7.setDate(s7.getDate() - 6);
-      return { startDate: fmt(s7), endDate: fmt(today), period: "daily" };
-    case "30d":
-      const s30 = new Date(today);
-      s30.setDate(s30.getDate() - 29);
-      return { startDate: fmt(s30), endDate: fmt(today), period: "weekly" };
-    case "monthly":
-      const sM = new Date(today.getFullYear(), today.getMonth(), 1);
-      return { startDate: fmt(sM), endDate: fmt(today), period: "monthly" };
-    case "yearly":
-      return {
-        startDate: `${today.getFullYear()}-01-01`,
-        endDate: fmt(today),
-        period: "monthly",
-      };
-    case "custom":
-      if (!startDate || !endDate) return { dateRange: 30, period: "monthly" };
-      // Auto-pick period based on date span
-      const diff =
-        (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24);
-      const period = diff <= 7 ? "daily" : diff <= 60 ? "weekly" : "monthly";
-      return { startDate, endDate, period };
-    default:
-      return { dateRange: 30, period: "monthly" };
+  if (preset === "today") {
+    return {
+      startDate: fmt(today),
+      endDate: fmt(today),
+      period: "daily",
+    };
   }
-};
 
+  if (preset === "7d") {
+    const s7 = new Date(today);
+    s7.setDate(s7.getDate() - 6);
+    return { startDate: fmt(s7), endDate: fmt(today), period: "daily" };
+  }
+
+  if (preset === "30d") {
+    const s30 = new Date(today);
+    s30.setDate(s30.getDate() - 29);
+    return { startDate: fmt(s30), endDate: fmt(today), period: "weekly" };
+  }
+
+  if (preset === "monthly") {
+    const sM = new Date(today.getFullYear(), today.getMonth(), 1);
+    return { startDate: fmt(sM), endDate: fmt(today), period: "monthly" };
+  }
+
+  if (preset === "yearly") {
+    return {
+      startDate: `${today.getFullYear()}-01-01`,
+      endDate: fmt(today),
+      period: "monthly",
+    };
+  }
+
+  if (preset === "custom") {
+    if (!startDate || !endDate) return { dateRange: 30, period: "monthly" };
+    const diff =
+      (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24);
+    const period = diff <= 7 ? "daily" : diff <= 60 ? "weekly" : "monthly";
+    return { startDate, endDate, period };
+  }
+
+  return { dateRange: 30, period: "monthly" };
+};
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const DashboardProvider = ({ children }) => {

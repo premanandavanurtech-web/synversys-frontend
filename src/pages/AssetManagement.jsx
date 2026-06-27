@@ -192,7 +192,7 @@ const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
         borderRadius: T.radius.card,
         border: `1px solid ${T.border}`,
         boxShadow: T.shadowCard,
-        width: {xs:"306px",md:"371px"},
+        width: {xs:"356px",md:"371px"},
         cursor: "pointer",
         transition: "box-shadow 0.18s, transform 0.18s",
         overflow: "hidden",

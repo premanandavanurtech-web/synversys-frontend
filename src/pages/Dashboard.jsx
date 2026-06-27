@@ -288,7 +288,7 @@ const StatCard = ({
           p: { xs: 2, sm: 2.5 },
           borderRadius: 3,
           height: "100%",
-          width: {xs:"327px",md:"276px"},
+          width: {xs:"367px",md:"276px"},
           background: `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryLight} 100%)`,
           cursor: onClick ? "pointer" : "default",
           transition: "transform 0.3s ease, box-shadow 0.3s ease",
@@ -405,7 +405,7 @@ const StatCard = ({
 };
 
 const SectionTitle = ({ icon: Icon, title, chip }) => (
-  <Box display="flex" alignItems="center" gap={1} mb={2}>
+  <Box display="flex" alignItems="center"  gap={1} mb={2}>
     <Icon sx={{ color: C.primaryLight, fontSize: 20 }} />
     <Typography sx={{ fontWeight: 700, color: C.primary, fontSize: "0.95rem" }}>
       {title}
@@ -433,7 +433,7 @@ const ChartCard = ({ title, sub, children, minH = 280, action }) => (
       p: { xs: 2, sm: 2.5 },
       borderRadius: 3,
       height: "100%",
-      width: {xs:"325px",md:"567px"},
+      width: {xs:"365px",md:"567px"},
       bgcolor: C.white,
       border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
       minHeight: { xs: 240, sm: minH }, // ✅ smaller minimum on mobile
@@ -697,7 +697,7 @@ const ActivityTable = ({ activities }) => {
           ) : (
             <TableRow>
               <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                <Typography sx={{ color: C.secondary, fontSize: "0.8rem" }}>
+                <Typography sx={{ color: C.secondary, width: {xs:"330px",md:"1147px"} ,fontSize: "0.8rem" }}>
                   No recent activities
                 </Typography>
               </TableCell>
@@ -718,8 +718,9 @@ const NotifList = ({ notifications }) => (
           key={i}
           sx={{
             p: 1.5,
+            
             borderRadius: 2,
-            width: {xs:"100%",md:"1090px"},          // ← was "1090px"
+            width: {xs:"330px",md:"1147px"},
             bgcolor: C.surfaceContainerLow,
             border: `1px solid ${alpha(C.outlineVariant, 0.4)}`,
           }}
@@ -727,7 +728,7 @@ const NotifList = ({ notifications }) => (
           {/* rest unchanged */}
           <Box display="flex" justifyContent="space-between" alignItems="flex-start">
             <Typography
-              sx={{ fontSize: "0.75rem", fontWeight: 700, color: C.primary, flex: 1, pr: 1 }}
+              sx={{ fontSize: "0.75rem",  fontWeight: 700, color: C.primary, flex: 1, pr: 1 }}
             >
               {n.title}
             </Typography>
@@ -771,7 +772,7 @@ const NotifList = ({ notifications }) => (
       ))
     ) : (
       <Typography
-        sx={{ fontSize: "0.8rem", color: C.secondary, textAlign: "center", py: 2 }}
+        sx={{ fontSize: "0.8rem", width: {xs:"330px",md:"1106px"} , color: C.secondary, textAlign: "center", py: 2 }}
       >
         No notifications
       </Typography>
@@ -1076,24 +1077,25 @@ const SuperAdminDashboard = ({ data, loading }) => {
     [assignTrend],
   );
 
+
+
   const statCards = [
     {
       icon: PeopleIcon,
-      title: "Total Clients",
+      title: "Total Customer",
       value: fmt(summary.totalClients),
-      sub: `${fmt(summary.newClients)} new · ${fmt(summary.activeSubscriptions)} active`,
+      sub: ``,
       trend: summary.clientGrowth ? `${summary.clientGrowth}%` : null,
       trendUp: (summary.clientGrowth ?? 0) >= 0,
     },
     {
-      icon: CurrencyRupeeIcon,
-      title: "Monthly Revenue",
-      value: fmtRs(summary.totalRevenue),
-      sub: `${fmtRs(summary.totalRevenue * 12)} / yr est.`,
-      trend: summary.revenueGrowth ? `${summary.revenueGrowth}%` : null,
-      trendUp: (summary.revenueGrowth ?? 0) >= 0,
-      accent: true,
-    },
+  icon: PeopleIcon,
+  title: "Active Customers",
+  value: fmt(summary.activeSubscriptions),
+  sub: ``,
+  trend: summary.clientGrowth ? `${summary.clientGrowth}%` : null,
+  trendUp: (summary.clientGrowth ?? 0) >= 0,
+},
     {
       icon: AssignmentIcon,
       title: "Checklists",
@@ -1302,6 +1304,7 @@ const SuperAdminDashboard = ({ data, loading }) => {
             sx={{
               borderRadius: 3,
               overflow: "hidden",
+              width: {xs:"362px",md:"1147px"},
               border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
             }}
           >

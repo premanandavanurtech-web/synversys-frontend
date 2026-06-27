@@ -479,7 +479,7 @@ const PriorityBadge = ({ priority }) => {
 const StatCard = ({ label, value, sub, accent, icon, loading,changeCartWidth}) => (
   
   <Card sx={{ height: "100%", border: "1px solid", borderColor: "divider",
-   width: changeCartWidth === 1 ? { xs: "325px", md: "280px" } : { xs: "325px", md: "374px" }
+   width: changeCartWidth === 1 ? { xs: "173px", md: "276px" } : { xs: "365px", md: "374px" }
   }}>
     <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
       <Box
