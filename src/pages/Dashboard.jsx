@@ -288,7 +288,7 @@ const StatCard = ({
           p: { xs: 2, sm: 2.5 },
           borderRadius: 3,
           height: "100%",
-          width: {xs:"367px",md:"276px"},
+          width: {xs:"175px",md:"276px"},
           background: `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryLight} 100%)`,
           cursor: onClick ? "pointer" : "default",
           transition: "transform 0.3s ease, box-shadow 0.3s ease",
