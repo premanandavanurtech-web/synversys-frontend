@@ -41,6 +41,8 @@ import {
   Skeleton,
   Chip,
   Paper,
+  Card,
+  CardContent,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -75,7 +77,7 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
 /* ─────────────────────────────────────────────────────
- * Design tokens — refined industrial-minimal
+ * Design tokens
  * ───────────────────────────────────────────────────── */
 const C = {
   ink: "#0d1117",
@@ -109,33 +111,12 @@ const C = {
 function inquiryAge(dateStr) {
   const days = Math.floor((Date.now() - new Date(dateStr)) / 86_400_000);
   if (days <= 7)
-    return {
-      label: "New",
-      days,
-      color: C.green,
-      bg: C.greenBg,
-      Icon: CheckCircleIcon,
-    };
+    return { label: "New", days, color: C.green, bg: C.greenBg, Icon: CheckCircleIcon };
   if (days <= 30)
-    return {
-      label: "Pending",
-      days,
-      color: C.amber,
-      bg: C.amberBg,
-      Icon: ScheduleIcon,
-    };
-  return {
-    label: "Archived",
-    days,
-    color: C.inkMuted,
-    bg: C.lineSoft,
-    Icon: ArchiveIcon,
-  };
+    return { label: "Pending", days, color: C.amber, bg: C.amberBg, Icon: ScheduleIcon };
+  return { label: "Archived", days, color: C.inkMuted, bg: C.lineSoft, Icon: ArchiveIcon };
 }
 
-/* ─────────────────────────────────────────────────────
- * Tiny reusable chips
- * ───────────────────────────────────────────────────── */
 function AgeBadge({ date }) {
   const s = inquiryAge(date);
   return (
@@ -165,13 +146,7 @@ function AgeBadge({ date }) {
  * ───────────────────────────────────────────────────── */
 function StatCard({ label, value, icon: Icon, color, loading }) {
   if (loading)
-    return (
-      <Skeleton
-        variant="rectangular"
-        height={84}
-        sx={{ borderRadius: C.radius, flex: 1 }}
-      />
-    );
+    return <Skeleton variant="rectangular" height={84} sx={{ borderRadius: C.radius, flex: 1 }} />;
   return (
     <Box
       sx={{
@@ -204,21 +179,10 @@ function StatCard({ label, value, icon: Icon, color, loading }) {
         <Icon sx={{ fontSize: 18 }} />
       </Box>
       <Box>
-        <Typography
-          fontSize={10.5}
-          color={C.inkMuted}
-          fontWeight={500}
-          lineHeight={1.2}
-          mb={0.25}
-        >
+        <Typography fontSize={10.5} color={C.inkMuted} fontWeight={500} lineHeight={1.2} mb={0.25}>
           {label}
         </Typography>
-        <Typography
-          fontSize={22}
-          fontWeight={700}
-          color={C.ink}
-          lineHeight={1.2}
-        >
+        <Typography fontSize={22} fontWeight={700} color={C.ink} lineHeight={1.2}>
           {(value ?? 0).toLocaleString()}
         </Typography>
       </Box>
@@ -230,15 +194,7 @@ function StatCard({ label, value, icon: Icon, color, loading }) {
  * Export helpers
  * ───────────────────────────────────────────────────── */
 function buildExportRows(list) {
-  const header = [
-    "#",
-    "Full Name",
-    "Email",
-    "Phone",
-    "Message",
-    "Status",
-    "Submitted At",
-  ];
+  const header = ["#", "Full Name", "Email", "Phone", "Message", "Status", "Submitted At"];
   const rows = list.map((inq, i) => {
     const s = inquiryAge(inq.createdAt);
     return [
@@ -271,15 +227,7 @@ function downloadExcel(list, filename) {
   const { header, rows } = buildExportRows(list);
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-  ws["!cols"] = [
-    { wch: 5 },
-    { wch: 22 },
-    { wch: 28 },
-    { wch: 14 },
-    { wch: 55 },
-    { wch: 10 },
-    { wch: 22 },
-  ];
+  ws["!cols"] = [{ wch: 5 }, { wch: 22 }, { wch: 28 }, { wch: 14 }, { wch: 55 }, { wch: 10 }, { wch: 22 }];
   XLSX.utils.book_append_sheet(wb, ws, "Inquiries");
   XLSX.writeFile(wb, filename);
 }
@@ -287,51 +235,26 @@ function downloadExcel(list, filename) {
 function downloadPDF(list, filename) {
   const { header, rows } = buildExportRows(list);
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
   doc.setTextColor(13, 17, 23);
   doc.text("Contact Inquiries", 40, 44);
-
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(107, 114, 128);
-  doc.text(
-    `Generated ${new Date().toLocaleString()}  ·  ${list.length} records`,
-    40,
-    60,
-  );
-
+  doc.text(`Generated ${new Date().toLocaleString()}  ·  ${list.length} records`, 40, 60);
   autoTable(doc, {
     head: [header],
     body: rows,
     startY: 74,
-    styles: {
-      fontSize: 8,
-      cellPadding: 5,
-      overflow: "linebreak",
-      textColor: [30, 30, 30],
-    },
-    headStyles: {
-      fillColor: [15, 76, 97],
-      textColor: 255,
-      fontStyle: "bold",
-      fontSize: 8,
-    },
+    styles: { fontSize: 8, cellPadding: 5, overflow: "linebreak", textColor: [30, 30, 30] },
+    headStyles: { fillColor: [15, 76, 97], textColor: 255, fontStyle: "bold", fontSize: 8 },
     alternateRowStyles: { fillColor: [249, 250, 251] },
-    columnStyles: {
-      0: { cellWidth: 22 },
-      4: { cellWidth: 200 },
-      6: { cellWidth: 90 },
-    },
+    columnStyles: { 0: { cellWidth: 22 }, 4: { cellWidth: 200 }, 6: { cellWidth: 90 } },
   });
-
   doc.save(filename);
 }
 
-/* ─────────────────────────────────────────────────────
- * Export dropdown button
- * ───────────────────────────────────────────────────── */
 function ExportButton({ list, disabled }) {
   const [anchor, setAnchor] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -340,11 +263,7 @@ function ExportButton({ list, disabled }) {
   const run = async (fn, name) => {
     setAnchor(null);
     setBusy(true);
-    try {
-      fn(list, name);
-    } finally {
-      setBusy(false);
-    }
+    try { fn(list, name); } finally { setBusy(false); }
   };
 
   return (
@@ -352,22 +271,11 @@ function ExportButton({ list, disabled }) {
       <Button
         size="small"
         variant="outlined"
-        startIcon={
-          busy ? (
-            <CircularProgress size={11} />
-          ) : (
-            <DownloadIcon sx={{ fontSize: 13 }} />
-          )
-        }
+        startIcon={busy ? <CircularProgress size={11} /> : <DownloadIcon sx={{ fontSize: 13 }} />}
         endIcon={<ArrowDownIcon sx={{ fontSize: 13 }} />}
         onClick={(e) => setAnchor(e.currentTarget)}
         disabled={disabled || busy || list.length === 0}
-        sx={{
-          fontSize: 11,
-          fontWeight: 600,
-          textTransform: "none",
-          borderRadius: "8px",
-        }}
+        sx={{ fontSize: 11, fontWeight: 600, textTransform: "none", borderRadius: "8px" }}
         aria-haspopup="true"
       >
         Export
@@ -376,47 +284,18 @@ function ExportButton({ list, disabled }) {
         anchorEl={anchor}
         open={Boolean(anchor)}
         onClose={() => setAnchor(null)}
-        PaperProps={{
-          elevation: 0,
-          sx: {
-            border: C.border,
-            borderRadius: C.radius,
-            mt: 0.5,
-            minWidth: 170,
-          },
-        }}
+        PaperProps={{ elevation: 0, sx: { border: C.border, borderRadius: C.radius, mt: 0.5, minWidth: 170 } }}
       >
         {[
-          {
-            label: "Export CSV",
-            Icon: CsvIcon,
-            color: C.green,
-            action: () => run(downloadCSV, `inquiries-${date}.csv`),
-          },
-          {
-            label: "Export Excel",
-            Icon: ExcelIcon,
-            color: C.blue,
-            action: () => run(downloadExcel, `inquiries-${date}.xlsx`),
-          },
-          {
-            label: "Export PDF",
-            Icon: PdfIcon,
-            color: C.red,
-            action: () => run(downloadPDF, `inquiries-${date}.pdf`),
-          },
+          { label: "Export CSV", Icon: CsvIcon, color: C.green, action: () => run(downloadCSV, `inquiries-${date}.csv`) },
+          { label: "Export Excel", Icon: ExcelIcon, color: C.blue, action: () => run(downloadExcel, `inquiries-${date}.xlsx`) },
+          { label: "Export PDF", Icon: PdfIcon, color: C.red, action: () => run(downloadPDF, `inquiries-${date}.pdf`) },
         ].map(({ label, Icon, color, action }) => (
-          <MenuItem
-            key={label}
-            onClick={action}
-            sx={{ fontSize: 12, py: "8px" }}
-          >
+          <MenuItem key={label} onClick={action} sx={{ fontSize: 12, py: "8px" }}>
             <ListItemIcon sx={{ minWidth: 30 }}>
               <Icon sx={{ fontSize: 16, color }} />
             </ListItemIcon>
-            <ListItemText primaryTypographyProps={{ fontSize: 12 }}>
-              {label}
-            </ListItemText>
+            <ListItemText primaryTypographyProps={{ fontSize: 12 }}>{label}</ListItemText>
           </MenuItem>
         ))}
       </Menu>
@@ -437,19 +316,10 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
         <Icon sx={{ fontSize: 15 }} />
       </Box>
       <Box>
-        <Typography
-          fontSize={10.5}
-          color={C.inkMuted}
-          fontWeight={500}
-          textTransform="uppercase"
-          letterSpacing={0.5}
-          mb={0.25}
-        >
+        <Typography fontSize={10.5} color={C.inkMuted} fontWeight={500} textTransform="uppercase" letterSpacing={0.5} mb={0.25}>
           {label}
         </Typography>
-        <Typography fontSize={13} color={C.ink}>
-          {value || "—"}
-        </Typography>
+        <Typography fontSize={13} color={C.ink}>{value || "—"}</Typography>
       </Box>
     </Box>
   );
@@ -460,122 +330,46 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        elevation: 0,
-        sx: { borderRadius: C.radiusLg, border: C.border, overflow: "hidden" },
-      }}
+      PaperProps={{ elevation: 0, sx: { borderRadius: C.radiusLg, border: C.border, overflow: "hidden" } }}
     >
-      {/* Header */}
-      <Box
-        sx={{
-          px: 3,
-          pt: 3,
-          pb: 2.5,
-          borderBottom: C.border,
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 1,
-        }}
-      >
+      <Box sx={{ px: 3, pt: 3, pb: 2.5, borderBottom: C.border, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.75 }}>
-          <Avatar
-            sx={{
-              width: 44,
-              height: 44,
-              bgcolor: alpha(C.accent, 0.1),
-              color: C.accent,
-              fontSize: 16,
-              fontWeight: 700,
-            }}
-          >
+          <Avatar sx={{ width: 44, height: 44, bgcolor: alpha(C.accent, 0.1), color: C.accent, fontSize: 16, fontWeight: 700 }}>
             {(inquiry.fullName?.[0] || "U").toUpperCase()}
           </Avatar>
           <Box>
-            <Typography
-              fontSize={15}
-              fontWeight={700}
-              color={C.ink}
-              lineHeight={1.2}
-            >
-              {inquiry.fullName}
-            </Typography>
-            <Box
-              sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}
-            >
+            <Typography fontSize={15} fontWeight={700} color={C.ink} lineHeight={1.2}>{inquiry.fullName}</Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
               <AgeBadge date={inquiry.createdAt} />
               {inquiry._id && (
-                <Typography
-                  fontSize={10.5}
-                  color={C.inkMuted}
-                  fontFamily={C.mono}
-                >
+                <Typography fontSize={10.5} color={C.inkMuted} fontFamily={C.mono}>
                   #{inquiry._id.slice(-8).toUpperCase()}
                 </Typography>
               )}
             </Box>
           </Box>
         </Box>
-        <IconButton
-          size="small"
-          onClick={onClose}
-          sx={{ color: C.inkMuted, mt: "-4px" }}
-        >
+        <IconButton size="small" onClick={onClose} sx={{ color: C.inkMuted, mt: "-4px" }}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
 
-      {/* Body */}
       <DialogContent sx={{ p: 3 }}>
         <Stack spacing={2}>
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-              gap: 2,
-            }}
-          >
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
             <Field icon={EmailIcon} label="Email" value={inquiry.email} />
             <Field icon={PhoneIcon} label="Phone" value={inquiry.phone} />
-            <Field
-              icon={CalendarIcon}
-              label="Submitted"
-              value={
-                inquiry.createdAt
-                  ? new Date(inquiry.createdAt).toLocaleString()
-                  : "—"
-              }
-            />
+            <Field icon={CalendarIcon} label="Submitted" value={inquiry.createdAt ? new Date(inquiry.createdAt).toLocaleString() : "—"} />
             {inquiry.updatedAt && inquiry.updatedAt !== inquiry.createdAt && (
-              <Field
-                icon={ScheduleIcon}
-                label="Updated"
-                value={new Date(inquiry.updatedAt).toLocaleString()}
-              />
+              <Field icon={ScheduleIcon} label="Updated" value={new Date(inquiry.updatedAt).toLocaleString()} />
             )}
           </Box>
-
           <Divider sx={{ borderColor: C.lineSoft }} />
-
           <Box>
-            <Typography
-              fontSize={10.5}
-              color={C.inkMuted}
-              fontWeight={500}
-              textTransform="uppercase"
-              letterSpacing={0.5}
-              mb={1}
-            >
+            <Typography fontSize={10.5} color={C.inkMuted} fontWeight={500} textTransform="uppercase" letterSpacing={0.5} mb={1}>
               Message
             </Typography>
-            <Box
-              sx={{
-                bgcolor: C.canvas,
-                border: C.border,
-                borderRadius: "8px",
-                p: "12px 14px",
-              }}
-            >
+            <Box sx={{ bgcolor: C.canvas, border: C.border, borderRadius: "8px", p: "12px 14px" }}>
               <Typography fontSize={13} color={C.inkMid} lineHeight={1.7}>
                 {inquiry.message || "No message provided."}
               </Typography>
@@ -584,35 +378,12 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
         </Stack>
       </DialogContent>
 
-      {/* Footer */}
-      <Box
-        sx={{
-          px: 3,
-          py: 2,
-          borderTop: C.border,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 1,
-          flexWrap: "wrap",
-        }}
-      >
-        <Button
-          size="small"
-          color="error"
-          startIcon={<DeleteIcon sx={{ fontSize: 14 }} />}
-          onClick={onDelete}
-          sx={{ fontSize: 12, textTransform: "none" }}
-        >
+      <Box sx={{ px: 3, py: 2, borderTop: C.border, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+        <Button size="small" color="error" startIcon={<DeleteIcon sx={{ fontSize: 14 }} />} onClick={onDelete} sx={{ fontSize: 12, textTransform: "none" }}>
           Delete
         </Button>
         <Box sx={{ display: "flex", gap: 1 }}>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={onClose}
-            sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px" }}
-          >
+          <Button size="small" variant="outlined" onClick={onClose} sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px" }}>
             Close
           </Button>
           <Button
@@ -621,13 +392,7 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
             disableElevation
             startIcon={<ReplyIcon sx={{ fontSize: 14 }} />}
             href={`mailto:${inquiry.email}`}
-            sx={{
-              fontSize: 12,
-              textTransform: "none",
-              borderRadius: "8px",
-              bgcolor: C.accent,
-              "&:hover": { bgcolor: C.accentMid },
-            }}
+            sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px", bgcolor: C.accent, "&:hover": { bgcolor: C.accentMid } }}
           >
             Reply
           </Button>
@@ -640,39 +405,17 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
 /* ─────────────────────────────────────────────────────
  * Delete confirm dialog
  * ───────────────────────────────────────────────────── */
-function DeleteDialog({
-  open,
-  onClose,
-  onConfirm,
-  name,
-  bulk,
-  count,
-  loading,
-}) {
+function DeleteDialog({ open, onClose, onConfirm, name, bulk, count, loading }) {
   return (
     <Dialog
       open={open}
       onClose={loading ? undefined : onClose}
       maxWidth="xs"
       fullWidth
-      PaperProps={{
-        elevation: 0,
-        sx: { borderRadius: C.radiusLg, border: C.border, overflow: "hidden" },
-      }}
+      PaperProps={{ elevation: 0, sx: { borderRadius: C.radiusLg, border: C.border, overflow: "hidden" } }}
     >
       <Box sx={{ px: 3, pt: 3, pb: 0 }}>
-        <Box
-          sx={{
-            width: 44,
-            height: 44,
-            borderRadius: "11px",
-            bgcolor: alpha(C.red, 0.1),
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            mb: 2,
-          }}
-        >
+        <Box sx={{ width: 44, height: 44, borderRadius: "11px", bgcolor: alpha(C.red, 0.1), display: "flex", alignItems: "center", justifyContent: "center", mb: 2 }}>
           <WarningIcon sx={{ fontSize: 22, color: C.red }} />
         </Box>
         <Typography fontSize={15} fontWeight={700} color={C.ink} mb={1}>
@@ -684,22 +427,8 @@ function DeleteDialog({
             : `You're about to permanently delete the inquiry from "${name}". This cannot be undone.`}
         </Typography>
       </Box>
-      <Box
-        sx={{
-          px: 3,
-          pb: 3,
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 1,
-        }}
-      >
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={onClose}
-          disabled={loading}
-          sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px" }}
-        >
+      <Box sx={{ px: 3, pb: 3, display: "flex", justifyContent: "flex-end", gap: 1 }}>
+        <Button size="small" variant="outlined" onClick={onClose} disabled={loading} sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px" }}>
           Cancel
         </Button>
         <Button
@@ -709,13 +438,7 @@ function DeleteDialog({
           color="error"
           onClick={onConfirm}
           disabled={loading}
-          startIcon={
-            loading ? (
-              <CircularProgress size={12} color="inherit" />
-            ) : (
-              <DeleteIcon sx={{ fontSize: 14 }} />
-            )
-          }
+          startIcon={loading ? <CircularProgress size={12} color="inherit" /> : <DeleteIcon sx={{ fontSize: 14 }} />}
           sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px" }}
         >
           {loading ? "Deleting…" : "Delete"}
@@ -723,6 +446,137 @@ function DeleteDialog({
       </Box>
     </Dialog>
   );
+}
+
+/* ─────────────────────────────────────────────────────
+ * Mobile Inquiry Card
+ * ───────────────────────────────────────────────────── */
+function InquiryCard({ inq, selected, onToggle, onView, onDelete, actionLoading }) {
+  const isSelected = selected.has(inq._id);
+
+  return (
+    <Card
+      sx={{
+        mb: 1.25,
+        borderRadius: "12px",
+        border: `0.5px solid ${isSelected ? C.accent : C.line}`,
+        bgcolor: isSelected ? alpha(C.accent, 0.025) : C.surface,
+        boxShadow: isSelected
+          ? `0 0 0 2px ${alpha(C.accent, 0.15)}`
+          : "0 1px 3px rgba(0,0,0,0.05)",
+        transition: "box-shadow 0.15s, border-color 0.15s",
+      }}
+    >
+      <CardContent sx={{ p: "12px 14px !important" }}>
+        {/* Top row: checkbox + avatar/name + actions */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.25 }}>
+          <Checkbox
+            size="small"
+            checked={isSelected}
+            onChange={() => onToggle(inq._id)}
+            sx={{ p: 0, flexShrink: 0, color: C.inkMuted, "&.Mui-checked": { color: C.accent } }}
+          />
+          <Avatar
+            sx={{
+              width: 32,
+              height: 32,
+              fontSize: 13,
+              fontWeight: 700,
+              bgcolor: alpha(C.accent, 0.1),
+              color: C.accent,
+              flexShrink: 0,
+            }}
+          >
+            {(inq.fullName?.[0] || "U").toUpperCase()}
+          </Avatar>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography fontSize={13} fontWeight={700} color={C.ink} noWrap>
+              {inq.fullName}
+            </Typography>
+            <AgeBadge date={inq.createdAt} />
+          </Box>
+          {/* Action buttons */}
+          <Box sx={{ display: "flex", gap: 0.5, flexShrink: 0 }}>
+            <Tooltip title="View">
+              <IconButton
+                size="small"
+                onClick={() => onView(inq._id)}
+                sx={{ width: 28, height: 28, borderRadius: "7px", bgcolor: alpha(C.accent, 0.07), color: C.accent }}
+              >
+                <VisibilityIcon sx={{ fontSize: 13 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete">
+              <IconButton
+                size="small"
+                onClick={() => onDelete(inq._id, inq.fullName)}
+                sx={{ width: 28, height: 28, borderRadius: "7px", bgcolor: alpha(C.red, 0.07), color: C.red }}
+              >
+                <DeleteIcon sx={{ fontSize: 13 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Box>
+
+        <Divider sx={{ borderColor: C.lineSoft, mb: 1.25 }} />
+
+        {/* Detail rows */}
+        <Stack spacing={0.75}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <EmailIcon sx={{ fontSize: 12, color: C.inkMuted, flexShrink: 0 }} />
+            <Typography fontSize={12} color={C.inkSoft} noWrap>{inq.email || "—"}</Typography>
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <PhoneIcon sx={{ fontSize: 12, color: C.inkMuted, flexShrink: 0 }} />
+            <Typography fontSize={12} color={C.inkSoft}>{inq.phone || "—"}</Typography>
+          </Box>
+          {inq.message && (
+            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
+              <MessageIcon sx={{ fontSize: 12, color: C.inkMuted, flexShrink: 0, mt: "2px" }} />
+              <Typography fontSize={12} color={C.inkSoft} sx={{
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}>
+                {inq.message}
+              </Typography>
+            </Box>
+          )}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <CalendarIcon sx={{ fontSize: 12, color: C.inkMuted, flexShrink: 0 }} />
+            <Typography fontSize={11.5} color={C.inkMuted} fontFamily={C.mono}>
+              {inq.createdAt
+                ? new Date(inq.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                : "—"}
+            </Typography>
+          </Box>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─────────────────────────────────────────────────────
+ * Mobile skeleton cards
+ * ───────────────────────────────────────────────────── */
+function SkeletonCards({ count = 5 }) {
+  return Array.from({ length: count }).map((_, i) => (
+    <Card key={i} sx={{ mb: 1.25, borderRadius: "12px", border: `0.5px solid ${C.line}` }}>
+      <CardContent sx={{ p: "12px 14px !important" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.25 }}>
+          <Skeleton variant="circular" width={32} height={32} />
+          <Box sx={{ flex: 1 }}>
+            <Skeleton variant="text" width="55%" height={16} />
+            <Skeleton variant="text" width="30%" height={14} />
+          </Box>
+        </Box>
+        <Skeleton variant="text" width="80%" />
+        <Skeleton variant="text" width="60%" />
+        <Skeleton variant="text" width="70%" />
+      </CardContent>
+    </Card>
+  ));
 }
 
 /* ─────────────────────────────────────────────────────
@@ -739,7 +593,6 @@ const AGE_FILTERS = [
   { value: "all", label: "All" },
   { value: "new", label: "New (≤7d)" },
   { value: "pending", label: "Pending" },
-  // { value: "archived", label: "Archived" },
 ];
 
 const cellSx = {
@@ -759,7 +612,6 @@ const headCellSx = {
   bgcolor: C.canvas,
   py: "9px",
   borderBottom: `0.5px solid ${C.line}`,
-  
 };
 
 export default function ContactInquiries() {
@@ -791,63 +643,44 @@ export default function ContactInquiries() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const [selected, setSelected] = useState(new Set()); // bulk select
+  const [selected, setSelected] = useState(new Set());
   const [viewOpen, setViewOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null); // { id, name } | null means bulk
-  const [sfAnchor, setSfAnchor] = useState(null); // search-field menu
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [sfAnchor, setSfAnchor] = useState(null);
 
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success",
-  });
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+  const toast = (message, severity = "success") => setSnackbar({ open: true, message, severity });
 
-  const toast = (message, severity = "success") =>
-    setSnackbar({ open: true, message, severity });
-
-  /* ── Initial fetch ── */
   useEffect(() => {
-    if (isAuthenticated) fetchInquiries(1, 50); // load a generous batch; pagination is client-side
+    if (isAuthenticated) fetchInquiries(1, 50);
   }, [isAuthenticated]); // eslint-disable-line
 
   /* ── Filtered + sorted list ── */
   const filtered = useMemo(() => {
     let list = [...inquiries];
-
     if (search.trim()) {
       const q = search.toLowerCase().trim();
       list = list.filter((i) => {
         switch (searchField) {
-          case "email":
-            return i.email?.toLowerCase().includes(q);
-          case "phone":
-            return i.phone?.toLowerCase().includes(q);
-          case "message":
-            return i.message?.toLowerCase().includes(q);
-          default:
-            return i.fullName?.toLowerCase().includes(q);
+          case "email": return i.email?.toLowerCase().includes(q);
+          case "phone": return i.phone?.toLowerCase().includes(q);
+          case "message": return i.message?.toLowerCase().includes(q);
+          default: return i.fullName?.toLowerCase().includes(q);
         }
       });
     }
-
     if (ageFilter !== "all") {
       list = list.filter((i) => {
         const s = inquiryAge(i.createdAt);
         return s.label.toLowerCase() === ageFilter;
       });
     }
-
     list.sort((a, b) => {
-      let av = a[sortCol],
-        bv = b[sortCol];
-      if (sortCol === "createdAt") {
-        av = new Date(av);
-        bv = new Date(bv);
-      }
+      let av = a[sortCol], bv = b[sortCol];
+      if (sortCol === "createdAt") { av = new Date(av); bv = new Date(bv); }
       return sortDir === "asc" ? (av > bv ? 1 : -1) : av < bv ? 1 : -1;
     });
-
     return list;
   }, [inquiries, search, searchField, ageFilter, sortCol, sortDir]);
 
@@ -858,29 +691,23 @@ export default function ContactInquiries() {
     return {
       total: inquiries.length,
       new: inquiries.filter((i) => days(i.createdAt) <= 7).length,
-      pending: inquiries.filter((i) => {
-        const d = days(i.createdAt);
-        return d > 7 && d <= 30;
-      }).length,
+      pending: inquiries.filter((i) => { const d = days(i.createdAt); return d > 7 && d <= 30; }).length,
       archived: inquiries.filter((i) => days(i.createdAt) > 30).length,
     };
   }, [inquiries]);
 
-  /* ── Sort handler ── */
   const doSort = (col) => {
     setSortDir(sortCol === col && sortDir === "asc" ? "desc" : "asc");
     setSortCol(col);
   };
 
-  /* ── Pagination slice ── */
   const pageSlice = useMemo(
     () => filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
     [filtered, page, rowsPerPage],
   );
 
   /* ── Selection ── */
-  const allSelected =
-    pageSlice.length > 0 && pageSlice.every((i) => selected.has(i._id));
+  const allSelected = pageSlice.length > 0 && pageSlice.every((i) => selected.has(i._id));
   const toggleAll = () => {
     const next = new Set(selected);
     if (allSelected) pageSlice.forEach((i) => next.delete(i._id));
@@ -900,20 +727,16 @@ export default function ContactInquiries() {
     else toast(res.error, "error");
   };
 
-  /* ── Delete (single) ── */
+  /* ── Delete ── */
   const promptDelete = (id, name) => {
     setDeleteTarget({ id, name });
     setDeleteOpen(true);
   };
-
-  /* ── Delete (from view dialog) ── */
   const handleDeleteFromView = () => {
     if (!selectedInquiry) return;
     setViewOpen(false);
     promptDelete(selectedInquiry._id, selectedInquiry.fullName);
   };
-
-  /* ── Confirm delete ── */
   const handleConfirmDelete = async () => {
     let res;
     if (deleteTarget) {
@@ -924,13 +747,9 @@ export default function ContactInquiries() {
     }
     setDeleteOpen(false);
     setDeleteTarget(null);
-    toast(
-      res.success ? res.message : res.error,
-      res.success ? "success" : "error",
-    );
+    toast(res.success ? res.message : res.error, res.success ? "success" : "error");
   };
 
-  /* ── Reset filters ── */
   const resetFilters = () => {
     setSearch("");
     setAgeFilter("all");
@@ -938,13 +757,10 @@ export default function ContactInquiries() {
     setPage(0);
   };
 
-  /* ── Guard ── */
   if (!isAuthenticated) {
     return (
       <Box sx={{ p: 4, textAlign: "center" }}>
-        <Typography color={C.inkSoft}>
-          Please log in to access this page.
-        </Typography>
+        <Typography color={C.inkSoft}>Please log in to access this page.</Typography>
       </Box>
     );
   }
@@ -952,32 +768,12 @@ export default function ContactInquiries() {
   const curSearchField = SEARCH_FIELDS.find((f) => f.value === searchField);
 
   return (
-    <Box
-      sx={{
-        p: { xs: 2, sm: 2.5, md: 3 },
-        bgcolor: C.canvas,
-        minHeight: "100vh",
-      }}
-    >
+    <Box sx={{ p: { xs: 2, sm: 2.5, md: 3 }, bgcolor: C.canvas, minHeight: "100vh" }}>
+
       {/* ── Page header ── */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 1.5,
-          mb: 2.5,
-        }}
-      >
+      <Box sx={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 1.5, mb: 2.5 }}>
         <Box>
-          <Typography
-            fontSize={{ xs: 18, sm: 20, md: 22 }}
-            fontWeight={800}
-            color={C.ink}
-            letterSpacing="-0.02em"
-            lineHeight={1.2}
-          >
+          <Typography fontSize={{ xs: 18, sm: 20, md: 22 }} fontWeight={800} color={C.ink} letterSpacing="-0.02em" lineHeight={1.2}>
             Contact Inquiries
           </Typography>
           <Typography fontSize={12} color={C.inkMuted} mt={0.4}>
@@ -988,17 +784,9 @@ export default function ContactInquiries() {
           <ExportButton list={filtered} disabled={loading} />
           <Tooltip title="Refresh">
             <IconButton
-              onClick={() => {
-                fetchInquiries(1, 50);
-                toast("Refreshed");
-              }}
+              onClick={() => { fetchInquiries(1, 50); toast("Refreshed"); }}
               disabled={loading}
-              sx={{
-                border: C.border,
-                borderRadius: "9px",
-                bgcolor: C.surface,
-                "&:hover": { bgcolor: alpha(C.accent, 0.06) },
-              }}
+              sx={{ border: C.border, borderRadius: "9px", bgcolor: C.surface, "&:hover": { bgcolor: alpha(C.accent, 0.06) } }}
             >
               <RefreshIcon sx={{ fontSize: 17, color: C.inkSoft }} />
             </IconButton>
@@ -1007,93 +795,29 @@ export default function ContactInquiries() {
       </Box>
 
       {/* ── Stats ── */}
-      <Box
-        sx={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 1.25,
-          mb: 2,
-        }}
-      >
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.25, mb: 2 }}>
         {[
-          {
-            label: "Total",
-            value: stats.total,
-            icon: MessageIcon,
-            color: C.accent,
-          },
-          {
-            label: "New",
-            value: stats.new,
-            icon: CheckCircleIcon,
-            color: C.green,
-          },
-          {
-            label: "Pending",
-            value: stats.pending,
-            icon: ScheduleIcon,
-            color: C.amber,
-          },
-          // {
-          //   label: "Archived",
-          //   value: stats.archived,
-          //   icon: ArchiveIcon,
-          //   color: C.inkMuted,
-          // },
+          { label: "Total", value: stats.total, icon: MessageIcon, color: C.accent },
+          { label: "New", value: stats.new, icon: CheckCircleIcon, color: C.green },
+          { label: "Pending", value: stats.pending, icon: ScheduleIcon, color: C.amber },
         ].map((s) => (
-          <StatCard
-            key={s.label}
-            {...s}
-            loading={loading && inquiries.length === 0}
-          />
+          <StatCard key={s.label} {...s} loading={loading && inquiries.length === 0} />
         ))}
       </Box>
 
       {/* ── Toolbar ── */}
-      <Box
-        sx={{
-          bgcolor: C.surface,
-          border: C.border,
-          borderRadius: C.radius,
-          p: { xs: "10px 12px", sm: "12px 16px" },
-          mb: 1.5,
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 1,
-            alignItems: "center",
-          }}
-        >
+      <Box sx={{ bgcolor: C.surface, border: C.border, borderRadius: C.radius, p: { xs: "10px 12px", sm: "12px 16px" }, mb: 1.5 }}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, alignItems: "center" }}>
           {/* Search field selector + input */}
-          <Box
-            sx={{
-              display: "flex",
-              gap: 1,
-              flexGrow: 1,
-              maxWidth: "100%",
-              alignItems: "center",
-            }}
-          >
+          <Box sx={{ display: "flex", gap: 1, flexGrow: 1, maxWidth: "100%", alignItems: "center" }}>
             <Button
               size="small"
               onClick={(e) => setSfAnchor(e.currentTarget)}
               endIcon={<ArrowDownIcon sx={{ fontSize: 12 }} />}
               sx={{
-                px: 3.25,
-                py: 0.75,
-                fontSize: 11,
-                fontWeight: 600,
-                textTransform: "none",
-                color: C.inkSoft,
-                border: C.border,
-                borderRadius: "10px",
-                bgcolor: "#f8fafc",
-                whiteSpace: "nowrap",
-                gap: 0.5,
-                minWidth: 0,
+                px: 3.25, py: 0.75, fontSize: 11, fontWeight: 600, textTransform: "none",
+                color: C.inkSoft, border: C.border, borderRadius: "10px", bgcolor: "#f8fafc",
+                whiteSpace: "nowrap", gap: 0.5, minWidth: 0,
                 "&:hover": { bgcolor: alpha(C.accent, 0.06) },
               }}
             >
@@ -1103,15 +827,9 @@ export default function ContactInquiries() {
             <AssetSearchField
               placeholder={`Search by ${curSearchField?.label.toLowerCase()}...`}
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(0);
-              }}
-              onClear={() => {
-                setSearch("");
-                setPage(0);
-              }}
-              sx={{  width:{xs:"100%",md:"780px"} }}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              onClear={() => { setSearch(""); setPage(0); }}
+              sx={{ width: { xs: "100%", md: "780px" } }}
               inputSx={{ fontSize: 12 }}
             />
           </Box>
@@ -1121,33 +839,16 @@ export default function ContactInquiries() {
             anchorEl={sfAnchor}
             open={Boolean(sfAnchor)}
             onClose={() => setSfAnchor(null)}
-            PaperProps={{
-              elevation: 0,
-              sx: {
-                border: C.border,
-                borderRadius: C.radius,
-                mt: 0.5,
-                minWidth: 150,
-              },
-            }}
+            PaperProps={{ elevation: 0, sx: { border: C.border, borderRadius: C.radius, mt: 0.5, minWidth: 150 } }}
           >
             {SEARCH_FIELDS.map(({ value, label, Icon }) => (
               <MenuItem
                 key={value}
                 selected={searchField === value}
-                onClick={() => {
-                  setSearchField(value);
-                  setSfAnchor(null);
-                }}
+                onClick={() => { setSearchField(value); setSfAnchor(null); }}
                 sx={{ fontSize: 12, py: "7px", gap: 1 }}
               >
-                <Icon
-                  sx={{
-                    fontSize: 14,
-                    color: searchField === value ? C.accent : C.inkMuted,
-                    
-                  }}
-                />
+                <Icon sx={{ fontSize: 14, color: searchField === value ? C.accent : C.inkMuted }} />
                 {label}
               </MenuItem>
             ))}
@@ -1158,30 +859,15 @@ export default function ContactInquiries() {
             {AGE_FILTERS.map((f) => (
               <Box
                 key={f.value}
-                onClick={() => {
-                  setAgeFilter(f.value);
-                  setPage(0);
-                }}
+                onClick={() => { setAgeFilter(f.value); setPage(0); }}
                 sx={{
-                  px: "10px",
-                  py: "4px",
-                  borderRadius: "7px",
-                  fontSize: 11,
-                  fontWeight: 600,
+                  px: "10px", py: "4px", borderRadius: "7px", fontSize: 11, fontWeight: 600,
                   cursor: "pointer",
                   bgcolor: ageFilter === f.value ? C.accent : C.canvas,
                   color: ageFilter === f.value ? "#fff" : C.inkSoft,
-                  border:
-                    ageFilter === f.value
-                      ? `0.5px solid ${C.accent}`
-                      : C.border,
+                  border: ageFilter === f.value ? `0.5px solid ${C.accent}` : C.border,
                   transition: "all 0.12s",
-                  "&:hover": {
-                    bgcolor:
-                      ageFilter === f.value
-                        ? C.accentMid
-                        : alpha(C.accent, 0.07),
-                  },
+                  "&:hover": { bgcolor: ageFilter === f.value ? C.accentMid : alpha(C.accent, 0.07) },
                 }}
               >
                 {f.label}
@@ -1196,16 +882,8 @@ export default function ContactInquiries() {
               color="error"
               variant="outlined"
               startIcon={<BulkDeleteIcon sx={{ fontSize: 14 }} />}
-              onClick={() => {
-                setDeleteTarget(null);
-                setDeleteOpen(true);
-              }}
-              sx={{
-                fontSize: 11,
-                textTransform: "none",
-                borderRadius: "8px",
-                ml: "auto",
-              }}
+              onClick={() => { setDeleteTarget(null); setDeleteOpen(true); }}
+              sx={{ fontSize: 11, textTransform: "none", borderRadius: "8px", ml: "auto" }}
             >
               Delete {selected.size} selected
             </Button>
@@ -1217,12 +895,7 @@ export default function ContactInquiries() {
               size="small"
               startIcon={<ClearIcon sx={{ fontSize: 12 }} />}
               onClick={resetFilters}
-              sx={{
-                fontSize: 11,
-                textTransform: "none",
-                color: C.inkMuted,
-                ml: selected.size > 0 ? 0 : "auto",
-              }}
+              sx={{ fontSize: 11, textTransform: "none", color: C.inkMuted, ml: selected.size > 0 ? 0 : "auto" }}
             >
               Clear
             </Button>
@@ -1232,94 +905,138 @@ export default function ContactInquiries() {
 
       {/* ── Result count ── */}
       <Typography fontSize={11.5} color={C.inkMuted} mb={1.25}>
-        Showing{" "}
-        <b style={{ color: C.ink }}>{filtered.length.toLocaleString()}</b>{" "}
+        Showing <b style={{ color: C.ink }}>{filtered.length.toLocaleString()}</b>{" "}
         {filtered.length !== inquiries.length && (
-          <>
-            of{" "}
-            <b style={{ color: C.ink }}>
-              {inquiries.length.toLocaleString()}
-            </b>{" "}
-          </>
+          <>of <b style={{ color: C.ink }}>{inquiries.length.toLocaleString()}</b>{" "}</>
         )}
         {filtered.length === 1 ? "inquiry" : "inquiries"}
       </Typography>
 
       {/* ── Error alert ── */}
       {error && (
-        <Alert
-          severity="error"
-          onClose={clearError}
-          sx={{ mb: 1.5, borderRadius: C.radius, fontSize: 12 }}
-        >
+        <Alert severity="error" onClose={clearError} sx={{ mb: 1.5, borderRadius: C.radius, fontSize: 12 }}>
           {error}
         </Alert>
       )}
 
-      {/* ── Table ── */}
-      <Box
-        sx={{
-          bgcolor: C.surface,
-          border: C.border,
-          borderRadius: C.radius,
-          overflow: "hidden",
-        }}
-      >
-        {(loading || actionLoading) && <LinearProgress sx={{ height: 2 }} />}
+      {/* ══════════════════════════════════════════════
+          MOBILE — Card list
+         ══════════════════════════════════════════════ */}
+      {isMobile ? (
+        <Box>
+          {(loading || actionLoading) && <LinearProgress sx={{ height: 2, mb: 1, borderRadius: 1 }} />}
 
-        {loading && inquiries.length === 0 ? (
-          <Box sx={{ p: 3 }}>
-            {[...Array(5)].map((_, i) => (
-              <Skeleton
-                key={i}
-                height={52}
-                sx={{ mb: 0.5, borderRadius: "6px" }}
+          {/* Select-all bar */}
+          {pageSlice.length > 0 && (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                px: 1,
+                py: 0.75,
+                mb: 1,
+                bgcolor: C.surface,
+                border: C.border,
+                borderRadius: "8px",
+              }}
+            >
+              <Checkbox
+                size="small"
+                indeterminate={selected.size > 0 && !allSelected}
+                checked={allSelected}
+                onChange={toggleAll}
+                sx={{ p: 0, color: C.inkMuted, "&.Mui-checked": { color: C.accent } }}
               />
-            ))}
-          </Box>
-        ) : (
-          <TableContainer sx={{ overflowX: "auto" }}>
-            <Table sx={{ minWidth: isMobile ? 420 : 640 }}>
-              <TableHead>
-                <TableRow>
-                  {/* Checkbox */}
-                  <TableCell sx={{ ...headCellSx, width: 44, px: "10px" }}>
-                    <Checkbox
-                      size="small"
-                      indeterminate={selected.size > 0 && !allSelected}
-                      checked={allSelected}
-                      onChange={toggleAll}
-                      sx={{
-                        p: 0,
-                        color: C.inkMuted,
-                        "&.Mui-checked": { color: C.accent },
-                      }}
-                    />
-                  </TableCell>
-                  {/* Columns */}
-                  {[
-                    { id: "fullName", label: "Name", sort: true },
-                    {
-                      id: "email",
-                      label: "Contact",
-                      sort: false,
-                      hideMobile: false,
-                    },
-                    {
-                      id: "message",
-                      label: "Message",
-                      sort: false,
-                      hideMobile: true,
-                    },
-                    { id: "createdAt", label: "Date", sort: true },
-                    { id: "status", label: "Status", sort: false },
-                    { id: "_actions", label: "Actions", sort: false, width: 90 },
-                  ].map((col) =>
-                    col.hideMobile && isMobile ? null : (
-                      <TableCell
-                        key={col.id}
-                        sx={{ ...headCellSx, width: col.width }}
-                      >
+              <Typography fontSize={11.5} color={C.inkMuted}>
+                {allSelected ? "Deselect all" : "Select all on this page"}
+              </Typography>
+            </Box>
+          )}
+
+          {loading && inquiries.length === 0 ? (
+            <SkeletonCards />
+          ) : pageSlice.length === 0 ? (
+            <Box sx={{ textAlign: "center", py: 7 }}>
+              <MessageIcon sx={{ fontSize: 36, color: C.line, mb: 1, display: "block", mx: "auto" }} />
+              <Typography fontSize={13} color={C.inkSoft} fontWeight={500}>
+                {search || ageFilter !== "all" ? "No inquiries match your filters" : "No inquiries yet"}
+              </Typography>
+              {(search || ageFilter !== "all") && (
+                <Button size="small" onClick={resetFilters} sx={{ mt: 1, fontSize: 11, textTransform: "none", color: C.accent }}>
+                  Clear filters
+                </Button>
+              )}
+            </Box>
+          ) : (
+            pageSlice.map((inq) => (
+              <InquiryCard
+                key={inq._id}
+                inq={inq}
+                selected={selected}
+                onToggle={toggleOne}
+                onView={handleView}
+                onDelete={promptDelete}
+                actionLoading={actionLoading}
+              />
+            ))
+          )}
+
+          {/* Mobile pagination */}
+          {filtered.length > 0 && (
+            <Box sx={{ bgcolor: C.surface, border: C.border, borderRadius: C.radius, mt: 1, overflow: "hidden" }}>
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={filtered.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={(_, p) => setPage(p)}
+                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                sx={{
+                  "& .MuiTablePagination-toolbar": { minHeight: 44, px: 1.5 },
+                  "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontSize: 11.5, color: C.inkMuted },
+                }}
+              />
+            </Box>
+          )}
+        </Box>
+      ) : (
+        /* ══════════════════════════════════════════════
+            DESKTOP — Table
+           ══════════════════════════════════════════════ */
+        <Box sx={{ bgcolor: C.surface, border: C.border, borderRadius: C.radius, overflow: "hidden" }}>
+          {(loading || actionLoading) && <LinearProgress sx={{ height: 2 }} />}
+
+          {loading && inquiries.length === 0 ? (
+            <Box sx={{ p: 3 }}>
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} height={52} sx={{ mb: 0.5, borderRadius: "6px" }} />
+              ))}
+            </Box>
+          ) : (
+            <TableContainer sx={{ overflowX: "auto" }}>
+              <Table sx={{ minWidth: 640 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ ...headCellSx, width: 44, px: "10px" }}>
+                      <Checkbox
+                        size="small"
+                        indeterminate={selected.size > 0 && !allSelected}
+                        checked={allSelected}
+                        onChange={toggleAll}
+                        sx={{ p: 0, color: C.inkMuted, "&.Mui-checked": { color: C.accent } }}
+                      />
+                    </TableCell>
+                    {[
+                      { id: "fullName", label: "Name", sort: true },
+                      { id: "email", label: "Contact", sort: false },
+                      { id: "message", label: "Message", sort: false },
+                      { id: "createdAt", label: "Date", sort: true },
+                      { id: "status", label: "Status", sort: false },
+                      { id: "_actions", label: "Actions", sort: false, width: 90 },
+                    ].map((col) => (
+                      <TableCell key={col.id} sx={{ ...headCellSx, width: col.width }}>
                         {col.sort ? (
                           <TableSortLabel
                             active={sortCol === col.id}
@@ -1329,306 +1046,142 @@ export default function ContactInquiries() {
                           >
                             {col.label}
                           </TableSortLabel>
-                        ) : (
-                          col.label
+                        ) : col.label}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+
+                <TableBody>
+                  {pageSlice.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} sx={{ py: 8, textAlign: "center" }}>
+                        <MessageIcon sx={{ fontSize: 36, color: C.line, mb: 1, display: "block", mx: "auto" }} />
+                        <Typography fontSize={13} color={C.inkSoft} fontWeight={500}>
+                          {search || ageFilter !== "all" ? "No inquiries match your filters" : "No inquiries yet"}
+                        </Typography>
+                        {(search || ageFilter !== "all") && (
+                          <Button size="small" onClick={resetFilters} sx={{ mt: 1, fontSize: 11, textTransform: "none", color: C.accent }}>
+                            Clear filters
+                          </Button>
                         )}
                       </TableCell>
-                    ),
-                  )}
-                </TableRow>
-              </TableHead>
-
-              <TableBody>
-                {pageSlice.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} sx={{ py: 8, textAlign: "center" }}>
-                      <MessageIcon
+                    </TableRow>
+                  ) : (
+                    pageSlice.map((inq) => (
+                      <TableRow
+                        key={inq._id}
+                        hover
                         sx={{
-                          fontSize: 36,
-                          color: C.line,
-                          mb: 1,
-                          display: "block",
-                          mx: "auto",
+                          "&:hover": { bgcolor: alpha(C.accent, 0.02) },
+                          "&:last-child td": { borderBottom: "none" },
+                          bgcolor: selected.has(inq._id) ? alpha(C.accent, 0.03) : undefined,
+                          cursor: "pointer",
                         }}
-                      />
-                      <Typography
-                        fontSize={13}
-                        color={C.inkSoft}
-                        fontWeight={500}
+                        onClick={() => handleView(inq._id)}
                       >
-                        {search || ageFilter !== "all"
-                          ? "No inquiries match your filters"
-                          : "No inquiries yet"}
-                      </Typography>
-                      {(search || ageFilter !== "all") && (
-                        <Button
-                          size="small"
-                          onClick={resetFilters}
-                          sx={{
-                            mt: 1,
-                            fontSize: 11,
-                            textTransform: "none",
-                            color: C.accent,
-                          }}
-                        >
-                          Clear filters
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  pageSlice.map((inq) => (
-                    <TableRow
-                      key={inq._id}
-                      hover
-                      sx={{
-                        "&:hover": { bgcolor: alpha(C.accent, 0.02) },
-                        "&:last-child td": { borderBottom: "none" },
-                        bgcolor: selected.has(inq._id)
-                          ? alpha(C.accent, 0.03)
-                          : undefined,
-                        cursor: "pointer",
-                      }}
-                      onClick={() => handleView(inq._id)}
-                    >
-                      {/* Checkbox */}
-                      <TableCell
-                        sx={{ ...cellSx, width: 44, px: "10px" }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Checkbox
-                          size="small"
-                          checked={selected.has(inq._id)}
-                          onChange={() => toggleOne(inq._id)}
-                          sx={{
-                            p: 0,
-                            color: C.inkMuted,
-                            "&.Mui-checked": { color: C.accent },
-                          }}
-                        />
-                      </TableCell>
-
-                      {/* Name */}
-                      <TableCell sx={cellSx}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1.25,
-                          }}
-                        >
-                          <Avatar
-                            sx={{
-                              width: 30,
-                              height: 30,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              bgcolor: alpha(C.accent, 0.1),
-                              color: C.accent,
-                              flexShrink: 0,
-                            }}
-                          >
-                            {(inq.fullName?.[0] || "U").toUpperCase()}
-                          </Avatar>
-                          <Typography
-                            fontSize={12.5}
-                            fontWeight={600}
-                            color={C.ink}
-                            noWrap
-                            sx={{ maxWidth: 130 }}
-                          >
-                            {inq.fullName}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-
-                      {/* Contact */}
-                      <TableCell sx={cellSx}>
-                        <Stack spacing={0.25}>
-                          <Typography
-                            fontSize={11.5}
-                            color={C.inkSoft}
-                            noWrap
-                            sx={{
-                              maxWidth: 160,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 0.5,
-                            }}
-                          >
-                            <EmailIcon sx={{ fontSize: 11 }} />
-                            {inq.email}
-                          </Typography>
-                          <Typography
-                            fontSize={11.5}
-                            color={C.inkSoft}
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 0.5,
-                            }}
-                          >
-                            <PhoneIcon sx={{ fontSize: 11 }} />
-                            {inq.phone}
-                          </Typography>
-                        </Stack>
-                      </TableCell>
-
-                      {/* Message */}
-                      {!isMobile && (
+                        <TableCell sx={{ ...cellSx, width: 44, px: "10px" }} onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            size="small"
+                            checked={selected.has(inq._id)}
+                            onChange={() => toggleOne(inq._id)}
+                            sx={{ p: 0, color: C.inkMuted, "&.Mui-checked": { color: C.accent } }}
+                          />
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                            <Avatar sx={{ width: 30, height: 30, fontSize: 12, fontWeight: 700, bgcolor: alpha(C.accent, 0.1), color: C.accent, flexShrink: 0 }}>
+                              {(inq.fullName?.[0] || "U").toUpperCase()}
+                            </Avatar>
+                            <Typography fontSize={12.5} fontWeight={600} color={C.ink} noWrap sx={{ maxWidth: 130 }}>
+                              {inq.fullName}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Stack spacing={0.25}>
+                            <Typography fontSize={11.5} color={C.inkSoft} noWrap sx={{ maxWidth: 160, display: "flex", alignItems: "center", gap: 0.5 }}>
+                              <EmailIcon sx={{ fontSize: 11 }} />{inq.email}
+                            </Typography>
+                            <Typography fontSize={11.5} color={C.inkSoft} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                              <PhoneIcon sx={{ fontSize: 11 }} />{inq.phone}
+                            </Typography>
+                          </Stack>
+                        </TableCell>
                         <TableCell sx={{ ...cellSx, maxWidth: 220 }}>
-                          <Typography
-                            fontSize={11.5}
-                            color={C.inkSoft}
-                            noWrap
-                            title={inq.message}
-                          >
-                            {inq.message}
+                          <Typography fontSize={11.5} color={C.inkSoft} noWrap title={inq.message}>{inq.message}</Typography>
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Typography fontSize={11.5} color={C.ink} whiteSpace="nowrap">
+                            {inq.createdAt ? new Date(inq.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                          </Typography>
+                          <Typography fontSize={10.5} color={C.inkMuted} fontFamily={C.mono}>
+                            {inq.createdAt ? new Date(inq.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : ""}
                           </Typography>
                         </TableCell>
-                      )}
+                        <TableCell sx={cellSx}><AgeBadge date={inq.createdAt} /></TableCell>
+                        <TableCell sx={{ ...cellSx, width: 90 }} align="center" onClick={(e) => e.stopPropagation()}>
+                          <Box sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}>
+                            <Tooltip title="View">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleView(inq._id)}
+                                sx={{ width: 28, height: 28, borderRadius: "7px", bgcolor: alpha(C.accent, 0.07), color: C.accent }}
+                                aria-label="View inquiry"
+                              >
+                                <VisibilityIcon sx={{ fontSize: 13 }} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete">
+                              <IconButton
+                                size="small"
+                                onClick={() => promptDelete(inq._id, inq.fullName)}
+                                sx={{ width: 28, height: 28, borderRadius: "7px", bgcolor: alpha(C.red, 0.07), color: C.red }}
+                                aria-label="Delete inquiry"
+                              >
+                                <DeleteIcon sx={{ fontSize: 13 }} />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
 
-                      {/* Date */}
-                      <TableCell sx={cellSx}>
-                        <Typography
-                          fontSize={11.5}
-                          color={C.ink}
-                          whiteSpace="nowrap"
-                        >
-                          {inq.createdAt
-                            ? new Date(inq.createdAt).toLocaleDateString(
-                                "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                },
-                              )
-                            : "—"}
-                        </Typography>
-                        <Typography
-                          fontSize={10.5}
-                          color={C.inkMuted}
-                          fontFamily={C.mono}
-                        >
-                          {inq.createdAt
-                            ? new Date(inq.createdAt).toLocaleTimeString(
-                                "en-US",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                },
-                              )
-                            : ""}
-                        </Typography>
-                      </TableCell>
-
-                      {/* Status */}
-                      <TableCell sx={cellSx}>
-                        <AgeBadge date={inq.createdAt} />
-                      </TableCell>
-
-                      {/* Actions */}
-                      <TableCell
-                        sx={{ ...cellSx, width: 90 }}
-                        align="center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Box
-                          sx={{
-                            display: "flex",
-                            gap: 0.5,
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Tooltip title="View">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleView(inq._id)}
-                              sx={{
-                                width: 28,
-                                height: 28,
-                                borderRadius: "7px",
-                                bgcolor: alpha(C.accent, 0.07),
-                                color: C.accent,
-                              }}
-                              aria-label="View inquiry"
-                            >
-                              <VisibilityIcon sx={{ fontSize: 13 }} />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <IconButton
-                              size="small"
-                              onClick={() =>
-                                promptDelete(inq._id, inq.fullName)
-                              }
-                              sx={{
-                                width: 28,
-                                height: 28,
-                                borderRadius: "7px",
-                                bgcolor: alpha(C.red, 0.07),
-                                color: C.red,
-                              }}
-                              aria-label="Delete inquiry"
-                            >
-                              <DeleteIcon sx={{ fontSize: 13 }} />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-
-        {/* ── Pagination ── */}
-        {filtered.length > 0 && (
-          <Box sx={{ borderTop: `0.5px solid ${C.lineSoft}` }}>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              component="div"
-              count={filtered.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={(_, p) => setPage(p)}
-              onRowsPerPageChange={(e) => {
-                setRowsPerPage(parseInt(e.target.value, 10));
-                setPage(0);
-              }}
-              sx={{
-                "& .MuiTablePagination-toolbar": { minHeight: 44, px: 2 },
-                "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
-                  {
-                    fontSize: 11.5,
-                    color: C.inkMuted,
-                  },
-              }}
-            />
-          </Box>
-        )}
-      </Box>
+          {filtered.length > 0 && (
+            <Box sx={{ borderTop: `0.5px solid ${C.lineSoft}` }}>
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25, 50]}
+                component="div"
+                count={filtered.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={(_, p) => setPage(p)}
+                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                sx={{
+                  "& .MuiTablePagination-toolbar": { minHeight: 44, px: 2 },
+                  "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontSize: 11.5, color: C.inkMuted },
+                }}
+              />
+            </Box>
+          )}
+        </Box>
+      )}
 
       {/* ── Dialogs ── */}
       <ViewDialog
         open={viewOpen}
-        onClose={() => {
-          setViewOpen(false);
-          clearSelectedInquiry();
-        }}
+        onClose={() => { setViewOpen(false); clearSelectedInquiry(); }}
         inquiry={selectedInquiry}
         onDelete={handleDeleteFromView}
       />
-
       <DeleteDialog
         open={deleteOpen}
-        onClose={() => {
-          setDeleteOpen(false);
-          setDeleteTarget(null);
-        }}
+        onClose={() => { setDeleteOpen(false); setDeleteTarget(null); }}
         onConfirm={handleConfirmDelete}
         name={deleteTarget?.name}
         bulk={!deleteTarget}
@@ -1643,11 +1196,7 @@ export default function ContactInquiries() {
         onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert
-          severity={snackbar.severity}
-          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-          sx={{ borderRadius: C.radius, fontSize: 12 }}
-        >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar((s) => ({ ...s, open: false }))} sx={{ borderRadius: C.radius, fontSize: 12 }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

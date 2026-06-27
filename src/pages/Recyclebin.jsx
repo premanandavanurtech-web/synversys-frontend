@@ -1,4 +1,4 @@
-// src/pages/RecycleBin.jsx - Complete working version
+// src/pages/RecycleBin.jsx - Complete working version with mobile card support
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
@@ -27,12 +27,17 @@ import {
   Avatar,
   LinearProgress,
   CircularProgress,
+  useMediaQuery,
+  Card,
+  CardContent,
+  Divider,
 } from "@mui/material";
 import {
   createTheme,
   ThemeProvider,
   styled,
   alpha,
+  useTheme,
 } from "@mui/material/styles";
 
 // Icons
@@ -181,6 +186,83 @@ const useSnack = () => {
   return { snack, show };
 };
 
+// ─── Shared Mobile Card Shell ───────────────────────────────────────────────
+const MobileCard = ({ checked, onCheck, disabled, accentColor = "#1a3c5e", onRestore, onDelete, isSuperAdmin, actionLoading, children }) => (
+  <Card
+    sx={{
+      mb: 1.5,
+      borderRadius: 2.5,
+      border: `1px solid ${checked ? alpha(accentColor, 0.35) : "#eaf0f6"}`,
+      bgcolor: checked ? alpha(accentColor, 0.03) : "#fff",
+      boxShadow: checked
+        ? `0 0 0 2px ${alpha(accentColor, 0.18)}`
+        : "0 1px 4px rgba(15,30,46,0.06)",
+      transition: "box-shadow 0.15s, border-color 0.15s",
+    }}
+  >
+    <CardContent sx={{ p: "12px 14px !important" }}>
+      {/* Top row: checkbox + actions */}
+      <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 1 }}>
+        <Checkbox
+          size="small"
+          checked={checked}
+          onChange={onCheck}
+          disabled={disabled}
+          sx={{ p: 0, mr: 1, mt: 0.25 }}
+        />
+        <Stack direction="row" spacing={0.5}>
+          <Tooltip title="Restore">
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={onRestore}
+              disabled={actionLoading}
+              sx={{ borderRadius: 1.5, bgcolor: alpha("#1a3c5e", 0.06) }}
+            >
+              <RestoreOutlinedIcon sx={{ fontSize: 17 }} />
+            </IconButton>
+          </Tooltip>
+          {isSuperAdmin && (
+            <Tooltip title="Delete Permanently">
+              <IconButton
+                size="small"
+                color="error"
+                onClick={onDelete}
+                disabled={actionLoading}
+                sx={{ borderRadius: 1.5, bgcolor: alpha("#c0392b", 0.06) }}
+              >
+                <DeleteForeverOutlinedIcon sx={{ fontSize: 17 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Stack>
+      </Box>
+      {children}
+    </CardContent>
+  </Card>
+);
+
+const CardRow = ({ label, children }) => (
+  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.75 }}>
+    <Typography fontSize={11} color="text.disabled" sx={{ minWidth: 76, flexShrink: 0 }}>
+      {label}
+    </Typography>
+    {children}
+  </Box>
+);
+
+// ─── Skeleton Cards (mobile) ────────────────────────────────────────────────
+const SkeletonCards = ({ count = 5 }) =>
+  Array.from({ length: count }).map((_, i) => (
+    <Card key={i} sx={{ mb: 1.5, borderRadius: 2.5, border: "1px solid #eaf0f6" }}>
+      <CardContent sx={{ p: "12px 14px !important" }}>
+        <Skeleton variant="text" width="60%" sx={{ mb: 0.5 }} />
+        <Skeleton variant="text" width="40%" />
+        <Skeleton variant="text" width="50%" sx={{ mt: 0.75 }} />
+      </CardContent>
+    </Card>
+  ));
+
 // Components
 const SummaryBar = ({ items, label, color = "#1a3c5e", loading }) => (
   <Box
@@ -212,7 +294,8 @@ const BulkBar = ({ count, onRestore, onDelete, onClear, loading, isSuperAdmin })
     sx={{
       display: "flex",
       alignItems: "center",
-      gap: 1.5,
+      flexWrap: "wrap",
+      gap: 1,
       mb: 2,
       px: 2,
       py: 1.25,
@@ -275,6 +358,18 @@ const EmptyState = ({ label }) => (
   </TableRow>
 );
 
+const MobileEmptyState = ({ label }) => (
+  <Box sx={{ textAlign: "center", py: 7, color: "text.disabled" }}>
+    <RestoreFromTrashOutlinedIcon sx={{ fontSize: 44, mb: 1.5, opacity: 0.3 }} />
+    <Typography fontSize={14} fontWeight={600} color="text.secondary">
+      No deleted {label}
+    </Typography>
+    <Typography fontSize={12} color="text.disabled" sx={{ mt: 0.5 }}>
+      Items you soft-delete will appear here
+    </Typography>
+  </Box>
+);
+
 const SkeletonRows = ({ cols }) =>
   Array.from({ length: 5 }).map((_, i) => (
     <TableRow key={i}>
@@ -287,7 +382,7 @@ const SkeletonRows = ({ cols }) =>
   ));
 
 const ConfirmDialog = ({ open, onClose, onConfirm, title, description, confirmLabel, danger, loading }) => (
-  <Dialog open={open} onClose={onClose} PaperProps={{ sx: { borderRadius: 3, minWidth: 380 } }}>
+  <Dialog open={open} onClose={onClose} PaperProps={{ sx: { borderRadius: 3, minWidth: { xs: "calc(100vw - 32px)", sm: 380 } } }}>
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
@@ -332,7 +427,9 @@ const ConfirmDialog = ({ open, onClose, onConfirm, title, description, confirmLa
   </Dialog>
 );
 
+// ════════════════════════════════════════════════════════════
 // Checklists Tab
+// ════════════════════════════════════════════════════════════
 function ChecklistsTab() {
   const {
     deletedChecklists,
@@ -351,6 +448,7 @@ function ChecklistsTab() {
   const [confirm, setConfirm] = useState({ open: false, type: null, id: null });
   const [actionLoading, setActionLoading] = useState(false);
   const { snack, show } = useSnack();
+  const isMobile = useMediaQuery("(max-width:768px)");
 
   useEffect(() => {
     fetchDeletedChecklists(1, 10);
@@ -386,7 +484,7 @@ function ChecklistsTab() {
 
     setActionLoading(false);
     closeConfirm();
-    
+
     if (result?.success) {
       show(type.includes("restore") ? "Restored successfully" : "Permanently deleted");
       fetchDeletedChecklists(checklistPagination.page, checklistPagination.limit);
@@ -410,9 +508,9 @@ function ChecklistsTab() {
         </Alert>
       )}
 
-      <SummaryBar 
-        items={checklistPagination.total ?? deletedChecklists.length} 
-        label="checklists" 
+      <SummaryBar
+        items={checklistPagination.total ?? deletedChecklists.length}
+        label="checklists"
         loading={checklistLoading}
       />
 
@@ -429,122 +527,168 @@ function ChecklistsTab() {
 
       {(actionLoading || checklistLoading) && <LinearProgress sx={{ mb: 1, borderRadius: 1 }} />}
 
-      <Paper sx={{ overflow: "hidden" }}>
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell padding="checkbox" sx={{ pl: 2 }}>
-                  <Checkbox
-                    size="small"
-                    indeterminate={selected.length > 0 && selected.length < deletedChecklists.length}
-                    checked={deletedChecklists.length > 0 && selected.length === deletedChecklists.length}
-                    onChange={toggleAll}
-                    disabled={checklistLoading || deletedChecklists.length === 0}
-                  />
-                </TableCell>
-                {["Name", "Type", "Category", "Deleted By", "Deleted At", "Actions"].map((h) => (
-                  <TableCell key={h}>{h}</TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {checklistLoading ? (
-                <SkeletonRows cols={7} />
-              ) : deletedChecklists.length === 0 ? (
-                <EmptyState label="checklists" />
-              ) : (
-                deletedChecklists.map((c) => (
-                  <TableRow
-                    key={c._id}
-                    hover
-                    selected={selected.includes(c._id)}
-                    sx={{ "&.Mui-selected": { bgcolor: alpha("#1a3c5e", 0.03) } }}
-                  >
-                    <TableCell padding="checkbox" sx={{ pl: 2 }}>
-                      <Checkbox 
-                        size="small" 
-                        checked={selected.includes(c._id)} 
-                        onChange={() => toggle(c._id)}
-                        disabled={actionLoading}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography fontSize={13} fontWeight={600} noWrap sx={{ maxWidth: 200 }}>
-                        {c.name || "—"}
-                      </Typography>
-                      {c.description && (
-                        <Typography fontSize={11} color="text.secondary" noWrap sx={{ maxWidth: 200 }}>
-                          {c.description}
+      {/* ── Mobile Card View ── */}
+      {isMobile ? (
+        <Box>
+          {checklistLoading ? (
+            <SkeletonCards />
+          ) : deletedChecklists.length === 0 ? (
+            <MobileEmptyState label="checklists" />
+          ) : (
+            deletedChecklists.map((c) => (
+              <MobileCard
+                key={c._id}
+                checked={selected.includes(c._id)}
+                onCheck={() => toggle(c._id)}
+                disabled={actionLoading}
+                accentColor="#1a3c5e"
+                onRestore={() => openConfirm("restore-single", c._id)}
+                onDelete={() => openConfirm("delete-single", c._id)}
+                isSuperAdmin={isSuperAdmin}
+                actionLoading={actionLoading}
+              >
+                {/* Name */}
+                <Typography fontSize={14} fontWeight={700} color="text.primary" noWrap>
+                  {c.name || "—"}
+                </Typography>
+                {c.description && (
+                  <Typography fontSize={12} color="text.secondary" noWrap sx={{ mt: 0.25 }}>
+                    {c.description}
+                  </Typography>
+                )}
+
+                <Divider sx={{ my: 1, borderColor: "#eaf0f6" }} />
+
+                <CardRow label="Type">
+                  <Chip label={c.checklistType || "—"} size="small" variant="outlined" sx={{ fontSize: 11, height: 20 }} />
+                </CardRow>
+                <CardRow label="Category">
+                  <Typography fontSize={12} color="text.secondary">{c.category || "—"}</Typography>
+                </CardRow>
+                <CardRow label="Deleted by">
+                  <PersonOutlineOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
+                  <Typography fontSize={12} color="text.secondary">{c.deletedBy?.email || c.deletedBy?.name || "—"}</Typography>
+                </CardRow>
+                <CardRow label="Deleted">
+                  <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
+                  <Tooltip title={formatDate(c.deletedAt)}>
+                    <Typography fontSize={12} color="text.secondary">{timeAgo(c.deletedAt)}</Typography>
+                  </Tooltip>
+                </CardRow>
+              </MobileCard>
+            ))
+          )}
+        </Box>
+      ) : (
+        /* ── Desktop Table View ── */
+        <Paper sx={{ overflow: "hidden" }}>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell padding="checkbox" sx={{ pl: 2 }}>
+                    <Checkbox
+                      size="small"
+                      indeterminate={selected.length > 0 && selected.length < deletedChecklists.length}
+                      checked={deletedChecklists.length > 0 && selected.length === deletedChecklists.length}
+                      onChange={toggleAll}
+                      disabled={checklistLoading || deletedChecklists.length === 0}
+                    />
+                  </TableCell>
+                  {["Name", "Type", "Category", "Deleted By", "Deleted At", "Actions"].map((h) => (
+                    <TableCell key={h}>{h}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {checklistLoading ? (
+                  <SkeletonRows cols={7} />
+                ) : deletedChecklists.length === 0 ? (
+                  <EmptyState label="checklists" />
+                ) : (
+                  deletedChecklists.map((c) => (
+                    <TableRow
+                      key={c._id}
+                      hover
+                      selected={selected.includes(c._id)}
+                      sx={{ "&.Mui-selected": { bgcolor: alpha("#1a3c5e", 0.03) } }}
+                    >
+                      <TableCell padding="checkbox" sx={{ pl: 2 }}>
+                        <Checkbox
+                          size="small"
+                          checked={selected.includes(c._id)}
+                          onChange={() => toggle(c._id)}
+                          disabled={actionLoading}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography fontSize={13} fontWeight={600} noWrap sx={{ maxWidth: 200 }}>
+                          {c.name || "—"}
                         </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={c.checklistType || "—"}
-                        size="small"
-                        variant="outlined"
-                        sx={{ fontSize: 11, height: 22 }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography fontSize={12} color="text.secondary">
-                        {c.category || "—"}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                        <PersonOutlineOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
-                        <Typography fontSize={12} color="text.secondary">
-                          {c.deletedBy?.email || c.deletedBy?.name || "—"}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip title={formatDate(c.deletedAt)} placement="top">
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, cursor: "default" }}>
-                          <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
+                        {c.description && (
+                          <Typography fontSize={11} color="text.secondary" noWrap sx={{ maxWidth: 200 }}>
+                            {c.description}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={c.checklistType || "—"} size="small" variant="outlined" sx={{ fontSize: 11, height: 22 }} />
+                      </TableCell>
+                      <TableCell>
+                        <Typography fontSize={12} color="text.secondary">{c.category || "—"}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                          <PersonOutlineOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
                           <Typography fontSize={12} color="text.secondary">
-                            {timeAgo(c.deletedAt)}
+                            {c.deletedBy?.email || c.deletedBy?.name || "—"}
                           </Typography>
                         </Box>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={0.5}>
-                        <Tooltip title="Restore">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => openConfirm("restore-single", c._id)}
-                            disabled={actionLoading}
-                            sx={{ borderRadius: 1.5 }}
-                          >
-                            <RestoreOutlinedIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip title={formatDate(c.deletedAt)} placement="top">
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, cursor: "default" }}>
+                            <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
+                            <Typography fontSize={12} color="text.secondary">{timeAgo(c.deletedAt)}</Typography>
+                          </Box>
                         </Tooltip>
-                        {isSuperAdmin && (
-                          <Tooltip title="Delete Permanently">
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={0.5}>
+                          <Tooltip title="Restore">
                             <IconButton
                               size="small"
-                              color="error"
-                              onClick={() => openConfirm("delete-single", c._id)}
+                              color="primary"
+                              onClick={() => openConfirm("restore-single", c._id)}
                               disabled={actionLoading}
                               sx={{ borderRadius: 1.5 }}
                             >
-                              <DeleteForeverOutlinedIcon sx={{ fontSize: 18 }} />
+                              <RestoreOutlinedIcon sx={{ fontSize: 18 }} />
                             </IconButton>
                           </Tooltip>
-                        )}
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+                          {isSuperAdmin && (
+                            <Tooltip title="Delete Permanently">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => openConfirm("delete-single", c._id)}
+                                disabled={actionLoading}
+                                sx={{ borderRadius: 1.5 }}
+                              >
+                                <DeleteForeverOutlinedIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      )}
 
       {!checklistLoading && checklistPagination.pages > 1 && (
         <Box sx={{ display: "flex", justifyContent: "center", mt: 2.5 }}>
@@ -577,7 +721,9 @@ function ChecklistsTab() {
   );
 }
 
+// ════════════════════════════════════════════════════════════
 // Requests Tab
+// ════════════════════════════════════════════════════════════
 function RequestsTab() {
   const {
     deletedRequests,
@@ -594,6 +740,7 @@ function RequestsTab() {
   const [confirm, setConfirm] = useState({ open: false, type: null, id: null });
   const [actionLoading, setActionLoading] = useState(false);
   const { snack, show } = useSnack();
+  const isMobile = useMediaQuery("(max-width:768px)");
 
   useEffect(() => {
     fetchDeletedRequests(1, 10);
@@ -633,7 +780,7 @@ function RequestsTab() {
 
     setActionLoading(false);
     closeConfirm();
-    
+
     if (result?.success) {
       show(type.includes("restore") ? "Restored successfully" : "Permanently deleted");
       fetchDeletedRequests(requestPagination.page, requestPagination.limit);
@@ -657,9 +804,9 @@ function RequestsTab() {
         </Alert>
       )}
 
-      <SummaryBar 
-        items={requestPagination.total ?? deletedRequests.length} 
-        label="checklist requests" 
+      <SummaryBar
+        items={requestPagination.total ?? deletedRequests.length}
+        label="checklist requests"
         color="#6d28d9"
         loading={requestLoading}
       />
@@ -677,123 +824,173 @@ function RequestsTab() {
 
       {(actionLoading || requestLoading) && <LinearProgress sx={{ mb: 1, borderRadius: 1 }} />}
 
-      <Paper sx={{ overflow: "hidden" }}>
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell padding="checkbox" sx={{ pl: 2 }}>
-                  <Checkbox
-                    size="small"
-                    indeterminate={selected.length > 0 && selected.length < deletedRequests.length}
-                    checked={deletedRequests.length > 0 && selected.length === deletedRequests.length}
-                    onChange={toggleAll}
-                    disabled={requestLoading || deletedRequests.length === 0}
-                  />
-                </TableCell>
-                {["Name", "Type", "Status", "Deleted By", "Deleted At", "Actions"].map((h) => (
-                  <TableCell key={h}>{h}</TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {requestLoading ? (
-                <SkeletonRows cols={7} />
-              ) : deletedRequests.length === 0 ? (
-                <EmptyState label="checklist requests" />
-              ) : (
-                deletedRequests.map((req) => {
-                  const status = req.status?.toLowerCase();
-                  const statusCfg = STATUS_CFG[status] || { label: req.status || "—", color: "#5a7184", bg: "#f0f4f8" };
-                  return (
-                    <TableRow
-                      key={req._id}
-                      hover
-                      selected={selected.includes(req._id)}
-                      sx={{ "&.Mui-selected": { bgcolor: alpha("#6d28d9", 0.03) } }}
-                    >
-                      <TableCell padding="checkbox" sx={{ pl: 2 }}>
-                        <Checkbox 
-                          size="small" 
-                          checked={selected.includes(req._id)} 
-                          onChange={() => toggle(req._id)}
-                          disabled={actionLoading}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography fontSize={13} fontWeight={600} noWrap sx={{ maxWidth: 200 }}>
-                          {req.name || req.checklistName || "—"}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={req.checklistType || req.type || "—"} 
-                          size="small" 
-                          variant="outlined" 
-                          sx={{ fontSize: 11, height: 22 }} 
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={statusCfg.label}
-                          size="small"
-                          sx={{ fontSize: 11, height: 22, bgcolor: statusCfg.bg, color: statusCfg.color, fontWeight: 700 }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                          <PersonOutlineOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
-                          <Typography fontSize={12} color="text.secondary">
-                            {req.deletedBy?.email || req.deletedBy?.name || "—"}
+      {/* ── Mobile Card View ── */}
+      {isMobile ? (
+        <Box>
+          {requestLoading ? (
+            <SkeletonCards />
+          ) : deletedRequests.length === 0 ? (
+            <MobileEmptyState label="checklist requests" />
+          ) : (
+            deletedRequests.map((req) => {
+              const status = req.status?.toLowerCase();
+              const statusCfg = STATUS_CFG[status] || { label: req.status || "—", color: "#5a7184", bg: "#f0f4f8" };
+              return (
+                <MobileCard
+                  key={req._id}
+                  checked={selected.includes(req._id)}
+                  onCheck={() => toggle(req._id)}
+                  disabled={actionLoading}
+                  accentColor="#6d28d9"
+                  onRestore={() => openConfirm("restore-single", req._id)}
+                  onDelete={() => openConfirm("delete-single", req._id)}
+                  isSuperAdmin={isSuperAdmin}
+                  actionLoading={actionLoading}
+                >
+                  <Typography fontSize={14} fontWeight={700} color="text.primary" noWrap>
+                    {req.name || req.checklistName || "—"}
+                  </Typography>
+
+                  <Divider sx={{ my: 1, borderColor: "#eaf0f6" }} />
+
+                  <CardRow label="Type">
+                    <Chip label={req.checklistType || req.type || "—"} size="small" variant="outlined" sx={{ fontSize: 11, height: 20 }} />
+                  </CardRow>
+                  <CardRow label="Status">
+                    <Chip
+                      label={statusCfg.label}
+                      size="small"
+                      sx={{ fontSize: 11, height: 20, bgcolor: statusCfg.bg, color: statusCfg.color, fontWeight: 700 }}
+                    />
+                  </CardRow>
+                  <CardRow label="Deleted by">
+                    <PersonOutlineOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
+                    <Typography fontSize={12} color="text.secondary">{req.deletedBy?.email || req.deletedBy?.name || "—"}</Typography>
+                  </CardRow>
+                  <CardRow label="Deleted">
+                    <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
+                    <Tooltip title={formatDate(req.deletedAt)}>
+                      <Typography fontSize={12} color="text.secondary">{timeAgo(req.deletedAt)}</Typography>
+                    </Tooltip>
+                  </CardRow>
+                </MobileCard>
+              );
+            })
+          )}
+        </Box>
+      ) : (
+        /* ── Desktop Table View ── */
+        <Paper sx={{ overflow: "hidden" }}>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell padding="checkbox" sx={{ pl: 2 }}>
+                    <Checkbox
+                      size="small"
+                      indeterminate={selected.length > 0 && selected.length < deletedRequests.length}
+                      checked={deletedRequests.length > 0 && selected.length === deletedRequests.length}
+                      onChange={toggleAll}
+                      disabled={requestLoading || deletedRequests.length === 0}
+                    />
+                  </TableCell>
+                  {["Name", "Type", "Status", "Deleted By", "Deleted At", "Actions"].map((h) => (
+                    <TableCell key={h}>{h}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {requestLoading ? (
+                  <SkeletonRows cols={7} />
+                ) : deletedRequests.length === 0 ? (
+                  <EmptyState label="checklist requests" />
+                ) : (
+                  deletedRequests.map((req) => {
+                    const status = req.status?.toLowerCase();
+                    const statusCfg = STATUS_CFG[status] || { label: req.status || "—", color: "#5a7184", bg: "#f0f4f8" };
+                    return (
+                      <TableRow
+                        key={req._id}
+                        hover
+                        selected={selected.includes(req._id)}
+                        sx={{ "&.Mui-selected": { bgcolor: alpha("#6d28d9", 0.03) } }}
+                      >
+                        <TableCell padding="checkbox" sx={{ pl: 2 }}>
+                          <Checkbox
+                            size="small"
+                            checked={selected.includes(req._id)}
+                            onChange={() => toggle(req._id)}
+                            disabled={actionLoading}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography fontSize={13} fontWeight={600} noWrap sx={{ maxWidth: 200 }}>
+                            {req.name || req.checklistName || "—"}
                           </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Tooltip title={formatDate(req.deletedAt)} placement="top">
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, cursor: "default" }}>
-                            <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={req.checklistType || req.type || "—"} size="small" variant="outlined" sx={{ fontSize: 11, height: 22 }} />
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={statusCfg.label}
+                            size="small"
+                            sx={{ fontSize: 11, height: 22, bgcolor: statusCfg.bg, color: statusCfg.color, fontWeight: 700 }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                            <PersonOutlineOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
                             <Typography fontSize={12} color="text.secondary">
-                              {timeAgo(req.deletedAt)}
+                              {req.deletedBy?.email || req.deletedBy?.name || "—"}
                             </Typography>
                           </Box>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell>
-                        <Stack direction="row" spacing={0.5}>
-                          <Tooltip title="Restore">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => openConfirm("restore-single", req._id)}
-                              disabled={actionLoading}
-                              sx={{ borderRadius: 1.5 }}
-                            >
-                              <RestoreOutlinedIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip title={formatDate(req.deletedAt)} placement="top">
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, cursor: "default" }}>
+                              <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
+                              <Typography fontSize={12} color="text.secondary">{timeAgo(req.deletedAt)}</Typography>
+                            </Box>
                           </Tooltip>
-                          {isSuperAdmin && (
-                            <Tooltip title="Delete Permanently">
+                        </TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={0.5}>
+                            <Tooltip title="Restore">
                               <IconButton
                                 size="small"
-                                color="error"
-                                onClick={() => openConfirm("delete-single", req._id)}
+                                color="primary"
+                                onClick={() => openConfirm("restore-single", req._id)}
                                 disabled={actionLoading}
                                 sx={{ borderRadius: 1.5 }}
                               >
-                                <DeleteForeverOutlinedIcon sx={{ fontSize: 18 }} />
+                                <RestoreOutlinedIcon sx={{ fontSize: 18 }} />
                               </IconButton>
                             </Tooltip>
-                          )}
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+                            {isSuperAdmin && (
+                              <Tooltip title="Delete Permanently">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => openConfirm("delete-single", req._id)}
+                                  disabled={actionLoading}
+                                  sx={{ borderRadius: 1.5 }}
+                                >
+                                  <DeleteForeverOutlinedIcon sx={{ fontSize: 18 }} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      )}
 
       {!requestLoading && requestPagination.pages > 1 && (
         <Box sx={{ display: "flex", justifyContent: "center", mt: 2.5 }}>
@@ -826,7 +1023,9 @@ function RequestsTab() {
   );
 }
 
+// ════════════════════════════════════════════════════════════
 // Assignments Tab
+// ════════════════════════════════════════════════════════════
 function AssignmentsTab() {
   const {
     deletedAssignments,
@@ -845,6 +1044,7 @@ function AssignmentsTab() {
   const [confirm, setConfirm] = useState({ open: false, type: null, id: null });
   const [actionLoading, setActionLoading] = useState(false);
   const { snack, show } = useSnack();
+  const isMobile = useMediaQuery("(max-width:768px)");
 
   useEffect(() => {
     fetchDeletedAssignments(1, 10);
@@ -881,7 +1081,7 @@ function AssignmentsTab() {
 
     setActionLoading(false);
     closeConfirm();
-    
+
     if (result?.success) {
       show(type.includes("restore") ? "Assignment restored" : "Assignment permanently deleted");
       fetchDeletedAssignments(assignmentPagination.page, assignmentPagination.limit);
@@ -915,9 +1115,9 @@ function AssignmentsTab() {
         </Alert>
       )}
 
-      <SummaryBar 
-        items={assignmentPagination.total ?? deletedAssignments.length} 
-        label="assignments" 
+      <SummaryBar
+        items={assignmentPagination.total ?? deletedAssignments.length}
+        label="assignments"
         color="#d35400"
         loading={assignmentLoading}
       />
@@ -935,137 +1135,204 @@ function AssignmentsTab() {
 
       {(actionLoading || assignmentLoading) && <LinearProgress sx={{ mb: 1, borderRadius: 1 }} />}
 
-      <Paper sx={{ overflow: "hidden" }}>
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell padding="checkbox" sx={{ pl: 2 }}>
-                  <Checkbox
-                    size="small"
-                    indeterminate={selected.length > 0 && selected.length < deletedAssignments.length}
-                    checked={deletedAssignments.length > 0 && selected.length === deletedAssignments.length}
-                    onChange={toggleAll}
-                    disabled={assignmentLoading || deletedAssignments.length === 0}
-                  />
-                </TableCell>
-                {["Checklist", "Assigned To", "Priority", "Status", "Deleted By", "Deleted At", "Actions"].map((h) => (
-                  <TableCell key={h}>{h}</TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {assignmentLoading ? (
-                <SkeletonRows cols={8} />
-              ) : deletedAssignments.length === 0 ? (
-                <EmptyState label="assignments" />
-              ) : (
-                deletedAssignments.map((asgn) => {
-                  const status = asgn.status?.toLowerCase();
-                  const statusCfg = STATUS_CFG[status] || { label: asgn.status || "—", color: "#5a7184", bg: "#f0f4f8" };
-                  const pCfg = PRIORITY_CFG[asgn.priority?.toLowerCase()] || PRIORITY_CFG.medium;
+      {/* ── Mobile Card View ── */}
+      {isMobile ? (
+        <Box>
+          {assignmentLoading ? (
+            <SkeletonCards />
+          ) : deletedAssignments.length === 0 ? (
+            <MobileEmptyState label="assignments" />
+          ) : (
+            deletedAssignments.map((asgn) => {
+              const status = asgn.status?.toLowerCase();
+              const statusCfg = STATUS_CFG[status] || { label: asgn.status || "—", color: "#5a7184", bg: "#f0f4f8" };
+              const pCfg = PRIORITY_CFG[asgn.priority?.toLowerCase()] || PRIORITY_CFG.medium;
 
-                  return (
-                    <TableRow
-                      key={asgn._id}
-                      hover
-                      selected={selected.includes(asgn._id)}
-                      sx={{ "&.Mui-selected": { bgcolor: alpha("#d35400", 0.03) } }}
-                    >
-                      <TableCell padding="checkbox" sx={{ pl: 2 }}>
-                        <Checkbox 
-                          size="small" 
-                          checked={selected.includes(asgn._id)} 
-                          onChange={() => toggle(asgn._id)}
-                          disabled={actionLoading}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography fontSize={13} fontWeight={600} noWrap sx={{ maxWidth: 180 }}>
-                          {getChecklistName(asgn)}
-                        </Typography>
-                        <Typography fontSize={11} color="text.disabled">
-                          #{asgn._id?.slice(-8)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography fontSize={12} fontWeight={500} noWrap sx={{ maxWidth: 160 }}>
-                          {getAssignedTo(asgn)}
-                        </Typography>
-                        {asgn.assignedByRole && (
-                          <Typography fontSize={11} color="text.disabled" sx={{ textTransform: "capitalize" }}>
-                            {asgn.assignedByRole}
+              return (
+                <MobileCard
+                  key={asgn._id}
+                  checked={selected.includes(asgn._id)}
+                  onCheck={() => toggle(asgn._id)}
+                  disabled={actionLoading}
+                  accentColor="#d35400"
+                  onRestore={() => openConfirm("restore-single", asgn._id)}
+                  onDelete={() => openConfirm("delete-single", asgn._id)}
+                  isSuperAdmin={isSuperAdmin}
+                  actionLoading={actionLoading}
+                >
+                  <Typography fontSize={14} fontWeight={700} color="text.primary" noWrap>
+                    {getChecklistName(asgn)}
+                  </Typography>
+                  <Typography fontSize={11} color="text.disabled">#{asgn._id?.slice(-8)}</Typography>
+
+                  <Divider sx={{ my: 1, borderColor: "#eaf0f6" }} />
+
+                  <CardRow label="Assigned to">
+                    <Typography fontSize={12} fontWeight={500} noWrap>{getAssignedTo(asgn)}</Typography>
+                  </CardRow>
+                  <CardRow label="Priority">
+                    <Chip
+                      label={asgn.priority || "—"}
+                      size="small"
+                      sx={{ fontSize: 11, height: 20, bgcolor: pCfg.bg, color: pCfg.color, fontWeight: 700, textTransform: "capitalize" }}
+                    />
+                  </CardRow>
+                  <CardRow label="Status">
+                    <Chip
+                      label={statusCfg.label}
+                      size="small"
+                      sx={{ fontSize: 11, height: 20, bgcolor: statusCfg.bg, color: statusCfg.color, fontWeight: 700 }}
+                    />
+                  </CardRow>
+                  <CardRow label="Deleted by">
+                    <PersonOutlineOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
+                    <Typography fontSize={12} color="text.secondary" noWrap>
+                      {asgn.deletedBy?.email || asgn.deletedBy?.name || asgn.assignedBy?.email || "—"}
+                    </Typography>
+                  </CardRow>
+                  <CardRow label="Deleted">
+                    <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
+                    <Tooltip title={formatDate(asgn.deletedAt)}>
+                      <Typography fontSize={12} color="text.secondary">{timeAgo(asgn.deletedAt || asgn.updatedAt)}</Typography>
+                    </Tooltip>
+                  </CardRow>
+                </MobileCard>
+              );
+            })
+          )}
+        </Box>
+      ) : (
+        /* ── Desktop Table View ── */
+        <Paper sx={{ overflow: "hidden" }}>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell padding="checkbox" sx={{ pl: 2 }}>
+                    <Checkbox
+                      size="small"
+                      indeterminate={selected.length > 0 && selected.length < deletedAssignments.length}
+                      checked={deletedAssignments.length > 0 && selected.length === deletedAssignments.length}
+                      onChange={toggleAll}
+                      disabled={assignmentLoading || deletedAssignments.length === 0}
+                    />
+                  </TableCell>
+                  {["Checklist", "Assigned To", "Priority", "Status", "Deleted By", "Deleted At", "Actions"].map((h) => (
+                    <TableCell key={h}>{h}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {assignmentLoading ? (
+                  <SkeletonRows cols={8} />
+                ) : deletedAssignments.length === 0 ? (
+                  <EmptyState label="assignments" />
+                ) : (
+                  deletedAssignments.map((asgn) => {
+                    const status = asgn.status?.toLowerCase();
+                    const statusCfg = STATUS_CFG[status] || { label: asgn.status || "—", color: "#5a7184", bg: "#f0f4f8" };
+                    const pCfg = PRIORITY_CFG[asgn.priority?.toLowerCase()] || PRIORITY_CFG.medium;
+
+                    return (
+                      <TableRow
+                        key={asgn._id}
+                        hover
+                        selected={selected.includes(asgn._id)}
+                        sx={{ "&.Mui-selected": { bgcolor: alpha("#d35400", 0.03) } }}
+                      >
+                        <TableCell padding="checkbox" sx={{ pl: 2 }}>
+                          <Checkbox
+                            size="small"
+                            checked={selected.includes(asgn._id)}
+                            onChange={() => toggle(asgn._id)}
+                            disabled={actionLoading}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography fontSize={13} fontWeight={600} noWrap sx={{ maxWidth: 180 }}>
+                            {getChecklistName(asgn)}
                           </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={asgn.priority || "—"}
-                          size="small"
-                          sx={{ fontSize: 11, height: 22, bgcolor: pCfg.bg, color: pCfg.color, fontWeight: 700, textTransform: "capitalize" }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={statusCfg.label}
-                          size="small"
-                          sx={{ fontSize: 11, height: 22, bgcolor: statusCfg.bg, color: statusCfg.color, fontWeight: 700 }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                          <PersonOutlineOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
-                          <Typography fontSize={12} color="text.secondary" noWrap sx={{ maxWidth: 150 }}>
-                            {asgn.deletedBy?.email || asgn.deletedBy?.name || asgn.assignedBy?.email || "—"}
+                          <Typography fontSize={11} color="text.disabled">#{asgn._id?.slice(-8)}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography fontSize={12} fontWeight={500} noWrap sx={{ maxWidth: 160 }}>
+                            {getAssignedTo(asgn)}
                           </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Tooltip title={formatDate(asgn.deletedAt)} placement="top">
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, cursor: "default" }}>
-                            <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
-                            <Typography fontSize={12} color="text.secondary">
-                              {timeAgo(asgn.deletedAt || asgn.updatedAt)}
+                          {asgn.assignedByRole && (
+                            <Typography fontSize={11} color="text.disabled" sx={{ textTransform: "capitalize" }}>
+                              {asgn.assignedByRole}
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={asgn.priority || "—"}
+                            size="small"
+                            sx={{ fontSize: 11, height: 22, bgcolor: pCfg.bg, color: pCfg.color, fontWeight: 700, textTransform: "capitalize" }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={statusCfg.label}
+                            size="small"
+                            sx={{ fontSize: 11, height: 22, bgcolor: statusCfg.bg, color: statusCfg.color, fontWeight: 700 }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                            <PersonOutlineOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
+                            <Typography fontSize={12} color="text.secondary" noWrap sx={{ maxWidth: 150 }}>
+                              {asgn.deletedBy?.email || asgn.deletedBy?.name || asgn.assignedBy?.email || "—"}
                             </Typography>
                           </Box>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell>
-                        <Stack direction="row" spacing={0.5}>
-                          <Tooltip title="Restore">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => openConfirm("restore-single", asgn._id)}
-                              disabled={actionLoading}
-                              sx={{ borderRadius: 1.5 }}
-                            >
-                              <RestoreOutlinedIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip title={formatDate(asgn.deletedAt)} placement="top">
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, cursor: "default" }}>
+                              <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
+                              <Typography fontSize={12} color="text.secondary">
+                                {timeAgo(asgn.deletedAt || asgn.updatedAt)}
+                              </Typography>
+                            </Box>
                           </Tooltip>
-                          {isSuperAdmin && (
-                            <Tooltip title="Delete Permanently">
+                        </TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={0.5}>
+                            <Tooltip title="Restore">
                               <IconButton
                                 size="small"
-                                color="error"
-                                onClick={() => openConfirm("delete-single", asgn._id)}
+                                color="primary"
+                                onClick={() => openConfirm("restore-single", asgn._id)}
                                 disabled={actionLoading}
                                 sx={{ borderRadius: 1.5 }}
                               >
-                                <DeleteForeverOutlinedIcon sx={{ fontSize: 18 }} />
+                                <RestoreOutlinedIcon sx={{ fontSize: 18 }} />
                               </IconButton>
                             </Tooltip>
-                          )}
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+                            {isSuperAdmin && (
+                              <Tooltip title="Delete Permanently">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => openConfirm("delete-single", asgn._id)}
+                                  disabled={actionLoading}
+                                  sx={{ borderRadius: 1.5 }}
+                                >
+                                  <DeleteForeverOutlinedIcon sx={{ fontSize: 18 }} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      )}
 
       {!assignmentLoading && totalPages > 1 && (
         <Box sx={{ display: "flex", justifyContent: "center", mt: 2.5 }}>
@@ -1098,24 +1365,27 @@ function AssignmentsTab() {
   );
 }
 
+// ════════════════════════════════════════════════════════════
 // Main Page
+// ════════════════════════════════════════════════════════════
 export default function RecycleBin() {
   const { user } = useAuth();
-  const { 
-    deletedChecklists, 
-    deletedRequests, 
-    deletedAssignments, 
+  const {
+    deletedChecklists,
+    deletedRequests,
+    deletedAssignments,
     canAccess,
-    isSuperAdmin 
+    isSuperAdmin,
   } = useRecycleBin();
   const [tab, setTab] = useState(0);
+  const isMobile = useMediaQuery("(max-width:768px)");
 
   if (!canAccess) {
     return (
       <ThemeProvider theme={theme}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
-          <Alert 
-            severity="error" 
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh", px: 2 }}>
+          <Alert
+            severity="error"
             sx={{ borderRadius: 2, maxWidth: 400 }}
             icon={<WarningAmberIcon />}
           >
@@ -1131,16 +1401,25 @@ export default function RecycleBin() {
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ minHeight: "100vh"}}>
+      <Box sx={{ minHeight: "100vh" }}>
         <Box sx={{ p: { xs: 2, md: 3.5 }, maxWidth: 1400, mx: "auto" }}>
           {/* Header */}
-          <Box sx={{ mb: 3.5 }}>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2 }}>
+          <Box sx={{ mb: 3 }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: { xs: "flex-start", sm: "center" },
+                justifyContent: "space-between",
+                flexDirection: { xs: "column", sm: "row" },
+                gap: 2,
+              }}
+            >
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                 <Box
                   sx={{
-                    width: 48,
-                    height: 48,
+                    width: 44,
+                    height: 44,
+                    flexShrink: 0,
                     borderRadius: 2.5,
                     background: "linear-gradient(135deg, #fef5ec 0%, #fde8d0 100%)",
                     display: "flex",
@@ -1165,19 +1444,20 @@ export default function RecycleBin() {
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 1.5,
-                  px: 2.5,
+                  gap: 1,
+                  px: 2,
                   py: 1,
                   borderRadius: 2,
                   bgcolor: alpha("#d35400", 0.08),
                   border: `1px solid ${alpha("#d35400", 0.2)}`,
+                  width: { xs: "100%", sm: "auto" },
                 }}
               >
-                <WarningAmberIcon sx={{ fontSize: 16, color: "#d35400" }} />
+                <WarningAmberIcon sx={{ fontSize: 15, color: "#d35400", flexShrink: 0 }} />
                 <Typography fontSize={12} color="#7c2d12" fontWeight={500}>
-                  {isSuperAdmin 
-                    ? " Permanently deleted items cannot be recovered" 
-                    : " Only Super Admins can permanently delete items"}
+                  {isSuperAdmin
+                    ? "Permanently deleted items cannot be recovered"
+                    : "Only Super Admins can permanently delete items"}
                 </Typography>
               </Box>
             </Box>
@@ -1185,30 +1465,31 @@ export default function RecycleBin() {
 
           {/* Tabs */}
           <Box sx={{ borderBottom: "1px solid", borderColor: "divider", mb: 3 }}>
-            <Tabs 
-              value={tab} 
-              onChange={(_, v) => setTab(v)} 
+            <Tabs
+              value={tab}
+              onChange={(_, v) => setTab(v)}
+              variant={isMobile ? "fullWidth" : "standard"}
               sx={{ "& .MuiTabs-indicator": { height: 2.5, borderRadius: 2 } }}
             >
               <StyledTab
                 icon={
-                  <Badge 
-                    badgeContent={deletedChecklists.length} 
-                    color="error" 
-                    max={99} 
+                  <Badge
+                    badgeContent={deletedChecklists.length}
+                    color="error"
+                    max={99}
                     sx={{ "& .MuiBadge-badge": { fontSize: 10, height: 16, minWidth: 16 } }}
                   >
                     <ChecklistOutlinedIcon sx={{ fontSize: 18 }} />
                   </Badge>
                 }
                 iconPosition="start"
-                label="Checklists"
+                label={isMobile ? "Lists" : "Checklists"}
               />
               <StyledTab
                 icon={
-                  <Badge 
-                    badgeContent={deletedRequests.length} 
-                    color="error" 
+                  <Badge
+                    badgeContent={deletedRequests.length}
+                    color="error"
                     max={99}
                     sx={{ "& .MuiBadge-badge": { fontSize: 10, height: 16, minWidth: 16 } }}
                   >
@@ -1216,13 +1497,13 @@ export default function RecycleBin() {
                   </Badge>
                 }
                 iconPosition="start"
-                label="Checklist Requests"
+                label={isMobile ? "Requests" : "Checklist Requests"}
               />
               <StyledTab
                 icon={
-                  <Badge 
-                    badgeContent={deletedAssignments.length} 
-                    color="error" 
+                  <Badge
+                    badgeContent={deletedAssignments.length}
+                    color="error"
                     max={99}
                     sx={{ "& .MuiBadge-badge": { fontSize: 10, height: 16, minWidth: 16 } }}
                   >
