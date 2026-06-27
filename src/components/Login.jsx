@@ -53,6 +53,11 @@ import { useAuth } from "../context/AuthContexts";
 import Navbar from "../pages/landing/Navbar";
 import { keyframes } from "@mui/material/styles";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  "https://synversys-backend.onrender.com/api/v1";
+
 const fadeUp = keyframes`
   from { opacity: 0; transform: translateY(18px); }
   to { opacity: 1; transform: translateY(0); }
@@ -536,7 +541,7 @@ export default function LoginPage() {
     const checkBackend = async () => {
       try {
         const response = await fetch(
-          "https://synversys-backend.onrender.com/api/v1/auth/health",
+          `${API_BASE_URL}/auth/health`,
           { method: "GET", timeout: 5000 },
         );
         if (!response.ok) {
