@@ -153,7 +153,7 @@ const STATUS_PILL = {
   rejected:    { label: "Rejected",     bg: "#fee2e2", color: "#dc2626", border: "#fecaca" },
 };
 
-const TaskCard = ({ task, onView }) => {
+const   TaskCard = ({ task, onView }) => {
   const prKey = task.priority?.toLowerCase() || "medium";
   const stKey = task.status?.toLowerCase() || "pending";
   const pPill = PRIORITY_PILL[prKey] || PRIORITY_PILL.medium;
@@ -182,7 +182,7 @@ const TaskCard = ({ task, onView }) => {
         flexDirection: "column",
         height: "100%",
         // fluid on mobile/tablet, fixed 380px on desktop
-        width: { xs: "100%", sm: "100%", md: "380px" },
+        width: { xs:"354px", md: "380px" },
         minWidth: 0,
         overflow: "hidden",
         transition: "box-shadow 0.2s ease",
