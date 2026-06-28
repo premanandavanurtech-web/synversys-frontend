@@ -27,6 +27,7 @@ import { useAsset } from "../context/AssetContext";
 import { useAssetCategory } from "../context/AssetCategoryContexts";
 import { useTeam } from "../context/TeamContext";
 import { useAuth } from "../context/AuthContexts";
+import { getAllowedNameError } from "../utils/allowedName";
 import CurrencyRupeeIcon from "@mui/icons-material/CurrencyRupee";
 
 import {
@@ -506,6 +507,11 @@ function QuickCategoryDialog({
       setError("Category name must be at least 2 characters");
       return;
     }
+    const nameError = getAllowedNameError("Category name", name);
+    if (nameError) {
+      setError(nameError);
+      return;
+    }
 
     setSubmitting(true);
     setError("");
@@ -871,6 +877,18 @@ export default function EditAsset() {
     if (!form.assetName.trim()) {
       showSnackbar("Asset name is required", "error");
       return;
+    }
+    const validationChecks = [
+      ["Asset name", form.assetName],
+      ["Tag number", form.tagNumber],
+      ["Serial number", form.serialNumber],
+    ];
+    for (const [label, value] of validationChecks) {
+      const error = getAllowedNameError(label, value);
+      if (error) {
+        showSnackbar(error, "error");
+        return;
+      }
     }
     setSaving(true);
     try {

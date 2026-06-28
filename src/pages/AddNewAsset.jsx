@@ -59,6 +59,7 @@ import { useAssetCategory } from "../context/AssetCategoryContexts";
 import { useAuth } from "../context/AuthContexts";
 import { useTeam } from "../context/TeamContext";
 import { useNavigate } from "react-router-dom";
+import { ALLOWED_NAME_MESSAGE, getAllowedNameError } from "../utils/allowedName";
 
 // ─── Design Tokens ───────────────────────────────────────────────────────────
 const T = {
@@ -378,6 +379,11 @@ function QuickCategoryDialog({
       setError("Category name must be at least 2 characters");
       return;
     }
+    const nameError = getAllowedNameError("Category name", trimmed);
+    if (nameError) {
+      setError(nameError);
+      return;
+    }
 
     setSubmitting(true);
     setError("");
@@ -485,6 +491,11 @@ function QuickCategoryDialog({
               }}
               onKeyDown={(e) =>
                 e.key === "Enter" && !e.shiftKey && handleCreate()
+              }
+              error={!!getAllowedNameError("Category name", form.name)}
+              helperText={
+                getAllowedNameError("Category name", form.name) ||
+                `Allowed: ${ALLOWED_NAME_MESSAGE}`
               }
               sx={inputSx}
             />
@@ -757,6 +768,22 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
     }
     if (!formData.assetName.trim()) {
       toast("Asset name is required", "error");
+      return;
+    }
+    const assetNameError = getAllowedNameError(
+      "Asset name",
+      formData.assetName,
+    );
+    if (assetNameError) {
+      toast(assetNameError, "error");
+      return;
+    }
+    const serialNumberError = getAllowedNameError(
+      "Serial number",
+      formData.serialNumber,
+    );
+    if (serialNumberError) {
+      toast(serialNumberError, "error");
       return;
     }
     if (!selectedCategoryId) {
@@ -1102,6 +1129,11 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
                     value={formData.assetName}
                     onChange={(e) => fi("assetName", e.target.value)}
                     disabled={!canEdit}
+                    error={!!getAllowedNameError("Asset name", formData.assetName)}
+                    helperText={
+                      getAllowedNameError("Asset name", formData.assetName) ||
+                      `Allowed: ${ALLOWED_NAME_MESSAGE}`
+                    }
                     sx={inputSx}
                   />
                 </Box>
@@ -1128,6 +1160,18 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
                     value={formData.serialNumber}
                     onChange={(e) => fi("serialNumber", e.target.value)}
                     disabled={!canEdit}
+                    error={
+                      !!getAllowedNameError(
+                        "Serial number",
+                        formData.serialNumber,
+                      )
+                    }
+                    helperText={
+                      getAllowedNameError(
+                        "Serial number",
+                        formData.serialNumber,
+                      ) || `Allowed: ${ALLOWED_NAME_MESSAGE}`
+                    }
                     sx={inputSx}
                   />
                 </Box>

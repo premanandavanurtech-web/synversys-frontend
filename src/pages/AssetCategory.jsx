@@ -81,6 +81,7 @@ import { useAssetCategory } from "../context/AssetCategoryContexts";
 import { useAuth } from "../context/AuthContexts";
 import { useNavigate } from "react-router-dom";
 import { keyframes } from "@mui/material/styles";
+import { ALLOWED_NAME_MESSAGE, getAllowedNameError } from "../utils/allowedName";
 
 // ─── Modern Font System ───────────────────────────────────────────────────────
 const typography = {
@@ -766,6 +767,10 @@ const CategoryDialog = ({
     if (!form.name.trim()) e.name = "Category name is required";
     else if (form.name.trim().length < 2) e.name = "At least 2 characters";
     else if (form.name.trim().length > 80) e.name = "Max 80 characters";
+    else {
+      const nameError = getAllowedNameError("Category name", form.name);
+      if (nameError) e.name = nameError;
+    }
     return e;
   };
 
@@ -823,7 +828,7 @@ const CategoryDialog = ({
               e.key === "Enter" && !e.shiftKey && handleSubmit()
             }
             error={!!errors.name}
-            helperText={errors.name}
+            helperText={errors.name || `Allowed: ${ALLOWED_NAME_MESSAGE}`}
             InputProps={{ sx: inputStyles }}
           />
         </Box>

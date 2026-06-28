@@ -1128,7 +1128,7 @@ export default function LoginPage() {
                         >
                           Password
                         </Typography>
-                        <Link
+                        {/* <Link
                           component="button"
                           type="button"
                           onClick={() => setForgotModalOpen(true)}
@@ -1146,7 +1146,7 @@ export default function LoginPage() {
                           }}
                         >
                           Forgot password?
-                        </Link>
+                        </Link> */}
                       </Box>
                       <TextField
                         fullWidth
