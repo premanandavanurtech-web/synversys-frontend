@@ -165,34 +165,6 @@ const Contact = () => {
     return !Object.values(newErrors).some((error) => error !== "");
   };
 
-  // Simulate email sending with progress
-  const simulateEmailSending = async () => {
-    return new Promise((resolve) => {
-      const steps = [
-        { progress: 10, message: "Validating your information..." },
-        { progress: 25, message: "Preparing your message..." },
-        { progress: 40, message: "Connecting to mail server..." },
-        { progress: 55, message: "Sending confirmation email..." },
-        { progress: 70, message: "Notifying support team..." },
-        { progress: 85, message: "Finalizing..." },
-        { progress: 100, message: "Email sent successfully!" },
-      ];
-
-      let currentStep = 0;
-
-      const interval = setInterval(() => {
-        if (currentStep < steps.length) {
-          setProgress(steps[currentStep].progress);
-          setProgressMessage(steps[currentStep].message);
-          currentStep++;
-        } else {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 500); // 500ms per step = 3.5 seconds total
-    });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -234,8 +206,8 @@ const Contact = () => {
           response.status === 200 ||
           response.status === 201)
       ) {
-        // Simulate email sending delay with progress
-        await simulateEmailSending();
+        setProgress(100);
+        setProgressMessage("Message sent successfully!");
 
         // Reset form
         setFormData({
@@ -311,10 +283,7 @@ const Contact = () => {
       return;
     }
     handleShowProgress();
-    // Small delay to show dialog before starting submission
-    setTimeout(() => {
-      handleSubmit(e);
-    }, 5000);
+    handleSubmit(e);
   };
 
   const handleCloseSnackbar = () => {
