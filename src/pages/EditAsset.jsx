@@ -478,6 +478,9 @@ const categoryMenuProps = {
 };
 
 const getCategoryId = (category) => category?._id || category?.id || "";
+const normalizePostalCode = (value) =>
+  String(value ?? "").replace(/\D/g, "").slice(0, 6);
+const isValidPostalCode = (value) => value === "" || /^\d{6}$/.test(value);
 
 function QuickCategoryDialog({
   open,
@@ -777,7 +780,7 @@ export default function EditAsset() {
           streetAddress: addr.streetAddress || "",
           city: addr.city || "",
           stateProvince: addr.stateProvince || "",
-          postalCode: addr.postalCode || "",
+          postalCode: normalizePostalCode(addr.postalCode),
           country: addr.country || "",
           amcEnabled: a.inspectionSystems?.amcInspection?.enabled || false,
           amcSchedule: a.inspectionSystems?.amcInspection?.schedule || "Annual",
@@ -803,7 +806,13 @@ export default function EditAsset() {
   };
 
   const set = (field) => (e) =>
-    setForm((f) => ({ ...f, [field]: e.target.value }));
+    setForm((f) => ({
+      ...f,
+      [field]:
+        field === "postalCode"
+          ? normalizePostalCode(e.target.value)
+          : e.target.value,
+    }));
   const setCheck = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.checked }));
 
@@ -889,6 +898,10 @@ export default function EditAsset() {
         showSnackbar(error, "error");
         return;
       }
+    }
+    if (!isValidPostalCode(form.postalCode)) {
+      showSnackbar("Postal code must be exactly 6 digits", "error");
+      return;
     }
     setSaving(true);
     try {
@@ -1484,6 +1497,9 @@ export default function EditAsset() {
                   value={form.postalCode}
                   onChange={set("postalCode")}
                   placeholder="e.g. 400001"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
                 />
               </Field>
               <Field label="Country" icon={<FmdGood sx={{ fontSize: 13 }} />}>

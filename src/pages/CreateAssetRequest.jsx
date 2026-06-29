@@ -184,6 +184,10 @@ const FilterLabel = ({ children, required }) => (
   </Typography>
 );
 
+const normalizePostalCode = (value) =>
+  String(value ?? "").replace(/\D/g, "").slice(0, 6);
+const isValidPostalCode = (value) => value === "" || /^\d{6}$/.test(value);
+
 const CBRow = ({ labels, values = {}, onChange, name, disabled }) => (
   <Grid container spacing={1} mb={1}>
     {labels.map(
@@ -352,7 +356,10 @@ export default function CreateAssetRequest() {
     if (requestType === "direct" && !canEdit) return;
     setFormData((prev) => ({
       ...prev,
-      customPhysicalAddress: { ...prev.customPhysicalAddress, [field]: value },
+      customPhysicalAddress: {
+        ...prev.customPhysicalAddress,
+        [field]: field === "postalCode" ? normalizePostalCode(value) : value,
+      },
     }));
   };
 
@@ -403,6 +410,14 @@ export default function CreateAssetRequest() {
       setSnackbar({
         open: true,
         message: "Please select a parent asset",
+        severity: "error",
+      });
+      return false;
+    }
+    if (!isValidPostalCode(formData.customPhysicalAddress.postalCode)) {
+      setSnackbar({
+        open: true,
+        message: "Postal code must be exactly 6 digits",
         severity: "error",
       });
       return false;

@@ -26,6 +26,7 @@ import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { PROJECT_LOGO_URL } from "../../utils/brand";
 
 const Navbar = ({
   activeSection,
@@ -174,7 +175,6 @@ const Navbar = ({
                   sx={{
                     width: { xs: 28, sm: 32, md: 36, lg: 38 },
                     height: { xs: 28, sm: 32, md: 36, lg: 38 },
-                    background: getPrimaryGradient(),
                     borderRadius: {
                       xs: "0.625rem",
                       sm: "0.75rem",
@@ -184,6 +184,9 @@ const Navbar = ({
                     alignItems: "center",
                     justifyContent: "center",
                     mr: { xs: 1, sm: 1.5 },
+                    overflow: "hidden",
+                    bgcolor: "background.paper",
+                    border: `1px solid ${alpha(getPrimaryColor(), 0.12)}`,
                     transition: "all 0.3s ease",
                     "&:hover": {
                       transform: "scale(1.05)",
@@ -194,22 +197,12 @@ const Navbar = ({
                       : `0 4px 12px ${alpha(getPrimaryColor(), 0.15)}`,
                   }}
                 >
-                  <Typography
-                    sx={{
-                      color: "white",
-                      fontWeight: 700,
-                      fontSize: {
-                        xs: "0.8rem",
-                        sm: "0.9rem",
-                        md: "1rem",
-                        lg: "1.1rem",
-                      },
-                      fontFamily: '"Inter", sans-serif',
-                      letterSpacing: "-0.02em",
-                    }}
-                  >
-                    AF
-                  </Typography>
+                  <Box
+                    component="img"
+                    src={PROJECT_LOGO_URL}
+                    alt="AssetMach logo"
+                    sx={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  />
                 </Box>
                 <Box sx={{ display: { xs: "none", sm: "block" } }}>
                   <Typography
@@ -446,23 +439,21 @@ const Navbar = ({
                       sx={{
                         width: { xs: 36, sm: 40 },
                         height: { xs: 36, sm: 40 },
-                        bgcolor: "rgba(255,255,255,0.15)",
                         borderRadius: "0.75rem",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        overflow: "hidden",
+                        bgcolor: "rgba(255,255,255,0.92)",
                         mr: 1.5,
                       }}
                     >
-                      <Typography
-                        sx={{
-                          color: "white",
-                          fontWeight: 700,
-                          fontSize: { xs: "0.9rem", sm: "1rem" },
-                        }}
-                      >
-                        AF
-                      </Typography>
+                      <Box
+                        component="img"
+                        src={PROJECT_LOGO_URL}
+                        alt="AssetMach logo"
+                        sx={{ width: "100%", height: "100%", objectFit: "contain" }}
+                      />
                     </Box>
                     <Box>
                       <Typography

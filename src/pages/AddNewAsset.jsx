@@ -156,6 +156,10 @@ const dropdownMenuProps = {
   },
 };
 
+const normalizePostalCode = (value) =>
+  String(value ?? "").replace(/\D/g, "").slice(0, 6);
+const isValidPostalCode = (value) => value === "" || /^\d{6}$/.test(value);
+
 const Label = ({ children, required }) => (
   <Box sx={{ mb: 0.75 }}>
     <Typography
@@ -705,7 +709,10 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
     canEdit &&
     setFormData((p) => ({
       ...p,
-      customPhysicalAddress: { ...p.customPhysicalAddress, [field]: value },
+      customPhysicalAddress: {
+        ...p.customPhysicalAddress,
+        [field]: field === "postalCode" ? normalizePostalCode(value) : value,
+      },
     }));
   const fau = (field, value) =>
     canEdit &&
@@ -788,6 +795,10 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
     }
     if (!selectedCategoryId) {
       toast("Please select a category", "error");
+      return;
+    }
+    if (!isValidPostalCode(formData.customPhysicalAddress.postalCode)) {
+      toast("Postal code must be exactly 6 digits", "error");
       return;
     }
 
@@ -1535,6 +1546,32 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
                         placeholder={label}
                         value={formData.customPhysicalAddress[key]}
                         onChange={(e) => fa(key, e.target.value)}
+                        type={key === "postalCode" ? "text" : undefined}
+                        inputProps={
+                          key === "postalCode"
+                            ? {
+                                inputMode: "numeric",
+                                pattern: "[0-9]{6}",
+                                maxLength: 6,
+                              }
+                            : undefined
+                        }
+                        error={
+                          key === "postalCode" &&
+                          formData.customPhysicalAddress.postalCode !== "" &&
+                          !isValidPostalCode(
+                            formData.customPhysicalAddress.postalCode,
+                          )
+                        }
+                        helperText={
+                          key === "postalCode" &&
+                          formData.customPhysicalAddress.postalCode !== "" &&
+                          !isValidPostalCode(
+                            formData.customPhysicalAddress.postalCode,
+                          )
+                            ? "Postal code must be 6 digits"
+                            : " "
+                        }
                         disabled={!canEdit}
                         sx={inputSx}
                       />

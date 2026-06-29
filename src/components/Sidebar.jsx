@@ -52,6 +52,7 @@ import AnalyticsOutlinedIcon from "@mui/icons-material/AnalyticsOutlined"; // NE
 import RestoreFromTrashOutlinedIcon from "@mui/icons-material/RestoreFromTrashOutlined";
 import { useAuth } from "../context/AuthContexts";
 import { useTeam } from "../context/TeamContext";
+import { PROJECT_LOGO_URL } from "../utils/brand";
 
 // Styled Components - Responsive
 const MobileHeader = styled(Box)(({ theme }) => ({
@@ -660,17 +661,22 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
             sx={{
               width: { md: 36, lg: 40, xl: 44 },
               height: { md: 36, lg: 40, xl: 44 },
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
               borderRadius: { md: "10px", lg: "12px", xl: "14px" },
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: `0 6px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+              overflow: "hidden",
+              bgcolor: "#fff",
+              border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+              boxShadow: `0 6px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
               flexShrink: 0,
             }}
           >
-            <Inventory2OutlinedIcon
-              sx={{ color: "#fff", fontSize: { md: 18, lg: 20, xl: 22 } }}
+            <Box
+              component="img"
+              src={PROJECT_LOGO_URL}
+              alt="AssetMach logo"
+              sx={{ width: "100%", height: "100%", objectFit: "contain" }}
             />
           </Box>
         </Zoom>
@@ -855,15 +861,20 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
             sx={{
               width: { xs: 36, sm: 40 },
               height: { xs: 36, sm: 40 },
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
               borderRadius: "10px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              overflow: "hidden",
+              bgcolor: "#fff",
+              border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
             }}
           >
-            <Inventory2OutlinedIcon
-              sx={{ color: "#fff", fontSize: { xs: 18, sm: 20 } }}
+            <Box
+              component="img"
+              src={PROJECT_LOGO_URL}
+              alt="AssetMach logo"
+              sx={{ width: "100%", height: "100%", objectFit: "contain" }}
             />
           </Box>
           <Typography fontWeight={600} fontSize={{ xs: 14, sm: 16 }}>
@@ -989,15 +1000,20 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
                 sx={{
                   width: { xs: 28, sm: 32 },
                   height: { xs: 28, sm: 32 },
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
                   borderRadius: "8px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  overflow: "hidden",
+                  bgcolor: "#fff",
+                  border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
                 }}
               >
-                <Inventory2OutlinedIcon
-                  sx={{ color: "#fff", fontSize: { xs: 16, sm: 18 } }}
+                <Box
+                  component="img"
+                  src={PROJECT_LOGO_URL}
+                  alt="AssetMach logo"
+                  sx={{ width: "100%", height: "100%", objectFit: "contain" }}
                 />
               </Box>
             </Zoom>
