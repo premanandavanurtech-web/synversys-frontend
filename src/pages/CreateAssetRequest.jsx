@@ -74,7 +74,7 @@ import {
 import { useAsset } from "../context/AssetContext";
 import { useAssetRequest } from "../context/AssetRequestContext";
 import { useAuth } from "../context/AuthContexts";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const theme = createTheme({
   palette: {
@@ -218,6 +218,7 @@ export default function CreateAssetRequest() {
   const { createAsset, getAllAssets, loading: assetLoading } = useAsset();
   const { createRequest, loading: requestLoading } = useAssetRequest();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Role-based access
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
@@ -226,12 +227,20 @@ export default function CreateAssetRequest() {
   const canRequest = isTeam || isAdmin; // Both can request, but admin can also create directly
 
   // Request type: "direct" (admin) or "request" (team/admin request mode)
+  const initialRequestType =
+    location.state?.requestType === "request"
+      ? "request"
+      : canEdit
+        ? "direct"
+        : "request";
   const [requestType, setRequestType] = useState(
-    canEdit ? "direct" : "request",
+    initialRequestType,
   );
 
   // Parent/Child selection
-  const [assetType, setAssetType] = useState("parent");
+  const initialAssetType =
+    location.state?.assetType === "child" ? "child" : "parent";
+  const [assetType, setAssetType] = useState(initialAssetType);
   const [parentAssetId, setParentAssetId] = useState("");
   const [searchParentQuery, setSearchParentQuery] = useState("");
   const [availableParentAssets, setAvailableParentAssets] = useState([]);

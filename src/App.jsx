@@ -651,6 +651,26 @@ export default function App() {
           />
 
           {/* ── 404 ─────────────────────────────────────────────────────────── */}
+          <Route
+            path="/admin/asset-requests/create"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "team"]}>
+                <DashboardLayout>
+                  <CreateAssetRequest />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/team/asset-requests/create"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "team"]}>
+                <DashboardLayout>
+                  <CreateAssetRequest />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>

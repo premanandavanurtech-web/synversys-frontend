@@ -247,6 +247,20 @@ const UrgencyChip = ({ urgency }) => {
   );
 };
 
+const getRequestAssetName = (request) => {
+  const fromDescription =
+    request?.description?.match(/Asset creation request for\s+(.+)$/i)?.[1];
+
+  return (
+    request?.assetId?.name ||
+    request?.assetId?.assetName ||
+    request?.proposedAssetData?.assetName ||
+    request?.assetName ||
+    fromDescription ||
+    "Unnamed Asset"
+  );
+};
+
 const assetStatusColor = (s) =>
   ({
     Available: T.green,
@@ -265,7 +279,13 @@ const SlideUp = React.forwardRef(function SlideUp(props, ref) {
 // ──────────────────────────────────────────────────────────────────────────────
 // EMBEDDED ADD ASSET MODAL
 // ──────────────────────────────────────────────────────────────────────────────
-function AddAssetModal({ open, onClose, onAssetCreated }) {
+function AddAssetModal({
+  open,
+  onClose,
+  onAssetCreated,
+  defaultAssetType = "parent",
+  defaultSerialNumber = "",
+}) {
   const [AddNewAsset, setAddNewAsset] = useState(null);
 
   useEffect(() => {
@@ -298,7 +318,7 @@ function AddAssetModal({ open, onClose, onAssetCreated }) {
       {/* ── Slim top bar with just a close button ── */}
       <Box
         sx={{
-          display: "flex",
+          display: "none",
           alignItems: "center",
           justifyContent: "space-between",
           px: 3,
@@ -355,7 +375,11 @@ function AddAssetModal({ open, onClose, onAssetCreated }) {
       <Box sx={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
         {open && AddNewAsset ? (
           <AddNewAsset
+            key={`${defaultAssetType}-${defaultSerialNumber}`}
             embeddedMode
+            defaultAssetType={defaultAssetType}
+            defaultSerialNumber={defaultSerialNumber}
+            onEmbeddedClose={onClose}
             onEmbeddedSuccess={(newAsset) => {
               onAssetCreated(newAsset);
               onClose();
@@ -851,10 +875,12 @@ function RequestCardItem({ r, onOpen, onChild, onLinkAsset }) {
         })
       : "—";
 
-  const assetName =
-    r.assetId?.name || r.assetId?.assetName || "Unnamed Asset";
+  const assetName = getRequestAssetName(r);
   const assetTag =
-    r.assetId?.assetTag || r.assetId?.serialNumber || r.assetId?._id?.slice(-8);
+    r.assetId?.assetTag ||
+    r.assetId?.serialNumber ||
+    r.proposedAssetData?.serialNumber ||
+    r.assetId?._id?.slice(-8);
 
   return (
     <RequestCard>
@@ -1034,7 +1060,10 @@ export default function AssetRequests() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { fetchRequests, loading, isAdmin } = useAssetRequest();
-  const hideCreateRequest = user?.role === "admin";
+  const requestCreatePath =
+    user?.role === "admin"
+      ? "/admin/asset-requests/create"
+      : "/team/asset-requests/create";
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -1070,6 +1099,9 @@ export default function AssetRequests() {
 
   const [createParentOpen, setCreateParentOpen] = useState(false);
   const [createChildOpen, setCreateChildOpen] = useState(false);
+  const [assetFormOpen, setAssetFormOpen] = useState(false);
+  const [assetFormType, setAssetFormType] = useState("parent");
+  const [assetFormSerial, setAssetFormSerial] = useState("");
   const [linkAssetOpen, setLinkAssetOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
 
@@ -1077,6 +1109,15 @@ export default function AssetRequests() {
 
   const showSnack = (msg, sev = "success") =>
     setSnack({ open: true, message: msg, severity: sev });
+
+  const makeSerialNumber = (type) =>
+    `${type === "child" ? "CA" : "PA"}_${Date.now().toString().slice(-8)}`;
+
+  const openAssetForm = (type) => {
+    setAssetFormType(type);
+    setAssetFormSerial(makeSerialNumber(type));
+    setAssetFormOpen(true);
+  };
 
   const loadRequests = useCallback(async () => {
     try {
@@ -1153,7 +1194,9 @@ export default function AssetRequests() {
   // Apply the Parent/Child tab on top of whatever the server returned.
   // (Server-side `filters.type` filter still applies separately via the Type select.)
   const tabFiltered = requests.filter((r) =>
-    requestKindTab === "child" ? !!r.isChildRequest : !r.isChildRequest,
+    requestKindTab === "child"
+      ? r.assetType === "child" || !!r.isChildRequest
+      : r.assetType === "parent" || (!r.assetType && !r.isChildRequest),
   );
 
   const sorted = [...tabFiltered].sort((a, b) => {
@@ -1162,8 +1205,13 @@ export default function AssetRequests() {
     return sortOrder === "asc" ? (av > bv ? 1 : -1) : av < bv ? 1 : -1;
   });
 
-  const parentCount = requests.filter((r) => !r.isChildRequest).length;
-  const childCount = requests.filter((r) => r.isChildRequest).length;
+  const parentCount = requests.filter(
+    (r) => r.assetType === "parent" || (!r.assetType && !r.isChildRequest),
+  ).length;
+  const childCount = requests.filter(
+    (r) => r.assetType === "child" || r.isChildRequest,
+  ).length;
+  const requestVerb = user?.role === "team" ? "Sent" : "Received";
 
   const statDefs = [
     {
@@ -1278,13 +1326,13 @@ export default function AssetRequests() {
           titleColor={T.text}
           subtitleColor={T.textMuted}
         />
-        {!hideCreateRequest && (
+        {(
           <Stack direction="row" spacing={1.5} flexWrap="wrap">
             <Button
               variant="contained"
               size="small"
               startIcon={<Add sx={{ fontSize: 17 }} />}
-              onClick={() => setCreateParentOpen(true)}
+              onClick={() => openAssetForm("parent")}
               sx={{
                 borderRadius: 1,
                 textTransform: "none",
@@ -1294,7 +1342,28 @@ export default function AssetRequests() {
                 boxShadow: "0 2px 8px rgba(10,97,87,0.25)",
               }}
             >
-              New Request
+              Add Asset
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<Add sx={{ fontSize: 17 }} />}
+              onClick={() => openAssetForm("child")}
+              sx={{
+                borderRadius: 1,
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: "0.82rem",
+                borderColor: T.teal,
+                color: T.teal,
+                bgcolor: T.tealLight,
+                "&:hover": {
+                  borderColor: T.tealDark,
+                  bgcolor: T.tealLight,
+                },
+              }}
+            >
+              Add Child Asset
             </Button>
           </Stack>
         )}
@@ -1378,8 +1447,8 @@ export default function AssetRequests() {
         }}
       >
         {[
-          { value: "parent", label: "Parent Asset Add Request", count: parentCount },
-          { value: "child", label: "Child Asset Add Request", count: childCount },
+          { value: "parent", label: `${requestVerb} Parent Asset Request`, count: parentCount },
+          { value: "child", label: `${requestVerb} Child Asset Request`, count: childCount },
         ].map((t) => (
           <Tab
             key={t.value}
@@ -1522,6 +1591,22 @@ export default function AssetRequests() {
         onClose={() => setCreateParentOpen(false)}
         onSuccess={(msg) => {
           showSnack(msg);
+          loadRequests();
+        }}
+      />
+
+      <AddAssetModal
+        open={assetFormOpen}
+        onClose={() => setAssetFormOpen(false)}
+        defaultAssetType={assetFormType}
+        defaultSerialNumber={assetFormSerial}
+        onAssetCreated={() => {
+          setAssetFormOpen(false);
+          showSnack(
+            assetFormType === "child"
+              ? "Child asset request sent to admin"
+              : "Asset request sent to admin",
+          );
           loadRequests();
         }}
       />

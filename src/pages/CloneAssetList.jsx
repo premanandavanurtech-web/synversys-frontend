@@ -96,6 +96,17 @@ const StatusBadge = ({ status = "" }) => {
   );
 };
 
+const isCloneAssetRecord = (asset) => {
+  const name = String(asset?.assetName || "").trim().toLowerCase();
+  return (
+    asset?.isClone === true ||
+    !!asset?.clonedFrom ||
+    name.endsWith("- clone") ||
+    name.endsWith("clone") ||
+    name.endsWith("_copy")
+  );
+};
+
 // ── Asset Card — faithful to screenshot ──────────────────────────────────────
 const AssetCard = ({ asset, onClone }) => {
   const canClone =
@@ -269,17 +280,19 @@ export default function CloneAssets() {
   }, [fetchAssets]);
 
   // Categories
+  const clonedAssets = (assets || []).filter(isCloneAssetRecord);
+
   const allCategories = [
     "All",
     ...new Set(
-      (assets || [])
+      clonedAssets
         .map((a) => a.assetCategoryId?.name || a.assetCategory)
         .filter(Boolean),
     ),
   ];
 
   // Filter
-  const filteredAssets = (assets || []).filter((asset) => {
+  const filteredAssets = clonedAssets.filter((asset) => {
     const q = search.toLowerCase();
     const matchSearch =
       !search ||
@@ -370,7 +383,7 @@ export default function CloneAssets() {
                 Clone Assets
               </Typography>
               <Typography fontSize="0.78rem" color={T.text.label} mt={0.2}>
-                Select an asset to clone with all its details
+                Showing cloned assets only
               </Typography>
             </Box>
           </Stack>
@@ -478,12 +491,12 @@ export default function CloneAssets() {
           >
             <ErrorOutline sx={{ fontSize: 40, color: T.text.muted, mb: 1.5 }} />
             <Typography fontWeight={600} color={T.text.secondary} mb={0.5}>
-              No assets found
+              No cloned assets found
             </Typography>
             <Typography fontSize="0.82rem" color={T.text.muted}>
               {search || category !== "All"
                 ? "Try adjusting your search or category filter"
-                : "Create assets first to start cloning"}
+                : "No clone assets are available yet"}
             </Typography>
           </Box>
         ) : (

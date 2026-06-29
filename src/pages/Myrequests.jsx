@@ -195,8 +195,10 @@ export default function MyRequests() {
     loadMyRequests();
   }, [loadMyRequests]);
 
-  const handleCreateRequest = () => {
-    navigate("/team/asset-requests/create");
+  const handleCreateRequest = (assetType = "parent") => {
+    navigate("/team/asset-requests/create", {
+      state: { assetType, requestType: "request" },
+    });
   };
 
   const filteredRequests = requests
@@ -269,10 +271,23 @@ export default function MyRequests() {
             <Button
               variant="contained"
               startIcon={<Add />}
-              onClick={handleCreateRequest}
+              onClick={() => handleCreateRequest("parent")}
               sx={{ bgcolor: C.navy, textTransform: "none", borderRadius: 2 }}
             >
-              Add Asset Request
+              Add Asset
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Add />}
+              onClick={() => handleCreateRequest("child")}
+              sx={{
+                borderColor: C.navy,
+                color: C.navy,
+                textTransform: "none",
+                borderRadius: 2,
+              }}
+            >
+              Add Child Asset
             </Button>
           </Stack>
         </Stack>
@@ -398,10 +413,24 @@ export default function MyRequests() {
               <Button
                 variant="contained"
                 startIcon={<Add />}
-                onClick={handleCreateRequest}
+                onClick={() => handleCreateRequest("parent")}
                 sx={{ mt: 1, bgcolor: C.navy, textTransform: "none" }}
               >
-                Create Your First Request
+                Add Asset
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Add />}
+                onClick={() => handleCreateRequest("child")}
+                sx={{
+                  mt: 1,
+                  ml: 1,
+                  borderColor: C.navy,
+                  color: C.navy,
+                  textTransform: "none",
+                }}
+              >
+                Add Child Asset
               </Button>
             </Paper>
           ) : (

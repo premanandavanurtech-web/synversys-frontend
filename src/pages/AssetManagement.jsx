@@ -169,9 +169,37 @@ const getSearchText = (asset) =>
     .join(" ")
     .toLowerCase();
 
+const isChildAssetRecord = (asset) => {
+  const assetId = norm(asset?.assetId);
+  const serialNumber = norm(asset?.serialNumber);
+  const assetName = norm(asset?.assetName);
+
+  return (
+    norm(asset?.assetType) === "child" ||
+    !!asset?.parentAssetId ||
+    assetId.startsWith("ca-") ||
+    assetId.startsWith("ca_") ||
+    serialNumber.startsWith("ca-") ||
+    serialNumber.startsWith("ca_") ||
+    assetName.includes("child")
+  );
+};
+
+const isCloneAssetRecord = (asset) => {
+  const name = norm(asset?.assetName);
+  return (
+    asset?.isClone === true ||
+    !!asset?.clonedFrom ||
+    name.endsWith("- clone") ||
+    name.endsWith("clone") ||
+    name.endsWith("_copy")
+  );
+};
+
 // ── Asset Card — matches screenshot cards exactly ────────────────────────────
 const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
   const canClone = !asset.isClone && asset.canBeCloned !== false;
+  const isChildAsset = isChildAssetRecord(asset);
 
   const formatDate = (d) => {
     if (!d) return "—";
@@ -219,9 +247,40 @@ const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
             sx={{ lineHeight: 1.3, pr: 1, flex: 1 }}
           >
             {asset.assetName}
+            {isChildAsset && (
+              <Box
+                component="span"
+                sx={{
+                  ml: 0.75,
+                  color: T.brand,
+                  fontWeight: 800,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                (child)
+              </Box>
+            )}
           </Typography>
           <StatusPill status={asset.status} />
         </Stack>
+        <Box
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            px: 1,
+            py: 0.35,
+            mb: 1.25,
+            borderRadius: "6px",
+            bgcolor: isChildAsset ? "#e6f4f2" : "#eef6ff",
+            color: isChildAsset ? T.brand : "#1d4ed8",
+            fontSize: "0.68rem",
+            fontWeight: 800,
+            textTransform: "uppercase",
+            letterSpacing: "0.03em",
+          }}
+        >
+          {isChildAsset ? "Child Asset" : "Parent Asset"}
+        </Box>
 
         {/* Location */}
         <Stack direction="row" alignItems="center" spacing={0.5} mb={2.5}>
@@ -593,6 +652,7 @@ export default function AssetManagement() {
   const visibleAssets = useMemo(() => {
     const searchTerm = norm(debouncedSearch);
     return assets.filter((a) => {
+      if (isCloneAssetRecord(a)) return false;
       const searchOk = !searchTerm || getSearchText(a).includes(searchTerm);
       const statusOk =
         !statusFilter || norm(a.status) === norm(statusFilter);
@@ -626,7 +686,7 @@ export default function AssetManagement() {
       return;
     }
     setSelectedAsset(asset);
-    setCloneName(`${asset.assetName} — Clone`);
+    setCloneName(`${asset.assetName} - Clone`);
     setCloneLocation(asset.currentLocation || "");
     setDialogError("");
     setCloneOpen(true);
@@ -1187,7 +1247,45 @@ export default function AssetManagement() {
                             color={T.text.primary}
                           >
                             {asset.assetName}
+                            {isChildAssetRecord(asset) && (
+                              <Box
+                                component="span"
+                                sx={{
+                                  ml: 0.75,
+                                  color: T.brand,
+                                  fontWeight: 800,
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                (child)
+                              </Box>
+                            )}
                           </Typography>
+                          <Box
+                            component="span"
+                            sx={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              mt: 0.5,
+                              px: 0.75,
+                              py: 0.2,
+                              borderRadius: "5px",
+                              bgcolor: isChildAssetRecord(asset)
+                                ? "#e6f4f2"
+                                : "#eef6ff",
+                              color: isChildAssetRecord(asset)
+                                ? T.brand
+                                : "#1d4ed8",
+                              fontSize: "0.58rem",
+                              fontWeight: 800,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.03em",
+                            }}
+                          >
+                            {isChildAssetRecord(asset)
+                              ? "Child Asset"
+                              : "Parent Asset"}
+                          </Box>
                           {asset.isClone && (
                             <Typography
                               sx={{

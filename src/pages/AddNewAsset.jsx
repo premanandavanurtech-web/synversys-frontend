@@ -159,6 +159,8 @@ const dropdownMenuProps = {
 const normalizePostalCode = (value) =>
   String(value ?? "").replace(/\D/g, "").slice(0, 6);
 const isValidPostalCode = (value) => value === "" || /^\d{6}$/.test(value);
+const makeDefaultSerialNumber = (assetType = "parent") =>
+  `${assetType === "child" ? "CA" : "PA"}_${Date.now().toString().slice(-8)}`;
 
 const Label = ({ children, required }) => (
   <Box sx={{ mb: 0.75 }}>
@@ -568,7 +570,14 @@ function QuickCategoryDialog({
   );
 }
 
-export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = null }) {
+export default function AddNewAsset({
+  embeddedMode = false,
+  onEmbeddedSuccess = null,
+  onEmbeddedClose = null,
+  defaultAssetType = "parent",
+  defaultParentAssetId = null,
+  defaultSerialNumber = "",
+}) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
@@ -591,6 +600,8 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
   const isTeam = user?.role === "team";
   const canEdit = isAdmin || isTeam;
   const currentUserId = user?._id || user?.id;
+  const formAssetType = defaultAssetType === "child" ? "child" : "parent";
+  const formAssetLabel = formAssetType === "child" ? "Child Asset" : "Parent Asset";
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -603,7 +614,7 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
   const [formData, setFormData] = useState({
     assetName: "",
     description: "",
-    serialNumber: "",
+    serialNumber: defaultSerialNumber || makeDefaultSerialNumber(formAssetType),
     currentLocation: "",
     customPhysicalAddress: {
       streetAddress: "",
@@ -817,6 +828,9 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
 
       const payload = {
         assetName: formData.assetName.trim(),
+        assetType: defaultAssetType === "child" ? "child" : "parent",
+        parentAssetId:
+          defaultAssetType === "child" ? defaultParentAssetId || undefined : undefined,
         description: formData.description.trim(),
         serialNumber: formData.serialNumber.trim() || undefined,
 
@@ -889,7 +903,7 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
 
       const res = await createAsset(payload);
       if (res?.success) {
-        toast("Asset created successfully!");
+        toast(res?.data?.message || "Asset created successfully!");
         if (embeddedMode && onEmbeddedSuccess) {
           const newAsset = res.asset || res.data || null;
           setTimeout(() => onEmbeddedSuccess(newAsset), 900);
@@ -993,6 +1007,14 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
     Reserved: "#8b5cf6",
   };
 
+  const closeForm = () => {
+    if (embeddedMode && onEmbeddedClose) {
+      onEmbeddedClose();
+      return;
+    }
+    navigate("/admin/assets");
+  };
+
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: T.bg }}>
       <Box
@@ -1014,7 +1036,7 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
         >
           <Stack direction="row" alignItems="center" spacing={1.5}>
             <IconButton
-              onClick={() => navigate("/admin/assets")}
+              onClick={closeForm}
               sx={{
                 bgcolor: alpha(T.brandPrimary, 0.08),
                 color: T.brandPrimary,
@@ -1032,15 +1054,34 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
                   color: T.text.primary,
                 }}
               >
-                Add New Asset
+                Add {formAssetLabel}
               </Typography>
+              <Chip
+                size="small"
+                label={formAssetLabel}
+                sx={{
+                  mt: 0.75,
+                  height: 24,
+                  borderRadius: T.radius.sm,
+                  bgcolor:
+                    formAssetType === "child"
+                      ? alpha(T.success, 0.12)
+                      : T.brandLight,
+                  color:
+                    formAssetType === "child"
+                      ? T.success
+                      : T.brandPrimary,
+                  fontWeight: 700,
+                  fontSize: "0.7rem",
+                }}
+              />
               <Typography
                 sx={{ fontSize: "0.7rem", color: T.text.muted, mt: 0.25 }}
               >
                 {isAdmin
-                  ? "Complete all required fields to register a new asset"
+                  ? `Complete all required fields to register a ${formAssetLabel.toLowerCase()}`
                   : isTeam
-                    ? "Fill in the details to submit a new asset"
+                    ? `Fill in the details to submit a ${formAssetLabel.toLowerCase()}`
                     : "Viewing asset form in read-only mode"}
               </Typography>
             </Box>
@@ -1049,7 +1090,7 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
             <Stack direction="row" spacing={1}>
               <Button
                 variant="outlined"
-                onClick={() => navigate("/admin/assets")}
+                onClick={closeForm}
                 sx={{
                   textTransform: "none",
                   borderRadius: T.radius.md,
@@ -1167,7 +1208,11 @@ export default function AddNewAsset({ embeddedMode = false, onEmbeddedSuccess = 
                   <TextField
                     fullWidth
                     size="small"
-                    placeholder="SN-20240001"
+                    placeholder={
+                      defaultAssetType === "child"
+                        ? "CA_20240001"
+                        : "PA_20240001"
+                    }
                     value={formData.serialNumber}
                     onChange={(e) => fi("serialNumber", e.target.value)}
                     disabled={!canEdit}
