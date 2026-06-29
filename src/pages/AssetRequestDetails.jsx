@@ -46,6 +46,7 @@ import {
   DoneAll,
   ContentCopy,
   ChildCare,
+  Visibility,
   Email,
   AccountTree,
   Person,
@@ -781,6 +782,101 @@ function extractRequestData(responseData) {
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────────
+const getLinkedAssetId = (asset) => {
+  const raw = asset?.assetId || asset?.asset || asset;
+  return typeof raw === "string" ? raw : raw?._id || raw?.id;
+};
+
+const getLinkedAssetName = (asset) => {
+  const raw = asset?.assetId || asset?.asset || asset;
+  if (raw && typeof raw === "object") {
+    return raw.name || raw.assetName || raw.serialNumber || raw.assetTag;
+  }
+  return asset?.assetName || asset?.name;
+};
+
+const CompactLinkRow = ({
+  icon,
+  title,
+  subtitle,
+  chip,
+  color = C.blue,
+  bg = C.blueBg,
+  onView,
+}) => (
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      gap: 1,
+      py: 0.85,
+      "& + &": { borderTop: `1px dashed ${C.border}` },
+    }}
+  >
+    <Box
+      sx={{
+        width: 28,
+        height: 28,
+        borderRadius: 1.5,
+        bgcolor: bg,
+        color,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      {React.cloneElement(icon, { sx: { fontSize: 14 } })}
+    </Box>
+    <Box sx={{ minWidth: 0, flex: 1 }}>
+      <Typography
+        sx={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: C.text,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {title}
+      </Typography>
+      {subtitle && (
+        <Typography
+          sx={{
+            fontSize: 10.5,
+            color: C.textMuted,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {subtitle}
+        </Typography>
+      )}
+    </Box>
+    {chip}
+    {onView && (
+      <Tooltip title="View details">
+        <IconButton
+          size="small"
+          onClick={onView}
+          sx={{
+            width: 28,
+            height: 28,
+            borderRadius: 1.5,
+            bgcolor: "#f1f5f9",
+            flexShrink: 0,
+            "&:hover": { bgcolor: "#e2e8f0" },
+          }}
+        >
+          <Visibility sx={{ fontSize: 15, color: C.textSub }} />
+        </IconButton>
+      </Tooltip>
+    )}
+  </Box>
+);
+
 export default function AssetRequestDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -909,7 +1005,7 @@ export default function AssetRequestDetails() {
     setSubmitting(true);
     try {
       await linkAsset(id, childAssetId, relationshipType);
-      showSnack("Asset linked successfully");
+      showSnack("Asset linked successfully!");
       setLinkOpen(false);
       await fetchRequest();
     } catch (err) {
@@ -1806,14 +1902,99 @@ export default function AssetRequestDetails() {
                 </InfoRow>
               )}
               <InfoRow label="Children">
-                <Typography sx={{ fontWeight: 700, fontSize: 12.5 }}>
-                  {request.childRequests?.length || 0}
-                </Typography>
+                <Stack spacing={0.5}>
+                  <Typography sx={{ fontWeight: 700, fontSize: 12.5 }}>
+                    {request.childRequests?.length || 0}
+                  </Typography>
+                  {!!request.childRequests?.length && (
+                    <Box>
+                      {request.childRequests.map((child, idx) => {
+                        const childId =
+                          typeof child === "string" ? child : child?._id;
+                        const childType =
+                          typeof child === "object" ? child.requestType : null;
+                        const childStatus =
+                          typeof child === "object" ? child.status : null;
+                        return (
+                          <CompactLinkRow
+                            key={childId || idx}
+                            icon={<ChildCare />}
+                            title={
+                              childType
+                                ? childType.replace(/_/g, " ")
+                                : "Child Request"
+                            }
+                            subtitle={childId ? `#${childId.slice(-12)}` : null}
+                            color={C.blue}
+                            bg={C.blueBg}
+                            chip={
+                              childStatus ? (
+                                <StatusChip status={childStatus} />
+                              ) : null
+                            }
+                            onView={
+                              childId
+                                ? () =>
+                                    navigate(`/admin/asset-requests/${childId}`)
+                                : null
+                            }
+                          />
+                        );
+                      })}
+                    </Box>
+                  )}
+                </Stack>
               </InfoRow>
               <InfoRow label="Linked Assets" noBorder>
-                <Typography sx={{ fontWeight: 700, fontSize: 12.5 }}>
-                  {request.metadata?.childAssets?.length || 0}
-                </Typography>
+                <Stack spacing={0.5}>
+                  <Typography sx={{ fontWeight: 700, fontSize: 12.5 }}>
+                    {request.metadata?.childAssets?.length || 0}
+                  </Typography>
+                  {!!request.metadata?.childAssets?.length && (
+                    <Box>
+                      {request.metadata.childAssets.map((asset, idx) => {
+                        const linkedAssetId = getLinkedAssetId(asset);
+                        const linkedAssetName =
+                          getLinkedAssetName(asset) || "Linked Asset";
+                        return (
+                          <CompactLinkRow
+                            key={linkedAssetId || idx}
+                            icon={<Inventory2 />}
+                            title={linkedAssetName}
+                            subtitle={
+                              linkedAssetId
+                                ? `#${linkedAssetId.slice(-12)}`
+                                : null
+                            }
+                            color={C.green}
+                            bg={C.greenBg}
+                            chip={
+                              asset?.relationshipType ? (
+                                <Chip
+                                  label={asset.relationshipType}
+                                  size="small"
+                                  sx={{
+                                    height: 21,
+                                    fontSize: 10.5,
+                                    textTransform: "capitalize",
+                                  }}
+                                />
+                              ) : null
+                            }
+                            onView={
+                              linkedAssetId
+                                ? () =>
+                                    navigate(
+                                      `/admin/assets/view/${linkedAssetId}`
+                                    )
+                                : null
+                            }
+                          />
+                        );
+                      })}
+                    </Box>
+                  )}
+                </Stack>
               </InfoRow>
             </SectionCard>
 
@@ -1933,13 +2114,59 @@ export default function AssetRequestDetails() {
       <Snackbar
         open={snack.open}
         autoHideDuration={4000}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
         onClose={() => setSnack((p) => ({ ...p, open: false }))}
+        sx={{
+          bottom: { xs: 20, sm: 28 },
+          "& .MuiSnackbarContent-root": {
+            p: 0,
+            bgcolor: "transparent",
+            boxShadow: "none",
+          },
+        }}
       >
         <Alert
           severity={snack.severity}
           onClose={() => setSnack((p) => ({ ...p, open: false }))}
-          sx={{ borderRadius: 2 }}
+          variant="filled"
+          sx={{
+            minWidth: { xs: "calc(100vw - 48px)", sm: 266 },
+            maxWidth: "calc(100vw - 32px)",
+            borderRadius: 2,
+            px: 2,
+            py: 1.2,
+            alignItems: "center",
+            fontSize: 14,
+            fontWeight: 600,
+            boxShadow: "0 12px 28px rgba(15, 23, 42, 0.14)",
+            ...(snack.severity === "success" && {
+              bgcolor: "#ecfdf5",
+              color: "#14532d",
+              "& .MuiAlert-icon": { color: "#16a34a" },
+              "& .MuiAlert-action .MuiIconButton-root": { color: "#14532d" },
+            }),
+            ...(snack.severity === "error" && {
+              bgcolor: "#fef2f2",
+              color: "#991b1b",
+              "& .MuiAlert-icon": { color: "#dc2626" },
+              "& .MuiAlert-action .MuiIconButton-root": { color: "#991b1b" },
+            }),
+            "& .MuiAlert-icon": {
+              mr: 1.25,
+              p: 0,
+              fontSize: 24,
+            },
+            "& .MuiAlert-message": {
+              p: 0,
+              lineHeight: 1.4,
+            },
+            "& .MuiAlert-action": {
+              alignItems: "center",
+              p: 0,
+              pl: 1.5,
+              mr: -0.5,
+            },
+          }}
         >
           {snack.message}
         </Alert>

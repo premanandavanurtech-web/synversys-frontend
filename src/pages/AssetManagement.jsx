@@ -118,6 +118,11 @@ const STATUS_FILTER_OPTIONS = [
   "Reserved",
 ];
 
+const ASSET_TYPE_FILTER_OPTIONS = [
+  { label: "Parent Asset", value: "parent" },
+  { label: "Child Asset", value: "child" },
+];
+
 const StatusPill = ({ status = "" }) => {
   const cfg = STATUS_CFG[status] || { bg: "#6b7280", color: "#fff" };
   return (
@@ -549,6 +554,7 @@ export default function AssetManagement() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState(""); // stores category NAME
   const [statusFilter, setStatusFilter] = useState("");
+  const [assetTypeFilter, setAssetTypeFilter] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(12);
   const [orderBy, setOrderBy] = useState("createdAt");
@@ -658,13 +664,19 @@ export default function AssetManagement() {
         !statusFilter || norm(a.status) === norm(statusFilter);
       const categoryOk =
         !categoryFilter || norm(getAssetCategoryName(a)) === norm(categoryFilter);
-      return searchOk && statusOk && categoryOk;
+      const assetTypeOk =
+        !assetTypeFilter ||
+        (assetTypeFilter === "child"
+          ? isChildAssetRecord(a)
+          : !isChildAssetRecord(a));
+      return searchOk && statusOk && categoryOk && assetTypeOk;
     });
-  }, [assets, debouncedSearch, statusFilter, categoryFilter]);
+  }, [assets, debouncedSearch, statusFilter, categoryFilter, assetTypeFilter]);
 
   const clearFilters = () => {
     setCategoryFilter("");
     setStatusFilter("");
+    setAssetTypeFilter("");
     setSearch("");
     setDebouncedSearch("");
     setPage(0);
@@ -777,7 +789,12 @@ export default function AssetManagement() {
     );
   };
 
-  const hasFilters = !!(categoryFilter || statusFilter || debouncedSearch);
+  const hasFilters = !!(
+    categoryFilter ||
+    statusFilter ||
+    assetTypeFilter ||
+    debouncedSearch
+  );
   const stats = assetStats || {};
 
   const headCellSx = {
@@ -930,7 +947,7 @@ export default function AssetManagement() {
                   value=""
                   sx={{ fontSize: "0.85rem", color: T.text.secondary }}
                 >
-                  Category ▾
+                  Category 
                 </MenuItem>
                 {categories.length === 0 ? (
                   <MenuItem disabled sx={{ fontSize: "0.8rem" }}>
@@ -947,6 +964,42 @@ export default function AssetManagement() {
                     </MenuItem>
                   ))
                 )}
+              </Select>
+            </FormControl>
+
+            {/* Asset type dropdown */}
+            <FormControl size="small" sx={{ minWidth: 160, flexShrink: 0 }}>
+              <Select
+                value={assetTypeFilter}
+                onChange={(e) => {
+                  setAssetTypeFilter(e.target.value);
+                  setPage(0);
+                }}
+                displayEmpty
+                sx={{
+                  borderRadius: T.radius.input,
+                  fontSize: "0.85rem",
+                  bgcolor: "#f8fafc",
+                  "& fieldset": { borderColor: T.border },
+                  "&:hover fieldset": { borderColor: "#cbd5e1" },
+                  "& .MuiSelect-select": { py: "8.5px" },
+                }}
+              >
+                <MenuItem
+                  value=""
+                  sx={{ fontSize: "0.85rem", color: T.text.secondary }}
+                >
+                  Asset Type 
+                </MenuItem>
+                {ASSET_TYPE_FILTER_OPTIONS.map((type) => (
+                  <MenuItem
+                    key={type.value}
+                    value={type.value}
+                    sx={{ fontSize: "0.85rem" }}
+                  >
+                    {type.label}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
 
@@ -972,7 +1025,7 @@ export default function AssetManagement() {
                   value=""
                   sx={{ fontSize: "0.85rem", color: T.text.secondary }}
                 >
-                  Status ▾
+                 Asset Status 
                 </MenuItem>
                 {STATUS_FILTER_OPTIONS.map((s) => (
                   <MenuItem key={s} value={s} sx={{ fontSize: "0.85rem" }}>
