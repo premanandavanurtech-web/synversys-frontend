@@ -1112,7 +1112,10 @@ const SuperAdminDashboard = ({ data, loading }) => {
     {
       icon: TaskAltIcon,
       title: "Assignments",
-      value: fmt(num(summary.pendingAssignments) + num(summary.completedAssignments)),
+      value: fmt(
+        summary.totalAssignments ??
+          num(summary.pendingAssignments) + num(summary.completedAssignments),
+      ),
       sub: `${fmt(summary.pendingAssignments)} pending · ${fmt(summary.completedAssignments)} done`,
     },
   ];

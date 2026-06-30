@@ -149,7 +149,7 @@ const STATUS_CFG = {
   pending:     { label: "Pending",     color: "#f59e0b", bg: "#fffbeb", icon: HourglassTopIcon },
   in_progress: { label: "In Progress", color: "#3b82f6", bg: "#eff6ff", icon: PendingActionsIcon },
   submitted:   { label: "Submitted",   color: "#134b7c", bg: "#f5f3ff", icon: AssignmentIcon },
-  completed:   { label: "Completed",   color: "#10b981", bg: "#ecfdf5", icon: CheckCircleIcon },
+  completed:   { label: "Submitted",   color: "#10b981", bg: "#ecfdf5", icon: CheckCircleIcon },
   approved:    { label: "Approved",    color: "#10b981", bg: "#ecfdf5", icon: CheckCircleIcon },
   rejected:    { label: "Rejected",    color: "#ef4444", bg: "#fef2f2", icon: ErrorOutlineIcon },
   overdue:     { label: "Overdue",     color: "#ef4444", bg: "#fef2f2", icon: WarningAmberIcon },
@@ -687,7 +687,7 @@ export default function AssignedChecklist() {
   const statCards = useMemo(() => [
     { label: "Total Assignments", value: stats?.total ?? 0,                                                              icon: AssignmentIcon,   color: "#084d68", trend: "+12%", subtitle: "All active records" },
     { label: "Pending",           value: stats?.byStatus?.pending ?? 0,                                                  icon: PendingActionsIcon, color: "#f59e0b", trend: "+5%",  subtitle: "Awaiting action" },
-    { label: "Completed",         value: (stats?.byStatus?.completed ?? 0) + (stats?.byStatus?.approved ?? 0),          icon: CheckCircleIcon,  color: "#10b981", trend: "+8%",  subtitle: "Completed + Approved" },
+    { label: "Submitted",         value: stats?.byStatus?.submitted ?? 0,                                                icon: CheckCircleIcon,  color: "#10b981", trend: "+8%",  subtitle: "Submitted for review" },
     { label: "Overdue",           value: stats?.overdue ?? 0,                                                            icon: WarningAmberIcon, color: "#ef4444", trend: "+2%",  subtitle: "Past due date" },
   ], [stats]);
 

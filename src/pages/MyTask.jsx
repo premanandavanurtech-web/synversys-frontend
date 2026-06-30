@@ -99,8 +99,8 @@ const PRIORITY_CFG = {
 const STATUS_CFG = {
   pending:     { label: "Pending",      color: "#64748b", bg: "#f1f5f9", border: "#e2e8f0" },
   in_progress: { label: "In Progress",  color: "#0d3d52", bg: "#e6f3f8", border: "#bfe0ec" },
-  submitted:   { label: "Under Review", color: "#6b7280", bg: "#f3f4f6", border: "#e5e7eb" },
-  completed:   { label: "Completed",    color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
+  submitted:   { label: "Submitted",    color: "#6b7280", bg: "#f3f4f6", border: "#e5e7eb" },
+  completed:   { label: "Submitted",    color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
   approved:    { label: "Approved",     color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
   rejected:    { label: "Rejected",     color: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
 };
@@ -147,15 +147,18 @@ const PRIORITY_PILL = {
 const STATUS_PILL = {
   pending:     { label: "Pending",      bg: "#f1f5f9", color: "#64748b", border: "#e2e8f0" },
   in_progress: { label: "In Progress",  bg: "#dbeafe", color: "#1d4ed8", border: "#bfdbfe" },
-  submitted:   { label: "Under Review", bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb" },
-  completed:   { label: "Completed",    bg: "#dcfce7", color: "#15803d", border: "#bbf7d0" },
+  submitted:   { label: "Submitted",    bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb" },
+  completed:   { label: "Submitted",    bg: "#dcfce7", color: "#15803d", border: "#bbf7d0" },
   approved:    { label: "Approved",     bg: "#dcfce7", color: "#15803d", border: "#bbf7d0" },
   rejected:    { label: "Rejected",     bg: "#fee2e2", color: "#dc2626", border: "#fecaca" },
 };
 
+const getTaskStatus = (task) =>
+  (task?.myStatus || task?.status || "pending").toLowerCase();
+
 const   TaskCard = ({ task, onView }) => {
   const prKey = task.priority?.toLowerCase() || "medium";
-  const stKey = task.status?.toLowerCase() || "pending";
+  const stKey = getTaskStatus(task);
   const pPill = PRIORITY_PILL[prKey] || PRIORITY_PILL.medium;
   const sPill = STATUS_PILL[stKey]   || STATUS_PILL.pending;
 
@@ -167,6 +170,7 @@ const   TaskCard = ({ task, onView }) => {
   const isOverdue     = dueDate && dueDate < new Date() && !["completed", "approved"].includes(stKey);
   const completionRate= task.checklistData?.[0]?.completionRate ?? task.completionRate ?? 0;
   const isInProgress  = stKey === "in_progress";
+  const isSubmitted   = ["submitted", "completed", "approved"].includes(stKey);
 
   const formattedDue = dueDate
     ? `Due: ${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`
@@ -346,14 +350,14 @@ const   TaskCard = ({ task, onView }) => {
             py: 1.15,
             fontWeight: 600,
             fontSize: "0.85rem",
-            bgcolor: "#0d3d52",
+            bgcolor: isSubmitted ? "#10b981" : "#0d3d52",
             boxShadow: "none",
             letterSpacing: "0.01em",
-            "&:hover": { bgcolor: "#0a2f40", boxShadow: "none" },
+            "&:hover": { bgcolor: isSubmitted ? "#059669" : "#0a2f40", boxShadow: "none" },
           }}
         >
           <PlayArrowIcon sx={{ fontSize: 15, mr: 0.75 }} />
-          {isInProgress ? "Continue Inspection" : "Start Inspection"}
+          {isSubmitted ? "Submitted" : isInProgress ? "Continue Inspection" : "Start Inspection"}
         </Button>
       </Box>
     </Box>
@@ -570,11 +574,32 @@ export default function MyTask() {
   const hasFilters = !!(filters.status || filters.priority || filters.date);
   const handleViewTask = (id) => navigate(`/team/task/${id}`);
 
+  const derivedStats = tasks.reduce(
+    (acc, task) => {
+      const status = getTaskStatus(task);
+      if (status === "pending") acc.pending += 1;
+      if (status === "in_progress") acc.in_progress += 1;
+
+      if (task.dueDate) {
+        const due = new Date(task.dueDate);
+        const today = new Date();
+        const sameDay =
+          due.getFullYear() === today.getFullYear() &&
+          due.getMonth() === today.getMonth() &&
+          due.getDate() === today.getDate();
+        if (sameDay) acc.due_today += 1;
+      }
+
+      return acc;
+    },
+    { pending: 0, in_progress: 0, due_today: 0 },
+  );
+
   const statValues = {
-    total:       stats?.total       ?? tasks.length,
-    pending:     stats?.pending     ?? 0,
-    in_progress: stats?.in_progress ?? 0,
-    due_today:   stats?.due_today   ?? 0,
+    total:       stats?.total       ?? pagination.total ?? tasks.length,
+    pending:     stats?.pending     ?? derivedStats.pending,
+    in_progress: stats?.in_progress ?? derivedStats.in_progress,
+    due_today:   stats?.due_today   ?? derivedStats.due_today,
   };
 
   return (
@@ -603,7 +628,30 @@ export default function MyTask() {
             </Box>
 
             {/* View Toggle — pill style matching Figma */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<CalendarTodayIcon sx={{ fontSize: 15 }} />}
+                onClick={() => setViewMode("calendar")}
+                title="My Plan of access"
+                sx={{
+                  px: 2,
+                  py: 0.85,
+                  borderRadius: 2,
+                  bgcolor: "#0f4c5c",
+                  color: "#fff",
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  boxShadow: "none",
+                  "&:hover": {
+                    bgcolor: "#0b3b48",
+                    boxShadow: "0 6px 16px rgba(15, 76, 92, 0.18)",
+                  },
+                }}
+              >
+                My POA
+              </Button>
               <Paper
                 elevation={0}
                 sx={{
