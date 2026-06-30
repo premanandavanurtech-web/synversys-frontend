@@ -572,6 +572,7 @@ const AssignmentModal = ({
     try {
       const response = await axios.get(`${API_BASE_URL}/clients`, {
         headers: getAuthHeaders(),
+        params: { status: "active", limit: 100 },
       });
       if (response.data?.success) {
         setRecipients(

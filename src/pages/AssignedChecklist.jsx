@@ -299,6 +299,23 @@ const ProgressBar = ({ value }) => {
 };
 
 // ─── Mobile Assignment Card ───────────────────────────────────────────────────
+const getAssignedToLabel = (asgn) => {
+  const admin = asgn?.assignedToAdmin;
+  if (admin) {
+    if (typeof admin === "object") {
+      return admin.customerName || admin.name || admin.email || asgn.customerName || asgn.customerEmail || "Admin";
+    }
+    return asgn.customerName || asgn.customerEmail || "Admin";
+  }
+
+  if (asgn?.customerName || asgn?.customerEmail) {
+    return asgn.customerName || asgn.customerEmail;
+  }
+
+  const teamCount = asgn?.assignedToTeamMembers?.length || 0;
+  return teamCount ? `${teamCount} member(s)` : "—";
+};
+
 const MobileAssignmentCard = ({ asgn, canManage, onView, onReassign, onDelete }) => (
   <Card sx={{ mb: 2, borderRadius: 1, border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
     <CardContent sx={{ pb: 1 }}>
@@ -316,8 +333,7 @@ const MobileAssignmentCard = ({ asgn, canManage, onView, onReassign, onDelete })
         <Grid item xs={6}>
           <Typography variant="caption" color="text.secondary" display="block">Assigned To</Typography>
           <Typography variant="body2" fontWeight={500} noWrap>
-            {asgn.assignedToAdmin?.email ??
-              (asgn.assignedToTeamMembers?.length ? `${asgn.assignedToTeamMembers.length} member(s)` : "—")}
+            {getAssignedToLabel(asgn)}
           </Typography>
         </Grid>
         <Grid item xs={6}>
@@ -553,7 +569,7 @@ export default function AssignedChecklist() {
   const fetchAdmins = useCallback(async () => {
     if (!isSuperAdmin) return;
     setAdminsLoading(true);
-    try { const res = await authRequest("GET", "/clients"); setAdmins(res?.clients ?? []); }
+    try { const res = await authRequest("GET", "/clients?status=active&limit=100"); setAdmins(res?.clients ?? []); }
     catch (err) { console.error(err); }
     finally { setAdminsLoading(false); }
   }, [authRequest, isSuperAdmin]);
@@ -884,7 +900,7 @@ export default function AssignedChecklist() {
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2" fontWeight={500}>
-                              {asgn.assignedToAdmin?.email ?? (asgn.assignedToTeamMembers?.length ? `${asgn.assignedToTeamMembers.length} member(s)` : "—")}
+                              {getAssignedToLabel(asgn)}
                             </Typography>
                           </TableCell>
                           <TableCell><DateCell date={asgn.dueDate} /></TableCell>

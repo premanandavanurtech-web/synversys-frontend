@@ -306,13 +306,44 @@ export const ClientProvider = ({ children }) => {
         const clientsData = response.data.clients || response.data.data?.clients || [];
         const paginationData = response.data.pagination || response.data.data?.pagination || {};
         const summaryData = response.data.summary || response.data.data?.summary || {};
+        let activeCustomersTotal = summaryData.activeCustomers || summaryData.active || 0;
+
+        if (!status || status === "all" || status === "active") {
+          try {
+            const activeCountParams = new URLSearchParams(queryParams);
+            activeCountParams.set("page", "1");
+            activeCountParams.set("limit", "1");
+            activeCountParams.set("status", "active");
+
+            const activeCountResponse = await axios.get(
+              `${API_BASE_URL}/clients?${activeCountParams.toString()}`,
+              {
+                headers,
+                signal: activeControllerRef.current.signal,
+              },
+            );
+
+            const activePagination =
+              activeCountResponse.data.pagination ||
+              activeCountResponse.data.data?.pagination ||
+              {};
+            activeCustomersTotal =
+              activePagination.total ?? activeCustomersTotal;
+          } catch (countError) {
+            if (!axios.isCancel(countError) && countError.name !== "CanceledError") {
+              console.warn("Failed to fetch active customer total:", countError);
+            }
+          }
+        } else {
+          activeCustomersTotal = 0;
+        }
 
         // Update stats
         dispatch({
           type: ACTION_TYPES.SET_STATS,
           payload: {
             total: summaryData.totalCustomers || summaryData.total || 0,
-            active: summaryData.activeCustomers || summaryData.active || 0,
+            active: activeCustomersTotal,
             expiringSoon: summaryData.expiringSoon || 0,
             byPlan: summaryData.byPlan || {
               free: 0,

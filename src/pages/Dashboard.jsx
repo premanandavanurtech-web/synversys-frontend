@@ -149,8 +149,15 @@ const QUICK_ACTIONS_BY_ROLE = {
 };
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-const fmt = (n) =>
-  n === undefined || n === null ? "—" : Number(n).toLocaleString("en-IN");
+const num = (n, fallback = 0) => {
+  const value = Number(n);
+  return Number.isFinite(value) ? value : fallback;
+};
+const fmt = (n) => {
+  if (n === undefined || n === null) return "—";
+  const value = Number(n);
+  return Number.isFinite(value) ? value.toLocaleString("en-IN") : "—";
+};
 const pct = (n) => `${n ?? 0}%`;
 const fmtRs = (n) => `₹${fmt(n)}`;
 
@@ -1105,7 +1112,7 @@ const SuperAdminDashboard = ({ data, loading }) => {
     {
       icon: TaskAltIcon,
       title: "Assignments",
-      value: fmt(summary.pendingAssignments + summary.completedAssignments),
+      value: fmt(num(summary.pendingAssignments) + num(summary.completedAssignments)),
       sub: `${fmt(summary.pendingAssignments)} pending · ${fmt(summary.completedAssignments)} done`,
     },
   ];
@@ -1427,9 +1434,7 @@ const AdminDashboard = ({ data, loading }) => {
     {
       icon: TaskAltIcon,
       title: "Submissions",
-      value: fmt(
-        summary.pendingSubmissions + (summary.pendingReviewsCount || 0),
-      ),
+      value: fmt(num(summary.pendingSubmissions) + num(summary.pendingReviewsCount)),
       sub: `${fmt(summary.pendingReviewsCount)} pending review`,
       accent: true,
     },
