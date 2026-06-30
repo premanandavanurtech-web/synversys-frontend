@@ -752,7 +752,7 @@ export default function MyTask() {
               />
 
               {/* More Filters */}
-              <Button
+              {/* <Button
                 size="small"
                 startIcon={<FilterListIcon sx={{ fontSize: 15 }} />}
                 sx={{
@@ -769,7 +769,7 @@ export default function MyTask() {
                 }}
               >
                 More Filters
-              </Button>
+              </Button> */}
 
               {hasFilters && (
                 <Button
