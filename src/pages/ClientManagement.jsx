@@ -609,7 +609,6 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
   const isEdit = !!client;
 
   const [tab, setTab] = useState(0);
-  const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
 
@@ -622,13 +621,11 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
     licenseLimit: 10,
     duration: 30,
     notes: "",
-    password: "",
   };
 
   useEffect(() => {
     if (open) {
       setTab(0);
-      setShowPw(false);
       setErrors({});
       setForm(
         client
@@ -641,7 +638,6 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
               licenseLimit: client.licenseLimit || 10,
               duration: 30,
               notes: client.notes || "",
-              password: "",
             }
           : blank,
       );
@@ -672,13 +668,6 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
       )
     )
       e.website = "Invalid URL";
-    if (!isEdit) {
-      if (!form.password) e.password = "Required";
-      else if (form.password.length < 8) e.password = "Min 8 chars";
-      else if (!/[A-Z]/.test(form.password)) e.password = "Needs uppercase";
-      else if (!/[a-z]/.test(form.password)) e.password = "Needs lowercase";
-      else if (!/[0-9]/.test(form.password)) e.password = "Needs number";
-    }
     setErrors(e);
     return e;
   };
@@ -692,23 +681,14 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
         validationErrors.phone ||
         validationErrors.website;
       if (hasAcc) setTab(0);
-      else if (validationErrors.password) setTab(2);
       return;
     }
     await onSave(form);
   };
 
-  const pw = form.password || "";
-  const rules = [
-    { ok: pw.length >= 8, l: "At least 8 characters" },
-    { ok: /[A-Z]/.test(pw), l: "One uppercase letter" },
-    { ok: /[a-z]/.test(pw), l: "One lowercase letter" },
-    { ok: /[0-9]/.test(pw), l: "One number" },
-  ];
-
   const TABS = isEdit
     ? ["Account info", "Plan & limits"]
-    : ["Account info", "Plan & limits", "Security"];
+    : ["Account info", "Plan & limits"];
 
   const tabHasError = (i) => {
     if (i === 0)
@@ -718,7 +698,6 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
         errors.phone ||
         errors.website
       );
-    if (i === 2) return !!errors.password;
     return false;
   };
 
@@ -898,75 +877,6 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
     </Stack>
   );
 
-  const TabSecurity = (
-    <Stack spacing={2.5} sx={{ mt: 2 }}>
-      <TextField
-        name="password"
-        label="Temporary password"
-        type={showPw ? "text" : "password"}
-        value={form.password || ""}
-        onChange={handleChange}
-        fullWidth
-        size="small"
-        required
-        error={!!errors.password}
-        helperText={errors.password}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <LockIcon sx={{ fontSize: 16, color: C.text.muted }} />
-            </InputAdornment>
-          ),
-          endAdornment: (
-            <InputAdornment position="end">
-              <IconButton
-                size="small"
-                onClick={() => setShowPw((p) => !p)}
-                edge="end"
-              >
-                {showPw ? (
-                  <VisibilityOff sx={{ fontSize: 16 }} />
-                ) : (
-                  <Visibility sx={{ fontSize: 16 }} />
-                )}
-              </IconButton>
-            </InputAdornment>
-          ),
-        }}
-        sx={inputSx(!!errors.password)}
-      />
-      {form.password && (
-        <Fade in>
-          <Box
-            sx={{
-              p: 2,
-              borderRadius: "10px",
-              bgcolor: C.surface,
-              border: `1px solid ${C.border}`,
-              display: "flex",
-              flexDirection: "column",
-              gap: 0.75,
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: "0.7rem",
-                fontWeight: 600,
-                color: C.text.secondary,
-                mb: 0.5,
-              }}
-            >
-              Password requirements:
-            </Typography>
-            {rules.map((r) => (
-              <PwRule key={r.l} ok={r.ok} label={r.l} />
-            ))}
-          </Box>
-        </Fade>
-      )}
-    </Stack>
-  );
-
   return (
     <Dialog
       open={open}
@@ -1111,7 +1021,6 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
       >
         {tab === 0 && TabAccountInfo}
         {tab === 1 && TabPlanLimits}
-        {tab === 2 && TabSecurity}
       </DialogContent>
 
       <DialogActions
@@ -1128,7 +1037,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
           <ShieldIcon sx={{ fontSize: "0.9rem", color: C.text.muted }} />
           <Typography sx={{ fontSize: "0.7rem", color: C.text.muted }}>
-            Encrypted & secure
+            Customer receives a secure Set Password email
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1.5 }}>
@@ -1377,8 +1286,17 @@ export default function ClientManagement() {
 
   const handleAddClient = async (formData) => {
   try {
-    await addClient(formData);
-    showToast("Customer created successfully!", "success");
+    await addClient({
+      customerName: formData.customerName,
+      email: formData.email,
+      phone: formData.phone,
+      website: formData.website,
+      membershipPlan: formData.membershipPlan,
+      licenseLimit: parseInt(formData.licenseLimit),
+      duration: parseInt(formData.duration),
+      notes: formData.notes,
+    });
+    showToast("Customer created. Set Password email sent.", "success");
     setModalOpen(false);
     fetchClients({ page: 1 });
   } catch (err) {

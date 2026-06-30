@@ -8,7 +8,6 @@ import React, {
   useEffect,
 } from "react";
 import { useAuth } from "./AuthContexts";
-import axios from "axios";
 
 const DashboardContext = createContext();
 
@@ -17,34 +16,6 @@ export const useDashboard = () => {
   if (!context)
     throw new Error("useDashboard must be used within a DashboardProvider");
   return context;
-};
-
-const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
-
-const createApiClient = (token) => {
-  const client = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    withCredentials: true,
-    timeout: 15000,
-  });
-
-  client.interceptors.response.use(
-    (res) => res,
-    (err) => {
-      if (err.response?.status === 401) {
-        localStorage.removeItem("token");
-        sessionStorage.removeItem("token");
-        window.location.href = "/login";
-      }
-      return Promise.reject(err);
-    },
-  );
-
-  return client;
 };
 
 // ─── Filter Helpers ───────────────────────────────────────────────────────────
@@ -108,7 +79,7 @@ export const buildFilterParams = (filters = {}) => {
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const DashboardProvider = ({ children }) => {
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, authRequest } = useAuth();
 
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -151,7 +122,6 @@ export const DashboardProvider = ({ children }) => {
       safe(setActiveFilter, filters);
 
       try {
-        const api = createApiClient(token);
         const params = new URLSearchParams();
 
         const apiParams = buildFilterParams(filters);
@@ -159,17 +129,20 @@ export const DashboardProvider = ({ children }) => {
           if (v !== undefined && v !== null) params.append(k, v);
         });
 
-        const res = await api.get(`/dashboard?${params.toString()}`, {
-          signal: abortRef.current.signal,
-        });
+        const res = await authRequest(
+          "GET",
+          `/dashboard?${params.toString()}`,
+          null,
+          { signal: abortRef.current.signal },
+        );
 
-        if (res.data?.success) {
-          safe(setDashboardData, res.data);
+        if (res?.success) {
+          safe(setDashboardData, res);
           safe(setDataLoaded, true);
-          return res.data;
+          return res;
         }
 
-        throw new Error(res.data?.message || "Failed to fetch dashboard");
+        throw new Error(res?.message || "Failed to fetch dashboard");
       } catch (err) {
         if (err.name !== "CanceledError" && err.code !== "ERR_CANCELED") {
           const msg =
@@ -182,7 +155,7 @@ export const DashboardProvider = ({ children }) => {
         safe(setLoading, false);
       }
     },
-    [isAuthenticated, token, safe],
+    [isAuthenticated, token, safe, authRequest],
   );
 
   const clearError = useCallback(() => safe(setError, null), [safe]);

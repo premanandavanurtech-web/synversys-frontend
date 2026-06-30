@@ -1354,7 +1354,7 @@ export default function ChecklistPage() {
   const userRole = user?.role;
   const isSuperAdmin = userRole === "super_admin" || userRole === "superadmin";
   const isAdmin = userRole === "admin";
-  const canCreateRequests = userRole !== "admin";
+  const canCreateRequests = ["admin", "super_admin", "superadmin", "team"].includes(userRole);
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isSmallMobile = useMediaQuery(theme.breakpoints.down("sm"));
 

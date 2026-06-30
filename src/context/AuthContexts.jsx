@@ -493,6 +493,34 @@ export const AuthProvider = ({ children }) => {
     return authStatus;
   }, [user, token]);
 
+  const tryRefreshAccessToken = useCallback(async () => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/auth/refresh-token`,
+        {},
+        {
+          withCredentials: true,
+          timeout: 10000,
+        },
+      );
+
+      if (response.data?.success && response.data?.accessToken) {
+        const newToken = response.data.accessToken;
+        localStorage.setItem("accessToken", newToken);
+        localStorage.setItem("token", newToken);
+        sessionStorage.removeItem("accessToken");
+        setToken(newToken);
+        return newToken;
+      }
+    } catch (error) {
+      console.warn(
+        "Token refresh failed:",
+        error.response?.data?.message || error.message,
+      );
+    }
+    return null;
+  }, []);
+
   const authRequest = useCallback(
     async (method, url, data = null, customConfig = {}) => {
       let currentToken = token;
@@ -511,11 +539,11 @@ export const AuthProvider = ({ children }) => {
 
       console.log(`AuthRequest: ${method.toUpperCase()} ${fullUrl}`);
 
-      try {
+      const buildConfig = (requestToken) => {
         const headers = {
           "Content-Type": "application/json",
           ...customConfig.headers,
-          Authorization: `Bearer ${currentToken}`,
+          Authorization: `Bearer ${requestToken}`,
         };
 
         if (data instanceof FormData) {
@@ -528,18 +556,23 @@ export const AuthProvider = ({ children }) => {
         const shouldAttachData =
           data !== null && (isMutating || data instanceof FormData);
 
-        const config = {
+        return {
           method: method.toLowerCase(),
           url: fullUrl,
           headers,
           withCredentials: true,
           timeout: 30000,
           ...Object.fromEntries(
-            Object.entries(customConfig).filter(([k]) => k !== "headers"),
+            Object.entries(customConfig).filter(
+              ([k]) => !["headers", "skipRefresh"].includes(k),
+            ),
           ),
           ...(shouldAttachData && { data }),
         };
+      };
 
+      try {
+        const config = buildConfig(currentToken);
         const response = await axios(config);
 
         console.log(
@@ -558,8 +591,16 @@ export const AuthProvider = ({ children }) => {
           console.error("Response status:", error.response.status);
           console.error("Response data:", error.response.data);
 
+          if (error.response.status === 401 && !customConfig.skipRefresh) {
+            const refreshedToken = await tryRefreshAccessToken();
+            if (refreshedToken) {
+              const retryResponse = await axios(buildConfig(refreshedToken));
+              return retryResponse.data;
+            }
+          }
+
           if (error.response.status === 401) {
-            console.log("Unauthorized - logging out");
+            console.log("Unauthorized - clearing auth state");
             window.dispatchEvent(new CustomEvent("auth:expired"));
             logout();
           }
@@ -568,7 +609,7 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
     },
-    [token, logout],
+    [token, logout, tryRefreshAccessToken],
   );
 
   const get = useCallback(
@@ -612,38 +653,11 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const refreshToken = useCallback(async () => {
-    try {
-      const currentToken = token || localStorage.getItem("accessToken");
-      if (!isValidToken(currentToken)) {
-        throw new Error("No valid token to refresh");
-      }
-
-      const response = await axios.post(
-        `${API_BASE_URL}/auth/refresh-token`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${currentToken}`,
-          },
-          withCredentials: true,
-          timeout: 10000,
-        },
-      );
-
-      if (response.data.success && response.data.accessToken) {
-        const newToken = response.data.accessToken;
-        localStorage.setItem("accessToken", newToken);
-        localStorage.setItem("token", newToken);
-        setToken(newToken);
-        return { success: true, token: newToken };
-      }
-      return { success: false, error: "Failed to refresh token" };
-    } catch (error) {
-      console.error("Token refresh error:", error);
-      logout();
-      return { success: false, error: error.message };
-    }
-  }, [token, logout]);
+    const newToken = await tryRefreshAccessToken();
+    if (newToken) return { success: true, token: newToken };
+    logout();
+    return { success: false, error: "Failed to refresh token" };
+  }, [tryRefreshAccessToken, logout]);
 
   const value = useMemo(
     () => ({

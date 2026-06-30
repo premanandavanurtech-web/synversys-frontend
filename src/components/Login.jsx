@@ -1128,7 +1128,7 @@ export default function LoginPage() {
                         >
                           Password
                         </Typography>
-                        {/* <Link
+                        <Link
                           component="button"
                           type="button"
                           onClick={() => setForgotModalOpen(true)}
@@ -1145,8 +1145,8 @@ export default function LoginPage() {
                             "&:hover": { color: C.brandDark },
                           }}
                         >
-                          Forgot password?
-                        </Link> */}
+                          Forgot password
+                        </Link>
                       </Box>
                       <TextField
                         fullWidth
