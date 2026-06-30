@@ -1389,6 +1389,11 @@ export default function ChecklistPage() {
   const [checklists, setChecklists] = useState([]);
   const [listLoading, setListLoading] = useState(false);
   const [listPagination, setListPagination] = useState({});
+  const [listStats, setListStats] = useState({
+    total: 0,
+    published: 0,
+    fields: 0,
+  });
   const [listFilters, setListFilters] = useState({
     search: "",
     status: "",
@@ -1455,6 +1460,25 @@ export default function ChecklistPage() {
         const list = data?.checklists || (Array.isArray(data) ? data : []);
         setChecklists(list);
         setListPagination(data?.pagination || {});
+
+        const [publishedRes, fieldsRes] = await Promise.all([
+          getAllChecklists({ status: "published", page: 1, limit: 1 }),
+          getAllChecklists({ page: 1, limit: 100 }),
+        ]);
+        const publishedTotal =
+          publishedRes?.data?.pagination?.total ??
+          publishedRes?.data?.checklists?.length ??
+          0;
+        const allVisibleChecklists = fieldsRes?.data?.checklists || [];
+        setListStats({
+          total: data?.pagination?.total ?? list.length,
+          published: publishedTotal,
+          fields: allVisibleChecklists.reduce(
+            (sum, checklist) =>
+              sum + (checklist.totalFields ?? checklist.fields?.length ?? 0),
+            0,
+          ),
+        });
       } else showSnack(res.error || "Failed to fetch checklists", "error");
     } catch (err) {
       showSnack(err.message || "Failed to fetch checklists", "error");
@@ -1617,14 +1641,14 @@ export default function ChecklistPage() {
 }, [tab]);
 
   const stats = {
-    total: listPagination.total ?? checklists.length,
-    active: checklists.filter(
-      (c) => c.status === "published" || c.status === "active",
-    ).length,
-    fields: checklists.reduce(
-      (s, c) => s + (c.totalFields ?? c.fields?.length ?? 0),
-      0,
-    ),
+    total: listStats.total || listPagination.total || checklists.length,
+    active:
+      listStats.published ||
+      checklists.filter((c) => c.status === "published" || c.status === "active")
+        .length,
+    fields:
+      listStats.fields ||
+      checklists.reduce((s, c) => s + (c.totalFields ?? c.fields?.length ?? 0), 0),
     pending: checklists.filter(
       (c) => c.status === "pending" || c.status === "draft",
     ).length,

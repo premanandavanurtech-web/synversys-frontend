@@ -727,7 +727,7 @@ const NotifList = ({ notifications }) => (
             p: 1.5,
             
             borderRadius: 2,
-            width: {xs:"330px",md:"1147px"},
+            width: {xs:"330px",md:"1110px"},
             bgcolor: C.surfaceContainerLow,
             border: `1px solid ${alpha(C.outlineVariant, 0.4)}`,
           }}
