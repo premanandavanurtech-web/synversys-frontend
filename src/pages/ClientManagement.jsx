@@ -266,8 +266,16 @@ const PwRule = ({ ok, label }) => (
 const StatCard = ({ icon: Icon, label, value, color, loading }) => {
   if (loading)
     return (
-      <Card sx={{ borderRadius: 2, height: "100%" }}>
-        <CardContent sx={{ p: 2 }}>
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: 2,
+          height: "100%",
+          width: { xs: "100%", md: "275px" },
+          border: `1px solid ${C.border}`,
+        }}
+      >
+        <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
           <Skeleton variant="circular" width={36} height={36} sx={{ mb: 1 }} />
           <Skeleton variant="text" width="60%" height={14} />
           <Skeleton variant="text" width="40%" height={28} />
@@ -334,6 +342,111 @@ const StatCard = ({ icon: Icon, label, value, color, loading }) => {
     </Card>
   );
 };
+
+const ClientCardSkeleton = () => (
+  <Card
+    elevation={0}
+    sx={{
+      borderRadius: 2,
+      width: "100%",
+      minHeight: 176,
+      border: `1px solid ${C.border}`,
+    }}
+  >
+    <CardContent sx={{ p: { xs: 1.75, sm: 2 } }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
+        <Skeleton variant="rounded" width={44} height={44} sx={{ borderRadius: "10px" }} />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Skeleton variant="text" width="48%" height={20} />
+          <Skeleton variant="text" width="34%" height={14} />
+        </Box>
+        <Skeleton variant="circular" width={24} height={24} />
+      </Box>
+
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+        <Box>
+          <Skeleton variant="text" width={70} height={14} />
+          <Skeleton variant="rounded" width={74} height={22} sx={{ borderRadius: 3 }} />
+        </Box>
+        <Box sx={{ textAlign: "right" }}>
+          <Skeleton variant="text" width={60} height={14} />
+          <Skeleton variant="text" width={84} height={18} />
+        </Box>
+      </Box>
+
+      <Skeleton variant="text" width="100%" height={14} />
+      <Skeleton variant="rounded" width="100%" height={5} sx={{ borderRadius: 3, mb: 2 }} />
+      <Divider sx={{ mb: 1.5 }} />
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Skeleton variant="text" width={74} height={24} />
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Skeleton variant="circular" width={24} height={24} />
+          <Skeleton variant="circular" width={24} height={24} />
+        </Box>
+      </Box>
+    </CardContent>
+  </Card>
+);
+
+const ClientManagementSkeleton = () => (
+  <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: C.surface, minHeight: "100vh" }}>
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        flexWrap: "wrap",
+        gap: 2,
+        mb: 3,
+      }}
+    >
+      <Box>
+        <Skeleton variant="text" width={260} height={34} sx={{ mb: 0.5 }} />
+        <Skeleton variant="text" width={300} height={20} />
+      </Box>
+      <Skeleton variant="rounded" width={170} height={46} sx={{ borderRadius: "10px" }} />
+    </Box>
+
+    <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+      {[1, 2, 3, 4].map((i) => (
+        <Grid key={i} item xs={6} sm={6} md={3}>
+          <StatCard loading />
+        </Grid>
+      ))}
+    </Grid>
+
+    <Paper
+      elevation={0}
+      sx={{
+        p: { xs: 1.5, sm: 2 },
+        mb: 3,
+        borderRadius: 2,
+        border: `1px solid ${C.border}`,
+      }}
+    >
+      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
+        <Skeleton
+          variant="rounded"
+          height={44}
+          sx={{ flex: 1, minWidth: { xs: "100%", sm: 200 }, borderRadius: "10px" }}
+        />
+        <Skeleton variant="rounded" width={122} height={36} sx={{ borderRadius: "8px" }} />
+        <Skeleton variant="rounded" width={146} height={36} sx={{ borderRadius: "8px" }} />
+        <Skeleton variant="circular" width={36} height={36} />
+      </Box>
+    </Paper>
+
+    <Skeleton variant="text" width={170} height={18} sx={{ mb: 2 }} />
+
+    <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <Grid key={i} item xs={12} sm={6} lg={4} xl={3}>
+          <ClientCardSkeleton />
+        </Grid>
+      ))}
+    </Grid>
+  </Box>
+);
 
 // Client Card Component
 const ClientCard = ({ client, onEdit, onDelete, onView }) => {
@@ -1416,30 +1529,7 @@ export default function ClientManagement() {
   if (!isSuperAdmin) return <AccessDenied />;
 
   if (initialLoading && !clients?.length) {
-    return (
-      <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: C.surface, minHeight: "100vh" }}>
-        <Skeleton variant="text" width={200} height={32} sx={{ mb: 1 }} />
-        <Skeleton variant="text" width={300} height={20} sx={{ mb: 3 }} />
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          {[1, 2, 3, 4].map((i) => (
-            <Grid key={i} item xs={6} sm={3}>
-              <StatCard loading />
-            </Grid>
-          ))}
-        </Grid>
-        <Grid container spacing={2}>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Grid key={i} item xs={12} sm={6} lg={4}>
-              <Skeleton
-                variant="rounded"
-                height={240}
-                sx={{ borderRadius: 2 }}
-              />
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
-    );
+    return <ClientManagementSkeleton />;
   }
 
   console.log("Error====>>",error)
