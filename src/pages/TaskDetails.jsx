@@ -109,10 +109,10 @@ const STATUS_CFG = {
 };
 
 const PRIORITY_CFG = {
-  low: { label: "Low" },
-  medium: { label: "Medium" },
-  high: { label: "High" },
-  critical: { label: "Critical" },
+  low: { label: "Low", color: "#16a34a", bg: "#f0fdf4" },
+  medium: { label: "Medium", color: "#ca8a04", bg: "#fefce8" },
+  high: { label: "High", color: "#f97316", bg: "#fff7ed" },
+  critical: { label: "Critical", color: "#dc2626", bg: "#fef2f2" },
 };
 
 // ─── Styled ──────────────────────────────────────────────────────────────────
@@ -1175,7 +1175,13 @@ export default function TaskDetails() {
                   label={priorityCfg.label}
                   size="small"
                   variant="outlined"
-                  sx={{ fontWeight: 600, fontSize: "0.72rem", color: "#6B7280" }}
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: "0.72rem",
+                    color: priorityCfg.color,
+                    bgcolor: priorityCfg.bg,
+                    borderColor: priorityCfg.color,
+                  }}
                 />
               </Stack>
             </Box>

@@ -2097,12 +2097,20 @@ const TeamDashboard = ({ data, loading }) => {
                           textTransform: "capitalize",
                           bgcolor:
                             t.priority === "critical"
-                              ? alpha(C.onErrorContainer, 0.1)
-                              : C.surfaceContainerLow,
+                              ? "#fef2f2"
+                              : t.priority === "high"
+                                ? "#fff7ed"
+                                : t.priority === "medium"
+                                  ? "#fefce8"
+                                  : "#f0fdf4",
                           color:
                             t.priority === "critical"
-                              ? C.onErrorContainer
-                              : C.secondary,
+                              ? "#dc2626"
+                              : t.priority === "high"
+                                ? "#f97316"
+                                : t.priority === "medium"
+                                  ? "#ca8a04"
+                                  : "#16a34a",
                         }}
                       />
                     </TableCell>

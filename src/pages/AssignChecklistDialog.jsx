@@ -93,9 +93,9 @@ export default function AssignChecklistDialog({
 
   const getPriorityColor = (p) => {
     switch(p) {
-      case "high": return "#ef4444";
-      case "medium": return "#f59e0b";
-      case "low": return "#10b981";
+      case "high": return "#f97316";
+      case "medium": return "#ca8a04";
+      case "low": return "#16a34a";
       case "critical": return "#dc2626";
       default: return PRIMARY;
     }

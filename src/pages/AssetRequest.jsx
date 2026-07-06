@@ -223,9 +223,9 @@ const RequestTypeChip = ({ type }) => {
 };
 
 const URGENCY_COLORS = {
-  low: { bg: "#f1f5f9", color: "#64748b" },
-  medium: { bg: "#fffbeb", color: "#d97706" },
-  high: { bg: "#fff7ed", color: "#ea580c" },
+  low: { bg: "#f0fdf4", color: "#16a34a" },
+  medium: { bg: "#fefce8", color: "#ca8a04" },
+  high: { bg: "#fff7ed", color: "#f97316" },
   critical: { bg: "#fef2f2", color: "#dc2626" },
 };
 

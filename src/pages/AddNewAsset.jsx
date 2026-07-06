@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -54,7 +54,7 @@ import {
   InfoOutlined,
   AddCircleOutline,
 } from "@mui/icons-material";
-import { useAsset } from "../context/AssetContext";
+import { api, useAsset } from "../context/AssetContext";
 import { useAssetCategory } from "../context/AssetCategoryContexts";
 import { useAuth } from "../context/AuthContexts";
 import { useTeam } from "../context/TeamContext";
@@ -583,7 +583,7 @@ export default function AddNewAsset({
   const navigate = useNavigate();
 
   const { user } = useAuth() || {};
-  const { createAsset, loading } = useAsset() || {};
+  const { createAsset, loading, assets = [] } = useAsset() || {};
   const {
     categories,
     getAllCategories,
@@ -634,6 +634,10 @@ export default function AddNewAsset({
 
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [addPortfolio, setAddPortfolio] = useState(false);
+  const [portfolioEntryMode, setPortfolioEntryMode] = useState("select");
+  const [portfolioName, setPortfolioName] = useState("");
+  const [portfolioAssets, setPortfolioAssets] = useState([]);
   const [tagInput, setTagInput] = useState("");
 
   const [mheFilters, setMheFilters] = useState({});
@@ -673,6 +677,33 @@ export default function AddNewAsset({
     getAllCategories?.({ limit: 100 });
     fetchTeamMembers?.({ limit: 100 });
   }, [getAllCategories, fetchTeamMembers]);
+
+  useEffect(() => {
+    if (!canEdit) return undefined;
+
+    let active = true;
+    api
+      .get("/assets/portfolios")
+      .then((res) => {
+        if (!active) return;
+        const portfolios = Array.isArray(res.data?.portfolios)
+          ? res.data.portfolios
+          : [];
+        setPortfolioAssets(portfolios.map((name) => ({ portfolioName: name })));
+      })
+      .catch(async () => {
+        try {
+          const res = await api.get("/assets", { params: { page: 1, limit: 1000 } });
+          if (active) setPortfolioAssets(res.data?.assets || []);
+        } catch {
+          if (active) setPortfolioAssets([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [canEdit]);
 
   // ─── Build team options based on role ────────────────────────────────────
   const teamOptions = (() => {
@@ -808,6 +839,19 @@ export default function AddNewAsset({
       toast("Please select a category", "error");
       return;
     }
+    const trimmedPortfolioName = portfolioName.trim();
+    if (addPortfolio && !trimmedPortfolioName) {
+      toast("Portfolio name is required", "error");
+      return;
+    }
+    const portfolioNameError =
+      addPortfolio && trimmedPortfolioName
+        ? getAllowedNameError("Portfolio name", trimmedPortfolioName)
+        : null;
+    if (portfolioNameError) {
+      toast(portfolioNameError, "error");
+      return;
+    }
     if (!isValidPostalCode(formData.customPhysicalAddress.postalCode)) {
       toast("Postal code must be exactly 6 digits", "error");
       return;
@@ -833,6 +877,7 @@ export default function AddNewAsset({
           defaultAssetType === "child" ? defaultParentAssetId || undefined : undefined,
         description: formData.description.trim(),
         serialNumber: formData.serialNumber.trim() || undefined,
+        portfolioName: addPortfolio ? trimmedPortfolioName : undefined,
 
         assetCategoryId: selectedCategoryId,
 
@@ -858,6 +903,7 @@ export default function AddNewAsset({
         metadata: {
           tags: formData.metadata.tags,
           notes: formData.metadata.notes.trim(),
+          portfolioName: addPortfolio ? trimmedPortfolioName : undefined,
         },
 
         mhe: {
@@ -990,6 +1036,23 @@ export default function AddNewAsset({
     const cat = categories?.find((c) => c._id === selectedCategoryId);
     return cat?.name || null;
   })();
+
+  const portfolioOptions = useMemo(() => {
+    const names = new Set();
+    [...(Array.isArray(assets) ? assets : []), ...portfolioAssets].forEach((asset) => {
+      const name =
+        asset?.portfolioName ||
+        asset?.metadata?.portfolioName ||
+        asset?.metadata?.portfolio;
+      if (typeof name === "string" && name.trim()) {
+        names.add(name.trim());
+      }
+    });
+    if (portfolioName.trim()) {
+      names.add(portfolioName.trim());
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [assets, portfolioAssets, portfolioName]);
 
   const STATUS_OPTIONS = [
     "Active",
@@ -1172,6 +1235,156 @@ export default function AddNewAsset({
                 </Typography>
               </Stack>
               <Stack spacing={2}>
+                <Box>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={addPortfolio}
+                        onChange={(e) => {
+                          setAddPortfolio(e.target.checked);
+                          if (!e.target.checked) {
+                            setPortfolioName("");
+                            setPortfolioEntryMode("select");
+                          }
+                        }}
+                        disabled={!canEdit}
+                        sx={{ "&.Mui-checked": { color: T.brandPrimary } }}
+                      />
+                    }
+                    label={
+                      <Typography
+                        sx={{
+                          fontSize: "0.82rem",
+                          fontWeight: 600,
+                          color: T.text.secondary,
+                        }}
+                      >
+                        Do you want to add a portfolio?
+                      </Typography>
+                    }
+                    sx={{ m: 0, alignItems: "center" }}
+                  />
+                  <Collapse in={addPortfolio} timeout={180} unmountOnExit>
+                    <Box sx={{ mt: 1.25 }}>
+                      <Label required>Portfolio Name</Label>
+                      <FormControl fullWidth size="small">
+                        <Select
+                          value={
+                            portfolioEntryMode === "new"
+                              ? "new"
+                              : portfolioName
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "new") {
+                              setPortfolioEntryMode("new");
+                              setPortfolioName("");
+                              return;
+                            }
+                            setPortfolioEntryMode("select");
+                            setPortfolioName(val);
+                          }}
+                          disabled={!canEdit}
+                          displayEmpty
+                          sx={selectSx}
+                          MenuProps={dropdownMenuProps}
+                          renderValue={(val) => {
+                            if (val === "new") {
+                              return (
+                                <span style={{ color: T.text.muted }}>
+                                  {portfolioName.trim() || "New portfolio"}
+                                </span>
+                              );
+                            }
+                            if (!val) {
+                              return (
+                                <span style={{ color: T.text.muted }}>
+                                  Select portfolio...
+                                </span>
+                              );
+                            }
+                            return val;
+                          }}
+                        >
+                          {portfolioOptions.length > 0 ? (
+                            portfolioOptions.map((name) => (
+                              <MenuItem key={name} value={name}>
+                                <Typography
+                                  sx={{
+                                    fontSize: "0.875rem",
+                                    fontWeight: 500,
+                                    color: T.text.primary,
+                                  }}
+                                >
+                                  {name}
+                                </Typography>
+                              </MenuItem>
+                            ))
+                          ) : (
+                            <MenuItem disabled>
+                              <Typography
+                                sx={{
+                                  fontSize: "0.8rem",
+                                  color: T.text.muted,
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                No portfolios available
+                              </Typography>
+                            </MenuItem>
+                          )}
+                          <Divider sx={{ my: 0.5 }} />
+                          <MenuItem value="new">
+                            <Stack
+                              direction="row"
+                              alignItems="center"
+                              spacing={0.75}
+                            >
+                              <AddCircleOutline
+                                sx={{ fontSize: 16, color: T.brandPrimary }}
+                              />
+                              <Typography
+                                sx={{
+                                  color: T.brandPrimary,
+                                  fontSize: "0.875rem",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Add New Portfolio
+                              </Typography>
+                            </Stack>
+                          </MenuItem>
+                        </Select>
+                      </FormControl>
+                      {portfolioEntryMode === "new" && (
+                        <Box sx={{ mt: 1.5 }}>
+                          <Label required>Enter Portfolio Name</Label>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Enter portfolio name"
+                            value={portfolioName}
+                            onChange={(e) => setPortfolioName(e.target.value)}
+                            disabled={!canEdit}
+                            error={
+                              !!getAllowedNameError(
+                                "Portfolio name",
+                                portfolioName,
+                              )
+                            }
+                            helperText={
+                              getAllowedNameError(
+                                "Portfolio name",
+                                portfolioName,
+                              ) || `Allowed: ${ALLOWED_NAME_MESSAGE}`
+                            }
+                            sx={inputSx}
+                          />
+                        </Box>
+                      )}
+                    </Box>
+                  </Collapse>
+                </Box>
                 <Box>
                   <Label required>Asset Name</Label>
                   <TextField

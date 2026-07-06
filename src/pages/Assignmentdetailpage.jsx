@@ -60,10 +60,10 @@ const STATUS_MAP = {
 };
 
 const PRIORITY_MAP = {
-  low: { label: "Low", bg: "#eaf3de", color: "#3b6d11" },
-  medium: { label: "Medium", bg: "#faeeda", color: "#854f0b" },
-  high: { label: "High", bg: "#fcebeb", color: "#a32d2d" },
-  critical: { label: "Critical", bg: "#faeeda", color: "#854f0b" },
+  low: { label: "Low", bg: "#f0fdf4", color: "#16a34a" },
+  medium: { label: "Medium", bg: "#fefce8", color: "#ca8a04" },
+  high: { label: "High", bg: "#fff7ed", color: "#f97316" },
+  critical: { label: "Critical", bg: "#fef2f2", color: "#dc2626" },
 };
 
 // ── Badge helper ──────────────────────────────────────────────────────────────

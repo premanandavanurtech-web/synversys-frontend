@@ -805,19 +805,21 @@ export default function Checklist() {
                         size="small"
                         sx={{
                           bgcolor:
-                            row.urgencyLevel === "high" ||
                             row.urgencyLevel === "critical"
                               ? "#fee2e2"
+                              : row.urgencyLevel === "high"
+                                ? "#fff7ed"
                               : row.urgencyLevel === "medium"
-                                ? "#fef9c3"
-                                : "#f1f5f9",
+                                ? "#fefce8"
+                                : "#f0fdf4",
                           color:
-                            row.urgencyLevel === "high" ||
                             row.urgencyLevel === "critical"
                               ? "#dc2626"
+                              : row.urgencyLevel === "high"
+                                ? "#f97316"
                               : row.urgencyLevel === "medium"
-                                ? "#854d0e"
-                                : "#64748b",
+                                ? "#ca8a04"
+                                : "#16a34a",
                           fontWeight: 600,
                           fontSize: "0.7rem",
                           height: 22,

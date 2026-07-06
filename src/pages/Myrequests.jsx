@@ -548,16 +548,20 @@ export default function MyRequests() {
                           size="small"
                           sx={{
                             bgcolor:
-                              req.priority === "high"
-                                ? "#fee2e2"
+                              req.priority === "critical"
+                                ? "#fef2f2"
+                                : req.priority === "high"
+                                  ? "#fff7ed"
                                 : req.priority === "medium"
-                                  ? "#fef3c7"
-                                  : "#dcfce7",
+                                  ? "#fefce8"
+                                  : "#f0fdf4",
                             color:
-                              req.priority === "high"
+                              req.priority === "critical"
                                 ? "#dc2626"
+                                : req.priority === "high"
+                                  ? "#f97316"
                                 : req.priority === "medium"
-                                  ? "#d97706"
+                                  ? "#ca8a04"
                                   : "#16a34a",
                             fontWeight: 600,
                             fontSize: 10,

@@ -30,6 +30,11 @@ export const TeamAssignmentProvider = ({ children }) => {
       if (filters.date) params.append("date", filters.date);
       if (filters.page) params.append("page", String(filters.page));
       if (filters.limit) params.append("limit", String(filters.limit || 20));
+      // NEW: ask the backend for newest-first ordering so newly assigned/
+      // created tasks show up first. If your backend expects a different
+      // param name (e.g. sortBy=createdAt&order=desc), this is the one
+      // line to change — everything else stays the same.
+      params.append("sort", "-createdAt");
 
       const url = `/assignments/team/my-tasks${params.toString() ? `?${params}` : ""}`;
       const response = await authRequest("GET", url);

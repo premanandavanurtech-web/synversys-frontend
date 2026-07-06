@@ -150,10 +150,11 @@ function BellIcon({ active, onClick }) {
 
 /* ─── Priority stripe ─── */
 const PRIORITY_CONFIG = {
-  urgent: { color: "#ef4444", label: "Urgent", dot: "#ef4444" },
-  high: { color: "#f59e0b", label: "High", dot: "#f59e0b" },
-  medium: { color: "#10b981", label: "Medium", dot: "#10b981" },
-  low: { color: "#94a3b8", label: "Low", dot: "#94a3b8" },
+  urgent: { color: "#dc2626", label: "Urgent", dot: "#dc2626" },
+  critical: { color: "#dc2626", label: "Critical", dot: "#dc2626" },
+  high: { color: "#f97316", label: "High", dot: "#f97316" },
+  medium: { color: "#ca8a04", label: "Medium", dot: "#ca8a04" },
+  low: { color: "#16a34a", label: "Low", dot: "#16a34a" },
 };
 
 const TYPE_ICONS = {

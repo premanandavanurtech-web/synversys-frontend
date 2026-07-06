@@ -62,6 +62,7 @@ import AuditLogs from "./pages/AuditLogs";
 import Main from "./pages/landing/Main";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
+import InactivityTimeout from "./components/InactivityTimeout";
 import AssetCategoryPage from "./pages/AssetCategory";
 import RolesManagement from "./pages/RolesManagement";
 import DepartmentsManagement from "./pages/DepartmentsManagement";
@@ -173,6 +174,7 @@ export default function App() {
   return (
     <AppProviders>
       <Router>
+        <InactivityTimeout />
         <Routes>
           {/* ── Public ──────────────────────────────────────────────────────── */}
           <Route path="/" element={<Main />} />

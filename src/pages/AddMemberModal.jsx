@@ -27,9 +27,6 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import WorkIcon from "@mui/icons-material/Work";
 import BusinessIcon from "@mui/icons-material/Business";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import LockIcon from "@mui/icons-material/Lock";
-import Visibility from "@mui/icons-material/Visibility";
-import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import { useTeam } from "../context/TeamContext";
 import { useRoles } from "../context/RoleContext";
@@ -232,8 +229,6 @@ export default function AddMemberModal({
     firstName: "",
     lastName: "",
     email: "",
-    password: "",
-    confirmPassword: "",
     phone: "",
     roleId: "",
     departmentId: "",
@@ -244,8 +239,6 @@ export default function AddMemberModal({
   const [errors, setErrors] = useState({});
   const [fetchLoading, setFetchLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Quick-create dialog state
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
@@ -350,14 +343,6 @@ export default function AddMemberModal({
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Email is invalid";
     }
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
     if (!formData.roleId) newErrors.roleId = "Role is required";
     if (!formData.departmentId) newErrors.departmentId = "Department is required";
     if (!formData.location?.trim()) newErrors.location = "Location is required";
@@ -376,7 +361,6 @@ export default function AddMemberModal({
       firstName: formData.firstName.trim(),
       lastName: formData.lastName.trim(),
       email: formData.email.trim(),
-      password: formData.password,
       phone: formData.phone?.trim() || "",
       roleId: formData.roleId,
       departmentId: formData.departmentId,
@@ -403,8 +387,6 @@ export default function AddMemberModal({
       firstName: "",
       lastName: "",
       email: "",
-      password: "",
-      confirmPassword: "",
       phone: "",
       roleId: "",
       departmentId: "",
@@ -413,8 +395,6 @@ export default function AddMemberModal({
     });
     setErrors({});
     setFetchError(null);
-    setShowPassword(false);
-    setShowConfirmPassword(false);
     setRoleDialogOpen(false);
     setDeptDialogOpen(false);
     onClose();
@@ -511,45 +491,7 @@ export default function AddMemberModal({
                 />
               </FormRow>
 
-              {/* Row 3: Password | Confirm Password */}
-              <FormRow>
-                <TextField
-                  fullWidth required size={fieldSize}
-                  label="Password" name="password"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password} onChange={handleChange}
-                  error={!!errors.password} helperText={errors.password}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><LockIcon sx={iconSx} /></InputAdornment>,
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton onClick={() => setShowPassword((p) => !p)} edge="end" size="small" tabIndex={-1}>
-                          {showPassword ? <VisibilityOff sx={iconSx} /> : <Visibility sx={iconSx} />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-                <TextField
-                  fullWidth required size={fieldSize}
-                  label="Confirm Password" name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={formData.confirmPassword} onChange={handleChange}
-                  error={!!errors.confirmPassword} helperText={errors.confirmPassword}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><LockIcon sx={iconSx} /></InputAdornment>,
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton onClick={() => setShowConfirmPassword((p) => !p)} edge="end" size="small" tabIndex={-1}>
-                          {showConfirmPassword ? <VisibilityOff sx={iconSx} /> : <Visibility sx={iconSx} />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </FormRow>
-
-              {/* Row 4: Role | Department */}
+              {/* Row 3: Role | Department */}
               <FormRow>
                 <FormControl fullWidth required size={fieldSize} error={!!errors.roleId}>
                   <InputLabel id="role-label">Role</InputLabel>
@@ -616,7 +558,7 @@ export default function AddMemberModal({
                 </FormControl>
               </FormRow>
 
-              {/* Row 5: Location | Bio */}
+              {/* Row 4: Location | Bio */}
               <FormRow>
                 <TextField
                   fullWidth required size={fieldSize}

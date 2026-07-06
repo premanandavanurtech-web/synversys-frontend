@@ -160,10 +160,10 @@ const STATUS_CFG = {
 };
 
 const PRIORITY_CFG = {
-  low: { label: "Low", color: "#0a7c5c", bg: "#eaf7f3" },
-  medium: { label: "Medium", color: "#b45309", bg: "#fffbeb" },
-  high: { label: "High", color: "#c0392b", bg: "#fdf0ef" },
-  critical: { label: "Critical", color: "#7f1d1d", bg: "#fee2e2" },
+  low: { label: "Low", color: "#16a34a", bg: "#f0fdf4" },
+  medium: { label: "Medium", color: "#ca8a04", bg: "#fefce8" },
+  high: { label: "High", color: "#f97316", bg: "#fff7ed" },
+  critical: { label: "Critical", color: "#dc2626", bg: "#fef2f2" },
 };
 
 // Custom hook for snackbar

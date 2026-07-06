@@ -57,7 +57,7 @@ import {
   Inbox,
   SearchOff,
 } from "@mui/icons-material";
-import { useAsset } from "../context/AssetContext";
+import { api, useAsset } from "../context/AssetContext";
 import { useAuth } from "../context/AuthContexts";
 
 // ── Design tokens matching the screenshot ────────────────────────────────────
@@ -156,6 +156,12 @@ const getAssetCategoryName = (asset) =>
 const getAssetCategoryId = (asset) =>
   asset?.assetCategoryId?._id || asset?.assetCategoryId || "";
 
+const getAssetPortfolioName = (asset) =>
+  asset?.portfolioName ||
+  asset?.metadata?.portfolioName ||
+  asset?.metadata?.portfolio ||
+  "";
+
 const getSearchText = (asset) =>
   [
     asset?.assetName,
@@ -167,6 +173,7 @@ const getSearchText = (asset) =>
     asset?.department,
     asset?.description,
     asset?.status,
+    getAssetPortfolioName(asset),
     getAssetCategoryName(asset),
     getAssetCategoryId(asset),
   ]
@@ -553,6 +560,8 @@ export default function AssetManagement() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState(""); // stores category NAME
+  const [portfolioFilter, setPortfolioFilter] = useState("");
+  const [portfolioOptions, setPortfolioOptions] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [assetTypeFilter, setAssetTypeFilter] = useState("");
   const [page, setPage] = useState(0);
@@ -599,6 +608,7 @@ export default function AssetManagement() {
       };
       if (debouncedSearch) filters.search = debouncedSearch;
       if (categoryFilter) filters.category = categoryFilter;
+      if (portfolioFilter) filters.portfolioName = portfolioFilter;
       if (statusFilter) filters.status = statusFilter;
 
       const data = await getAllAssets(filters);
@@ -626,6 +636,14 @@ export default function AssetManagement() {
         }
       });
       setCategories([...allCategoriesRef.current.values()]);
+      setPortfolioOptions((prev) => {
+        const names = new Set(prev);
+        (data.assets || []).forEach((a) => {
+          const name = getAssetPortfolioName(a);
+          if (name) names.add(name);
+        });
+        return Array.from(names).sort((a, b) => a.localeCompare(b));
+      });
     } catch (err) {
       const msg =
         err?.response?.data?.message || err?.message || "Unexpected error";
@@ -642,12 +660,36 @@ export default function AssetManagement() {
     order,
     debouncedSearch,
     categoryFilter,
+    portfolioFilter,
     statusFilter,
   ]);
 
   useEffect(() => {
     fetchAssets();
   }, [fetchAssets]);
+
+  useEffect(() => {
+    let active = true;
+
+    api
+      .get("/assets/portfolios")
+      .then((res) => {
+        if (!active) return;
+        const portfolios = Array.isArray(res.data?.portfolios)
+          ? res.data.portfolios
+          : [];
+        setPortfolioOptions((prev) =>
+          Array.from(new Set([...prev, ...portfolios])).sort((a, b) =>
+            a.localeCompare(b),
+          ),
+        );
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // ── CLIENT-SIDE SAFETY-NET FILTER ────────────────────────────────────────
   // Always re-applies status/category filtering on whatever the server
@@ -664,17 +706,20 @@ export default function AssetManagement() {
         !statusFilter || norm(a.status) === norm(statusFilter);
       const categoryOk =
         !categoryFilter || norm(getAssetCategoryName(a)) === norm(categoryFilter);
+      const portfolioOk =
+        !portfolioFilter || norm(getAssetPortfolioName(a)) === norm(portfolioFilter);
       const assetTypeOk =
         !assetTypeFilter ||
         (assetTypeFilter === "child"
           ? isChildAssetRecord(a)
           : !isChildAssetRecord(a));
-      return searchOk && statusOk && categoryOk && assetTypeOk;
+      return searchOk && statusOk && categoryOk && portfolioOk && assetTypeOk;
     });
-  }, [assets, debouncedSearch, statusFilter, categoryFilter, assetTypeFilter]);
+  }, [assets, debouncedSearch, statusFilter, categoryFilter, portfolioFilter, assetTypeFilter]);
 
   const clearFilters = () => {
     setCategoryFilter("");
+    setPortfolioFilter("");
     setStatusFilter("");
     setAssetTypeFilter("");
     setSearch("");
@@ -791,6 +836,7 @@ export default function AssetManagement() {
 
   const hasFilters = !!(
     categoryFilter ||
+    portfolioFilter ||
     statusFilter ||
     assetTypeFilter ||
     debouncedSearch
@@ -924,6 +970,48 @@ export default function AssetManagement() {
                 },
               }}
             />
+
+            {/* Portfolio dropdown */}
+            <FormControl size="small" sx={{ minWidth: 170, flexShrink: 0 }}>
+              <Select
+                value={portfolioFilter}
+                onChange={(e) => {
+                  setPortfolioFilter(e.target.value);
+                  setPage(0);
+                }}
+                displayEmpty
+                sx={{
+                  borderRadius: T.radius.input,
+                  fontSize: "0.85rem",
+                  bgcolor: "#f8fafc",
+                  "& fieldset": { borderColor: T.border },
+                  "&:hover fieldset": { borderColor: "#cbd5e1" },
+                  "& .MuiSelect-select": { py: "8.5px" },
+                }}
+              >
+                <MenuItem
+                  value=""
+                  sx={{ fontSize: "0.85rem", color: T.text.secondary }}
+                >
+                  Portfolio
+                </MenuItem>
+                {portfolioOptions.length === 0 ? (
+                  <MenuItem disabled sx={{ fontSize: "0.8rem" }}>
+                    No portfolios found
+                  </MenuItem>
+                ) : (
+                  portfolioOptions.map((name) => (
+                    <MenuItem
+                      key={name}
+                      value={name}
+                      sx={{ fontSize: "0.85rem" }}
+                    >
+                      {name}
+                    </MenuItem>
+                  ))
+                )}
+              </Select>
+            </FormControl>
 
             {/* Category dropdown */}
             <FormControl size="small" sx={{ minWidth: 160, flexShrink: 0 }}>

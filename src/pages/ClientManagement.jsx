@@ -101,7 +101,7 @@ const PLAN_META = {
   enterprise: { label: "Enterprise", color: "#7c3aed", bg: "#f5f3ff" },
 };
 
-const PLANS = ["free", "standard", "premium", "enterprise"];
+const PLANS = ["free", "standard", "premium"];
 
 const initials = (name) =>
   !name
@@ -732,6 +732,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
     website: "",
     membershipPlan: "standard",
     licenseLimit: 10,
+    assetLimit: 100,
     duration: 30,
     notes: "",
   };
@@ -749,6 +750,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
               website: client.website || "",
               membershipPlan: client.membershipPlan || "standard",
               licenseLimit: client.licenseLimit || 10,
+              assetLimit: client.assetLimit || 100,
               duration: 30,
               notes: client.notes || "",
             }
@@ -966,7 +968,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
       </Box>
       <Divider />
       <Grid container spacing={3}>
-        <Grid item xs={12} sm={6}>
+        <Grid item xs={12} sm={4}>
           <Stepper
             label="License limit"
             value={form.licenseLimit || 10}
@@ -975,8 +977,17 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
             max={1000}
           />
         </Grid>
+        <Grid item xs={12} sm={4}>
+          <Stepper
+            label="Asset limit"
+            value={form.assetLimit || 100}
+            onChange={(v) => setForm((f) => ({ ...f, assetLimit: v }))}
+            min={1}
+            max={10000}
+          />
+        </Grid>
         {!isEdit && (
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={4}>
             <Stepper
               label="Duration (days)"
               value={form.duration || 30}
@@ -1406,6 +1417,7 @@ export default function ClientManagement() {
       website: formData.website,
       membershipPlan: formData.membershipPlan,
       licenseLimit: parseInt(formData.licenseLimit),
+      assetLimit: parseInt(formData.assetLimit),
       duration: parseInt(formData.duration),
       notes: formData.notes,
     });
@@ -1423,6 +1435,7 @@ export default function ClientManagement() {
       customerName: formData.customerName,
       membershipPlan: formData.membershipPlan,
       licenseLimit: parseInt(formData.licenseLimit),
+      assetLimit: parseInt(formData.assetLimit),
       phone: formData.phone,
       website: formData.website,
       notes: formData.notes,

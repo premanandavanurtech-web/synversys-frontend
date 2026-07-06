@@ -163,6 +163,13 @@ const PRIORITY_CFG = {
 };
 
 // ─── Styled ───────────────────────────────────────────────────────────────────
+Object.assign(PRIORITY_CFG, {
+  low: { ...PRIORITY_CFG.low, color: "#16a34a", bg: "#f0fdf4" },
+  medium: { ...PRIORITY_CFG.medium, color: "#ca8a04", bg: "#fefce8" },
+  high: { ...PRIORITY_CFG.high, color: "#f97316", bg: "#fff7ed" },
+  critical: { ...PRIORITY_CFG.critical, color: "#dc2626", bg: "#fef2f2" },
+});
+
 const GlassCard = styled(Card)(() => ({
   background: "rgba(255,255,255,0.9)",
   backdropFilter: "blur(10px)",

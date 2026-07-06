@@ -34,13 +34,62 @@ const clearAuthData = () => {
   localStorage.removeItem("rememberMe");
   localStorage.removeItem("rememberedEmail");
   sessionStorage.removeItem("accessToken");
+
+  document.cookie.split(";").forEach((cookie) => {
+    const name = cookie.split("=")[0]?.trim();
+    if (name) {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+    }
+  });
+};
+
+const isPublicPath = (pathname) => (
+  pathname === "/" ||
+  pathname === "/login" ||
+  pathname === "/forgot-password" ||
+  pathname.startsWith("/reset-password")
+);
+
+const redirectToLogin = () => {
+  const { pathname, search } = window.location;
+
+  if (isPublicPath(pathname)) {
+    return;
+  }
+
+  if (!isPublicPath(pathname)) {
+    sessionStorage.setItem("redirectAfterLogin", `${pathname}${search}`);
+  }
+
+  window.location.replace("/login");
 };
 
 // Validate token format
 const isValidToken = (token) => {
-  return (
-    token && token !== "undefined" && token !== "null" && token.length > 20
-  );
+  if (!token || token === "undefined" || token === "null" || token.length <= 20) {
+    return false;
+  }
+
+  const [, payload] = token.split(".");
+  if (!payload) {
+    return false;
+  }
+
+  try {
+    const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decodedPayload = JSON.parse(
+      window.atob(normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, "=")),
+    );
+
+    if (decodedPayload.exp && decodedPayload.exp * 1000 <= Date.now()) {
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.warn("Invalid auth token payload:", error);
+    return false;
+  }
 };
 
 export const AuthProvider = ({ children }) => {
@@ -79,6 +128,7 @@ export const AuthProvider = ({ children }) => {
       }
     } else {
       console.log("No stored auth found");
+      clearAuthData();
     }
     setLoading(false);
     setInitialized(true);
@@ -96,6 +146,7 @@ export const AuthProvider = ({ children }) => {
       setToken(null);
       setUser(null);
       setUserType(null);
+      redirectToLogin();
     };
     window.addEventListener("auth:expired", handleExpired);
     return () => window.removeEventListener("auth:expired", handleExpired);
@@ -390,6 +441,18 @@ export const AuthProvider = ({ children }) => {
         error: "Password must contain at least one number",
       };
     }
+    if (!/[@$!%*?&]/.test(newPassword)) {
+      return {
+        success: false,
+        error: "Password must contain at least one special character (@$!%*?&)",
+      };
+    }
+    if (!/^[A-Za-z\d@$!%*?&]+$/.test(newPassword)) {
+      return {
+        success: false,
+        error: "Password can only contain letters, numbers, and @$!%*?&",
+      };
+    }
 
     try {
       const response = await axios.post(
@@ -480,6 +543,38 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token]);
 
+  const expireSessionDueToInactivity = useCallback(() => {
+    const currentToken =
+      token ||
+      localStorage.getItem("accessToken") ||
+      localStorage.getItem("token");
+
+    if (isValidToken(currentToken)) {
+      fetch(`${API_BASE_URL}/auth/logout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${currentToken}`,
+        },
+        credentials: "include",
+        body: "{}",
+        keepalive: true,
+      }).catch((error) => {
+        console.warn("Inactivity logout request failed:", error);
+      });
+    }
+
+    clearAuthData();
+    sessionStorage.setItem(
+      "authExpiredMessage",
+      "Your session expired due to inactivity.",
+    );
+    setToken(null);
+    setUser(null);
+    setUserType(null);
+    window.location.replace("/login");
+  }, [token]);
+
   const getUserRole = () => user?.role || null;
   const getUserType = () => userType;
   const hasRole = (role) => user?.role === role;
@@ -531,6 +626,8 @@ export const AuthProvider = ({ children }) => {
 
       if (!isValidToken(currentToken)) {
         console.error("No valid authentication token available");
+        clearAuthData();
+        redirectToLogin();
         throw new Error("No authentication token available");
       }
 
@@ -600,9 +697,13 @@ export const AuthProvider = ({ children }) => {
           }
 
           if (error.response.status === 401) {
-            console.log("Unauthorized - clearing auth state");
+            console.log("Unauthorized - redirecting to login");
             window.dispatchEvent(new CustomEvent("auth:expired"));
-            logout();
+            clearAuthData();
+            setToken(null);
+            setUser(null);
+            setUserType(null);
+            redirectToLogin();
           }
         }
 
@@ -686,6 +787,7 @@ export const AuthProvider = ({ children }) => {
       delete: del,
       checkBackendStatus,
       refreshToken,
+      expireSessionDueToInactivity,
     }),
     [
       user,
@@ -703,6 +805,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       checkBackendStatus,
       refreshToken,
+      expireSessionDueToInactivity,
     ],
   );
 

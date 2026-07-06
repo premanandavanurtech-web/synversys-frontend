@@ -1579,15 +1579,21 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                                       fontSize: "0.62rem",
                                       fontWeight: 600,
                                       bgcolor:
-                                        req.urgency === "high" ||
                                         req.urgency === "critical"
-                                          ? T.redLight
-                                          : T.amberLight,
+                                          ? "#fef2f2"
+                                          : req.urgency === "high"
+                                            ? "#fff7ed"
+                                            : req.urgency === "medium"
+                                              ? "#fefce8"
+                                              : "#f0fdf4",
                                       color:
-                                        req.urgency === "high" ||
                                         req.urgency === "critical"
-                                          ? T.red
-                                          : T.amber,
+                                          ? "#dc2626"
+                                          : req.urgency === "high"
+                                            ? "#f97316"
+                                            : req.urgency === "medium"
+                                              ? "#ca8a04"
+                                              : "#16a34a",
                                       fontFamily: T.font,
                                     }}
                                   />
@@ -3191,13 +3197,21 @@ export default function AssetView() {
                                           fontSize: "0.65rem",
                                           fontWeight: 600,
                                           bgcolor:
-                                            req.urgency === "high"
-                                              ? T.redLight
-                                              : T.amberLight,
+                                            req.urgency === "critical"
+                                              ? "#fef2f2"
+                                              : req.urgency === "high"
+                                                ? "#fff7ed"
+                                                : req.urgency === "medium"
+                                                  ? "#fefce8"
+                                                  : "#f0fdf4",
                                           color:
-                                            req.urgency === "high"
-                                              ? T.red
-                                              : T.amber,
+                                            req.urgency === "critical"
+                                              ? "#dc2626"
+                                              : req.urgency === "high"
+                                                ? "#f97316"
+                                                : req.urgency === "medium"
+                                                  ? "#ca8a04"
+                                                  : "#16a34a",
                                           fontFamily: T.font,
                                         }}
                                       />

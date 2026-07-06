@@ -82,19 +82,19 @@ const URGENCY_LEVELS = [
   {
     value: "low",
     label: "Low",
-    color: "#10b981",
+    color: "#16a34a",
     description: "Can be addressed when convenient",
   },
   {
     value: "medium",
     label: "Medium",
-    color: "#f59e0b",
+    color: "#ca8a04",
     description: "Should be addressed within 2 weeks",
   },
   {
     value: "high",
     label: "High",
-    color: "#ef4444",
+    color: "#f97316",
     description: "Needs attention within 1 week",
   },
   {

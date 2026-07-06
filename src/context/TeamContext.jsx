@@ -33,6 +33,15 @@ const getApiErrorMessage = (err, fallback) =>
   err.response?.data?.message ||
   fallback;
 
+// ── NEW: sort param applied to every /team list request so newly-created
+// members show first. "-createdAt" is the common Mongo/Express convention
+// for "createdAt descending". If your backend uses a different query param
+// name (e.g. sortBy=createdAt&order=desc), change buildSortParams() below —
+// it's the single place this is wired up.
+const buildSortParams = (params) => {
+  params.append("sort", "-createdAt");
+};
+
 export const TeamProvider = ({ children }) => {
   const { token, isAuthenticated, user, logout } = useAuth();
 
@@ -337,10 +346,6 @@ export const TeamProvider = ({ children }) => {
 
   // ─── Dropdown fetches (roles, departments, locations from GET /team response) ──
 
-  /**
-   * Fetch roles from the filters embedded in GET /team response.
-   * Also supports a standalone /roles endpoint fallback.
-   */
   const fetchRoles = useCallback(async (options = {}, silent = false) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/roles`, {
@@ -354,7 +359,6 @@ export const TeamProvider = ({ children }) => {
       }
       return { success: false, roles: [] };
     } catch (err) {
-      // Fallback: don't break the UI
       console.warn("fetchRoles error:", err.message);
       return { success: false, roles: [] };
     }
@@ -401,6 +405,7 @@ export const TeamProvider = ({ children }) => {
   /**
    * updateFilters — called by TeamManagement debounce effect.
    * Stores the filter state and triggers a fetch.
+   * NEW: always requests newest-first ordering via buildSortParams().
    */
   const updateFilters = useCallback(
     async (filters) => {
@@ -419,6 +424,7 @@ export const TeamProvider = ({ children }) => {
           params.append("role", filters.role);
         if (filters.status && filters.status !== "all")
           params.append("status", filters.status);
+        buildSortParams(params); // NEW: newest-first sort
 
         const response = await axios.get(
           `${API_BASE_URL}/team?${params.toString()}`,
@@ -488,7 +494,7 @@ export const TeamProvider = ({ children }) => {
     [handleAuthError, roles.length, departments.length, locations.length],
   );
 
-  // GET /team (with query params)
+  // GET /team (with query params) — NEW: also sorted newest-first
   const fetchTeamMembers = useCallback(
     async (page = 1, limit = 10, filters = {}) => {
       const accessToken = getAccessToken();
@@ -506,6 +512,7 @@ export const TeamProvider = ({ children }) => {
         if (filters.status && filters.status !== "all")
           params.append("status", filters.status);
         if (filters.search) params.append("search", filters.search);
+        buildSortParams(params); // NEW: newest-first sort
 
         const response = await axios.get(
           `${API_BASE_URL}/team?${params.toString()}`,
@@ -621,7 +628,6 @@ export const TeamProvider = ({ children }) => {
         if (response.data.success) {
           const raw = response.data.member;
 
-          // Map flat API response → nested shape expected by TeamMemberDetails
           const enriched = {
             personalInfo: {
               firstName: raw.firstName || "",
@@ -706,8 +712,9 @@ export const TeamProvider = ({ children }) => {
           headers: authHeaders(),
         });
         if (response.data.success) {
-          // Re-fetch to update list
-          await updateFilters({ ...activeFilters });
+          // NEW: force page back to 1 so the just-created member (now
+          // sorted first by the backend) is visible immediately.
+          await updateFilters({ ...activeFilters, page: 1 });
           return {
             success: true,
             message: response.data.message || "Team member added successfully",

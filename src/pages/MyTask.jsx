@@ -1,5 +1,5 @@
 // src/pages/MyTask.jsx
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Box,
   Container,
@@ -8,6 +8,7 @@ import {
   Button,
   IconButton,
   TextField,
+  InputAdornment,
   Select,
   MenuItem,
   FormControl,
@@ -47,6 +48,7 @@ import {
   CalendarToday as CalendarTodayIcon,
   KeyboardArrowDown as ArrowDownIcon,
   FiberManualRecord as DotIcon,
+  Search as SearchIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useTeamAssignment } from "../context/TeamAssignmentcontext";
@@ -90,10 +92,10 @@ const theme = createTheme({
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 const PRIORITY_CFG = {
-  critical: { label: "Extremely Critical", color: "#b91c1c", bg: "#fef2f2", border: "#fecaca", accent: "#ef4444", chipBg: "#fef2f2", chipColor: "#b91c1c" },
-  high:     { label: "High Priority",      color: "#c2410c", bg: "#fff7ed", border: "#fed7aa", accent: "#f97316", chipBg: "#fff3e0", chipColor: "#c2410c" },
-  medium:   { label: "Medium Priority",    color: "#1565c0", bg: "#e3f2fd", border: "#90caf9", accent: "#2196f3", chipBg: "#e3f2fd", chipColor: "#1565c0" },
-  low:      { label: "Low Priority",       color: "#0288d1", bg: "#e1f5fe", border: "#81d4fa", accent: "#03a9f4", chipBg: "#e1f5fe", chipColor: "#0288d1" },
+  critical: { label: "Critical", color: "#b91c1c", bg: "#fef2f2", border: "#fecaca", accent: "#ef4444", chipBg: "#fef2f2", chipColor: "#b91c1c" },
+  high:     { label: "High",      color: "#c2410c", bg: "#fff7ed", border: "#fed7aa", accent: "#f97316", chipBg: "#fff3e0", chipColor: "#c2410c" },
+  medium:   { label: "Medium",    color: "#ca8a04", bg: "#fefce8", border: "#fde68a", accent: "#eab308", chipBg: "#fefce8", chipColor: "#ca8a04" },
+  low:      { label: "Low",       color: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0", accent: "#22c55e", chipBg: "#f0fdf4", chipColor: "#16a34a" },
 };
 
 const STATUS_CFG = {
@@ -105,17 +107,50 @@ const STATUS_CFG = {
   rejected:    { label: "Rejected",     color: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
 };
 
+// NEW: pull the best-available "created/assigned" timestamp off a task.
+// Different endpoints in this codebase may use different field names, so
+// check the likely candidates in priority order.
+const getTaskCreatedAt = (task) =>
+  task?.createdAt || task?.assignedAt || task?.assignedDate || task?.createdOn || null;
+
+const getTodayInputValue = () => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+};
+
 // ─── Stat Card ────────────────────────────────────────────────────────────────
-const StatCard = ({ title, value }) => (
+const StatCard = ({ title, value, active = false, onClick }) => (
   <Paper
     elevation={0}
+    role={onClick ? "button" : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    onClick={onClick}
+    onKeyDown={(event) => {
+      if (!onClick) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onClick();
+      }
+    }}
     sx={{
       p: { xs: 2, sm: 2.5 },
-      border: "1px solid #e2e8f0",
+      border: active ? "1.5px solid #111827" : "1px solid #e2e8f0",
       bgcolor: "#fff",
       borderRadius: 1,
       flex: 1,
       minWidth: 0,
+      cursor: onClick ? "pointer" : "default",
+      transition: "border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease",
+      "&:hover": onClick
+        ? {
+            borderColor: "#111827",
+            boxShadow: "0 8px 20px rgba(13, 61, 82, 0.08)",
+          }
+        : {},
+      "&:focus-visible": {
+        outline: "3px solid rgba(13, 61, 82, 0.18)",
+        outlineOffset: 2,
+      },
     }}
   >
     <Typography
@@ -138,10 +173,10 @@ const StatCard = ({ title, value }) => (
 
 // ─── Task Card ────────────────────────────────────────────────────────────────
 const PRIORITY_PILL = {
-  critical: { label: "Extremely Critical", bg: "#ef4444", color: "#fff" },
-  high:     { label: "High Priority",      bg: "#f97316", color: "#fff" },
-  medium:   { label: "Medium Priority",    bg: "#3b82f6", color: "#fff" },
-  low:      { label: "Low Priority",       bg: "#06b6d4", color: "#fff" },
+  critical: { label: "Critical", bg: "#dc2626", color: "#fff" },
+  high:     { label: "High",      bg: "#f97316", color: "#fff" },
+  medium:   { label: "Medium",    bg: "#ca8a04", color: "#fff" },
+  low:      { label: "Low",       bg: "#16a34a", color: "#fff" },
 };
 
 const STATUS_PILL = {
@@ -479,10 +514,10 @@ const CalendarView = ({ tasks, onView }) => {
           <Typography fontWeight={700} sx={{ mb: 1.5, color: "#0f172a", fontSize: "0.8rem" }}>Legend</Typography>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", lg: "1fr" }, gap: { xs: 0.75, lg: 0 } }}>
             {[
-              { label: "Extremely Critical", color: "#ef4444" },
-              { label: "High Priority",      color: "#f97316" },
-              { label: "Medium Priority",    color: "#f59e0b" },
-              { label: "Low Priority",       color: "#60a5fa" },
+              { label: "Critical", color: "#ef4444" },
+              { label: "High",      color: "#f97316" },
+              { label: "Medium",    color: "#f59e0b" },
+              { label: "Low",       color: "#60a5fa" },
               { label: "In Progress",        color: "#3b82f6" },
               { label: "Completed",          color: "#10b981" },
             ].map((item) => (
@@ -546,6 +581,7 @@ export default function MyTask() {
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
   const [stats, setStats] = useState(null);
   const [filters, setFilters] = useState({ status: "", priority: "", search: "", page: 1, limit: 20 });
+  const [statFilter, setStatFilter] = useState("");
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
 
   useEffect(() => {
@@ -555,8 +591,22 @@ export default function MyTask() {
 
   const toast = useCallback((msg, severity = "success") => setSnack({ open: true, msg, severity }), []);
 
+  const requestFilters = useMemo(() => {
+    const nextFilters = { ...filters };
+
+    if (statFilter === "pending" || statFilter === "in_progress") {
+      nextFilters.status = statFilter;
+      nextFilters.date = "";
+    } else if (statFilter === "due_today") {
+      nextFilters.status = "";
+      nextFilters.date = getTodayInputValue();
+    }
+
+    return nextFilters;
+  }, [filters, statFilter]);
+
   const loadTasks = useCallback(async () => {
-    const result = await fetchMyTasks(filters);
+    const result = await fetchMyTasks(requestFilters);
     if (!mountedRef.current) return;
     if (result.success) {
       setTasks(result.tasks);
@@ -565,16 +615,78 @@ export default function MyTask() {
     } else {
       toast(result.error || "Failed to load tasks", "error");
     }
-  }, [fetchMyTasks, filters, toast]);
+  }, [fetchMyTasks, requestFilters, toast]);
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
 
-  const handleFilterChange = (key, value) => setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
-  const clearFilters = () => setFilters({ status: "", priority: "", search: "", page: 1, limit: 20 });
-  const hasFilters = !!(filters.status || filters.priority || filters.date);
+  // NEW: client-side safety-net sort, newest first. The context now asks the
+  // backend to sort with `sort=-createdAt`, but if the backend ignores that
+  // param (or the field is named something else on this endpoint) this
+  // guarantees the current page of tasks is still ordered correctly. If no
+  // task has any recognizable timestamp, this is a harmless no-op and the
+  // original order (as returned by the API) is preserved.
+  const sortedTasks = useMemo(() => {
+    if (!tasks?.length) return [];
+    const noTimestamps = tasks.every((t) => !getTaskCreatedAt(t));
+    if (noTimestamps) return tasks;
+    return [...tasks].sort((a, b) => {
+      const aTime = new Date(getTaskCreatedAt(a) || 0).getTime();
+      const bTime = new Date(getTaskCreatedAt(b) || 0).getTime();
+      return bTime - aTime; // newest first
+    });
+  }, [tasks]);
+
+  const displayedTasks = useMemo(() => {
+    const query = filters.search.trim().toLowerCase();
+    if (!query) return sortedTasks;
+
+    return sortedTasks.filter((task) => {
+      const assetName =
+        task.assets?.[0]?.assetName ||
+        task.assetIds?.[0]?.assetName ||
+        "";
+      const checklistName =
+        task.checklists?.[0]?.name ||
+        task.checklistData?.[0]?.name ||
+        "";
+      const assetLocation =
+        task.assetIds?.[0]?.currentLocation ||
+        task.assets?.[0]?.currentLocation ||
+        "";
+      const searchableText = [
+        assetName,
+        checklistName,
+        assetLocation,
+        task.priority,
+        getTaskStatus(task),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(query);
+    });
+  }, [filters.search, sortedTasks]);
+
+  const handleFilterChange = (key, value) => {
+    if (key === "status" || key === "date") {
+      setStatFilter("");
+    }
+    setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+  };
+  const handleStatFilter = (type) => {
+    setStatFilter(type === "total" ? "" : type);
+    setFilters((prev) => ({ ...prev, page: 1 }));
+  };
+  const clearFilters = () => {
+    setStatFilter("");
+    setFilters({ status: "", priority: "", search: "", date: "", page: 1, limit: 20 });
+  };
+  const hasFormFilters = !!(filters.status || filters.priority || filters.date || filters.search);
+  const hasFilters = !!(hasFormFilters || statFilter);
   const handleViewTask = (id) => navigate(`/team/task/${id}`);
 
-  const derivedStats = tasks.reduce(
+  const derivedStats = displayedTasks.reduce(
     (acc, task) => {
       const status = getTaskStatus(task);
       if (status === "pending") acc.pending += 1;
@@ -596,10 +708,10 @@ export default function MyTask() {
   );
 
   const statValues = {
-    total:       stats?.total       ?? pagination.total ?? tasks.length,
-    pending:     stats?.pending     ?? derivedStats.pending,
-    in_progress: stats?.in_progress ?? derivedStats.in_progress,
-    due_today:   stats?.due_today   ?? derivedStats.due_today,
+    total: displayedTasks.length,
+    pending: derivedStats.pending,
+    in_progress: derivedStats.in_progress,
+    due_today: derivedStats.due_today,
   };
 
   return (
@@ -704,6 +816,24 @@ export default function MyTask() {
             }}
           >
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems="center" flexWrap="wrap" useFlexGap>
+              <TextField
+                size="small"
+                placeholder="Search tasks"
+                value={filters.search || ""}
+                onChange={(e) => handleFilterChange("search", e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ fontSize: 17, color: "#94a3b8" }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  width: { xs: "100%", sm: 240, md: 300 },
+                  "& .MuiOutlinedInput-root": { fontSize: "0.82rem", bgcolor: "#fff" },
+                }}
+              />
+
               {/* Status */}
               <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 140 } }}>
                 <Select
@@ -751,27 +881,7 @@ export default function MyTask() {
                 }}
               />
 
-              {/* More Filters */}
-              {/* <Button
-                size="small"
-                startIcon={<FilterListIcon sx={{ fontSize: 15 }} />}
-                sx={{
-                  color: "#334155",
-                  fontSize: "0.82rem",
-                  fontWeight: 500,
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 1.5,
-                  px: 1.75,
-                  py: 0.85,
-                  bgcolor: "#fff",
-                  "&:hover": { bgcolor: "#f8fafc" },
-                  whiteSpace: "nowrap",
-                }}
-              >
-                More Filters
-              </Button> */}
-
-              {hasFilters && (
+              {hasFormFilters && (
                 <Button
                   size="small"
                   onClick={clearFilters}
@@ -801,10 +911,30 @@ export default function MyTask() {
               mb: 3,
             }}
           >
-            <StatCard title="Total Tasks"  value={statValues.total} />
-            <StatCard title="Pending"      value={statValues.pending} />
-            <StatCard title="In Progress"  value={statValues.in_progress} />
-            <StatCard title="Due Today"    value={statValues.due_today} />
+            <StatCard
+              title="Total Tasks"
+              value={statValues.total}
+              active={!statFilter && !filters.status && !filters.date}
+              onClick={() => handleStatFilter("total")}
+            />
+            <StatCard
+              title="Pending"
+              value={statValues.pending}
+              active={statFilter === "pending"}
+              onClick={() => handleStatFilter("pending")}
+            />
+            <StatCard
+              title="In Progress"
+              value={statValues.in_progress}
+              active={statFilter === "in_progress"}
+              onClick={() => handleStatFilter("in_progress")}
+            />
+            <StatCard
+              title="Due Today"
+              value={statValues.due_today}
+              active={statFilter === "due_today"}
+              onClick={() => handleStatFilter("due_today")}
+            />
           </Box>
 
           {/* ── Content ── */}
@@ -817,8 +947,8 @@ export default function MyTask() {
               ))}
             </Grid>
           ) : viewMode === "calendar" ? (
-            <CalendarView tasks={tasks} onView={handleViewTask} />
-          ) : tasks.length === 0 ? (
+            <CalendarView tasks={displayedTasks} onView={handleViewTask} />
+          ) : displayedTasks.length === 0 ? (
             <Paper
               elevation={0}
               sx={{
@@ -852,7 +982,7 @@ export default function MyTask() {
             <>
               {/* 3-column grid on desktop, 2 on tablet, 1 on mobile */}
               <Grid container spacing={{ xs: 1.5, sm: 2 }}>
-                {tasks.map((task) => (
+                {displayedTasks.map((task) => (
                   <Grid item xs={12} sm={6} md={4} key={task._id}>
                     <TaskCard task={task} onView={handleViewTask} />
                   </Grid>

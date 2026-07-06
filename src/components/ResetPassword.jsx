@@ -232,6 +232,12 @@ const ResetPassword = () => {
     if (!/[0-9]/.test(password)) {
       requirements.push("One number");
     }
+    if (!/[@$!%*?&]/.test(password)) {
+      requirements.push("One special character (@$!%*?&)");
+    }
+    if (password && !/^[A-Za-z\d@$!%*?&]+$/.test(password)) {
+      requirements.push("Only letters, numbers, and @$!%*?&");
+    }
     return requirements;
   }, []);
 
@@ -242,7 +248,7 @@ const ResetPassword = () => {
     if (/[A-Z]/.test(password)) strength++;
     if (/[a-z]/.test(password)) strength++;
     if (/[0-9]/.test(password)) strength++;
-    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
+    if (/[@$!%*?&]/.test(password)) strength++;
     return strength;
   }, []);
 
@@ -387,6 +393,9 @@ const ResetPassword = () => {
     uppercase: /[A-Z]/.test(formData.password),
     lowercase: /[a-z]/.test(formData.password),
     number: /[0-9]/.test(formData.password),
+    special: /[@$!%*?&]/.test(formData.password),
+    validChars:
+      !formData.password || /^[A-Za-z\d@$!%*?&]+$/.test(formData.password),
   };
 
   // Loading state while validating token
@@ -869,6 +878,62 @@ const ResetPassword = () => {
                                     }}
                                   >
                                     One number
+                                  </Typography>
+                                </Box>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
+                                  }}
+                                >
+                                  {passwordChecks.special ? (
+                                    <CheckIcon
+                                      sx={{ fontSize: 14, color: C.green }}
+                                    />
+                                  ) : (
+                                    <CloseIcon
+                                      sx={{ fontSize: 14, color: C.inkMut }}
+                                    />
+                                  )}
+                                  <Typography
+                                    sx={{
+                                      fontSize: { xs: "0.7rem", sm: "0.75rem" },
+                                      color: passwordChecks.special
+                                        ? C.green
+                                        : C.inkSec,
+                                      fontFamily: C.font,
+                                    }}
+                                  >
+                                    One special character (@$!%*?&)
+                                  </Typography>
+                                </Box>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
+                                  }}
+                                >
+                                  {passwordChecks.validChars ? (
+                                    <CheckIcon
+                                      sx={{ fontSize: 14, color: C.green }}
+                                    />
+                                  ) : (
+                                    <CloseIcon
+                                      sx={{ fontSize: 14, color: C.inkMut }}
+                                    />
+                                  )}
+                                  <Typography
+                                    sx={{
+                                      fontSize: { xs: "0.7rem", sm: "0.75rem" },
+                                      color: passwordChecks.validChars
+                                        ? C.green
+                                        : C.inkSec,
+                                      fontFamily: C.font,
+                                    }}
+                                  >
+                                    Only letters, numbers, and @$!%*?&
                                   </Typography>
                                 </Box>
                               </Stack>

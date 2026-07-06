@@ -451,10 +451,10 @@ const TypeBadge = ({ type }) => {
 };
 
 const PRIORITY_CONFIG = {
-  low: { label: "Low", color: "#52a069", bg: "#e8f5e9" },
-  medium: { label: "Medium", color: "#ed6c02", bg: "#fff3e0" },
-  high: { label: "High", color: "#d32f2f", bg: "#ffebee" },
-  critical: { label: "Critical", color: "#7f1d1d", bg: "#fef2f2" },
+  low: { label: "Low", color: "#16a34a", bg: "#f0fdf4" },
+  medium: { label: "Medium", color: "#ca8a04", bg: "#fefce8" },
+  high: { label: "High", color: "#f97316", bg: "#fff7ed" },
+  critical: { label: "Critical", color: "#dc2626", bg: "#fef2f2" },
 };
 
 const PriorityBadge = ({ priority }) => {
@@ -1064,8 +1064,8 @@ const CreateModal = ({ open, onClose }) => {
     },
     {
       icon: <PublicIcon />,
-      label: "Standard Checklist",
-      desc: "Submit a standard checklist for super admin approval",
+      label: "Custom Checklist (Global)",
+      desc: "Submit a custom checklist for super admin approval",
       path: "/admin/create-checklist/global",
       color: "#2e7d32",
       bg: "#e8f5e9",

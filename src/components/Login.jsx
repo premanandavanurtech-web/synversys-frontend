@@ -536,6 +536,15 @@ export default function LoginPage() {
     }
   }, []);
 
+  useEffect(() => {
+    const expiredMessage = sessionStorage.getItem("authExpiredMessage");
+    if (expiredMessage) {
+      sessionStorage.removeItem("authExpiredMessage");
+      setErrorMsg(expiredMessage);
+      setErrOpen(true);
+    }
+  }, []);
+
   // Check backend status on mount
   useEffect(() => {
     const checkBackend = async () => {

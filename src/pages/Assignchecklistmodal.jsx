@@ -58,10 +58,10 @@ const BORDER = "#d0e4ea";
 const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
 
 const PRIORITIES = [
-  { value: "low", label: "Low", color: "#4caf50" },
-  { value: "medium", label: "Medium", color: "#ff9800" },
-  { value: "high", label: "High", color: "#f44336" },
-  { value: "critical", label: "Critical", color: "#9c27b0" },
+  { value: "low", label: "Low", color: "#16a34a" },
+  { value: "medium", label: "Medium", color: "#ca8a04" },
+  { value: "high", label: "High", color: "#f97316" },
+  { value: "critical", label: "Critical", color: "#dc2626" },
 ];
 
 const initials = (name = "") =>

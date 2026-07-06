@@ -274,9 +274,9 @@ const TypeChip = ({ type }) => {
 };
 
 const URGENCY_CFG = {
-  low: { bg: "#f1f5f9", color: "#64748b" },
-  medium: { bg: C.amberBg, color: C.amber },
-  high: { bg: "#fff7ed", color: C.orange },
+  low: { bg: "#f0fdf4", color: "#16a34a" },
+  medium: { bg: "#fefce8", color: "#ca8a04" },
+  high: { bg: "#fff7ed", color: "#f97316" },
   critical: { bg: C.redBg, color: C.red },
 };
 

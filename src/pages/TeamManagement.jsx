@@ -1,5 +1,5 @@
 // pages/TeamManagement.jsx
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Box,
   Container,
@@ -106,6 +106,12 @@ const EMPTY_FILTERS = {
   performanceMin: "",
   performanceMax: "",
 };
+
+// NEW: pull the best-available "created" timestamp off a member record.
+// Different endpoints in this codebase use different field names
+// (createdAt, teamCreatedAt, joinDate), so we check all of them.
+const getMemberCreatedAt = (member) =>
+  member?.createdAt || member?.teamCreatedAt || member?.joinDate || null;
 
 const getStatusStyle = (status) => {
   switch (status?.toLowerCase()) {
@@ -1029,6 +1035,23 @@ export default function TeamManagement() {
     };
   }, [searchTerm, filters, currentPage, rowsPerPage, updateFilters]);
 
+  // NEW: client-side safety-net sort, newest first. The context now asks the
+  // backend to sort with `sort=-createdAt`, but if the backend ignores that
+  // param (or the field is named something else) this guarantees the current
+  // page's members are still ordered correctly instead of silently doing
+  // nothing. If every member is missing a timestamp this is a harmless no-op
+  // (original order is preserved).
+  const sortedMembers = useMemo(() => {
+    if (!teamMembers?.length) return [];
+    const withTimestamp = teamMembers.every((m) => !getMemberCreatedAt(m));
+    if (withTimestamp) return teamMembers; // no timestamps to sort by — leave as-is
+    return [...teamMembers].sort((a, b) => {
+      const aTime = new Date(getMemberCreatedAt(a) || 0).getTime();
+      const bTime = new Date(getMemberCreatedAt(b) || 0).getTime();
+      return bTime - aTime; // newest first
+    });
+  }, [teamMembers]);
+
   // Computed stats from members list
   const totalMembers = teamMembers?.length || 0;
   const activeMembers =
@@ -1069,6 +1092,9 @@ export default function TeamManagement() {
     if (result.success) {
       showToast(result.message);
       setAddModalOpen(false);
+      // NEW: jump back to page 1 so the newly-added member (sorted first
+      // both by the backend and by the sortedMembers fallback) is visible.
+      setCurrentPage(0);
     } else showToast(result.error || "Failed to add member", "error");
     return result;
   };
@@ -1391,7 +1417,7 @@ export default function TeamManagement() {
           />
         ) : isMobile ? (
           <Box>
-            {teamMembers.map((m) => (
+            {sortedMembers.map((m) => (
               <MobileMemberCard
                 key={m.id || m._id}
                 member={m}
@@ -1455,7 +1481,7 @@ export default function TeamManagement() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {teamMembers.map((m) => (
+                  {sortedMembers.map((m) => (
                     <MemberRow
                       key={m.id || m._id}
                       member={m}
