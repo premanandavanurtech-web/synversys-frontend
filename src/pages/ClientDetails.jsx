@@ -731,7 +731,7 @@ const AccessDenied = () => {
           maxWidth: 400,
         }}
       >
-        Super Administrators only.
+        Administrators only.
       </Typography>
       <Button
         variant="contained"
@@ -766,7 +766,8 @@ export default function ClientDetails() {
   const { user, isAuthenticated } = useAuth();
 
   const clientId = id || location.state?.clientId;
-  const isSuperAdmin = user?.role === "super_admin";
+  const canManageCustomers =
+    user?.role === "super_admin" || user?.role === "admin";
 
   const [tab, setTab] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
@@ -809,16 +810,16 @@ export default function ClientDetails() {
   }, [clientId, getClientById, showToast]);
 
   useEffect(() => {
-    if (clientId && isAuthenticated && isSuperAdmin) {
+    if (clientId && isAuthenticated && canManageCustomers) {
       loadData();
     } else if (!clientId) {
       setFetchError("Client ID missing");
       setIsFetching(false);
-    } else if (!isSuperAdmin && isAuthenticated) {
+    } else if (!canManageCustomers && isAuthenticated) {
       setFetchError("Access denied.");
       setIsFetching(false);
     }
-  }, [clientId, isAuthenticated, isSuperAdmin, loadData]);
+  }, [clientId, isAuthenticated, canManageCustomers, loadData]);
 
   if (!isAuthenticated) {
     return (
@@ -835,7 +836,7 @@ export default function ClientDetails() {
     );
   }
 
-  if (!isSuperAdmin) return <AccessDenied />;
+  if (!canManageCustomers) return <AccessDenied />;
 
   const client = selectedClient;
   const plan = PLANS[client?.membershipPlan] || PLANS.free;

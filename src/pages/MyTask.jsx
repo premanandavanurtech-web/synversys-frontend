@@ -829,7 +829,7 @@ export default function MyTask() {
                   ),
                 }}
                 sx={{
-                  width: { xs: "100%", sm: 240, md: 300 },
+                  width: { xs: "100%", sm: 740, md: 685 },
                   "& .MuiOutlinedInput-root": { fontSize: "0.82rem", bgcolor: "#fff" },
                 }}
               />

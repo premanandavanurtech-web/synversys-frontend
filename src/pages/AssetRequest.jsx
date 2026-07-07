@@ -110,16 +110,24 @@ const PageWrap = styled(Box)(({ theme }) => ({
   [theme.breakpoints.down("sm")]: { padding: "12px 10px 40px" },
 }));
 
-const StatCard = styled(Card)(({ accent }) => ({
+const StatCard = styled(Card, {
+  shouldForwardProp: (prop) => prop !== "accent" && prop !== "active",
+})(({ accent, active }) => ({
   borderRadius: 16,
-  border: `1px solid ${T.border}`,
+  border: `1px solid ${active ? accent || T.teal : T.border}`,
   borderLeft: `4px solid ${accent || T.teal}`,
-  boxShadow: "none",
-  background: T.surface,
-  transition: "transform 0.18s, box-shadow 0.18s",
+  boxShadow: active ? `0 10px 26px ${accent || T.teal}22` : "none",
+  background: active ? `${accent || T.teal}08` : T.surface,
+  cursor: "pointer",
+  transition: "transform 0.18s, box-shadow 0.18s, border-color 0.18s, background 0.18s",
   "&:hover": {
     transform: "translateY(-2px)",
     boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
+    borderColor: accent || T.teal,
+  },
+  "&:focus-visible": {
+    outline: `3px solid ${accent || T.teal}33`,
+    outlineOffset: 3,
   },
 }));
 
@@ -1086,6 +1094,7 @@ export default function AssetRequests() {
     status: "all",
     search: "",
   });
+  const [statStatusFilter, setStatStatusFilter] = useState("all");
   const [sortField, setSortField] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
   const [snack, setSnack] = useState({
@@ -1124,7 +1133,7 @@ export default function AssetRequests() {
       const data = await fetchRequests({
         page: pagination.page,
         limit: pagination.limit,
-        type: filters.type,
+        type: requestKindTab,
         status: filters.status,
         search: filters.search,
         sortBy: sortField,
@@ -1167,7 +1176,7 @@ export default function AssetRequests() {
     fetchRequests,
     pagination.page,
     pagination.limit,
-    filters.type,
+    requestKindTab,
     filters.status,
     filters.search,
     sortField,
@@ -1188,6 +1197,12 @@ export default function AssetRequests() {
 
   const handleFilterChange = (key, value) => {
     setFilters((p) => ({ ...p, [key]: value }));
+    if (key === "status") setStatStatusFilter("all");
+    setPagination((p) => ({ ...p, page: 1 }));
+  };
+
+  const handleStatFilter = (status) => {
+    setStatStatusFilter(status);
     setPagination((p) => ({ ...p, page: 1 }));
   };
 
@@ -1199,16 +1214,39 @@ export default function AssetRequests() {
       : r.assetType === "parent" || (!r.assetType && !r.isChildRequest),
   );
 
-  const sorted = [...tabFiltered].sort((a, b) => {
+  const statusFiltered =
+    statStatusFilter === "all"
+      ? tabFiltered
+      : tabFiltered.filter(
+          (r) => String(r.status || "").toLowerCase() === statStatusFilter,
+        );
+
+  const sorted = [...statusFiltered].sort((a, b) => {
     const av = sortField === "createdAt" ? new Date(a.createdAt) : a[sortField];
     const bv = sortField === "createdAt" ? new Date(b.createdAt) : b[sortField];
     return sortOrder === "asc" ? (av > bv ? 1 : -1) : av < bv ? 1 : -1;
   });
 
-  const parentCount = requests.filter(
+  const tabStats = tabFiltered.reduce(
+    (acc, request) => {
+      const status = String(request.status || "").toLowerCase();
+      acc.total += 1;
+      if (acc[status] !== undefined) acc[status] += 1;
+      return acc;
+    },
+    { total: 0, pending: 0, approved: 0, rejected: 0, completed: 0 },
+  );
+
+  const displayStats = {
+    ...stats,
+    ...tabStats,
+    total: pagination.total || tabStats.total,
+  };
+
+  const parentCount = stats.parent ?? requests.filter(
     (r) => r.assetType === "parent" || (!r.assetType && !r.isChildRequest),
   ).length;
-  const childCount = requests.filter(
+  const childCount = stats.child ?? requests.filter(
     (r) => r.assetType === "child" || r.isChildRequest,
   ).length;
   const requestVerb = user?.role === "team" ? "Sent" : "Received";
@@ -1382,8 +1420,26 @@ export default function AssetRequests() {
           mb: 3,
         }}
       >
-        {statDefs.map(({ key, label, accent, icon, iconColor }) => (
-          <StatCard key={key} accent={accent}>
+        {statDefs.map(({ key, label, accent, icon, iconColor }) => {
+          const statusValue = key === "total" ? "all" : key;
+          const isActive = statStatusFilter === statusValue;
+
+          return (
+          <StatCard
+            key={key}
+            accent={accent}
+            active={isActive}
+            role="button"
+            tabIndex={0}
+            aria-pressed={isActive}
+            onClick={() => handleStatFilter(statusValue)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleStatFilter(statusValue);
+              }
+            }}
+          >
             <CardContent sx={{ py: 2, px: 2.25, "&:last-child": { pb: 2 } }}>
               <Stack
                 direction="row"
@@ -1396,7 +1452,7 @@ export default function AssetRequests() {
                       fontSize: 10,
                       fontWeight: 700,
                       textTransform: "uppercase",
-                      color: T.textMuted,
+                      color: isActive ? accent : T.textMuted,
                       letterSpacing: "0.07em",
                     }}
                   >
@@ -1411,7 +1467,7 @@ export default function AssetRequests() {
                       mt: 0.5,
                     }}
                   >
-                    {stats[key] ?? 0}
+                    {displayStats[key] ?? 0}
                   </Typography>
                 </Box>
                 <Box
@@ -1433,13 +1489,17 @@ export default function AssetRequests() {
               </Stack>
             </CardContent>
           </StatCard>
-        ))}
+          );
+        })}
       </Box>
 
       {/* ── Parent / Child Tabs ── */}
       <Tabs
         value={requestKindTab}
-        onChange={(_, v) => setRequestKindTab(v)}
+        onChange={(_, v) => {
+          setRequestKindTab(v);
+          setPagination((p) => ({ ...p, page: 1 }));
+        }}
         sx={{
           mb: 2,
           minHeight: 40,

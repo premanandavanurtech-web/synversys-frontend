@@ -172,7 +172,7 @@ const AccessDenied = () => {
           maxWidth: 400,
         }}
       >
-        You don't have permission to access this page. Restricted to Super
+        You don't have permission to access this page. Restricted to
         Administrators.
       </Typography>
       <Button
@@ -1379,7 +1379,10 @@ export default function ClientManagement() {
   const searchTimer = useRef(null);
   const isInitMount = useRef(true);
 
-  const isSuperAdmin = useMemo(() => user?.role === "super_admin", [user]);
+  const canManageCustomers = useMemo(
+    () => user?.role === "super_admin" || user?.role === "admin",
+    [user],
+  );
 
   const showToast = useCallback((msg, sev = "success") => {
     setToast({ open: true, message: msg, severity: sev });
@@ -1539,7 +1542,7 @@ export default function ClientManagement() {
     );
   }
 
-  if (!isSuperAdmin) return <AccessDenied />;
+  if (!canManageCustomers) return <AccessDenied />;
 
   if (initialLoading && !clients?.length) {
     return <ClientManagementSkeleton />;

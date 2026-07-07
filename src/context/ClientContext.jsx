@@ -733,7 +733,7 @@ export const ClientProvider = ({ children }) => {
       return;
     }
 
-    if (user?.role !== "super_admin") {
+    if (user?.role !== "super_admin" && user?.role !== "admin") {
       initialLoadDone.current = false;
       dispatch({ type: ACTION_TYPES.SET_INITIAL_LOADING, payload: false });
       return;
