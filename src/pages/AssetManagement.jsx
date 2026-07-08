@@ -209,7 +209,7 @@ const isCloneAssetRecord = (asset) => {
 };
 
 // ── Asset Card — matches screenshot cards exactly ────────────────────────────
-const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
+const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin, canViewFinancials }) => {
   const canClone = !asset.isClone && asset.canBeCloned !== false;
   const isChildAsset = isChildAssetRecord(asset);
 
@@ -232,7 +232,7 @@ const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
         borderRadius: T.radius.card,
         border: `1px solid ${T.border}`,
         boxShadow: T.shadowCard,
-        width: {xs:"356px",md:"371px"},
+        width: {xs:"356px",md:"366px"},
         cursor: "pointer",
         transition: "box-shadow 0.18s, transform 0.18s",
         overflow: "hidden",
@@ -309,10 +309,10 @@ const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin }) => {
         {[
           { label: "Category:", value: category },
           { label: "Tag Number:", value: asset.tagNumber },
-          { label: "Purchase Cost:", value: asset.purchaseCost },
+          canViewFinancials && { label: "Purchase Cost:", value: asset.purchaseCost },
           { label: "status::", value: asset.status },
           { label: "Last Inspection:", value: formatDate(asset.createdAt) },
-        ].map(({ label, value, highlight }) => (
+        ].filter(Boolean).map(({ label, value, highlight }) => (
           <Stack
             key={label}
             direction="row"
@@ -541,6 +541,7 @@ export default function AssetManagement() {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const canViewFinancials = user?.role !== "team";
 
   const { getAllAssets, cloneAsset, deleteAsset, assetStats } = useAsset();
 
@@ -797,26 +798,28 @@ export default function AssetManagement() {
       return;
     }
 
-    const rows = [
-      [
+    const header = [
         "Asset Name",
         "Tag Number",
         "Category",
         "Status",
         "Location",
-        "Purchase Cost",
         "Purchase Date",
         "Warranty Expiry",
         "Last Inspection",
         "Created At",
-      ],
-      ...visibleAssets.map((asset) => [
+      ];
+    if (canViewFinancials) header.splice(5, 0, "Purchase Cost");
+
+    const rows = [
+      header,
+      ...visibleAssets.map((asset) => {
+        const row = [
         asset.assetName || "",
         asset.tagNumber || "",
         getAssetCategoryName(asset),
         asset.status || "",
         asset.currentLocation || "",
-        asset.purchaseCost ?? "",
         formatExportDate(asset.purchaseDate || asset.acquisitionDate),
         formatExportDate(asset.warrantyExpiry),
         formatExportDate(
@@ -824,7 +827,10 @@ export default function AssetManagement() {
             asset.inspectionSystems?.camcInspection?.lastInspectionDate,
         ),
         formatExportDate(asset.createdAt),
-      ]),
+        ];
+        if (canViewFinancials) row.splice(5, 0, asset.purchaseCost ?? "");
+        return row;
+      }),
     ];
 
     const stamp = new Date().toISOString().slice(0, 10);
@@ -1284,6 +1290,7 @@ export default function AssetManagement() {
                           : undefined
                       }
                       isAdmin={isAdmin}
+                      canViewFinancials={canViewFinancials}
                     />
                   </Grid>
                 ))}

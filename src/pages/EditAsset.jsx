@@ -641,6 +641,7 @@ export default function EditAsset() {
     loading: catLoading,
   } = useAssetCategory();
   const isTeam = user?.role === "team";
+  const canViewFinancials = !isTeam;
   const currentUserId = user?._id || user?.id;
 
   const [pageLoading, setPageLoading] = useState(true);
@@ -921,7 +922,9 @@ export default function EditAsset() {
           secondaryUser: form.secondaryUser || null,
           custodian: form.custodian || null,
         },
-        purchaseCost: form.purchaseCost ? Number(form.purchaseCost) : undefined,
+        ...(canViewFinancials
+          ? { purchaseCost: form.purchaseCost ? Number(form.purchaseCost) : undefined }
+          : {}),
         commissioningDate: form.commissioningDate || undefined,
         warrantyExpiry: form.warrantyExpiryDate || undefined,
         customPhysicalAddress: {
@@ -1347,18 +1350,20 @@ export default function EditAsset() {
               <CurrencyRupeeIcon sx={{ fontSize: 14 }} /> Financial Details
             </SectionLabel>
             <FieldGrid cols={3}>
-              <Field
-                label="Purchase Cost (₹)"
-                icon={<CurrencyRupeeIcon sx={{ fontSize: 13 }} />}
-              >
-                <StyledInput
-                  type="number"
-                  min="0"
-                  value={form.purchaseCost}
-                  onChange={set("purchaseCost")}
-                  placeholder="0.00"
-                />
-              </Field>
+              {canViewFinancials && (
+                <Field
+                  label="Purchase Cost (₹)"
+                  icon={<CurrencyRupeeIcon sx={{ fontSize: 13 }} />}
+                >
+                  <StyledInput
+                    type="number"
+                    min="0"
+                    value={form.purchaseCost}
+                    onChange={set("purchaseCost")}
+                    placeholder="0.00"
+                  />
+                </Field>
+              )}
               <Field
                 label="Commissioning Date"
                 icon={<CalendarToday sx={{ fontSize: 13 }} />}

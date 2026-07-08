@@ -4,6 +4,16 @@ import { useAuth } from "./AuthContexts";
 
 const TeamAssignmentContext = createContext();
 
+const getLocalDateRange = (dateValue) => {
+  if (!dateValue) return null;
+  const [year, month, day] = String(dateValue).split("-").map(Number);
+  if (!year || !month || !day) return null;
+
+  const start = new Date(year, month - 1, day, 0, 0, 0, 0);
+  const end = new Date(year, month - 1, day, 23, 59, 59, 999);
+  return { from: start.toISOString(), to: end.toISOString() };
+};
+
 export const useTeamAssignment = () => {
   const ctx = useContext(TeamAssignmentContext);
   if (!ctx)
@@ -27,7 +37,15 @@ export const TeamAssignmentProvider = ({ children }) => {
       if (filters.status) params.append("status", filters.status);
       if (filters.priority) params.append("priority", filters.priority);
       if (filters.search) params.append("search", filters.search);
-      if (filters.date) params.append("date", filters.date);
+      if (filters.date) {
+        const range = getLocalDateRange(filters.date);
+        if (range) {
+          params.append("dateFrom", range.from);
+          params.append("dateTo", range.to);
+        } else {
+          params.append("date", filters.date);
+        }
+      }
       if (filters.page) params.append("page", String(filters.page));
       if (filters.limit) params.append("limit", String(filters.limit || 20));
       // NEW: ask the backend for newest-first ordering so newly assigned/
@@ -218,6 +236,55 @@ export const TeamAssignmentProvider = ({ children }) => {
     }
   }, [authRequest]);
 
+  const submitPoa = useCallback(async (assignmentId, formData) => {
+    if (!assignmentId || assignmentId === "undefined" || assignmentId === "null") {
+      return { success: false, error: "Invalid assignment ID" };
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const payload = formData instanceof FormData ? formData : new FormData();
+      if (!(formData instanceof FormData)) {
+        Object.entries(formData || {}).forEach(([key, value]) => {
+          if (Array.isArray(value)) {
+            value.forEach((item) => payload.append(key, item));
+          } else {
+            payload.append(key, value);
+          }
+        });
+      }
+
+      const response = await authRequest(
+        "POST",
+        `/assignments/team/my-tasks/${assignmentId}/poa`,
+        payload,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      if (response?.success) {
+        return {
+          success: true,
+          assignment: response.assignment || response.data,
+          message: response.message || "POA submitted successfully",
+        };
+      }
+
+      throw new Error(response?.message || "POA submission failed");
+    } catch (err) {
+      const message = err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err.message ||
+        "Failed to submit POA";
+      console.error("[TeamAssignment] submitPoa:", message);
+      setError(message);
+      return { success: false, error: message };
+    } finally {
+      setSubmitting(false);
+    }
+  }, [authRequest]);
+
   const clearError = useCallback(() => setError(null), []);
 
   return (
@@ -230,6 +297,7 @@ export const TeamAssignmentProvider = ({ children }) => {
         fetchMyTasks,
         fetchTaskById,
         submitAssignment,
+        submitPoa,
         fetchInspectionHistory,
         fetchInspectionById
       }}

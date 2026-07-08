@@ -1853,6 +1853,7 @@ export default function AssetView() {
   const { getAssetById, deleteAsset, loading: assetLoading } = useAsset();
   const { getRequestsByAsset } = useAssetRequest();
   const { user } = useAuth();
+  const canViewFinancials = user?.role !== "team";
 
   const [asset, setAsset] = useState(null);
   const [pageLoading, setPageLoading] = useState(true);
@@ -2742,6 +2743,7 @@ export default function AssetView() {
                             : null
                         }
                       />
+                      {canViewFinancials && (
                       <Field
                         icon={<AttachMoney />}
                         label="Purchase Cost"
@@ -2752,6 +2754,7 @@ export default function AssetView() {
                         }
                         color={T.brand}
                       />
+                      )}
                       <Field
                         icon={<Shield />}
                         label="Warranty Expiry"

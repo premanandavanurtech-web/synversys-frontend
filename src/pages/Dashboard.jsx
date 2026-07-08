@@ -480,6 +480,190 @@ const EmptyChart = ({ msg = "No data available" }) => (
 
 // ✅ ActivityTable: wrapped in overflow scroll container for mobile
 // ─── REPLACE ActivityTable ─────────────────────────────────────────────────────
+const formatShortDate = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const getAmcStatusColor = (status) => {
+  if (status === "Expired") return { color: C.onErrorContainer, bg: C.errorContainer };
+  if (status === "Due Soon") return { color: "#8a4b00", bg: "#fff1d2" };
+  if (status === "Upcoming") return { color: C.primaryLight, bg: alpha(C.primaryLight, 0.1) };
+  return { color: C.success, bg: C.successLight };
+};
+
+const AmcExpiryManagement = ({ data, loading, onViewAssets }) => {
+  const summary = data?.summary || {};
+  const items = data?.items || [];
+  const cards = [
+    { label: "Expired", value: summary.expired, status: "Expired" },
+    { label: "Due Soon", value: summary.dueSoon, status: "Due Soon" },
+    { label: "Upcoming", value: summary.upcoming, status: "Upcoming" },
+    { label: "Active", value: summary.active, status: "Active" },
+  ];
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        p: { xs: 2, sm: 2.5 },
+        borderRadius: 3,
+        mb: 3,
+        bgcolor: C.white,
+        border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
+      }}
+    >
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        gap={1.5}
+        flexDirection={{ xs: "column", sm: "row" }}
+        mb={2}
+      >
+        <SectionTitle
+          icon={CalendarIcon}
+          title="AMC Expiry Management"
+          chip={`${fmt(summary.totalTracked)} tracked`}
+        />
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<InventoryIcon />}
+          onClick={onViewAssets}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 700,
+            borderColor: alpha(C.primaryLight, 0.35),
+            color: C.primary,
+          }}
+        >
+          View Assets
+        </Button>
+      </Box>
+
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        {cards.map((card) => {
+          const tone = getAmcStatusColor(card.status);
+          return (
+            <Grid item xs={6} md={3} key={card.label}>
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: 2,
+                  bgcolor: tone.bg,
+                  border: `1px solid ${alpha(tone.color, 0.16)}`,
+                  minHeight: 82,
+                }}
+              >
+                <Typography sx={{ color: tone.color, fontSize: "0.72rem", fontWeight: 700 }}>
+                  {card.label}
+                </Typography>
+                <Typography sx={{ color: C.primary, fontSize: "1.45rem", fontWeight: 800 }}>
+                  {loading ? <Skeleton width={44} /> : fmt(card.value)}
+                </Typography>
+              </Box>
+            </Grid>
+          );
+        })}
+      </Grid>
+
+      <TableContainer sx={{ border: `1px solid ${alpha(C.outlineVariant, 0.35)}`, borderRadius: 2 }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow sx={{ bgcolor: C.surfaceContainerLow }}>
+              <TableCell sx={{ fontWeight: 800, color: C.secondary }}>Asset</TableCell>
+              <TableCell sx={{ fontWeight: 800, color: C.secondary }}>Type</TableCell>
+              <TableCell sx={{ fontWeight: 800, color: C.secondary }}>Schedule</TableCell>
+              <TableCell sx={{ fontWeight: 800, color: C.secondary }}>Next Due</TableCell>
+              <TableCell sx={{ fontWeight: 800, color: C.secondary }}>Status</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={5}>
+                    <Skeleton height={28} />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : items.length > 0 ? (
+              items.map((item) => {
+                const tone = getAmcStatusColor(item.status);
+                const daysText =
+                  item.daysRemaining < 0
+                    ? `${Math.abs(item.daysRemaining)}d overdue`
+                    : item.daysRemaining === 0
+                      ? "Due today"
+                      : `${item.daysRemaining}d left`;
+                return (
+                  <TableRow key={`${item.assetId}-${item.systemType}`} hover>
+                    <TableCell>
+                      <Typography sx={{ fontWeight: 700, color: C.primary, fontSize: "0.8rem" }}>
+                        {item.assetName}
+                      </Typography>
+                      <Typography sx={{ color: C.outline, fontSize: "0.68rem" }}>
+                        {item.assetCode || item.assetStatus || "Asset"}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={item.systemType}
+                        size="small"
+                        sx={{ bgcolor: alpha(C.primaryLight, 0.08), fontWeight: 800 }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ color: C.secondary, fontSize: "0.78rem" }}>
+                      {item.schedule}
+                    </TableCell>
+                    <TableCell>
+                      <Typography sx={{ fontWeight: 700, color: C.primary, fontSize: "0.78rem" }}>
+                        {formatShortDate(item.nextDueDate)}
+                      </Typography>
+                      <Typography sx={{ color: C.outline, fontSize: "0.68rem" }}>
+                        {daysText}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={item.status}
+                        size="small"
+                        sx={{
+                          bgcolor: tone.bg,
+                          color: tone.color,
+                          fontWeight: 800,
+                        }}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5}>
+                  <Box sx={{ py: 3, textAlign: "center" }}>
+                    <Typography sx={{ color: C.outline, fontSize: "0.8rem" }}>
+                      No AMC or CAMC expiry dates configured yet.
+                    </Typography>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
+  );
+};
+
 const ActivityTable = ({ activities }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -1368,6 +1552,7 @@ const AdminDashboard = ({ data, loading }) => {
   const charts_ = payload.charts || {};
   const activities = payload.recentActivities || [];
   const notifications = payload.notifications || [];
+  const amcExpiryManagement = payload.amcExpiryManagement || {};
 
   const assetByCategory = useMemo(
     () =>
@@ -1484,6 +1669,12 @@ const AdminDashboard = ({ data, loading }) => {
       {/* Quick Actions — unchanged: this is the larger card-style grid,
           a different pattern from the super_admin pill buttons that moved
           into the FilterBar. Left as-is here. */} 
+
+      <AmcExpiryManagement
+        data={amcExpiryManagement}
+        loading={loading}
+        onViewAssets={() => navigate("/admin/assets")}
+      />
 
       {/* Submission trend + Asset donut */}
       <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>

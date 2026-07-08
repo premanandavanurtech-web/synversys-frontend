@@ -1,5 +1,11 @@
 // src/pages/MyTask.jsx
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   Box,
   Container,
@@ -23,6 +29,11 @@ import {
   Grid,
   LinearProgress,
   Avatar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormHelperText,
 } from "@mui/material";
 import { createTheme, ThemeProvider, alpha } from "@mui/material/styles";
 import {
@@ -49,6 +60,8 @@ import {
   KeyboardArrowDown as ArrowDownIcon,
   FiberManualRecord as DotIcon,
   Search as SearchIcon,
+  AttachFile as AttachFileIcon,
+  Send as SendIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useTeamAssignment } from "../context/TeamAssignmentcontext";
@@ -57,7 +70,12 @@ import { useAuth } from "../context/AuthContexts";
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const theme = createTheme({
   palette: {
-    primary: { main: "#0d3d52", dark: "#072535", light: "#e6f3f8", contrastText: "#fff" },
+    primary: {
+      main: "#0d3d52",
+      dark: "#072535",
+      light: "#e6f3f8",
+      contrastText: "#fff",
+    },
     success: { main: "#10b981" },
     warning: { main: "#f59e0b" },
     error: { main: "#ef4444" },
@@ -70,7 +88,9 @@ const theme = createTheme({
     h6: { fontWeight: 700, letterSpacing: "-0.015em" },
   },
   components: {
-    MuiButton: { styleOverrides: { root: { textTransform: "none", fontWeight: 600 } } },
+    MuiButton: {
+      styleOverrides: { root: { textTransform: "none", fontWeight: 600 } },
+    },
     MuiChip: { styleOverrides: { root: { fontWeight: 600 } } },
     MuiOutlinedInput: {
       styleOverrides: {
@@ -92,26 +112,104 @@ const theme = createTheme({
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 const PRIORITY_CFG = {
-  critical: { label: "Critical", color: "#b91c1c", bg: "#fef2f2", border: "#fecaca", accent: "#ef4444", chipBg: "#fef2f2", chipColor: "#b91c1c" },
-  high:     { label: "High",      color: "#c2410c", bg: "#fff7ed", border: "#fed7aa", accent: "#f97316", chipBg: "#fff3e0", chipColor: "#c2410c" },
-  medium:   { label: "Medium",    color: "#ca8a04", bg: "#fefce8", border: "#fde68a", accent: "#eab308", chipBg: "#fefce8", chipColor: "#ca8a04" },
-  low:      { label: "Low",       color: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0", accent: "#22c55e", chipBg: "#f0fdf4", chipColor: "#16a34a" },
+  critical: {
+    label: "Critical",
+    color: "#b91c1c",
+    bg: "#fef2f2",
+    border: "#fecaca",
+    accent: "#ef4444",
+    chipBg: "#fef2f2",
+    chipColor: "#b91c1c",
+  },
+  high: {
+    label: "High",
+    color: "#c2410c",
+    bg: "#fff7ed",
+    border: "#fed7aa",
+    accent: "#f97316",
+    chipBg: "#fff3e0",
+    chipColor: "#c2410c",
+  },
+  medium: {
+    label: "Medium",
+    color: "#ca8a04",
+    bg: "#fefce8",
+    border: "#fde68a",
+    accent: "#eab308",
+    chipBg: "#fefce8",
+    chipColor: "#ca8a04",
+  },
+  low: {
+    label: "Low",
+    color: "#16a34a",
+    bg: "#f0fdf4",
+    border: "#bbf7d0",
+    accent: "#22c55e",
+    chipBg: "#f0fdf4",
+    chipColor: "#16a34a",
+  },
 };
 
 const STATUS_CFG = {
-  pending:     { label: "Pending",      color: "#64748b", bg: "#f1f5f9", border: "#e2e8f0" },
-  in_progress: { label: "In Progress",  color: "#0d3d52", bg: "#e6f3f8", border: "#bfe0ec" },
-  submitted:   { label: "Submitted",    color: "#6b7280", bg: "#f3f4f6", border: "#e5e7eb" },
-  completed:   { label: "Submitted",    color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
-  approved:    { label: "Approved",     color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
-  rejected:    { label: "Rejected",     color: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
+  pending: {
+    label: "Pending",
+    color: "#64748b",
+    bg: "#f1f5f9",
+    border: "#e2e8f0",
+  },
+  in_progress: {
+    label: "In Progress",
+    color: "#0d3d52",
+    bg: "#e6f3f8",
+    border: "#bfe0ec",
+  },
+  pending_approval: {
+    label: "Pending Approval",
+    color: "#b45309",
+    bg: "#fffbeb",
+    border: "#fde68a",
+  },
+  pending_review: {
+    label: "Pending Approval",
+    color: "#b45309",
+    bg: "#fffbeb",
+    border: "#fde68a",
+  },
+  submitted: {
+    label: "Submitted",
+    color: "#6b7280",
+    bg: "#f3f4f6",
+    border: "#e5e7eb",
+  },
+  completed: {
+    label: "Submitted",
+    color: "#059669",
+    bg: "#ecfdf5",
+    border: "#a7f3d0",
+  },
+  approved: {
+    label: "Approved",
+    color: "#059669",
+    bg: "#ecfdf5",
+    border: "#a7f3d0",
+  },
+  rejected: {
+    label: "Rejected",
+    color: "#dc2626",
+    bg: "#fef2f2",
+    border: "#fecaca",
+  },
 };
 
 // NEW: pull the best-available "created/assigned" timestamp off a task.
 // Different endpoints in this codebase may use different field names, so
 // check the likely candidates in priority order.
 const getTaskCreatedAt = (task) =>
-  task?.createdAt || task?.assignedAt || task?.assignedDate || task?.createdOn || null;
+  task?.createdAt ||
+  task?.assignedAt ||
+  task?.assignedDate ||
+  task?.createdOn ||
+  null;
 
 const getTodayInputValue = () => {
   const today = new Date();
@@ -140,7 +238,8 @@ const StatCard = ({ title, value, active = false, onClick }) => (
       flex: 1,
       minWidth: 0,
       cursor: onClick ? "pointer" : "default",
-      transition: "border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease",
+      transition:
+        "border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease",
       "&:hover": onClick
         ? {
             borderColor: "#111827",
@@ -164,7 +263,12 @@ const StatCard = ({ title, value, active = false, onClick }) => (
       {title}
     </Typography>
     <Typography
-      sx={{ color: "#0f172a", fontWeight: 700, fontSize: { xs: "1.6rem", sm: "2rem" }, lineHeight: 1 }}
+      sx={{
+        color: "#0f172a",
+        fontWeight: 700,
+        fontSize: { xs: "1.6rem", sm: "2rem" },
+        lineHeight: 1,
+      }}
     >
       {value ?? 0}
     </Typography>
@@ -174,38 +278,111 @@ const StatCard = ({ title, value, active = false, onClick }) => (
 // ─── Task Card ────────────────────────────────────────────────────────────────
 const PRIORITY_PILL = {
   critical: { label: "Critical", bg: "#dc2626", color: "#fff" },
-  high:     { label: "High",      bg: "#f97316", color: "#fff" },
-  medium:   { label: "Medium",    bg: "#ca8a04", color: "#fff" },
-  low:      { label: "Low",       bg: "#16a34a", color: "#fff" },
+  high: { label: "High", bg: "#f97316", color: "#fff" },
+  medium: { label: "Medium", bg: "#ca8a04", color: "#fff" },
+  low: { label: "Low", bg: "#16a34a", color: "#fff" },
 };
 
 const STATUS_PILL = {
-  pending:     { label: "Pending",      bg: "#f1f5f9", color: "#64748b", border: "#e2e8f0" },
-  in_progress: { label: "In Progress",  bg: "#dbeafe", color: "#1d4ed8", border: "#bfdbfe" },
-  submitted:   { label: "Submitted",    bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb" },
-  completed:   { label: "Submitted",    bg: "#dcfce7", color: "#15803d", border: "#bbf7d0" },
-  approved:    { label: "Approved",     bg: "#dcfce7", color: "#15803d", border: "#bbf7d0" },
-  rejected:    { label: "Rejected",     bg: "#fee2e2", color: "#dc2626", border: "#fecaca" },
+  pending: {
+    label: "Pending",
+    bg: "#f1f5f9",
+    color: "#64748b",
+    border: "#e2e8f0",
+  },
+  in_progress: {
+    label: "In Progress",
+    bg: "#dbeafe",
+    color: "#1d4ed8",
+    border: "#bfdbfe",
+  },
+  pending_approval: {
+    label: "Pending Approval",
+    bg: "#fef3c7",
+    color: "#92400e",
+    border: "#fde68a",
+  },
+  pending_review: {
+    label: "Pending Approval",
+    bg: "#fef3c7",
+    color: "#92400e",
+    border: "#fde68a",
+  },
+  submitted: {
+    label: "Submitted",
+    bg: "#f3f4f6",
+    color: "#6b7280",
+    border: "#e5e7eb",
+  },
+  completed: {
+    label: "Submitted",
+    bg: "#dcfce7",
+    color: "#15803d",
+    border: "#bbf7d0",
+  },
+  approved: {
+    label: "Approved",
+    bg: "#dcfce7",
+    color: "#15803d",
+    border: "#bbf7d0",
+  },
+  rejected: {
+    label: "Rejected",
+    bg: "#fee2e2",
+    color: "#dc2626",
+    border: "#fecaca",
+  },
 };
 
-const getTaskStatus = (task) =>
-  (task?.myStatus || task?.status || "pending").toLowerCase();
+const getTaskStatus = (task) => {
+  const assignmentStatus = (task?.status || "").toLowerCase();
+  if (["pending_approval", "pending_review", "submitted"].includes(assignmentStatus)) {
+    return assignmentStatus;
+  }
+  return (task?.myStatus || task?.status || "pending").toLowerCase();
+};
 
-const   TaskCard = ({ task, onView }) => {
+const TaskCard = ({ task, onView, onPoa }) => {
   const prKey = task.priority?.toLowerCase() || "medium";
   const stKey = getTaskStatus(task);
   const pPill = PRIORITY_PILL[prKey] || PRIORITY_PILL.medium;
-  const sPill = STATUS_PILL[stKey]   || STATUS_PILL.pending;
+  const sPill = STATUS_PILL[stKey] || STATUS_PILL.pending;
 
-  const assetName     = task.assets?.[0]?.assetName         || task.assetIds?.[0]?.assetName         || "Unnamed Asset";
-  const checklistName = task.checklists?.[0]?.name          || task.checklistData?.[0]?.name          || "Inspection Checklist";
-  const assetLocation = task.assetIds?.[0]?.currentLocation || task.assets?.[0]?.currentLocation      || "Location not set";
-  const isCritical    = task.criticalAsset === true;
-  const dueDate       = task.dueDate ? new Date(task.dueDate) : null;
-  const isOverdue     = dueDate && dueDate < new Date() && !["completed", "approved"].includes(stKey);
-  const completionRate= task.checklistData?.[0]?.completionRate ?? task.completionRate ?? 0;
-  const isInProgress  = stKey === "in_progress";
-  const isSubmitted   = ["submitted", "completed", "approved"].includes(stKey);
+  const assetName =
+    task.assets?.[0]?.assetName ||
+    task.assetIds?.[0]?.assetName ||
+    "Unnamed Asset";
+  const checklistName =
+    task.checklists?.[0]?.name ||
+    task.checklistData?.[0]?.name ||
+    "Inspection Checklist";
+  const assetLocation =
+    task.assetIds?.[0]?.currentLocation ||
+    task.assets?.[0]?.currentLocation ||
+    "Location not set";
+  const isCritical = task.criticalAsset === true;
+  const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+  const isOverdue =
+    dueDate &&
+    dueDate < new Date() &&
+    !["completed", "approved"].includes(stKey);
+  const completionRate =
+    task.checklistData?.[0]?.completionRate ?? task.completionRate ?? 0;
+  const isInProgress = stKey === "in_progress";
+  const memberStatus = (task.myStatus || "").toLowerCase();
+  const inspectionSubmitted =
+    ["pending_approval", "pending_review", "submitted", "completed", "approved"].includes(stKey) ||
+    ["completed", "submitted"].includes(memberStatus);
+  const poaSubmitted =
+    stKey === "submitted" || (Array.isArray(task.poaSubmissions) && task.poaSubmissions.length > 0);
+  const canSubmitPoa =
+    !poaSubmitted && ["pending_approval", "pending_review"].includes(stKey);
+  const inspectionButtonLabel = inspectionSubmitted
+    ? "Inspection Submitted"
+    : isInProgress
+      ? "Continue Inspection"
+      : "Start Inspection";
+  const poaButtonLabel = poaSubmitted ? "POA Submitted" : "POA";
 
   const formattedDue = dueDate
     ? `Due: ${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`
@@ -221,7 +398,7 @@ const   TaskCard = ({ task, onView }) => {
         flexDirection: "column",
         height: "100%",
         // fluid on mobile/tablet, fixed 380px on desktop
-        width: { xs:"354px", md: "380px" },
+        width: { xs: "354px", md: "275px" },
         minWidth: 0,
         overflow: "hidden",
         transition: "box-shadow 0.2s ease",
@@ -229,8 +406,16 @@ const   TaskCard = ({ task, onView }) => {
       }}
     >
       {/* Card Body */}
-      <Box sx={{ p: 3, flex: 1, display: "flex", flexDirection: "column", gap: 0, minWidth: 0 }}>
-
+      <Box
+        sx={{
+          p: 3,
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: 0,
+          minWidth: 0,
+        }}
+      >
         {/* Row 1: Priority pill + Status pill */}
         <Box
           sx={{
@@ -299,7 +484,15 @@ const   TaskCard = ({ task, onView }) => {
         </Box>
 
         {/* Row 2: Asset Name */}
-        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1, mb: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 1,
+            mb: 2,
+          }}
+        >
           <Typography
             sx={{
               fontWeight: 700,
@@ -324,7 +517,14 @@ const   TaskCard = ({ task, onView }) => {
                 flexShrink: 0,
               }}
             >
-              <Typography sx={{ fontSize: "0.65rem", fontWeight: 600, color: "#dc2626", whiteSpace: "nowrap" }}>
+              <Typography
+                sx={{
+                  fontSize: "0.65rem",
+                  fontWeight: 600,
+                  color: "#dc2626",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 Critical Asset
               </Typography>
             </Box>
@@ -334,20 +534,52 @@ const   TaskCard = ({ task, onView }) => {
         {/* Row 3: Meta info */}
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.85 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-            <DescriptionIcon sx={{ fontSize: 15, color: "#94a3b8", flexShrink: 0 }} />
-            <Typography sx={{ fontSize: "0.82rem", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <DescriptionIcon
+              sx={{ fontSize: 15, color: "#94a3b8", flexShrink: 0 }}
+            />
+            <Typography
+              sx={{
+                fontSize: "0.82rem",
+                color: "#64748b",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {checklistName}
             </Typography>
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-            <LocationIcon sx={{ fontSize: 15, color: "#94a3b8", flexShrink: 0 }} />
-            <Typography sx={{ fontSize: "0.82rem", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <LocationIcon
+              sx={{ fontSize: 15, color: "#94a3b8", flexShrink: 0 }}
+            />
+            <Typography
+              sx={{
+                fontSize: "0.82rem",
+                color: "#64748b",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {assetLocation}
             </Typography>
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-            <CalendarTodayIcon sx={{ fontSize: 14, color: isOverdue ? "#ef4444" : "#94a3b8", flexShrink: 0 }} />
-            <Typography sx={{ fontSize: "0.82rem", color: isOverdue ? "#ef4444" : "#64748b", fontWeight: isOverdue ? 600 : 400 }}>
+            <CalendarTodayIcon
+              sx={{
+                fontSize: 14,
+                color: isOverdue ? "#ef4444" : "#94a3b8",
+                flexShrink: 0,
+              }}
+            />
+            <Typography
+              sx={{
+                fontSize: "0.82rem",
+                color: isOverdue ? "#ef4444" : "#64748b",
+                fontWeight: isOverdue ? 600 : 400,
+              }}
+            >
               {formattedDue}
             </Typography>
           </Box>
@@ -356,9 +588,19 @@ const   TaskCard = ({ task, onView }) => {
         {/* Progress Bar (only if in-progress) */}
         {completionRate > 0 && (
           <Box sx={{ mt: 2 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-              <Typography sx={{ fontSize: "0.7rem", color: "#94a3b8", fontWeight: 600 }}>Progress</Typography>
-              <Typography sx={{ fontSize: "0.7rem", color: "#0d3d52", fontWeight: 700 }}>{completionRate}%</Typography>
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}
+            >
+              <Typography
+                sx={{ fontSize: "0.7rem", color: "#94a3b8", fontWeight: 600 }}
+              >
+                Progress
+              </Typography>
+              <Typography
+                sx={{ fontSize: "0.7rem", color: "#0d3d52", fontWeight: 700 }}
+              >
+                {completionRate}%
+              </Typography>
             </Box>
             <LinearProgress
               variant="determinate"
@@ -367,7 +609,10 @@ const   TaskCard = ({ task, onView }) => {
                 height: 5,
                 borderRadius: 4,
                 bgcolor: "#f1f5f9",
-                "& .MuiLinearProgress-bar": { borderRadius: 4, bgcolor: "#0d3d52" },
+                "& .MuiLinearProgress-bar": {
+                  borderRadius: 4,
+                  bgcolor: "#0d3d52",
+                },
               }}
             />
           </Box>
@@ -375,196 +620,847 @@ const   TaskCard = ({ task, onView }) => {
       </Box>
 
       {/* CTA Button */}
-      <Box sx={{ px: 3, pb: 3 }}>
+      <Box
+        sx={{
+          px: 3,
+          pb: 3,
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", sm: "minmax(0, 1fr) full" },
+          gap: 1,
+        }}
+      >
         <Button
-          fullWidth
           variant="contained"
           onClick={() => onView(task._id)}
           sx={{
             borderRadius: "10px",
+            width:"100%",
             py: 1.15,
             fontWeight: 600,
-            fontSize: "0.85rem",
-            bgcolor: isSubmitted ? "#10b981" : "#0d3d52",
+            fontSize: "0.6rem",
+            bgcolor: inspectionSubmitted ? "#2563eb" : "#0d3d52",
             boxShadow: "none",
             letterSpacing: "0.01em",
-            "&:hover": { bgcolor: isSubmitted ? "#059669" : "#0a2f40", boxShadow: "none" },
+            "&:hover": {
+              bgcolor: inspectionSubmitted ? "#1d4ed8" : "#0a2f40",
+              boxShadow: "none",
+            },
           }}
         >
-          <PlayArrowIcon sx={{ fontSize: 15, mr: 0.75 }} />
-          {isSubmitted ? "Submitted" : isInProgress ? "Continue Inspection" : "Start Inspection"}
+          {inspectionSubmitted ? (
+            <CheckCircleIcon sx={{ fontSize: 15, mr: 0.75 }} />
+          ) : (
+            <PlayArrowIcon sx={{ fontSize: 15, mr: 0.75 }} />
+          )}
+          {inspectionButtonLabel}
         </Button>
+        <Tooltip
+  title={!canSubmitPoa && !poaSubmitted ? "Submit Inspection First" : ""}
+ 
+>
+  <span>
+        <Button
+          variant={poaSubmitted ? "contained" : "outlined"}
+          
+          disabled={!canSubmitPoa && !poaSubmitted}
+          onClick={() => {
+            if (canSubmitPoa) onPoa(task);
+          }}
+           sx={{
+            borderRadius: "10px",
+            py: 1.15,
+            px: 2,
+            fontWeight: 700,
+            width:"100%",
+            fontSize: "0.6rem",
+            borderColor: poaSubmitted ? "#7c3aed" : "#bfe0ec",
+            color: poaSubmitted ? "#fff" : "#0d3d52",
+            bgcolor: poaSubmitted ? "#7c3aed" : "#fff",
+            whiteSpace: "nowrap",
+            boxShadow: "none",
+            "&:hover": {
+              borderColor: poaSubmitted ? "#6d28d9" : "#0d3d52",
+              bgcolor: poaSubmitted ? "#6d28d9" : "#e6f3f8",
+              boxShadow: "none",
+              
+            },
+            "&.Mui-disabled": {
+              borderColor: "#e2e8f0",
+              bgcolor: "#f8fafc",
+              color: "#94a3b8",
+            },
+          }}
+         
+          startIcon={
+            poaSubmitted ? (
+              <CheckCircleIcon sx={{ fontSize: "15px !important" }} />
+            ) : (
+              <AssignmentIcon sx={{ fontSize: "15px !important" }} />
+            )
+          }
+         
+        >
+          {poaButtonLabel}
+        </Button>
+        </span>
+</Tooltip>
       </Box>
     </Box>
   );
 };
 
-// ─── Calendar View ────────────────────────────────────────────────────────────
-const DAYS   = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const PoaDialog = ({
+  open,
+  task,
+  feedback,
+  files,
+  error,
+  submitting,
+  onFeedbackChange,
+  onFilesChange,
+  onRemoveFile,
+  onClose,
+  onSubmit,
+}) => {
+  const assetName =
+    task?.assets?.[0]?.assetName ||
+    task?.assetIds?.[0]?.assetName ||
+    "Selected asset";
 
-const CalendarView = ({ tasks, onView }) => {
+  return (
+    <Dialog
+      open={open}
+      onClose={submitting ? undefined : onClose}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          boxShadow: "0 24px 60px rgba(15, 23, 42, 0.18)",
+        },
+      }}
+    >
+      <DialogTitle sx={{ pb: 1.25 }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1.05rem" }}>
+          Submit POA
+        </Typography>
+        <Typography sx={{ color: "#64748b", fontSize: "0.8rem", mt: 0.35 }}>
+          {assetName}
+        </Typography>
+      </DialogTitle>
+      <DialogContent sx={{ pt: 1 }}>
+        <Stack spacing={2}>
+          <TextField
+            label="Feedback"
+            value={feedback}
+            onChange={(event) => onFeedbackChange(event.target.value)}
+            multiline
+            minRows={4}
+            required
+            error={!!error}
+            helperText={error || " "}
+            fullWidth
+          />
+          <Box>
+            <Button
+              component="label"
+              variant="outlined"
+              startIcon={<AttachFileIcon sx={{ fontSize: 17 }} />}
+              sx={{
+                borderRadius: 1.5,
+                borderColor: "#cbd5e1",
+                color: "#334155",
+                bgcolor: "#fff",
+                "&:hover": { borderColor: "#0d3d52", bgcolor: "#f8fafc" },
+              }}
+            >
+              Upload Attachments
+              <input hidden multiple type="file" onChange={onFilesChange} />
+            </Button>
+            <FormHelperText sx={{ ml: 0.25 }}>
+              Attach supporting files if needed.
+            </FormHelperText>
+            {files.length > 0 && (
+              <Stack spacing={1} sx={{ mt: 1.25 }}>
+                {files.map((file, index) => (
+                  <Chip
+                    key={`${file.name}-${index}`}
+                    icon={<AttachFileIcon />}
+                    label={file.name}
+                    onDelete={() => onRemoveFile(index)}
+                    sx={{
+                      justifyContent: "space-between",
+                      maxWidth: "100%",
+                      "& .MuiChip-label": {
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      },
+                    }}
+                  />
+                ))}
+              </Stack>
+            )}
+          </Box>
+        </Stack>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2.5, pt: 1 }}>
+        <Button onClick={onClose} disabled={submitting} sx={{ color: "#64748b" }}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={onSubmit}
+          disabled={submitting}
+          startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
+          sx={{
+            borderRadius: 1.5,
+            bgcolor: "#0d3d52",
+            boxShadow: "none",
+            "&:hover": { bgcolor: "#0a2f40", boxShadow: "none" },
+          }}
+        >
+          Submit
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+// ─── Calendar View ────────────────────────────────────────────────────────────
+const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const MiniMonthCalendar = ({
+  year,
+  month,
+  tasks,
+  today,
+  selectedDay,
+  onSelectDay,
+  onPrev,
+  onNext,
+}) => {
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const previousMonthDays = new Date(year, month, 0).getDate();
+
+  const cells = [];
+  for (let i = firstDay - 1; i >= 0; i--) {
+    cells.push({ day: previousMonthDays - i, offset: -1 });
+  }
+  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, offset: 0 });
+  while (cells.length % 7 !== 0) {
+    cells.push({ day: cells.length - firstDay - daysInMonth + 1, offset: 1 });
+  }
+
+  const getDateForCell = (cell) => new Date(year, month + cell.offset, cell.day);
+
+  const getTasksForDate = (date) =>
+    tasks.filter((t) => {
+      if (!t.dueDate) return false;
+      const dd = new Date(t.dueDate);
+      return (
+        dd.getFullYear() === date.getFullYear() &&
+        dd.getMonth() === date.getMonth() &&
+        dd.getDate() === date.getDate()
+      );
+    });
+
+  const isToday = (date) =>
+    today.getFullYear() === date.getFullYear() &&
+    today.getMonth() === date.getMonth() &&
+    today.getDate() === date.getDate();
+
+  const isSelected = (date) =>
+    selectedDay &&
+    selectedDay.getFullYear() === date.getFullYear() &&
+    selectedDay.getMonth() === date.getMonth() &&
+    selectedDay.getDate() === date.getDate();
+
+  return (
+    <Box>
+      <Box sx={{ display: "grid", gridTemplateColumns: "28px 1fr 28px", alignItems: "center", mb: 1 }}>
+        <IconButton size="small" onClick={onPrev} sx={{ p: 0.25, color: "#0f172a" }}>
+          <NavigateBeforeIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+        <Typography
+          sx={{
+            fontWeight: 800,
+            fontSize: "0.82rem",
+            color: "#0f172a",
+            textAlign: "center",
+          }}
+        >
+          {MONTHS[month]} {year}
+        </Typography>
+        <IconButton size="small" onClick={onNext} sx={{ p: 0.25, color: "#0f172a" }}>
+          <NavigateNextIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      </Box>
+
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          mb: 0.5,
+        }}
+      >
+        {DAYS.map((d) => (
+          <Typography
+            key={d}
+            sx={{
+              textAlign: "center",
+              fontSize: "0.68rem",
+              color: "#64748b",
+              fontWeight: 700,
+            }}
+          >
+            {d}
+          </Typography>
+        ))}
+      </Box>
+
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          rowGap: 0.65,
+        }}
+      >
+        {cells.map((cell, idx) => {
+          const cellDate = getDateForCell(cell);
+          const dayTasks = getTasksForDate(cellDate);
+          const hasTasks = dayTasks.length > 0;
+          const hasPendingApproval = dayTasks.some((task) =>
+            ["pending_approval", "pending_review"].includes(getTaskStatus(task)),
+          );
+          const todayCell = isToday(cellDate);
+          const selectedCell = isSelected(cellDate);
+          const isMuted = cell.offset !== 0;
+          const markerBg = hasTasks
+            ? hasPendingApproval
+              ? "#fef3c7"
+              : "#ef4444"
+            : todayCell
+              ? "#dbeafe"
+              : selectedCell
+                ? "#0d3d52"
+                : "transparent";
+          const markerColor = hasTasks
+            ? hasPendingApproval
+              ? "#b45309"
+              : "#fff"
+            : selectedCell
+              ? "#fff"
+              : isMuted
+                ? "#94a3b8"
+                : "#0f172a";
+          return (
+            <Box
+              key={idx}
+              sx={{ display: "flex", justifyContent: "center" }}
+            >
+              <Box
+                onClick={() => onSelectDay(cellDate)}
+                title={
+                  hasTasks
+                    ? `${dayTasks.length} task${dayTasks.length !== 1 ? "s" : ""} due`
+                    : undefined
+                }
+                sx={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  bgcolor: markerBg,
+                  color: markerColor,
+                  border: todayCell && !hasTasks ? "1px solid #bfdbfe" : "none",
+                  fontWeight: todayCell || hasTasks || selectedCell ? 800 : 500,
+                  fontSize: "0.68rem",
+                  transition: "background 0.12s",
+                  "&:hover": {
+                    bgcolor: hasTasks || selectedCell || todayCell ? markerBg : "#f1f5f9",
+                  },
+                }}
+              >
+                {cell.day}
+              </Box>
+            </Box>
+          );
+        })}
+      </Box>
+    </Box>
+  );
+};
+
+const CalendarSidebar = ({ tasks }) => {
   const today = new Date();
-  const [current, setCurrent] = useState({ year: today.getFullYear(), month: today.getMonth() });
+  const [offset, setOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(null);
 
-  const getDotColor = (t) => {
-    const st = t.status?.toLowerCase();
-    if (["completed", "approved"].includes(st)) return "#10b981";
-    if (st === "in_progress") return "#3b82f6";
-    const pr = t.priority?.toLowerCase();
-    if (pr === "critical") return "#ef4444";
-    if (pr === "high")     return "#f97316";
-    if (pr === "medium")   return "#f59e0b";
-    return "#60a5fa";
-  };
-
-  const buildGrid = () => {
-    const { year, month } = current;
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const prevDays = new Date(year, month, 0).getDate();
-    const cells = [];
-    for (let i = firstDay - 1; i >= 0; i--) cells.push({ day: prevDays - i, current: false, date: null });
-    for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, current: true, date: new Date(year, month, d) });
-    while (cells.length % 7 !== 0) cells.push({ day: "", current: false, date: null });
-    return cells;
-  };
+  const baseIndex = today.getFullYear() * 12 + today.getMonth() + offset;
+  const monthsToShow = [-1, 0, 1].map((delta) => {
+    const idx = baseIndex + delta;
+    return { year: Math.floor(idx / 12), month: ((idx % 12) + 12) % 12 };
+  });
+  const [beforeMonth, currentMonth, afterMonth] = monthsToShow;
 
   const getTasksForDate = (date) => {
     if (!date) return [];
     return tasks.filter((t) => {
       if (!t.dueDate) return false;
       const d = new Date(t.dueDate);
-      return d.getFullYear() === date.getFullYear() && d.getMonth() === date.getMonth() && d.getDate() === date.getDate();
+      return (
+        d.getFullYear() === date.getFullYear() &&
+        d.getMonth() === date.getMonth() &&
+        d.getDate() === date.getDate()
+      );
     });
   };
 
-  const isToday = (date) => date && date.toDateString() === today.toDateString();
-  const prev = () => setCurrent((c) => c.month === 0 ? { year: c.year - 1, month: 11 } : { ...c, month: c.month - 1 });
-  const next = () => setCurrent((c) => c.month === 11 ? { year: c.year + 1, month: 0 } : { ...c, month: c.month + 1 });
-
-  const cells = buildGrid();
+  const prev = () => setOffset((o) => o - 1);
+  const next = () => setOffset((o) => o + 1);
   const selectedTasks = selectedDay ? getTasksForDate(selectedDay) : [];
 
   return (
-    <Box sx={{ display: "flex", flexDirection: { xs: "column", lg: "row" }, gap: 2.5 }}>
-      <Paper elevation={0} sx={{ flex: 1, minWidth: 0, borderRadius: 2, border: "1px solid #e2e8f0", overflow: "hidden" }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2.5, py: 2, borderBottom: "1px solid #f1f5f9" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <IconButton size="small" onClick={prev} sx={{ border: "1px solid #e2e8f0", borderRadius: 1.5, p: 0.5 }}>
-              <NavigateBeforeIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-            <Typography fontWeight={700} sx={{ fontSize: "0.95rem", color: "#0f172a", minWidth: 140, textAlign: "center" }}>
-              {MONTHS[current.month]} {current.year}
-            </Typography>
-            <IconButton size="small" onClick={next} sx={{ border: "1px solid #e2e8f0", borderRadius: 1.5, p: 0.5 }}>
-              <NavigateNextIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Box>
-          <Button size="small" onClick={() => setCurrent({ year: today.getFullYear(), month: today.getMonth() })}
-            sx={{ fontSize: "0.75rem", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 1.5, px: 1.5, py: 0.5 }}>
-            Today
-          </Button>
-        </Box>
-        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", bgcolor: "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
-          {DAYS.map((d) => (
-            <Box key={d} sx={{ py: 1.25, textAlign: "center" }}>
-              <Typography sx={{ fontWeight: 700, color: "#94a3b8", fontSize: "0.65rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                {d}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
-          {cells.map((cell, idx) => {
-            const cellTasks = getTasksForDate(cell.date);
-            const selected = selectedDay && cell.date?.toDateString() === selectedDay.toDateString();
-            return (
-              <Box key={idx} onClick={() => cell.current && cell.date && setSelectedDay(selected ? null : cell.date)}
-                sx={{
-                  minHeight: { xs: 48, sm: 60, md: 80 }, border: "0.5px solid #f1f5f9", p: { xs: 0.4, sm: 0.75 },
-                  cursor: cell.current ? "pointer" : "default",
-                  bgcolor: selected ? alpha("#0d3d52", 0.05) : "transparent",
-                  "&:hover": cell.current ? { bgcolor: "#f8fafc" } : {},
-                  transition: "background 0.12s",
-                }}
-              >
-                <Box sx={{ width: { xs: 19, sm: 24 }, height: { xs: 19, sm: 24 }, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: isToday(cell.date) ? "#0d3d52" : "transparent", mb: 0.5 }}>
-                  <Typography sx={{ fontSize: { xs: "0.62rem", sm: "0.72rem" }, fontWeight: isToday(cell.date) ? 800 : 400, color: isToday(cell.date) ? "#fff" : cell.current ? "#334155" : "#cbd5e1" }}>
-                    {cell.day}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.4 }}>
-                  {cellTasks.slice(0, 5).map((t, i) => (
-                    <Box key={i} sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: getDotColor(t) }} />
-                  ))}
-                  {cellTasks.length > 5 && (
-                    <Typography sx={{ fontSize: "0.55rem", color: "#94a3b8", lineHeight: "6px" }}>+{cellTasks.length - 5}</Typography>
-                  )}
-                </Box>
-              </Box>
-            );
-          })}
-        </Box>
-      </Paper>
+    <Paper
+      elevation={0}
+      sx={{
+        width: { xs: "100%", lg: 288 },
+        flexShrink: 0,
+        borderRadius: 2,
+        border: "1px solid #e2e8f0",
+        bgcolor: "#fff",
+        p: 2.25,
+        position: { lg: "sticky" },
+        top: { lg: 24 },
+        alignSelf: "flex-start",
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2.25,
+        }}
+      >
+        <Stack direction="row" spacing={1} alignItems="center">
+          <CalendarMonthIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
+          <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "0.95rem" }}>
+            Calendar
+          </Typography>
+        </Stack>
+        <FormControl size="small">
+          <Select
+            value={3}
+            IconComponent={ArrowDownIcon}
+            sx={{
+              height: 32,
+              borderRadius: 1.5,
+              fontSize: "0.72rem",
+              color: "#475569",
+              "& .MuiSelect-select": { py: 0.5, pl: 1.2, pr: 3 },
+            }}
+          >
+            <MenuItem value={3}>3 Months</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
 
-      <Box sx={{ width: { xs: "100%", lg: 240 }, flexShrink: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-        <Paper elevation={0} sx={{ borderRadius: 2, border: "1px solid #e2e8f0", p: 2.5 }}>
-          <Typography fontWeight={700} sx={{ mb: 1.5, color: "#0f172a", fontSize: "0.8rem" }}>Legend</Typography>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", lg: "1fr" }, gap: { xs: 0.75, lg: 0 } }}>
-            {[
-              { label: "Critical", color: "#ef4444" },
-              { label: "High",      color: "#f97316" },
-              { label: "Medium",    color: "#f59e0b" },
-              { label: "Low",       color: "#60a5fa" },
-              { label: "In Progress",        color: "#3b82f6" },
-              { label: "Completed",          color: "#10b981" },
-            ].map((item) => (
-              <Box key={item.label} sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: { xs: 0, lg: 0.9 } }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: item.color, flexShrink: 0 }} />
-                <Typography sx={{ color: "#64748b", fontSize: "0.72rem" }}>{item.label}</Typography>
-              </Box>
-            ))}
-          </Box>
-        </Paper>
+      <Stack spacing={2.1}>
+        <MiniMonthCalendar
+          year={beforeMonth.year}
+          month={beforeMonth.month}
+          tasks={tasks}
+          today={today}
+          selectedDay={selectedDay}
+          onSelectDay={setSelectedDay}
+          onPrev={prev}
+          onNext={next}
+        />
+        <MiniMonthCalendar
+          year={currentMonth.year}
+          month={currentMonth.month}
+          tasks={tasks}
+          today={today}
+          selectedDay={selectedDay}
+          onSelectDay={setSelectedDay}
+          onPrev={prev}
+          onNext={next}
+        />
+        <MiniMonthCalendar
+          year={afterMonth.year}
+          month={afterMonth.month}
+          tasks={tasks}
+          today={today}
+          selectedDay={selectedDay}
+          onSelectDay={setSelectedDay}
+          onPrev={prev}
+          onNext={next}
+        />
+      </Stack>
 
-        {selectedDay && (
-          <Paper elevation={0} sx={{ borderRadius: 2, border: "1px solid #e2e8f0", overflow: "hidden" }}>
-            <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      {selectedDay && selectedTasks.length > 0 && (
+        <Box
+          sx={{
+            mt: 2,
+            borderRadius: 1.5,
+            border: "1px solid #e2e8f0",
+            overflow: "hidden",
+          }}
+        >
+            <Box
+              sx={{
+                px: 1.5,
+                py: 1,
+                borderBottom: "1px solid #f1f5f9",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
               <Box>
-                <Typography fontWeight={800} sx={{ fontSize: "0.85rem", color: "#0f172a" }}>
-                  {selectedDay.toLocaleDateString("en-US", { day: "2-digit", month: "short" })}
+                <Typography
+                  fontWeight={800}
+                  sx={{ fontSize: "0.85rem", color: "#0f172a" }}
+                >
+                  {selectedDay.toLocaleDateString("en-US", {
+                    day: "2-digit",
+                    month: "short",
+                  })}
                 </Typography>
                 <Typography sx={{ fontSize: "0.68rem", color: "#94a3b8" }}>
-                  {selectedTasks.length} task{selectedTasks.length !== 1 ? "s" : ""}
+                  {selectedTasks.length} task
+                  {selectedTasks.length !== 1 ? "s" : ""}
                 </Typography>
               </Box>
               <IconButton size="small" onClick={() => setSelectedDay(null)}>
                 <CloseIcon sx={{ fontSize: 14 }} />
               </IconButton>
             </Box>
-            <Box sx={{ p: 1.5, display: "flex", flexDirection: "column", gap: 1, maxHeight: 360, overflowY: "auto" }}>
-              {selectedTasks.length === 0 ? (
-                <Typography sx={{ fontSize: "0.75rem", color: "#94a3b8", textAlign: "center", py: 2 }}>No tasks</Typography>
-              ) : selectedTasks.map((t) => {
-                const prKey = t.priority?.toLowerCase() || "medium";
-                const pCfg = PRIORITY_CFG[prKey] || PRIORITY_CFG.medium;
-                const aName = t.assets?.[0]?.assetName || t.assetIds?.[0]?.assetName || "Asset";
-                return (
-                  <Box key={t._id} sx={{ borderRadius: 2, border: `1px solid ${pCfg.border}`, p: 1.5 }}>
-                    <Typography fontWeight={700} sx={{ fontSize: "0.8rem", color: "#0f172a", mb: 0.75 }}>{aName}</Typography>
-                    <Button fullWidth variant="contained" size="small" onClick={() => onView(t._id)}
-                      sx={{ borderRadius: 1.5, bgcolor: "#0d3d52", "&:hover": { bgcolor: "#0a2f40" }, fontWeight: 600, fontSize: "0.72rem", boxShadow: "none", py: 0.6 }}>
-                      Start Inspection
-                    </Button>
-                  </Box>
-                );
-              })}
+            <Box
+              sx={{
+                p: 1.5,
+                display: "flex",
+                flexDirection: "column",
+                gap: 1,
+                maxHeight: 220,
+                overflowY: "auto",
+              }}
+            >
+              {selectedTasks.map((t) => {
+                  const prKey = t.priority?.toLowerCase() || "medium";
+                  const pCfg = PRIORITY_CFG[prKey] || PRIORITY_CFG.medium;
+                  const aName =
+                    t.assets?.[0]?.assetName ||
+                    t.assetIds?.[0]?.assetName ||
+                    "Asset";
+                  return (
+                    <Box
+                      key={t._id}
+                      sx={{
+                        borderRadius: 2,
+                        border: `1px solid ${pCfg.border}`,
+                        p: 1.5,
+                      }}
+                    >
+                      <Typography
+                        fontWeight={700}
+                        sx={{ fontSize: "0.78rem", color: "#0f172a" }}
+                      >
+                        {aName}
+                      </Typography>
+                    </Box>
+                  );
+                })}
             </Box>
-          </Paper>
-        )}
+        </Box>
+      )}
+
+      <Box sx={{ display: "flex", gap: 2.25, alignItems: "center", mt: 2.5, flexWrap: "wrap" }}>
+        <Stack direction="row" spacing={0.8} alignItems="center">
+          <Box sx={{ width: 9, height: 9, borderRadius: "50%", bgcolor: "#ef4444" }} />
+          <Typography sx={{ fontSize: "0.72rem", color: "#475569", fontWeight: 600 }}>
+            Due Date
+          </Typography>
+        </Stack>
+        <Stack direction="row" spacing={0.8} alignItems="center">
+          <Box sx={{ width: 9, height: 9, borderRadius: "50%", bgcolor: "#f59e0b" }} />
+          <Typography sx={{ fontSize: "0.72rem", color: "#475569", fontWeight: 600 }}>
+            Pending Approval
+          </Typography>
+        </Stack>
       </Box>
+    </Paper>
+  );
+};
+
+const FULL_CALENDAR_LEGEND = [
+  { label: "Critical", color: "#ef4444" },
+  { label: "High", color: "#f97316" },
+  { label: "Medium", color: "#f59e0b" },
+  { label: "Low", color: "#60a5fa" },
+  { label: "In Progress", color: "#3b82f6" },
+  { label: "Completed", color: "#10b981" },
+];
+
+const getCalendarDotColor = (task) => {
+  const status = getTaskStatus(task);
+  if (["completed", "approved", "submitted"].includes(status)) return "#10b981";
+  if (status === "in_progress") return "#3b82f6";
+
+  const priority = (task.priority || "").toLowerCase();
+  if (priority === "critical") return "#ef4444";
+  if (priority === "high") return "#f97316";
+  if (priority === "low") return "#60a5fa";
+  return "#f59e0b";
+};
+
+const CalendarView = ({ tasks, onView }) => {
+  const today = new Date();
+  const [visibleMonth, setVisibleMonth] = useState(
+    new Date(today.getFullYear(), today.getMonth(), 1),
+  );
+
+  const year = visibleMonth.getFullYear();
+  const month = visibleMonth.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const previousMonthDays = new Date(year, month, 0).getDate();
+
+  const calendarCells = [];
+  for (let i = firstDay - 1; i >= 0; i--) {
+    calendarCells.push({
+      day: previousMonthDays - i,
+      date: new Date(year, month - 1, previousMonthDays - i),
+      muted: true,
+    });
+  }
+  for (let day = 1; day <= daysInMonth; day++) {
+    calendarCells.push({ day, date: new Date(year, month, day), muted: false });
+  }
+  while (calendarCells.length < 42) {
+    const day = calendarCells.length - firstDay - daysInMonth + 1;
+    calendarCells.push({ day, date: new Date(year, month + 1, day), muted: true });
+  }
+
+  const sameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  const getTasksForDate = (date) =>
+    tasks.filter((task) => {
+      if (!task.dueDate) return false;
+      return sameDay(new Date(task.dueDate), date);
+    });
+
+  const goPrevMonth = () =>
+    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
+  const goNextMonth = () =>
+    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
+  const goToday = () =>
+    setVisibleMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 300px" },
+        gap: 2.5,
+        alignItems: "start",
+      }}
+    >
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: 2,
+          border: "1px solid #e2e8f0",
+          bgcolor: "#fff",
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          sx={{
+            px: { xs: 2, sm: 2.5 },
+            py: 2,
+            display: "grid",
+            gridTemplateColumns: "44px 1fr auto",
+            alignItems: "center",
+            gap: 1.5,
+          }}
+        >
+          <IconButton
+            size="small"
+            onClick={goPrevMonth}
+            sx={{ border: "1px solid #e2e8f0", color: "#94a3b8" }}
+          >
+            <NavigateBeforeIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+          <Typography
+            sx={{
+              color: "#0f172a",
+              fontWeight: 800,
+              textAlign: "center",
+              fontSize: { xs: "1rem", sm: "1.1rem" },
+            }}
+          >
+            {MONTHS[month]} {year}
+          </Typography>
+          <Stack direction="row" spacing={1}>
+            <IconButton
+              size="small"
+              onClick={goNextMonth}
+              sx={{ border: "1px solid #e2e8f0", color: "#94a3b8" }}
+            >
+              <NavigateNextIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={goToday}
+              sx={{
+                borderRadius: 2,
+                borderColor: "#e2e8f0",
+                color: "#64748b",
+                fontWeight: 700,
+                px: 2,
+              }}
+            >
+              Today
+            </Button>
+          </Stack>
+        </Box>
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(7, minmax(90px, 1fr))",
+            bgcolor: "#f8fafc",
+            borderTop: "1px solid #eef2f7",
+            borderBottom: "1px solid #eef2f7",
+            overflowX: "auto",
+          }}
+        >
+          {DAYS.map((day) => (
+            <Typography
+              key={day}
+              sx={{
+                py: 1.4,
+                textAlign: "center",
+                color: "#94a3b8",
+                fontSize: "0.72rem",
+                fontWeight: 800,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              {day}
+            </Typography>
+          ))}
+        </Box>
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(7, minmax(90px, 1fr))",
+            overflowX: "auto",
+          }}
+        >
+          {calendarCells.map((cell) => {
+            const dayTasks = getTasksForDate(cell.date);
+            const isToday = sameDay(cell.date, today);
+            return (
+              <Box
+                key={cell.date.toISOString()}
+                onClick={() => dayTasks[0]?._id && onView(dayTasks[0]._id)}
+                sx={{
+                  minHeight: { xs: 92, sm: 104 },
+                  p: 1.5,
+                  borderRight: "1px solid #eef2f7",
+                  borderBottom: "1px solid #eef2f7",
+                  cursor: dayTasks.length ? "pointer" : "default",
+                  bgcolor: "#fff",
+                  "&:hover": dayTasks.length ? { bgcolor: "#f8fafc" } : {},
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: isToday ? "#0d3d52" : "transparent",
+                    color: isToday ? "#fff" : cell.muted ? "#cbd5e1" : "#0f172a",
+                    fontWeight: isToday ? 800 : 500,
+                    fontSize: "0.82rem",
+                  }}
+                >
+                  {cell.day}
+                </Box>
+                {dayTasks.length > 0 && (
+                  <Stack direction="row" spacing={0.45} sx={{ mt: 1.1, ml: 0.25, flexWrap: "wrap" }}>
+                    {dayTasks.slice(0, 4).map((task) => (
+                      <Box
+                        key={task._id}
+                        sx={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: "50%",
+                          bgcolor: getCalendarDotColor(task),
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+      </Paper>
+
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: 2,
+          border: "1px solid #e2e8f0",
+          bgcolor: "#fff",
+          p: 2.5,
+        }}
+      >
+        <Typography sx={{ color: "#0f172a", fontSize: "0.95rem", fontWeight: 800, mb: 2 }}>
+          Legend
+        </Typography>
+        <Stack spacing={1.4}>
+          {FULL_CALENDAR_LEGEND.map((item) => (
+            <Stack key={item.label} direction="row" spacing={1.2} alignItems="center">
+              <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: item.color }} />
+              <Typography sx={{ color: "#64748b", fontSize: "0.86rem", fontWeight: 500 }}>
+                {item.label}
+              </Typography>
+            </Stack>
+          ))}
+        </Stack>
+      </Paper>
     </Box>
   );
 };
@@ -573,28 +1469,66 @@ const CalendarView = ({ tasks, onView }) => {
 export default function MyTask() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { fetchMyTasks, loading } = useTeamAssignment();
+  const { fetchMyTasks, submitPoa, loading, submitting } = useTeamAssignment();
   const mountedRef = useRef(true);
 
   const [viewMode, setViewMode] = useState("list");
   const [tasks, setTasks] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
   const [stats, setStats] = useState(null);
-  const [filters, setFilters] = useState({ status: "", priority: "", search: "", page: 1, limit: 20 });
+  const [filters, setFilters] = useState({
+    status: "",
+    priority: "",
+    search: "",
+    page: 1,
+    limit: 20,
+  });
   const [statFilter, setStatFilter] = useState("");
-  const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
+  const [snack, setSnack] = useState({
+    open: false,
+    msg: "",
+    severity: "success",
+  });
+
+  // NEW: client-side pagination for the card grid — shows a fixed number of
+  // cards per "page" regardless of how many tasks the backend returned in
+  // this batch, with simple Previous/Next controls.
+  const CARDS_PER_PAGE = 9;
+  const [clientPage, setClientPage] = useState(1);
+  const [poaTask, setPoaTask] = useState(null);
+  const [poaFeedback, setPoaFeedback] = useState("");
+  const [poaFiles, setPoaFiles] = useState([]);
+  const [poaError, setPoaError] = useState("");
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
-  const toast = useCallback((msg, severity = "success") => setSnack({ open: true, msg, severity }), []);
+  const toast = useCallback(
+    (msg, severity = "success") => setSnack({ open: true, msg, severity }),
+    [],
+  );
 
   const requestFilters = useMemo(() => {
     const nextFilters = { ...filters };
 
-    if (statFilter === "pending" || statFilter === "in_progress") {
+    if (
+      [
+        "pending",
+        "in_progress",
+        "pending_approval",
+        "pending_review",
+        "submitted",
+      ].includes(statFilter)
+    ) {
       nextFilters.status = statFilter;
       nextFilters.date = "";
     } else if (statFilter === "due_today") {
@@ -617,7 +1551,9 @@ export default function MyTask() {
     }
   }, [fetchMyTasks, requestFilters, toast]);
 
-  useEffect(() => { loadTasks(); }, [loadTasks]);
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
 
   // NEW: client-side safety-net sort, newest first. The context now asks the
   // backend to sort with `sort=-createdAt`, but if the backend ignores that
@@ -642,13 +1578,9 @@ export default function MyTask() {
 
     return sortedTasks.filter((task) => {
       const assetName =
-        task.assets?.[0]?.assetName ||
-        task.assetIds?.[0]?.assetName ||
-        "";
+        task.assets?.[0]?.assetName || task.assetIds?.[0]?.assetName || "";
       const checklistName =
-        task.checklists?.[0]?.name ||
-        task.checklistData?.[0]?.name ||
-        "";
+        task.checklists?.[0]?.name || task.checklistData?.[0]?.name || "";
       const assetLocation =
         task.assetIds?.[0]?.currentLocation ||
         task.assets?.[0]?.currentLocation ||
@@ -668,6 +1600,39 @@ export default function MyTask() {
     });
   }, [filters.search, sortedTasks]);
 
+  // NEW: reset back to page 1 whenever the underlying task list changes
+  // shape (new filters, new search term, a new batch loaded from the API).
+  useEffect(() => {
+    setClientPage(1);
+  }, [
+    filters.status,
+    filters.priority,
+    filters.date,
+    filters.search,
+    statFilter,
+    tasks,
+  ]);
+
+  const totalClientPages = Math.max(
+    1,
+    Math.ceil(displayedTasks.length / CARDS_PER_PAGE),
+  );
+
+  // Guard against being stranded on a page that no longer exists (e.g. a
+  // filter change shrinks the list while on page 3).
+  useEffect(() => {
+    if (clientPage > totalClientPages) setClientPage(totalClientPages);
+  }, [totalClientPages, clientPage]);
+
+  const paginatedTasks = useMemo(() => {
+    const start = (clientPage - 1) * CARDS_PER_PAGE;
+    return displayedTasks.slice(start, start + CARDS_PER_PAGE);
+  }, [displayedTasks, clientPage]);
+
+  const goToPrevPage = () => setClientPage((p) => Math.max(1, p - 1));
+  const goToNextPage = () =>
+    setClientPage((p) => Math.min(totalClientPages, p + 1));
+
   const handleFilterChange = (key, value) => {
     if (key === "status" || key === "date") {
       setStatFilter("");
@@ -680,17 +1645,89 @@ export default function MyTask() {
   };
   const clearFilters = () => {
     setStatFilter("");
-    setFilters({ status: "", priority: "", search: "", date: "", page: 1, limit: 20 });
+    setFilters({
+      status: "",
+      priority: "",
+      search: "",
+      date: "",
+      page: 1,
+      limit: 20,
+    });
   };
-  const hasFormFilters = !!(filters.status || filters.priority || filters.date || filters.search);
+  const hasFormFilters = !!(
+    filters.status ||
+    filters.priority ||
+    filters.date ||
+    filters.search
+  );
   const hasFilters = !!(hasFormFilters || statFilter);
   const handleViewTask = (id) => navigate(`/team/task/${id}`);
+  const handlePoaTask = (task) => {
+    setPoaTask(task);
+    setPoaFeedback("");
+    setPoaFiles([]);
+    setPoaError("");
+  };
+
+  const handleClosePoa = () => {
+    if (submitting) return;
+    setPoaTask(null);
+    setPoaFeedback("");
+    setPoaFiles([]);
+    setPoaError("");
+  };
+
+  const handlePoaFilesChange = (event) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    setPoaFiles((prev) => [...prev, ...selectedFiles]);
+    event.target.value = "";
+  };
+
+  const handleRemovePoaFile = (index) => {
+    setPoaFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
+  };
+
+  const handleSubmitPoa = async () => {
+    const feedback = poaFeedback.trim();
+    if (!feedback) {
+      setPoaError("Feedback is required");
+      return;
+    }
+    if (!poaTask?._id) {
+      toast("Invalid task selected for POA", "error");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("feedback", feedback);
+    poaFiles.forEach((file) => formData.append("attachments", file));
+
+    const result = await submitPoa(poaTask._id, formData);
+    if (result.success) {
+      setTasks((prev) =>
+        prev.map((task) =>
+          task._id === poaTask._id
+            ? { ...task, status: "submitted", myStatus: "submitted" }
+            : task,
+        ),
+      );
+      toast("POA submitted successfully", "success");
+      handleClosePoa();
+      loadTasks();
+    } else {
+      toast(result.error || "Failed to submit POA", "error");
+    }
+  };
 
   const derivedStats = displayedTasks.reduce(
     (acc, task) => {
       const status = getTaskStatus(task);
       if (status === "pending") acc.pending += 1;
       if (status === "in_progress") acc.in_progress += 1;
+      if (["pending_approval", "pending_review"].includes(status)) {
+        acc.pending_approval += 1;
+      }
+      if (status === "submitted") acc.submitted += 1;
 
       if (task.dueDate) {
         const due = new Date(task.dueDate);
@@ -704,21 +1741,44 @@ export default function MyTask() {
 
       return acc;
     },
-    { pending: 0, in_progress: 0, due_today: 0 },
+    { pending: 0, in_progress: 0, pending_approval: 0, submitted: 0, due_today: 0 },
   );
 
   const statValues = {
     total: displayedTasks.length,
     pending: derivedStats.pending,
     in_progress: derivedStats.in_progress,
+    pending_approval: derivedStats.pending_approval,
+    submitted: derivedStats.submitted,
     due_today: derivedStats.due_today,
   };
+  const visibleStatCards =
+    viewMode === "calendar"
+      ? [
+          { title: "Total Tasks", value: statValues.total, type: "total" },
+          { title: "Pending", value: statValues.pending, type: "pending" },
+          { title: "In Progress", value: statValues.in_progress, type: "in_progress" },
+          { title: "Due Today", value: statValues.due_today, type: "due_today" },
+        ]
+      : [
+          { title: "Total Tasks", value: statValues.total, type: "total" },
+          { title: "Pending", value: statValues.pending, type: "pending" },
+          {
+            title: "Pending Approval",
+            value: statValues.pending_approval,
+            type: "pending_approval",
+          },
+          { title: "Submitted", value: statValues.submitted, type: "submitted" },
+          { title: "Due Today", value: statValues.due_today, type: "due_today" },
+        ];
 
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ minHeight: "100vh", bgcolor: "#f8fafc", overflowX: "hidden" }}>
-        <Container maxWidth="xl" sx={{ py: { xs: 2.5, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
-
+        <Container
+          maxWidth="xl"
+          sx={{ py: { xs: 2.5, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}
+        >
           {/* ── Header ── */}
           <Box
             sx={{
@@ -730,17 +1790,32 @@ export default function MyTask() {
           >
             <Box>
               <Typography
-                sx={{ color: "#0f172a", fontSize: { xs: "1.3rem", sm: "1.5rem" }, fontWeight: 800, mb: 0.25 }}
+                sx={{
+                  color: "#0f172a",
+                  fontSize: { xs: "1.3rem", sm: "1.5rem" },
+                  fontWeight: 800,
+                  mb: 0.25,
+                }}
               >
                 My Tasks
               </Typography>
-              <Typography sx={{ color: "#94a3b8", fontSize: "0.8rem", fontWeight: 400 }}>
+              <Typography
+                sx={{ color: "#94a3b8", fontSize: "0.8rem", fontWeight: 400 }}
+              >
                 Your assigned inspection tasks
               </Typography>
             </Box>
 
             {/* View Toggle — pill style matching Figma */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
+              }}
+            >
               <Button
                 size="small"
                 variant="contained"
@@ -775,8 +1850,12 @@ export default function MyTask() {
                 }}
               >
                 {[
-                  { mode: "list",     label: "List View",     Icon: ViewListIcon },
-                  { mode: "calendar", label: "Calendar View", Icon: CalendarMonthIcon },
+                  { mode: "list", label: "List View", Icon: ViewListIcon },
+                  {
+                    mode: "calendar",
+                    label: "Calendar View",
+                    Icon: CalendarMonthIcon,
+                  },
                 ].map(({ mode, label, Icon }) => (
                   <Button
                     key={mode}
@@ -791,7 +1870,8 @@ export default function MyTask() {
                       fontSize: "0.8rem",
                       bgcolor: "transparent",
                       color: viewMode === mode ? "#0f172a" : "#94a3b8",
-                      borderRight: mode === "list" ? "1px solid #e2e8f0" : "none",
+                      borderRight:
+                        mode === "list" ? "1px solid #e2e8f0" : "none",
                       "&:hover": { bgcolor: "#f8fafc" },
                       transition: "all 0.15s",
                       position: "relative",
@@ -815,7 +1895,13 @@ export default function MyTask() {
               bgcolor: "#fff",
             }}
           >
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.25}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+            >
               <TextField
                 size="small"
                 placeholder="Search tasks"
@@ -829,13 +1915,23 @@ export default function MyTask() {
                   ),
                 }}
                 sx={{
-                  width: { xs: "100%", sm: 740, md: 685 },
-                  "& .MuiOutlinedInput-root": { fontSize: "0.82rem", bgcolor: "#fff" },
+                  width: {
+                    xs: "100%",
+                    sm: 740,
+                    md: hasFormFilters ? 590 : 680,
+                  },
+                  "& .MuiOutlinedInput-root": {
+                    fontSize: "0.82rem",
+                    bgcolor: "#fff",
+                  },
                 }}
               />
 
               {/* Status */}
-              <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 140 } }}>
+              <FormControl
+                size="small"
+                sx={{ minWidth: { xs: "100%", sm: 140 } }}
+              >
                 <Select
                   value={filters.status}
                   onChange={(e) => handleFilterChange("status", e.target.value)}
@@ -843,28 +1939,59 @@ export default function MyTask() {
                   IconComponent={ArrowDownIcon}
                   sx={{ fontSize: "0.82rem", bgcolor: "#fff" }}
                 >
-                  <MenuItem value="" sx={{ fontSize: "0.82rem" }}>All Tasks</MenuItem>
-                  <MenuItem value="pending" sx={{ fontSize: "0.82rem" }}>Pending</MenuItem>
-                  <MenuItem value="in_progress" sx={{ fontSize: "0.82rem" }}>In Progress</MenuItem>
-                  <MenuItem value="submitted" sx={{ fontSize: "0.82rem" }}>Submitted</MenuItem>
-                  <MenuItem value="completed" sx={{ fontSize: "0.82rem" }}>Completed</MenuItem>
+                  <MenuItem value="" sx={{ fontSize: "0.82rem" }}>
+                    All Tasks
+                  </MenuItem>
+                  <MenuItem value="pending" sx={{ fontSize: "0.82rem" }}>
+                    Pending
+                  </MenuItem>
+                  <MenuItem value="in_progress" sx={{ fontSize: "0.82rem" }}>
+                    In Progress
+                  </MenuItem>
+                  <MenuItem
+                    value="pending_approval"
+                    sx={{ fontSize: "0.82rem" }}
+                  >
+                    Pending Approval
+                  </MenuItem>
+                  <MenuItem value="submitted" sx={{ fontSize: "0.82rem" }}>
+                    Submitted
+                  </MenuItem>
+                  <MenuItem value="completed" sx={{ fontSize: "0.82rem" }}>
+                    Completed
+                  </MenuItem>
                 </Select>
               </FormControl>
 
               {/* Priority */}
-              <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 130 } }}>
+              <FormControl
+                size="small"
+                sx={{ minWidth: { xs: "100%", sm: 130 } }}
+              >
                 <Select
                   value={filters.priority}
-                  onChange={(e) => handleFilterChange("priority", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("priority", e.target.value)
+                  }
                   displayEmpty
                   IconComponent={ArrowDownIcon}
                   sx={{ fontSize: "0.82rem", bgcolor: "#fff" }}
                 >
-                  <MenuItem value="" sx={{ fontSize: "0.82rem" }}>Priority</MenuItem>
-                  <MenuItem value="critical" sx={{ fontSize: "0.82rem" }}>Extremely Critical</MenuItem>
-                  <MenuItem value="high" sx={{ fontSize: "0.82rem" }}>High</MenuItem>
-                  <MenuItem value="medium" sx={{ fontSize: "0.82rem" }}>Medium</MenuItem>
-                  <MenuItem value="low" sx={{ fontSize: "0.82rem" }}>Low</MenuItem>
+                  <MenuItem value="" sx={{ fontSize: "0.82rem" }}>
+                    Priority
+                  </MenuItem>
+                  <MenuItem value="critical" sx={{ fontSize: "0.82rem" }}>
+                    Critical
+                  </MenuItem>
+                  <MenuItem value="high" sx={{ fontSize: "0.82rem" }}>
+                    High
+                  </MenuItem>
+                  <MenuItem value="medium" sx={{ fontSize: "0.82rem" }}>
+                    Medium
+                  </MenuItem>
+                  <MenuItem value="low" sx={{ fontSize: "0.82rem" }}>
+                    Low
+                  </MenuItem>
                 </Select>
               </FormControl>
 
@@ -877,7 +2004,10 @@ export default function MyTask() {
                 onChange={(e) => handleFilterChange("date", e.target.value)}
                 sx={{
                   minWidth: { xs: "100%", sm: 160 },
-                  "& .MuiOutlinedInput-root": { fontSize: "0.82rem", bgcolor: "#fff" },
+                  "& .MuiOutlinedInput-root": {
+                    fontSize: "0.82rem",
+                    bgcolor: "#fff",
+                  },
                 }}
               />
 
@@ -906,35 +2036,28 @@ export default function MyTask() {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(4, 1fr)" },
+              gridTemplateColumns: {
+                xs: "repeat(2, 1fr)",
+                sm: "repeat(2, 1fr)",
+                lg: `repeat(${visibleStatCards.length}, 1fr)`,
+              },
               gap: { xs: 1.5, sm: 2 },
               mb: 3,
             }}
           >
-            <StatCard
-              title="Total Tasks"
-              value={statValues.total}
-              active={!statFilter && !filters.status && !filters.date}
-              onClick={() => handleStatFilter("total")}
-            />
-            <StatCard
-              title="Pending"
-              value={statValues.pending}
-              active={statFilter === "pending"}
-              onClick={() => handleStatFilter("pending")}
-            />
-            <StatCard
-              title="In Progress"
-              value={statValues.in_progress}
-              active={statFilter === "in_progress"}
-              onClick={() => handleStatFilter("in_progress")}
-            />
-            <StatCard
-              title="Due Today"
-              value={statValues.due_today}
-              active={statFilter === "due_today"}
-              onClick={() => handleStatFilter("due_today")}
-            />
+            {visibleStatCards.map((card) => (
+              <StatCard
+                key={card.type}
+                title={card.title}
+                value={card.value}
+                active={
+                  card.type === "total"
+                    ? !statFilter && !filters.status && !filters.date
+                    : statFilter === card.type
+                }
+                onClick={() => handleStatFilter(card.type)}
+              />
+            ))}
           </Box>
 
           {/* ── Content ── */}
@@ -942,12 +2065,20 @@ export default function MyTask() {
             <Grid container spacing={2}>
               {[...Array(6)].map((_, i) => (
                 <Grid item xs={12} sm={6} md={4} key={i}>
-                  <Skeleton variant="rectangular" height={260} sx={{ borderRadius: 2 }} />
+                  <Skeleton
+                    variant="rectangular"
+                    height={260}
+                    sx={{ borderRadius: 2 }}
+                  />
                 </Grid>
               ))}
             </Grid>
           ) : viewMode === "calendar" ? (
-            <CalendarView tasks={displayedTasks} onView={handleViewTask} />
+            <CalendarView
+              tasks={displayedTasks}
+              onView={handleViewTask}
+              onPoa={handlePoaTask}
+            />
           ) : displayedTasks.length === 0 ? (
             <Paper
               elevation={0}
@@ -959,52 +2090,156 @@ export default function MyTask() {
                 bgcolor: "#fff",
               }}
             >
-              <Avatar sx={{ width: 64, height: 64, mx: "auto", mb: 2.5, bgcolor: "#f1f5f9" }}>
+              <Avatar
+                sx={{
+                  width: 64,
+                  height: 64,
+                  mx: "auto",
+                  mb: 2.5,
+                  bgcolor: "#f1f5f9",
+                }}
+              >
                 <AssignmentIcon sx={{ fontSize: 32, color: "#94a3b8" }} />
               </Avatar>
-              <Typography fontWeight={700} sx={{ color: "#475569", fontSize: "1rem", mb: 0.75 }}>
+              <Typography
+                fontWeight={700}
+                sx={{ color: "#475569", fontSize: "1rem", mb: 0.75 }}
+              >
                 {hasFilters ? "No matching tasks" : "No tasks assigned"}
               </Typography>
               <Typography sx={{ color: "#94a3b8", fontSize: "0.82rem" }}>
-                {hasFilters ? "Try adjusting your filters to see more results." : "You're all caught up! Check back later."}
+                {hasFilters
+                  ? "Try adjusting your filters to see more results."
+                  : "You're all caught up! Check back later."}
               </Typography>
               {hasFilters && (
                 <Button
                   variant="outlined"
                   onClick={clearFilters}
-                  sx={{ mt: 3, borderRadius: 2, fontSize: "0.82rem", borderColor: "#e2e8f0", color: "#64748b" }}
+                  sx={{
+                    mt: 3,
+                    borderRadius: 2,
+                    fontSize: "0.82rem",
+                    borderColor: "#e2e8f0",
+                    color: "#64748b",
+                  }}
                 >
                   Clear all filters
                 </Button>
               )}
             </Paper>
           ) : (
-            <>
-              {/* 3-column grid on desktop, 2 on tablet, 1 on mobile */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "column", lg: "row" },
+                gap: 2.5,
+                alignItems: "flex-start",
+              }}
+            >
+              <Box sx={{ flex: 1, minWidth: 0, width: "100%" }}>
+              {/* 3-column grid on desktop, 2 on tablet, 1 on mobile — showing
+                  CARDS_PER_PAGE (9) tasks at a time */}
               <Grid container spacing={{ xs: 1.5, sm: 2 }}>
-                {displayedTasks.map((task) => (
-                  <Grid item xs={12} sm={6} md={4} key={task._id}>
-                    <TaskCard task={task} onView={handleViewTask} />
+                {paginatedTasks.map((task) => (
+                  <Grid item xs={12} sm={6} xl={4} key={task._id}>
+                    <TaskCard
+                      task={task}
+                      onView={handleViewTask}
+                      onPoa={handlePoaTask}
+                    />
                   </Grid>
                 ))}
               </Grid>
 
-              {pagination.totalPages > 1 && (
-                <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-                  <Pagination
-                    count={pagination.totalPages}
-                    page={filters.page}
-                    onChange={(_, p) => handleFilterChange("page", p)}
-                    color="primary"
-                    size="medium"
-                    siblingCount={0}
-                    sx={{ "& .MuiPaginationItem-root": { borderRadius: 2, fontWeight: 600 } }}
-                  />
+              {totalClientPages > 1 && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: 1.5,
+                    mt: 4,
+                  }}
+                >
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={goToPrevPage}
+                    disabled={clientPage === 1}
+                    startIcon={<NavigateBeforeIcon sx={{ fontSize: 16 }} />}
+                    sx={{
+                      borderRadius: 2,
+                      fontSize: "0.8rem",
+                      borderColor: "#e2e8f0",
+                      color: "#334155",
+                      px: 2,
+                      "&:hover": { borderColor: "#cbd5e1", bgcolor: "#f8fafc" },
+                      "&.Mui-disabled": {
+                        color: "#cbd5e1",
+                        borderColor: "#f1f5f9",
+                      },
+                    }}
+                  >
+                    Previous
+                  </Button>
+
+                  <Typography
+                    sx={{
+                      fontSize: "0.82rem",
+                      color: "#64748b",
+                      fontWeight: 600,
+                      mx: 1,
+                    }}
+                  >
+                    Page {clientPage} of {totalClientPages}
+                  </Typography>
+
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={goToNextPage}
+                    disabled={clientPage === totalClientPages}
+                    endIcon={<NavigateNextIcon sx={{ fontSize: 16 }} />}
+                    sx={{
+                      borderRadius: 2,
+                      fontSize: "0.8rem",
+                      borderColor: "#e2e8f0",
+                      color: "#334155",
+                      px: 2,
+                      "&:hover": { borderColor: "#cbd5e1", bgcolor: "#f8fafc" },
+                      "&.Mui-disabled": {
+                        color: "#cbd5e1",
+                        borderColor: "#f1f5f9",
+                      },
+                    }}
+                  >
+                    Next
+                  </Button>
                 </Box>
               )}
-            </>
+              </Box>
+              <CalendarSidebar tasks={displayedTasks} />
+            </Box>
           )}
         </Container>
+
+        <PoaDialog
+          open={!!poaTask}
+          task={poaTask}
+          feedback={poaFeedback}
+          files={poaFiles}
+          error={poaError}
+          submitting={submitting}
+          onFeedbackChange={(value) => {
+            setPoaFeedback(value);
+            if (poaError && value.trim()) setPoaError("");
+          }}
+          onFilesChange={handlePoaFilesChange}
+          onRemoveFile={handleRemovePoaFile}
+          onClose={handleClosePoa}
+          onSubmit={handleSubmitPoa}
+        />
 
         <Snackbar
           open={snack.open}

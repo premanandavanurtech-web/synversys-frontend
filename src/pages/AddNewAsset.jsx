@@ -599,6 +599,7 @@ export default function AddNewAsset({
   const isAdmin = user?.role === "admin";
   const isTeam = user?.role === "team";
   const canEdit = isAdmin || isTeam;
+  const canViewFinancials = !isTeam;
   const currentUserId = user?._id || user?.id;
   const formAssetType = defaultAssetType === "child" ? "child" : "parent";
   const formAssetLabel = formAssetType === "child" ? "Child Asset" : "Parent Asset";
@@ -894,9 +895,13 @@ export default function AddNewAsset({
         assetCondition: formData.assetCondition,
         healthScore: formData.healthScore,
 
-        purchaseCost: formData.purchaseCost
-          ? parseFloat(formData.purchaseCost)
-          : undefined,
+        ...(canViewFinancials
+          ? {
+              purchaseCost: formData.purchaseCost
+                ? parseFloat(formData.purchaseCost)
+                : undefined,
+            }
+          : {}),
 
         commissioningDate: formData.commissioningDate || undefined,
 
@@ -1933,20 +1938,22 @@ export default function AddNewAsset({
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} sm={6} lg={4}>
-                  <Label>Purchase Cost (₹)</Label>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="number"
-                    placeholder="0.00"
-                    value={formData.purchaseCost}
-                    onChange={(e) => fi("purchaseCost", e.target.value)}
-                    disabled={!canEdit}
-                    inputProps={{ min: 0, step: "0.01" }}
-                    sx={inputSx}
-                  />
-                </Grid>
+                {canViewFinancials && (
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <Label>Purchase Cost (₹)</Label>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      placeholder="0.00"
+                      value={formData.purchaseCost}
+                      onChange={(e) => fi("purchaseCost", e.target.value)}
+                      disabled={!canEdit}
+                      inputProps={{ min: 0, step: "0.01" }}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                )}
                 <Grid item xs={12} sm={6} lg={4}>
                   <Label>Commissioning Date</Label>
                   <TextField

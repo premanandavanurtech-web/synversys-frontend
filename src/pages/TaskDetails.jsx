@@ -652,6 +652,7 @@ export default function TaskDetails() {
   const {
     fetchTaskById,
     submitAssignment,
+    submitPoa,
     submitting: contextSubmitting,
     loading: contextLoading,
   } = useTeamAssignment();
@@ -668,6 +669,10 @@ export default function TaskDetails() {
   const [validationErrors, setValidationErrors] = useState({});
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [submissionInfo, setSubmissionInfo] = useState(null);
+  const [poaDialogOpen, setPoaDialogOpen] = useState(false);
+  const [poaFeedback, setPoaFeedback] = useState("");
+  const [poaFiles, setPoaFiles] = useState([]);
+  const [poaError, setPoaError] = useState("");
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
 
   useEffect(() => {
@@ -784,6 +789,62 @@ export default function TaskDetails() {
   const removeAttach = (idx) => {
     setAttachments((prev) => prev.filter((_, i) => i !== idx));
     setAttachPreviews((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handlePoaFilesChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    setPoaFiles((prev) => [...prev, ...files]);
+    event.target.value = "";
+  };
+
+  const handleRemovePoaFile = (index) => {
+    setPoaFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
+  };
+
+  const closePoaDialog = () => {
+    if (isSubmitting) return;
+    setPoaDialogOpen(false);
+    setPoaFeedback("");
+    setPoaFiles([]);
+    setPoaError("");
+  };
+
+  const handleSubmitPoa = async () => {
+    const feedback = poaFeedback.trim();
+    if (!feedback) {
+      setPoaError("Feedback is required");
+      return;
+    }
+
+    if (!id || id === "undefined") {
+      toast("Invalid assignment ID", "error");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("feedback", feedback);
+    poaFiles.forEach((file) => formData.append("attachments", file));
+
+    const result = await submitPoa(id, formData);
+    if (result.success) {
+      toast(result.message || "POA submitted successfully", "success");
+      setTask((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "submitted",
+              myStatus: "submitted",
+              poaSubmissions: [
+                ...(Array.isArray(prev.poaSubmissions) ? prev.poaSubmissions : []),
+                result.assignment?.poaSubmissions?.at?.(-1) || { feedback, submittedAt: new Date().toISOString() },
+              ],
+            }
+          : prev,
+      );
+      closePoaDialog();
+    } else {
+      toast(result.error || "Failed to submit POA", "error");
+    }
   };
 
   const validateRequiredFields = () => {
@@ -991,7 +1052,7 @@ export default function TaskDetails() {
         setSubmitDialogOpen(false);
         setAlreadySubmitted(true);
 
-        setTimeout(() => navigate("/team"), 2000);
+        // setTimeout(() => navigate("/team"), 2000);
       } else {
         if (
           result.error &&
@@ -1017,6 +1078,7 @@ export default function TaskDetails() {
   const fields = getFields();
   const assetDetail = task?.assetIds?.[0] || {};
   const assetSummary = task?.assets?.[0] || {};
+  const assetName = assetDetail.assetName || assetSummary.assetName || "—";
 
   const statusKey = (task?.status || "pending").toLowerCase();
   const priorityKey = (task?.priority || "medium").toLowerCase();
@@ -1038,6 +1100,7 @@ export default function TaskDetails() {
 
   const isSubmitting = localSubmitting || contextSubmitting;
   const isLoading = localLoading || contextLoading;
+  const poaSubmitted = Array.isArray(task?.poaSubmissions) && task.poaSubmissions.length > 0;
 
   // ── Already Submitted View ──────────────────────────────────────────────────
   if (!isLoading && alreadySubmitted && task) {
@@ -1092,11 +1155,127 @@ export default function TaskDetails() {
                   Submitted on: {new Date(submissionInfo.completedAt).toLocaleString()}
                 </Typography>
               )}
-              <Button variant="contained" onClick={() => navigate("/team")}>
-                Back to My Tasks
-              </Button>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.25}
+                justifyContent="center"
+                alignItems="center"
+              >
+                <Button
+                  variant="contained"
+                  onClick={() => setPoaDialogOpen(true)}
+                  disabled={poaSubmitted || isSubmitting}
+                  startIcon={
+                    isSubmitting ? (
+                      <CircularProgress size={15} color="inherit" />
+                    ) : (
+                      <AssignmentIcon sx={{ fontSize: 17 }} />
+                    )
+                  }
+                  sx={{ bgcolor: "#0c3d67", "&:hover": { bgcolor: "#082f50" } }}
+                >
+                  {poaSubmitted ? "POA Submitted" : "Submit POA"}
+                </Button>
+                <Button variant="contained" onClick={() => navigate("/team")}>
+                  Back to My Tasks
+                </Button>
+              </Stack>
             </Paper>
           </Container>
+
+          <Dialog
+            open={poaDialogOpen}
+            onClose={closePoaDialog}
+            fullWidth
+            maxWidth="sm"
+            PaperProps={{ sx: { borderRadius: 2, border: "1px solid #E5E7EB" } }}
+          >
+            <DialogTitle sx={{ pb: 1.25 }}>
+              <Typography sx={{ fontWeight: 800, color: "#111827", fontSize: "1.05rem" }}>
+                Submit POA
+              </Typography>
+              <Typography sx={{ color: "#6B7280", fontSize: "0.8rem", mt: 0.35 }}>
+                {assetName}
+              </Typography>
+            </DialogTitle>
+            <DialogContent sx={{ pt: 1 }}>
+              <Stack spacing={2}>
+                <TextField
+                  label="Feedback"
+                  value={poaFeedback}
+                  onChange={(event) => {
+                    setPoaFeedback(event.target.value);
+                    if (poaError && event.target.value.trim()) setPoaError("");
+                  }}
+                  multiline
+                  minRows={4}
+                  required
+                  error={!!poaError}
+                  helperText={poaError || " "}
+                  fullWidth
+                />
+                <Box>
+                  <Button
+                    component="label"
+                    variant="outlined"
+                    startIcon={<CloudUploadIcon sx={{ fontSize: 17 }} />}
+                    sx={{
+                      borderRadius: 1.5,
+                      borderColor: "#D1D5DB",
+                      color: "#374151",
+                      bgcolor: "#fff",
+                      "&:hover": { borderColor: "#111827", bgcolor: "#F9FAFB" },
+                    }}
+                  >
+                    Upload Attachments
+                    <input hidden multiple type="file" onChange={handlePoaFilesChange} />
+                  </Button>
+                  <FormHelperText sx={{ ml: 0.25 }}>
+                    Attach supporting files if needed.
+                  </FormHelperText>
+                  {poaFiles.length > 0 && (
+                    <Stack spacing={1} sx={{ mt: 1.25 }}>
+                      {poaFiles.map((file, index) => (
+                        <Chip
+                          key={`${file.name}-${index}`}
+                          icon={<DescriptionIcon />}
+                          label={file.name}
+                          onDelete={() => handleRemovePoaFile(index)}
+                          sx={{
+                            justifyContent: "space-between",
+                            maxWidth: "100%",
+                            "& .MuiChip-label": {
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            },
+                          }}
+                        />
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+              </Stack>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2.5, pt: 1 }}>
+              <Button onClick={closePoaDialog} disabled={isSubmitting} sx={{ color: "#6B7280" }}>
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleSubmitPoa}
+                disabled={isSubmitting}
+                startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
+                sx={{
+                  borderRadius: 1.5,
+                  bgcolor: "#0c3d67",
+                  boxShadow: "none",
+                  "&:hover": { bgcolor: "#082f50", boxShadow: "none" },
+                }}
+              >
+                Submit POA
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
       </ThemeProvider>
     );
@@ -1126,8 +1305,6 @@ export default function TaskDetails() {
   }
 
   if (!task) return null;
-
-  const assetName = assetDetail.assetName || assetSummary.assetName || "—";
 
   return (
     <ThemeProvider theme={theme}>

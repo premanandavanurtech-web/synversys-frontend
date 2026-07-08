@@ -693,7 +693,7 @@ export default function AssignedChecklist() {
   // ── Stat Cards Config ──────────────────────────────────────────────────────
   const statCards = useMemo(() => [
     { label: "Total Assignments", value: stats?.total ?? 0,                                                              icon: AssignmentIcon,   color: "#084d68", trend: "+12%", subtitle: "All active records" },
-    { label: "Pending",           value: stats?.byStatus?.pending ?? 0,                                                  icon: PendingActionsIcon, color: "#f59e0b", trend: "+5%",  subtitle: "Awaiting action" },
+    { label: "Pending Assignments",           value: stats?.byStatus?.pending ?? 0,                                                  icon: PendingActionsIcon, color: "#f59e0b", trend: "+5%",  subtitle: "Awaiting action" },
     { label: "Submitted",         value: stats?.byStatus?.submitted ?? 0,                                                icon: CheckCircleIcon,  color: "#10b981", trend: "+8%",  subtitle: "Submitted for review" },
     { label: "Overdue",           value: stats?.overdue ?? 0,                                                            icon: WarningAmberIcon, color: "#ef4444", trend: "+2%",  subtitle: "Past due date" },
   ], [stats]);

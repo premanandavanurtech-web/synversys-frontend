@@ -223,6 +223,7 @@ export default function CreateAssetRequest() {
   // Role-based access
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isTeam = user?.role === "team";
+  const canViewFinancials = !isTeam;
   const canEdit = isAdmin; // Only Admin can create/edit assets directly
   const canRequest = isTeam || isAdmin; // Both can request, but admin can also create directly
 
@@ -467,9 +468,13 @@ export default function CreateAssetRequest() {
         status: formData.status,
         assetCondition: formData.assetCondition,
         assetCategory,
-        purchaseCost: formData.purchaseCost
-          ? parseFloat(formData.purchaseCost)
-          : undefined,
+        ...(canViewFinancials
+          ? {
+              purchaseCost: formData.purchaseCost
+                ? parseFloat(formData.purchaseCost)
+                : undefined,
+            }
+          : {}),
         commissioningDate: formData.commissioningDate,
         healthScore: formData.healthScore,
         metadata: formData.metadata,
@@ -982,18 +987,22 @@ export default function CreateAssetRequest() {
                 sx={{ mb: 2 }}
               />
 
-              <FilterLabel>Purchase Cost ($)</FilterLabel>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                placeholder="Enter purchase cost"
-                value={formData.purchaseCost}
-                onChange={(e) =>
-                  handleInputChange("purchaseCost", e.target.value)
-                }
-                sx={{ mb: 2 }}
-              />
+              {canViewFinancials && (
+                <>
+                  <FilterLabel>Purchase Cost ($)</FilterLabel>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="number"
+                    placeholder="Enter purchase cost"
+                    value={formData.purchaseCost}
+                    onChange={(e) =>
+                      handleInputChange("purchaseCost", e.target.value)
+                    }
+                    sx={{ mb: 2 }}
+                  />
+                </>
+              )}
 
               <FilterLabel>Commissioning Date</FilterLabel>
               <TextField
