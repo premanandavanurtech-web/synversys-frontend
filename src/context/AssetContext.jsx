@@ -27,7 +27,7 @@ export const useAsset = () => {
   return context;
 };
 
-const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
+const API_BASE_URL = "https://synversys-backend-dxx1.onrender.com/api/v1";
 
 // ─── Shared axios instance (exported for all contexts to import) ──────────────
 export const api = axios.create({ baseURL: API_BASE_URL });

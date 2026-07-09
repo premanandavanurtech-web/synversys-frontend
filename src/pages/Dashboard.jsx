@@ -65,7 +65,6 @@ import {
   Warning as WarningIcon,
   AssignmentTurnedIn as AssignmentTurnedInIcon,
   CalendarMonth as CalendarIcon,
-  DateRange as DateRangeIcon,
   FilterList as FilterListIcon,
   Notifications as NotifIcon,
   AccountBalance as RevenueIcon,
@@ -295,7 +294,8 @@ const StatCard = ({
           p: { xs: 2, sm: 2.5 },
           borderRadius: 3,
           height: "100%",
-          width: {xs:"175px",md:"276px"},
+          width: "100%",
+          minWidth: 0,
           background: `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryLight} 100%)`,
           cursor: onClick ? "pointer" : "default",
           transition: "transform 0.3s ease, box-shadow 0.3s ease",
@@ -440,7 +440,8 @@ const ChartCard = ({ title, sub, children, minH = 280, action }) => (
       p: { xs: 2, sm: 2.5 },
       borderRadius: 3,
       height: "100%",
-      width: {xs:"365px",md:"567px"},
+      width: "100%",
+      minWidth: 0,
       bgcolor: C.white,
       border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
       minHeight: { xs: 240, sm: minH }, // ✅ smaller minimum on mobile
@@ -480,190 +481,6 @@ const EmptyChart = ({ msg = "No data available" }) => (
 
 // ✅ ActivityTable: wrapped in overflow scroll container for mobile
 // ─── REPLACE ActivityTable ─────────────────────────────────────────────────────
-const formatShortDate = (value) => {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
-const getAmcStatusColor = (status) => {
-  if (status === "Expired") return { color: C.onErrorContainer, bg: C.errorContainer };
-  if (status === "Due Soon") return { color: "#8a4b00", bg: "#fff1d2" };
-  if (status === "Upcoming") return { color: C.primaryLight, bg: alpha(C.primaryLight, 0.1) };
-  return { color: C.success, bg: C.successLight };
-};
-
-const AmcExpiryManagement = ({ data, loading, onViewAssets }) => {
-  const summary = data?.summary || {};
-  const items = data?.items || [];
-  const cards = [
-    { label: "Expired", value: summary.expired, status: "Expired" },
-    { label: "Due Soon", value: summary.dueSoon, status: "Due Soon" },
-    { label: "Upcoming", value: summary.upcoming, status: "Upcoming" },
-    { label: "Active", value: summary.active, status: "Active" },
-  ];
-
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: { xs: 2, sm: 2.5 },
-        borderRadius: 3,
-        mb: 3,
-        bgcolor: C.white,
-        border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
-      }}
-    >
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems={{ xs: "flex-start", sm: "center" }}
-        gap={1.5}
-        flexDirection={{ xs: "column", sm: "row" }}
-        mb={2}
-      >
-        <SectionTitle
-          icon={CalendarIcon}
-          title="AMC Expiry Management"
-          chip={`${fmt(summary.totalTracked)} tracked`}
-        />
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<InventoryIcon />}
-          onClick={onViewAssets}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 700,
-            borderColor: alpha(C.primaryLight, 0.35),
-            color: C.primary,
-          }}
-        >
-          View Assets
-        </Button>
-      </Box>
-
-      <Grid container spacing={1.5} sx={{ mb: 2 }}>
-        {cards.map((card) => {
-          const tone = getAmcStatusColor(card.status);
-          return (
-            <Grid item xs={6} md={3} key={card.label}>
-              <Box
-                sx={{
-                  p: 1.5,
-                  borderRadius: 2,
-                  bgcolor: tone.bg,
-                  border: `1px solid ${alpha(tone.color, 0.16)}`,
-                  minHeight: 82,
-                }}
-              >
-                <Typography sx={{ color: tone.color, fontSize: "0.72rem", fontWeight: 700 }}>
-                  {card.label}
-                </Typography>
-                <Typography sx={{ color: C.primary, fontSize: "1.45rem", fontWeight: 800 }}>
-                  {loading ? <Skeleton width={44} /> : fmt(card.value)}
-                </Typography>
-              </Box>
-            </Grid>
-          );
-        })}
-      </Grid>
-
-      <TableContainer sx={{ border: `1px solid ${alpha(C.outlineVariant, 0.35)}`, borderRadius: 2 }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ bgcolor: C.surfaceContainerLow }}>
-              <TableCell sx={{ fontWeight: 800, color: C.secondary }}>Asset</TableCell>
-              <TableCell sx={{ fontWeight: 800, color: C.secondary }}>Type</TableCell>
-              <TableCell sx={{ fontWeight: 800, color: C.secondary }}>Schedule</TableCell>
-              <TableCell sx={{ fontWeight: 800, color: C.secondary }}>Next Due</TableCell>
-              <TableCell sx={{ fontWeight: 800, color: C.secondary }}>Status</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell colSpan={5}>
-                    <Skeleton height={28} />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : items.length > 0 ? (
-              items.map((item) => {
-                const tone = getAmcStatusColor(item.status);
-                const daysText =
-                  item.daysRemaining < 0
-                    ? `${Math.abs(item.daysRemaining)}d overdue`
-                    : item.daysRemaining === 0
-                      ? "Due today"
-                      : `${item.daysRemaining}d left`;
-                return (
-                  <TableRow key={`${item.assetId}-${item.systemType}`} hover>
-                    <TableCell>
-                      <Typography sx={{ fontWeight: 700, color: C.primary, fontSize: "0.8rem" }}>
-                        {item.assetName}
-                      </Typography>
-                      <Typography sx={{ color: C.outline, fontSize: "0.68rem" }}>
-                        {item.assetCode || item.assetStatus || "Asset"}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={item.systemType}
-                        size="small"
-                        sx={{ bgcolor: alpha(C.primaryLight, 0.08), fontWeight: 800 }}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ color: C.secondary, fontSize: "0.78rem" }}>
-                      {item.schedule}
-                    </TableCell>
-                    <TableCell>
-                      <Typography sx={{ fontWeight: 700, color: C.primary, fontSize: "0.78rem" }}>
-                        {formatShortDate(item.nextDueDate)}
-                      </Typography>
-                      <Typography sx={{ color: C.outline, fontSize: "0.68rem" }}>
-                        {daysText}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={item.status}
-                        size="small"
-                        sx={{
-                          bgcolor: tone.bg,
-                          color: tone.color,
-                          fontWeight: 800,
-                        }}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5}>
-                  <Box sx={{ py: 3, textAlign: "center" }}>
-                    <Typography sx={{ color: C.outline, fontSize: "0.8rem" }}>
-                      No AMC or CAMC expiry dates configured yet.
-                    </Typography>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Paper>
-  );
-};
-
 const ActivityTable = ({ activities }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -888,7 +705,7 @@ const ActivityTable = ({ activities }) => {
           ) : (
             <TableRow>
               <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                <Typography sx={{ color: C.secondary, width: {xs:"330px",md:"1147px"} ,fontSize: "0.8rem" }}>
+                <Typography sx={{ color: C.secondary, width: "100%", fontSize: "0.8rem" }}>
                   No recent activities
                 </Typography>
               </TableCell>
@@ -911,7 +728,8 @@ const NotifList = ({ notifications }) => (
             p: 1.5,
             
             borderRadius: 2,
-            width: {xs:"330px",md:"1110px"},
+            width: "100%",
+            minWidth: 0,
             bgcolor: C.surfaceContainerLow,
             border: `1px solid ${alpha(C.outlineVariant, 0.4)}`,
           }}
@@ -963,7 +781,7 @@ const NotifList = ({ notifications }) => (
       ))
     ) : (
       <Typography
-        sx={{ fontSize: "0.8rem", width: {xs:"330px",md:"1106px"} , color: C.secondary, textAlign: "center", py: 2 }}
+        sx={{ fontSize: "0.8rem", width: "100%", color: C.secondary, textAlign: "center", py: 2 }}
       >
         No notifications
       </Typography>
@@ -1010,10 +828,10 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
       <Box
         display="flex"
         alignItems="center"
-        justifyContent="space-between"
+        justifyContent={{ xs: "flex-start", lg: "space-between" }}
         gap={1.5}
         flexWrap="wrap"
-        sx={{ rowGap: 1.25 }}
+        sx={{ rowGap: 1.25, width: "100%" }}
       >
         {/* Left side: Period filters */}
         <Box
@@ -1021,7 +839,7 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
           alignItems="center"
           gap={1}
           flexWrap="wrap"
-          sx={{ rowGap: 1 }}
+          sx={{ rowGap: 1, minWidth: 0, flex: "1 1 360px" }}
         >
           <Box
             sx={{
@@ -1090,7 +908,17 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
 
         {/* Right side: Quick action pills (e.g. Manage Clients / Checklists / Reports) */}
         {actions.length > 0 && (
-          <Box display="flex" gap={1} flexWrap="wrap" sx={{ rowGap: 1 }}>
+          <Box
+            display="flex"
+            gap={1}
+            flexWrap="wrap"
+            sx={{
+              rowGap: 1,
+              justifyContent: { xs: "flex-start", md: "flex-end" },
+              flex: { xs: "1 1 100%", lg: "0 1 auto" },
+              minWidth: 0,
+            }}
+          >
             {actions.map((act, i) => (
               <Button
                 key={i}
@@ -1101,9 +929,9 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
                   bgcolor: C.primaryLight,
                   color: "#fff",
                   borderRadius: 999,
-                  px: 2,
+                  px: { xs: 1.25, sm: 2 },
                   height: 32,
-                  fontSize: "0.74rem",
+                  fontSize: { xs: "0.68rem", sm: "0.74rem" },
                   fontWeight: 600,
                   textTransform: "none",
                   boxShadow: "none",
@@ -1313,18 +1141,34 @@ const SuperAdminDashboard = ({ data, loading }) => {
   return (
     <Box>
       {/* ✅ 2-col on sm, 4-col on lg */}
-      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "repeat(2, minmax(0, 1fr))",
+            lg: "repeat(4, minmax(0, 1fr))",
+          },
+          gap: { xs: 1.5, sm: 2 },
+          mb: 3,
+        }}
+      >
         {statCards.map((s, i) => (
-          <Grid item xs={12} sm={6} lg={3} key={i}>
-            <StatCard {...s} loading={loading} />
-          </Grid>
+          <StatCard {...s} loading={loading} key={i} />
         ))}
-      </Grid>
+      </Box>
 
       {/* Revenue trend + Clients by plan */}
       {/* ✅ Both charts full-width on mobile, split on md+ */}
-      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={8}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 2fr) minmax(280px, 1fr)" },
+          gap: { xs: 1.5, sm: 2 },
+          mb: 3,
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
           <ChartCard
             title="Revenue trend"
             sub="Monthly recurring revenue over period"
@@ -1378,8 +1222,8 @@ const SuperAdminDashboard = ({ data, loading }) => {
               <EmptyChart msg="No revenue data for this period" />
             )}
           </ChartCard>
-        </Grid>
-        <Grid item xs={12} md={4}>
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
           <ChartCard title="Clients by plan">
             {clientsByPlan.length > 0 ? (
               <ResponsiveContainer width="100%" height={chartH}>
@@ -1408,12 +1252,19 @@ const SuperAdminDashboard = ({ data, loading }) => {
               <EmptyChart />
             )}
           </ChartCard>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       {/* Assignment trend + Request urgency */}
-      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={8}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 2fr) minmax(280px, 1fr)" },
+          gap: { xs: 1.5, sm: 2 },
+          mb: 3,
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
           <ChartCard
             title="Assignment overview"
             sub="Created vs completed over period"
@@ -1461,8 +1312,8 @@ const SuperAdminDashboard = ({ data, loading }) => {
               <EmptyChart msg="No assignment data for this period" />
             )}
           </ChartCard>
-        </Grid>
-        <Grid item xs={12} md={5}>
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
           <ChartCard title="Requests by urgency">
             {requestByUrgency.length > 0 ? (
               <ResponsiveContainer width="100%" height={chartH}>
@@ -1486,19 +1337,27 @@ const SuperAdminDashboard = ({ data, loading }) => {
               <EmptyChart msg="No request data" />
             )}
           </ChartCard>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       {/* Activities + Notifications side by side */}
       {/* ✅ Stack vertically on mobile */}
-      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={8}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr)",
+          gap: { xs: 1.5, sm: 2 },
+          mb: 3,
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
           <Paper
             elevation={0}
             sx={{
               borderRadius: 3,
               overflow: "hidden",
-              width: {xs:"362px",md:"1147px"},
+              width: "100%",
+              minWidth: 0,
               border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
             }}
           >
@@ -1517,8 +1376,8 @@ const SuperAdminDashboard = ({ data, loading }) => {
             </Box>
             <ActivityTable activities={activities} />
           </Paper>
-        </Grid>
-        <Grid item xs={12} md={5}>
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
           <Paper
             elevation={0}
             sx={{
@@ -1535,15 +1394,14 @@ const SuperAdminDashboard = ({ data, loading }) => {
             />
             <NotifList notifications={notifications} />
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 };
 
 // ─── ADMIN VIEW ────────────────────────────────────────────────────────────────
 const AdminDashboard = ({ data, loading }) => {
-  const navigate = useNavigate();
   const chartH = useChartHeight(240, 190);
 
   const payload = data?.data || data || {};
@@ -1553,6 +1411,7 @@ const AdminDashboard = ({ data, loading }) => {
   const activities = payload.recentActivities || [];
   const notifications = payload.notifications || [];
   const amcExpiryManagement = payload.amcExpiryManagement || {};
+  const amcSummary = amcExpiryManagement.summary || {};
 
   const assetByCategory = useMemo(
     () =>
@@ -1626,59 +1485,49 @@ const AdminDashboard = ({ data, loading }) => {
       sub: `${fmt(summary.pendingReviewsCount)} pending review`,
       accent: true,
     },
-  ];
-
-  const quickActions = [
     {
-      icon: AddCircleIcon,
-      title: "New Checklist",
-      desc: "Create custom form",
-      path: "/admin/create-checklist/custom",
-    },
-    {
-      icon: PersonAddIcon,
-      title: "Add Team Member",
-      desc: "Register member",
-      path: "/admin/team",
-    },
-    {
-      icon: InventoryIcon,
-      title: "Add Asset",
-      desc: "Register asset",
-      path: "/admin/assets/add",
-    },
-    {
-      icon: AnalyticsIcon,
-      title: "Reports",
-      desc: "View analytics",
-      path: "/admin/reports",
+      icon: CalendarIcon,
+      title: "AMC Expiry",
+      value: fmt(amcSummary.totalTracked),
+      sub: `${fmt(amcSummary.expired)} expired - ${fmt(amcSummary.dueSoon)} due soon`,
     },
   ];
 
   return (
     <Box>
       {/* ✅ Stat cards: 1-col xs, 2-col sm, 4-col lg */}
-      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "repeat(2, minmax(0, 1fr))",
+            md: "repeat(3, minmax(0, 1fr))",
+            lg: "repeat(5, minmax(0, 1fr))",
+          },
+          gap: { xs: 1.5, sm: 2 },
+          mb: 3,
+        }}
+      >
         {statCards.map((s, i) => (
-          <Grid item xs={12} sm={6} lg={3} key={i}>
-            <StatCard {...s} loading={loading} />
-          </Grid>
+          <StatCard {...s} loading={loading} key={i} />
         ))}
-      </Grid>
+      </Box>
 
       {/* Quick Actions — unchanged: this is the larger card-style grid,
           a different pattern from the super_admin pill buttons that moved
           into the FilterBar. Left as-is here. */} 
 
-      <AmcExpiryManagement
-        data={amcExpiryManagement}
-        loading={loading}
-        onViewAssets={() => navigate("/admin/assets")}
-      />
-
       {/* Submission trend + Asset donut */}
-      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={8}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 2fr) minmax(280px, 1fr)" },
+          gap: { xs: 1.5, sm: 2 },
+          mb: 3,
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
           <ChartCard
             title="Submission trend"
             sub="Total vs approved over selected period"
@@ -1745,8 +1594,8 @@ const AdminDashboard = ({ data, loading }) => {
               <EmptyChart msg="No submission data for this period" />
             )}
           </ChartCard>
-        </Grid>
-        <Grid item xs={12} md={4}>
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
           <ChartCard title="Assets by status">
             {assetByCategory.length > 0 ? (
               <ResponsiveContainer width="100%" height={chartH}>
@@ -1775,12 +1624,19 @@ const AdminDashboard = ({ data, loading }) => {
               <EmptyChart />
             )}
           </ChartCard>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       {/* Assignment trend + Top performers */}
-      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={6}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) minmax(0, 1fr)" },
+          gap: { xs: 1.5, sm: 2 },
+          mb: 3,
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
           <ChartCard title="Assignment trend" sub="Created, completed and overdue">
             {assignTrend.some((d) => d.created > 0) ? (
               <ResponsiveContainer width="100%" height={chartH}>
@@ -1836,9 +1692,9 @@ const AdminDashboard = ({ data, loading }) => {
               <EmptyChart msg="No assignment data for this period" />
             )}
           </ChartCard>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={6}>
+        <Box sx={{ minWidth: 0 }}>
           {topPerformers.length > 0 ? (
             <ChartCard title="Top performing team members" minH={200}>
               <Stack spacing={1.5}>
@@ -1941,12 +1797,19 @@ const AdminDashboard = ({ data, loading }) => {
               )}
             </ChartCard>
           )}
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       {/* Activities + Notifications */}
-      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={7}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr)",
+          gap: { xs: 1.5, sm: 2 },
+          mb: 3,
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
           <Paper
             elevation={0}
             sx={{
@@ -1970,8 +1833,8 @@ const AdminDashboard = ({ data, loading }) => {
             </Box>
             <ActivityTable activities={activities} />
           </Paper>
-        </Grid>
-        <Grid item xs={12} md={5}>
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
           <Paper
             elevation={0}
             sx={{
@@ -1989,8 +1852,8 @@ const AdminDashboard = ({ data, loading }) => {
             />
             <NotifList notifications={notifications} />
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 };
