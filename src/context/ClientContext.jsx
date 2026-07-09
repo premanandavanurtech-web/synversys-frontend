@@ -11,7 +11,7 @@ import React, {
 import axios from "axios";
 import { useAuth } from "./AuthContexts";
 
-const API_BASE_URL = "https://synversysbackend-production.up.railway.app/api/v1";
+const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
 
 const getApiErrorMessage = (error, fallback) =>
   error.response?.data?.errors?.[0]?.message ||

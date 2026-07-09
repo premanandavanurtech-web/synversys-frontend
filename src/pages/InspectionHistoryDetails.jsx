@@ -292,7 +292,7 @@ export default function InspectionHistoryDetails() {
   const getImageUrl = (filePath) => {
     if (!filePath) return "/placeholder-image.png";
     const normalizedPath = filePath.replace(/\\/g, "/");
-    return `https://synversysbackend-production.up.railway.app/${normalizedPath}`;
+    return `https://synversys-backend.onrender.com/${normalizedPath}`;
   };
 
   if (loading && !inspection) {

@@ -26,7 +26,7 @@ export const useContactInquiry = () => {
   return ctx;
 };
 
-const API_BASE_URL = "https://synversysbackend-production.up.railway.app/api/v1";
+const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
 
 export const ContactInquiryProvider = ({ children }) => {
   const { token } = useAuth();
