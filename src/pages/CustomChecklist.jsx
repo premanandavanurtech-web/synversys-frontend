@@ -3,6 +3,12 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  areDraftValuesEqual,
+  clearFormDraft,
+  loadFormDraft,
+  saveFormDraft,
+} from "../utils/formDraft";
+import {
   Box,
   Typography,
   Button,
@@ -37,6 +43,7 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
+  Dialog,
 } from "@mui/material";
 import { createTheme, ThemeProvider, alpha } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -1027,7 +1034,12 @@ export default function CustomChecklist({ checklistId }) {
     severity: "success",
   });
   const [fetchError, setFetchError] = useState(null);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const formRef = useRef(null);
+  const draftReadyRef = useRef(false);
+  const openedDraftRef = useRef({});
+  const hadDraftOnOpenRef = useRef(false);
+  const draftKey = `checklistFormDraft:${checklistId || "demo"}`;
 
   const toggleSection = (sectionIndex) => {
     setCollapsedSections((prev) => ({
@@ -1164,6 +1176,26 @@ export default function CustomChecklist({ checklistId }) {
     fetchChecklist();
   }, [checklistId, getChecklistById, convertAPIToUIField]);
 
+  useEffect(() => {
+    const draft = loadFormDraft(draftKey);
+    hadDraftOnOpenRef.current = Boolean(draft?.formValues);
+    if (draft?.formValues) {
+      setFormValues(draft.formValues);
+      window.setTimeout(() => {
+        openedDraftRef.current = draft.formValues;
+        draftReadyRef.current = true;
+      }, 0);
+      return;
+    }
+    openedDraftRef.current = {};
+    draftReadyRef.current = true;
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftReadyRef.current) return;
+    saveFormDraft(draftKey, { formValues });
+  }, [draftKey, formValues]);
+
   const handleFieldChange = useCallback((key, value) => {
     setFormValues((prev) => ({ ...prev, [key]: value }));
   }, []);
@@ -1171,6 +1203,25 @@ export default function CustomChecklist({ checklistId }) {
   const handleClear = () => {
     setFormValues({});
     setSubmitted(false);
+    clearFormDraft(draftKey);
+    openedDraftRef.current = {};
+    hadDraftOnOpenRef.current = false;
+  };
+
+  const finishClose = ({ clearDraft = false, saveDraft = false } = {}) => {
+    setConfirmCloseOpen(false);
+    if (saveDraft) saveFormDraft(draftKey, { formValues });
+    if (clearDraft) clearFormDraft(draftKey);
+    navigate("/admin/checklists");
+  };
+
+  const handleCloseForm = () => {
+    const unchanged = areDraftValuesEqual(formValues, openedDraftRef.current);
+    if (unchanged) {
+      finishClose({ clearDraft: !hadDraftOnOpenRef.current });
+      return;
+    }
+    setConfirmCloseOpen(true);
   };
 
   const handleSubmit = async () => {
@@ -1182,6 +1233,7 @@ export default function CustomChecklist({ checklistId }) {
       const result = await createChecklist(payload);
       if (result.success) {
         setSubmitted(true);
+        clearFormDraft(draftKey);
         setSnackbar({
           open: true,
           message: "Checklist submitted successfully!",
@@ -1546,7 +1598,7 @@ export default function CustomChecklist({ checklistId }) {
                   width: { xs: 28, sm: 32 },
                   height: { xs: 28, sm: 32 },
                 }}
-                onClick={() => navigate("/admin/checklists")}
+                onClick={handleCloseForm}
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                   <path
@@ -1930,6 +1982,31 @@ export default function CustomChecklist({ checklistId }) {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={confirmCloseOpen}
+        onClose={() => setConfirmCloseOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <Box sx={{ p: 3 }}>
+          <Typography sx={{ fontWeight: 700, fontSize: "1.15rem", mb: 1 }}>
+            Save details?
+          </Typography>
+          <Typography sx={{ color: "text.secondary", fontSize: "0.9rem", mb: 3 }}>
+            Do you want to save these details as a draft?
+          </Typography>
+          <Stack direction="row" justifyContent="flex-end" spacing={1.5}>
+            <Button variant="outlined" onClick={() => finishClose({ clearDraft: true })}>
+              No
+            </Button>
+            <Button variant="contained" onClick={() => finishClose({ saveDraft: true })}>
+              Yes
+            </Button>
+          </Stack>
+        </Box>
+      </Dialog>
     </ThemeProvider>
   );
 }

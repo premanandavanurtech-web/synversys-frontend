@@ -74,6 +74,12 @@ import { useNavigate } from "react-router-dom";
 import { useClient } from "../context/ClientContext";
 import { useAuth } from "../context/AuthContexts";
 import AssetSearchField from "../components/AssetSearchField";
+import {
+  areDraftValuesEqual,
+  clearFormDraft,
+  loadFormDraft,
+  saveFormDraft,
+} from "../utils/formDraft";
 
 const C = {
   primary: "#075971",
@@ -724,6 +730,11 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
   const [tab, setTab] = useState(0);
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const draftReadyRef = useRef(false);
+  const openedFormRef = useRef({});
+  const hadDraftOnOpenRef = useRef(false);
+  const draftKey = "customerCreateDraft";
 
   const blank = {
     customerName: "",
@@ -741,23 +752,40 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
     if (open) {
       setTab(0);
       setErrors({});
+      draftReadyRef.current = false;
+      const draft = !client ? loadFormDraft(draftKey) : null;
+      const openingForm = client
+        ? {
+            customerName: client.customerName || "",
+            email: client.email || "",
+            phone: client.phone || "",
+            website: client.website || "",
+            membershipPlan: client.membershipPlan || "standard",
+            licenseLimit: client.licenseLimit || 10,
+            assetLimit: client.assetLimit || 100,
+            duration: 30,
+            notes: client.notes || "",
+          }
+        : draft?.form || blank;
+      hadDraftOnOpenRef.current = Boolean(!client && draft?.form);
+      openedFormRef.current = openingForm;
       setForm(
-        client
-          ? {
-              customerName: client.customerName || "",
-              email: client.email || "",
-              phone: client.phone || "",
-              website: client.website || "",
-              membershipPlan: client.membershipPlan || "standard",
-              licenseLimit: client.licenseLimit || 10,
-              assetLimit: client.assetLimit || 100,
-              duration: 30,
-              notes: client.notes || "",
-            }
-          : blank,
+        openingForm,
       );
+      if (!client && draft?.form) {
+        window.setTimeout(() => {
+          draftReadyRef.current = true;
+        }, 0);
+      } else {
+        draftReadyRef.current = true;
+      }
     }
   }, [client, open]);
+
+  useEffect(() => {
+    if (!open || isEdit || !draftReadyRef.current) return;
+    saveFormDraft(draftKey, { form });
+  }, [draftKey, form, isEdit, open]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -798,7 +826,31 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
       if (hasAcc) setTab(0);
       return;
     }
-    await onSave(form);
+    const result = await onSave(form);
+    if (!isEdit && result?.success !== false) {
+      clearFormDraft(draftKey);
+    }
+  };
+
+  const finishClose = ({ clearDraft = false, saveDraft = false } = {}) => {
+    setConfirmCloseOpen(false);
+    if (saveDraft) saveFormDraft(draftKey, { form });
+    if (clearDraft) clearFormDraft(draftKey);
+    onClose();
+  };
+
+  const handleClose = () => {
+    if (isEdit) {
+      onClose();
+      return;
+    }
+
+    const unchanged = areDraftValuesEqual(form, openedFormRef.current);
+    if (unchanged) {
+      finishClose({ clearDraft: !hadDraftOnOpenRef.current });
+      return;
+    }
+    setConfirmCloseOpen(true);
   };
 
   const TABS = isEdit
@@ -1002,9 +1054,10 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
   );
 
   return (
+    <>
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth="sm"
       fullWidth
       fullScreen={fullScreen}
@@ -1072,7 +1125,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
           </Box>
           <IconButton
             size="small"
-            onClick={onClose}
+            onClick={handleClose}
             sx={{
               border: `1px solid ${C.border}`,
               borderRadius: "8px",
@@ -1166,7 +1219,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
         </Box>
         <Box sx={{ display: "flex", gap: 1.5 }}>
           <Button
-            onClick={onClose}
+            onClick={handleClose}
             size="small"
             sx={{
               textTransform: "none",
@@ -1213,6 +1266,42 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
         </Box>
       </DialogActions>
     </Dialog>
+    <Dialog
+      open={confirmCloseOpen}
+      onClose={() => setConfirmCloseOpen(false)}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3 } }}
+    >
+      <DialogTitle sx={{ pb: 1, fontWeight: 700 }}>Save details?</DialogTitle>
+      <DialogContent sx={{ pt: 0 }}>
+        <Typography sx={{ color: C.text.secondary, fontSize: "0.9rem" }}>
+          Do you want to save these details as a draft?
+        </Typography>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+        <Button
+          variant="outlined"
+          onClick={() => finishClose({ clearDraft: true })}
+          sx={{ textTransform: "none", borderRadius: 1.5 }}
+        >
+          No
+        </Button>
+        <Button
+          variant="contained"
+          onClick={() => finishClose({ saveDraft: true })}
+          sx={{
+            textTransform: "none",
+            borderRadius: 1.5,
+            bgcolor: C.primary,
+            "&:hover": { bgcolor: C.primaryDark },
+          }}
+        >
+          Yes
+        </Button>
+      </DialogActions>
+    </Dialog>
+    </>
   );
 };
 
@@ -1427,8 +1516,10 @@ export default function ClientManagement() {
     showToast("Customer created. Set Password email sent.", "success");
     setModalOpen(false);
     fetchClients({ page: 1 });
+    return { success: true };
   } catch (err) {
     showToast(getValidationMessage(err), "error");
+    return { success: false, error: err };
   }
 };
 

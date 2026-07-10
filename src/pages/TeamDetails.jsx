@@ -88,7 +88,7 @@ const SHADOW = {
   lg: "0 16px 40px rgba(15, 23, 42, 0.12)",
 };
 
-const RADIUS = { card: 3, inner: 2, pill: 999 };
+const RADIUS = { card: 1, inner: 2, pill: 999 };
 
 const SectionLabel = ({ children }) => (
   <Typography
@@ -848,18 +848,40 @@ export default function TeamMemberDetails() {
         </Paper>
 
         {/* Stats Row */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "repeat(2, minmax(0, 1fr))",
+              md: "repeat(4, minmax(0, 1fr))",
+            },
+            gap: 2,
+            mb: 3,
+            width: "100%",
+          }}
+        >
           {statCards.map((card, idx) => (
-            <Grid item xs={6} sm={3} key={idx}>
+            <Box key={idx} sx={{ minWidth: 0 }}>
               <StatCard {...card} />
-            </Grid>
+            </Box>
           ))}
-        </Grid>
+        </Box>
 
         {/* Main Content Grid */}
-        <Grid container spacing={3} alignItems="stretch">
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              md: "minmax(300px, 360px) minmax(0, 1fr)",
+            },
+            gap: 3,
+            alignItems: "stretch",
+            width: "100%",
+          }}
+        >
           {/* Left Column - Contact & Info */}
-          <Grid item xs={12} md={4} sx={{ display: "flex" }}>
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 3, width: "100%" }}>
               <Paper
                 elevation={0}
@@ -995,10 +1017,10 @@ export default function TeamMemberDetails() {
                 </Box>
               </Paper>
             </Box>
-          </Grid>
+          </Box>
 
           {/* Right Column - Performance & Tabs */}
-          <Grid item xs={12} md={8} sx={{ display: "flex" }}>
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 3, width: "100%" }}>
               {/* Performance Section */}
               <Paper
@@ -1119,8 +1141,8 @@ export default function TeamMemberDetails() {
                 </Box>
               </Paper>
             </Box>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
 
         {/* Edit Modal */}
         <EditTeamMemberModal

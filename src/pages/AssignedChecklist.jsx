@@ -147,13 +147,18 @@ const theme = createTheme({
 // ─── Config ───────────────────────────────────────────────────────────────────
 const STATUS_CFG = {
   pending:     { label: "Pending",     color: "#f59e0b", bg: "#fffbeb", icon: HourglassTopIcon },
-  in_progress: { label: "In Progress", color: "#3b82f6", bg: "#eff6ff", icon: PendingActionsIcon },
+  in_progress: { label: "Pending Approval", color: "#3b82f6", bg: "#eff6ff", icon: PendingActionsIcon },
+  pending_approval: { label: "Pending Approval", color: "#3b82f6", bg: "#eff6ff", icon: PendingActionsIcon },
   submitted:   { label: "Submitted",   color: "#134b7c", bg: "#f5f3ff", icon: AssignmentIcon },
   completed:   { label: "Submitted",   color: "#10b981", bg: "#ecfdf5", icon: CheckCircleIcon },
   approved:    { label: "Approved",    color: "#10b981", bg: "#ecfdf5", icon: CheckCircleIcon },
   rejected:    { label: "Rejected",    color: "#ef4444", bg: "#fef2f2", icon: ErrorOutlineIcon },
   overdue:     { label: "Overdue",     color: "#ef4444", bg: "#fef2f2", icon: WarningAmberIcon },
 };
+
+const STATUS_FILTER_OPTIONS = Object.entries(STATUS_CFG).filter(
+  ([key]) => key !== "in_progress",
+);
 
 const PRIORITY_CFG = {
   low:      { label: "Low",      color: "#10b981", bg: "#ecfdf5", icon: "🟢" },
@@ -691,12 +696,15 @@ export default function AssignedChecklist() {
   };
 
   // ── Stat Cards Config ──────────────────────────────────────────────────────
+  const pendingApprovalCount =
+    (stats?.byStatus?.pending_approval ?? 0) + (stats?.byStatus?.in_progress ?? 0);
+
   const statCards = useMemo(() => [
     { label: "Total Assignments", value: stats?.total ?? 0,                                                              icon: AssignmentIcon,   color: "#084d68", trend: "+12%", subtitle: "All active records" },
     { label: "Pending Assignments",           value: stats?.byStatus?.pending ?? 0,                                                  icon: PendingActionsIcon, color: "#f59e0b", trend: "+5%",  subtitle: "Awaiting action" },
-    { label: "Submitted",         value: stats?.byStatus?.submitted ?? 0,                                                icon: CheckCircleIcon,  color: "#10b981", trend: "+8%",  subtitle: "Submitted for review" },
+    { label: "Pending Approval",  value: pendingApprovalCount,                                                           icon: PendingActionsIcon, color: "#3b82f6", trend: "+8%",  subtitle: "Waiting for approval" },
     { label: "Overdue",           value: stats?.overdue ?? 0,                                                            icon: WarningAmberIcon, color: "#ef4444", trend: "+2%",  subtitle: "Past due date" },
-  ], [stats]);
+  ], [pendingApprovalCount, stats]);
 
   const hasFilters = !!(filters.status || filters.priority || filters.search);
 
@@ -778,7 +786,7 @@ export default function AssignedChecklist() {
                     <FormControl size="small" sx={{ minWidth: 130, flex: 1 }}>
                       <Select value={filters.status} onChange={(e) => handleFilterChange("status", e.target.value)} displayEmpty>
                         <MenuItem value="">All Status</MenuItem>
-                        {Object.entries(STATUS_CFG).map(([k, cfg]) => (
+                        {STATUS_FILTER_OPTIONS.map(([k, cfg]) => (
                           <MenuItem key={k} value={k}>
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                               <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: cfg.color }} />{cfg.label}
@@ -791,7 +799,12 @@ export default function AssignedChecklist() {
                       <Select value={filters.priority} onChange={(e) => handleFilterChange("priority", e.target.value)} displayEmpty>
                         <MenuItem value="">All Priority</MenuItem>
                         {Object.entries(PRIORITY_CFG).map(([k, cfg]) => (
-                          <MenuItem key={k} value={k}><span>{cfg.icon}</span> {cfg.label}</MenuItem>
+                          <MenuItem key={k} value={k}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <Box sx={{ width: 14, height: 14, borderRadius: "50%", bgcolor: cfg.color }} />
+                              {cfg.label}
+                            </Box>
+                          </MenuItem>
                         ))}
                       </Select>
                     </FormControl>
@@ -816,7 +829,7 @@ export default function AssignedChecklist() {
                 <FormControl size="small" sx={{ minWidth: 140 }}>
                   <Select value={filters.status} onChange={(e) => handleFilterChange("status", e.target.value)} displayEmpty>
                     <MenuItem value="">All Status</MenuItem>
-                    {Object.entries(STATUS_CFG).map(([k, cfg]) => (
+                    {STATUS_FILTER_OPTIONS.map(([k, cfg]) => (
                       <MenuItem key={k} value={k}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                           <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: cfg.color }} />{cfg.label}
@@ -829,7 +842,12 @@ export default function AssignedChecklist() {
                   <Select value={filters.priority} onChange={(e) => handleFilterChange("priority", e.target.value)} displayEmpty>
                     <MenuItem value="">All Priority</MenuItem>
                     {Object.entries(PRIORITY_CFG).map(([k, cfg]) => (
-                      <MenuItem key={k} value={k}><span>{cfg.icon}</span> {cfg.label}</MenuItem>
+                      <MenuItem key={k} value={k}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Box sx={{ width: 14, height: 14, borderRadius: "50%", bgcolor: cfg.color }} />
+                          {cfg.label}
+                        </Box>
+                      </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
@@ -1067,7 +1085,7 @@ export default function AssignedChecklist() {
                 variant="outlined" fullWidth onClick={() => openModal("checklist")} startIcon={<DescriptionIcon />}
                 sx={{ borderColor: assignTouched && assignForm.checklistIds.length === 0 ? "#ef4444" : undefined, color: assignTouched && assignForm.checklistIds.length === 0 ? "#ef4444" : undefined }}
               >
-                {assignForm.checklistIds.length === 0 ? "Select Checklists (Required)" : `📋 ${assignForm.checklistIds.length} selected`}
+                {assignForm.checklistIds.length === 0 ? "Select Checklists (Required)" : ` ${assignForm.checklistIds.length} selected`}
               </Button>
               {assignTouched && assignForm.checklistIds.length === 0 && <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>Please select at least one checklist</Typography>}
             </Box>
@@ -1088,14 +1106,14 @@ export default function AssignedChecklist() {
                   variant="outlined" fullWidth onClick={() => openModal("team")} startIcon={<PeopleIcon />}
                   sx={{ borderColor: assignTouched && assignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined, color: assignTouched && assignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined }}
                 >
-                  {assignForm.teamMemberIds.length === 0 ? "Select Team Members (Required)" : `👥 ${assignForm.teamMemberIds.length} selected`}
+                  {assignForm.teamMemberIds.length === 0 ? "Select Team Members (Required)" : ` ${assignForm.teamMemberIds.length} selected`}
                 </Button>
                 {assignTouched && assignForm.teamMemberIds.length === 0 && <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>Please select at least one team member</Typography>}
               </Box>
             )}
             {!isSuperAdmin && (
               <Button variant="outlined" fullWidth onClick={() => openModal("asset")} startIcon={<InventoryIcon />}>
-                {assignForm.assetIds.length === 0 ? "Select Assets (Optional)" : `📦 ${assignForm.assetIds.length} selected`}
+                {assignForm.assetIds.length === 0 ? "Select Assets (Optional)" : `${assignForm.assetIds.length} selected`}
               </Button>
             )}
             <TextField fullWidth type="date" label="Due Date" value={assignForm.dueDate} onChange={(e) => setAssignForm((p) => ({ ...p, dueDate: e.target.value }))} InputLabelProps={{ shrink: true }} required />
@@ -1152,14 +1170,14 @@ export default function AssignedChecklist() {
                   variant="outlined" fullWidth onClick={() => openModal("reassignTeam")} startIcon={<PeopleIcon />}
                   sx={{ borderColor: reassignTouched && reassignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined, color: reassignTouched && reassignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined }}
                 >
-                  {reassignForm.teamMemberIds.length === 0 ? "Select Team Members (Required)" : `👥 ${reassignForm.teamMemberIds.length} selected`}
+                  {reassignForm.teamMemberIds.length === 0 ? "Select Team Members (Required)" : ` ${reassignForm.teamMemberIds.length} selected`}
                 </Button>
                 {reassignTouched && reassignForm.teamMemberIds.length === 0 && <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>Please select at least one team member</Typography>}
               </Box>
             )}
             {!isSuperAdmin && (
               <Button variant="outlined" fullWidth onClick={() => openModal("reassignAsset")} startIcon={<InventoryIcon />}>
-                {reassignForm.assetIds.length === 0 ? "Select Assets (Optional)" : `📦 ${reassignForm.assetIds.length} selected`}
+                {reassignForm.assetIds.length === 0 ? "Select Assets (Optional)" : ` ${reassignForm.assetIds.length} selected`}
               </Button>
             )}
             <TextField fullWidth type="date" label="New Due Date" value={reassignForm.dueDate} onChange={(e) => setReassignForm((p) => ({ ...p, dueDate: e.target.value }))} InputLabelProps={{ shrink: true }} />

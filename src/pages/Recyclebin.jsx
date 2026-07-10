@@ -1371,14 +1371,28 @@ function AssignmentsTab() {
 export default function RecycleBin() {
   const { user } = useAuth();
   const {
-    deletedChecklists,
-    deletedRequests,
-    deletedAssignments,
+    checklistPagination,
+    requestPagination,
+    assignmentPagination,
+    fetchDeletedChecklists,
+    fetchDeletedRequests,
+    fetchDeletedAssignments,
     canAccess,
     isSuperAdmin,
   } = useRecycleBin();
   const [tab, setTab] = useState(0);
   const isMobile = useMediaQuery("(max-width:768px)");
+
+  useEffect(() => {
+    if (!canAccess) return;
+    fetchDeletedChecklists(1, 10);
+    fetchDeletedRequests(1, 10);
+    fetchDeletedAssignments(1, 10);
+  }, [canAccess, fetchDeletedAssignments, fetchDeletedChecklists, fetchDeletedRequests]);
+
+  const deletedChecklistCount = checklistPagination.total || 0;
+  const deletedRequestCount = requestPagination.total || 0;
+  const deletedAssignmentCount = assignmentPagination.total || 0;
 
   if (!canAccess) {
     return (
@@ -1474,7 +1488,7 @@ export default function RecycleBin() {
               <StyledTab
                 icon={
                   <Badge
-                    badgeContent={deletedChecklists.length}
+                    badgeContent={deletedChecklistCount}
                     color="error"
                     max={99}
                     sx={{ "& .MuiBadge-badge": { fontSize: 10, height: 16, minWidth: 16 } }}
@@ -1488,7 +1502,7 @@ export default function RecycleBin() {
               <StyledTab
                 icon={
                   <Badge
-                    badgeContent={deletedRequests.length}
+                    badgeContent={deletedRequestCount}
                     color="error"
                     max={99}
                     sx={{ "& .MuiBadge-badge": { fontSize: 10, height: 16, minWidth: 16 } }}
@@ -1502,7 +1516,7 @@ export default function RecycleBin() {
               <StyledTab
                 icon={
                   <Badge
-                    badgeContent={deletedAssignments.length}
+                    badgeContent={deletedAssignmentCount}
                     color="error"
                     max={99}
                     sx={{ "& .MuiBadge-badge": { fontSize: 10, height: 16, minWidth: 16 } }}

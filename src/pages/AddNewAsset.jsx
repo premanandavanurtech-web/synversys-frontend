@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Box,
   Typography,
@@ -60,6 +60,12 @@ import { useAuth } from "../context/AuthContexts";
 import { useTeam } from "../context/TeamContext";
 import { useNavigate } from "react-router-dom";
 import { ALLOWED_NAME_MESSAGE, getAllowedNameError } from "../utils/allowedName";
+import {
+  areDraftValuesEqual,
+  clearFormDraft,
+  loadFormDraft,
+  saveFormDraft,
+} from "../utils/formDraft";
 
 // ─── Design Tokens ───────────────────────────────────────────────────────────
 const T = {
@@ -673,6 +679,156 @@ export default function AddNewAsset({
     camcInspection: { enabled: false, schedule: "Monthly" },
   });
 
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const draftReadyRef = useRef(false);
+  const openedDraftRef = useRef(null);
+  const hadDraftOnOpenRef = useRef(false);
+  const draftKey = embeddedMode
+    ? null
+    : `assetCreateDraft:${currentUserId || "anonymous"}:${formAssetType}`;
+
+  const buildAssetDraft = useCallback(
+    () => ({
+      formData,
+      selectedCategoryId,
+      addPortfolio,
+      portfolioEntryMode,
+      portfolioName,
+      mheFilters,
+      vehicleFilters,
+      faultTypeFilters,
+      containerFilters,
+      osFilters,
+      pmFilters,
+      mheData,
+      transportData,
+      machineData,
+      garbageData,
+      itData,
+      facilityData,
+      inspectionSystems,
+    }),
+    [
+      formData,
+      selectedCategoryId,
+      addPortfolio,
+      portfolioEntryMode,
+      portfolioName,
+      mheFilters,
+      vehicleFilters,
+      faultTypeFilters,
+      containerFilters,
+      osFilters,
+      pmFilters,
+      mheData,
+      transportData,
+      machineData,
+      garbageData,
+      itData,
+      facilityData,
+      inspectionSystems,
+    ],
+  );
+
+  useEffect(() => {
+    if (!draftKey) {
+      draftReadyRef.current = true;
+      return;
+    }
+
+    const draft = loadFormDraft(draftKey);
+    hadDraftOnOpenRef.current = Boolean(draft);
+    if (draft) {
+      if (draft.formData) setFormData((prev) => ({ ...prev, ...draft.formData }));
+      if (draft.selectedCategoryId !== undefined) setSelectedCategoryId(draft.selectedCategoryId);
+      if (draft.addPortfolio !== undefined) setAddPortfolio(Boolean(draft.addPortfolio));
+      if (draft.portfolioEntryMode) setPortfolioEntryMode(draft.portfolioEntryMode);
+      if (draft.portfolioName !== undefined) setPortfolioName(draft.portfolioName);
+      if (draft.mheFilters) setMheFilters(draft.mheFilters);
+      if (draft.vehicleFilters) setVehicleFilters(draft.vehicleFilters);
+      if (draft.faultTypeFilters) setFaultTypeFilters(draft.faultTypeFilters);
+      if (draft.containerFilters) setContainerFilters(draft.containerFilters);
+      if (draft.osFilters) setOsFilters(draft.osFilters);
+      if (draft.pmFilters) setPmFilters(draft.pmFilters);
+      if (draft.mheData) setMheData((prev) => ({ ...prev, ...draft.mheData }));
+      if (draft.transportData) setTransportData((prev) => ({ ...prev, ...draft.transportData }));
+      if (draft.machineData) setMachineData((prev) => ({ ...prev, ...draft.machineData }));
+      if (draft.garbageData) setGarbageData((prev) => ({ ...prev, ...draft.garbageData }));
+      if (draft.itData) setItData((prev) => ({ ...prev, ...draft.itData }));
+      if (draft.facilityData) setFacilityData((prev) => ({ ...prev, ...draft.facilityData }));
+      if (draft.inspectionSystems) setInspectionSystems((prev) => ({ ...prev, ...draft.inspectionSystems }));
+      window.setTimeout(() => {
+        openedDraftRef.current = {
+          formData: draft.formData || formData,
+          selectedCategoryId: draft.selectedCategoryId ?? selectedCategoryId,
+          addPortfolio: draft.addPortfolio ?? addPortfolio,
+          portfolioEntryMode: draft.portfolioEntryMode || portfolioEntryMode,
+          portfolioName: draft.portfolioName ?? portfolioName,
+          mheFilters: draft.mheFilters || mheFilters,
+          vehicleFilters: draft.vehicleFilters || vehicleFilters,
+          faultTypeFilters: draft.faultTypeFilters || faultTypeFilters,
+          containerFilters: draft.containerFilters || containerFilters,
+          osFilters: draft.osFilters || osFilters,
+          pmFilters: draft.pmFilters || pmFilters,
+          mheData: draft.mheData || mheData,
+          transportData: draft.transportData || transportData,
+          machineData: draft.machineData || machineData,
+          garbageData: draft.garbageData || garbageData,
+          itData: draft.itData || itData,
+          facilityData: draft.facilityData || facilityData,
+          inspectionSystems: draft.inspectionSystems || inspectionSystems,
+        };
+        draftReadyRef.current = true;
+      }, 0);
+      return;
+    }
+    openedDraftRef.current = buildAssetDraft();
+    draftReadyRef.current = true;
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftReadyRef.current || !draftKey) return;
+    saveFormDraft(draftKey, {
+      formData,
+      selectedCategoryId,
+      addPortfolio,
+      portfolioEntryMode,
+      portfolioName,
+      mheFilters,
+      vehicleFilters,
+      faultTypeFilters,
+      containerFilters,
+      osFilters,
+      pmFilters,
+      mheData,
+      transportData,
+      machineData,
+      garbageData,
+      itData,
+      facilityData,
+      inspectionSystems,
+    });
+  }, [
+    draftKey,
+    formData,
+    selectedCategoryId,
+    addPortfolio,
+    portfolioEntryMode,
+    portfolioName,
+    mheFilters,
+    vehicleFilters,
+    faultTypeFilters,
+    containerFilters,
+    osFilters,
+    pmFilters,
+    mheData,
+    transportData,
+    machineData,
+    garbageData,
+    itData,
+    facilityData,
+    inspectionSystems,
+  ]);
   // Stable refs — both are useCallback so listing them is safe
   useEffect(() => {
     getAllCategories?.({ limit: 100 });
@@ -954,6 +1110,7 @@ export default function AddNewAsset({
 
       const res = await createAsset(payload);
       if (res?.success) {
+        clearFormDraft(draftKey);
         toast(res?.data?.message || "Asset created successfully!");
         if (embeddedMode && onEmbeddedSuccess) {
           const newAsset = res.asset || res.data || null;
@@ -1075,12 +1232,29 @@ export default function AddNewAsset({
     Reserved: "#8b5cf6",
   };
 
-  const closeForm = () => {
+  const finishClose = ({ clearDraft = false, saveDraft = false } = {}) => {
+    setConfirmCloseOpen(false);
+    if (saveDraft) saveFormDraft(draftKey, buildAssetDraft());
+    if (clearDraft) clearFormDraft(draftKey);
     if (embeddedMode && onEmbeddedClose) {
       onEmbeddedClose();
       return;
     }
     navigate("/admin/assets");
+  };
+
+  const closeForm = () => {
+    const currentDraft = buildAssetDraft();
+    const unchanged = openedDraftRef.current
+      ? areDraftValuesEqual(currentDraft, openedDraftRef.current)
+      : true;
+
+    if (unchanged) {
+      finishClose({ clearDraft: !hadDraftOnOpenRef.current });
+      return;
+    }
+
+    setConfirmCloseOpen(true);
   };
 
   return (
@@ -2636,7 +2810,7 @@ export default function AddNewAsset({
               <Stack direction="row" spacing={1.5}>
                 <Button
                   variant="outlined"
-                  onClick={() => navigate("/admin/assets")}
+                  onClick={closeForm}
                   sx={{ textTransform: "none", borderRadius: T.radius.md }}
                 >
                   Cancel
@@ -2694,6 +2868,46 @@ export default function AddNewAsset({
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={confirmCloseOpen}
+        onClose={() => setConfirmCloseOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: T.radius.lg } }}
+      >
+        <Box sx={{ p: 3 }}>
+          <Typography sx={{ fontWeight: 700, fontSize: "1.15rem", mb: 1 }}>
+            Save details?
+          </Typography>
+          <Typography sx={{ color: T.text.secondary, fontSize: "0.9rem", mb: 3 }}>
+            Do you want to save these details as a draft?
+          </Typography>
+          <Stack direction="row" justifyContent="flex-end" spacing={1.5}>
+            <Button
+              variant="outlined"
+              onClick={() => finishClose({ clearDraft: true })}
+              sx={{ textTransform: "none", borderRadius: T.radius.md }}
+            >
+              No
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => finishClose({ saveDraft: true })}
+              sx={{
+                textTransform: "none",
+                borderRadius: T.radius.md,
+                bgcolor: T.brandPrimary,
+                "&:hover": { bgcolor: T.brandDark },
+              }}
+            >
+              Yes
+            </Button>
+          </Stack>
+        </Box>
+      </Dialog>
     </Box>
   );
 }
+
+

@@ -285,18 +285,31 @@ const EditTeamMemberModal = ({ open, onClose, member, onSuccess }) => {
             </FormControl>
           </FormRow>
 
-          {/* Row 4: Location | Status */}
+          {/* Row 4: Location | Bio */}
           <FormRow>
             <TextField
               fullWidth size={fieldSize}
               label="Location" value={formData.location}
               onChange={handleChange("location")}
               placeholder="e.g., New York, London, Tokyo"
+              helperText="e.g., New York, London, Tokyo"
               InputProps={{
                 startAdornment: <InputAdornment position="start"><LocationOnIcon sx={iconSx} /></InputAdornment>,
               }}
             />
 
+            <TextField
+              fullWidth size={fieldSize}
+              label="Bio (Optional)" value={formData.bio}
+              onChange={handleChange("bio")}
+              placeholder="Brief description about the team member..."
+              multiline rows={4}
+              sx={{ "& .MuiInputBase-root": { alignItems: "flex-start", pt: 1 } }}
+            />
+          </FormRow>
+
+          {/* Row 5: Status */}
+          <FormRow>
             <FormControl fullWidth size={fieldSize}>
               <InputLabel id="status-label">Status</InputLabel>
               <Select
@@ -323,16 +336,9 @@ const EditTeamMemberModal = ({ open, onClose, member, onSuccess }) => {
                 ))}
               </Select>
             </FormControl>
-          </FormRow>
 
-          {/* Row 5: Bio (full width) */}
-          <TextField
-            fullWidth size={fieldSize}
-            label="Bio (Optional)" value={formData.bio}
-            onChange={handleChange("bio")}
-            placeholder="Brief description about the team member..."
-            multiline rows={2}
-          />
+            <Box />
+          </FormRow>
 
         </Box>
       </DialogContent>

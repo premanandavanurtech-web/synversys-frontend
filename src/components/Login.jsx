@@ -56,7 +56,7 @@ import { keyframes } from "@mui/material/styles";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  "https://synversys-backend-dxx1.onrender.com/api/v1";
+  "https://synversys-backend.onrender.com/api/v1";
 
 const fadeUp = keyframes`
   from { opacity: 0; transform: translateY(18px); }

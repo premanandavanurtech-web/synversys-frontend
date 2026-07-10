@@ -1,5 +1,5 @@
 // components/AddMemberModal.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -31,6 +31,7 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import { useTeam } from "../context/TeamContext";
 import { useRoles } from "../context/RoleContext";
 import { useDepartment } from "../context/DepartmentContext";
+import { clearFormDraft, loadFormDraft, saveFormDraft } from "../utils/formDraft";
 
 const C = {
   primary: "#0d4a5c",
@@ -46,6 +47,34 @@ const MENU_PROPS = {
     },
   },
 };
+
+const BLANK_MEMBER_FORM = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  roleId: "",
+  departmentId: "",
+  location: "",
+  bio: "",
+};
+
+const hasMemberDraftValues = (formData = {}) =>
+  Object.entries(BLANK_MEMBER_FORM).some(([key, blankValue]) => {
+    const value = formData[key];
+    if (typeof value === "string") return value.trim() !== "";
+    return value !== blankValue && value !== undefined && value !== null;
+  });
+
+const normalizeMemberDraft = (formData = {}) =>
+  Object.keys(BLANK_MEMBER_FORM).reduce((acc, key) => {
+    const value = formData[key] ?? BLANK_MEMBER_FORM[key];
+    acc[key] = typeof value === "string" ? value.trim() : value;
+    return acc;
+  }, {});
+
+const isSameMemberDraft = (a, b) =>
+  JSON.stringify(normalizeMemberDraft(a)) === JSON.stringify(normalizeMemberDraft(b));
 
 // Sentinel values used to detect the "add new" option inside the selects
 const ADD_NEW_ROLE = "__add_new_role__";
@@ -225,20 +254,15 @@ export default function AddMemberModal({
   const { createRole } = useRoles();
   const { createDepartment } = useDepartment();
 
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    roleId: "",
-    departmentId: "",
-    location: "",
-    bio: "",
-  });
+  const [formData, setFormData] = useState(BLANK_MEMBER_FORM);
 
   const [errors, setErrors] = useState({});
   const [fetchLoading, setFetchLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const draftReadyRef = useRef(false);
+  const openedFormRef = useRef(BLANK_MEMBER_FORM);
+  const draftKey = "teamMemberCreateDraft";
 
   // Quick-create dialog state
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
@@ -246,6 +270,18 @@ export default function AddMemberModal({
 
   useEffect(() => {
     if (open) {
+      const draft = loadFormDraft(draftKey);
+      const openingForm = draft?.formData || BLANK_MEMBER_FORM;
+      openedFormRef.current = openingForm;
+      setFormData(openingForm);
+      if (draft?.formData) {
+        window.setTimeout(() => {
+          draftReadyRef.current = true;
+        }, 0);
+      } else {
+        draftReadyRef.current = true;
+      }
+
       const fetchData = async () => {
         setFetchLoading(true);
         setFetchError(null);
@@ -262,8 +298,15 @@ export default function AddMemberModal({
         }
       };
       fetchData();
+    } else {
+      draftReadyRef.current = false;
     }
   }, [open, fetchRoles, fetchDepartments]);
+
+  useEffect(() => {
+    if (!open || !draftReadyRef.current) return;
+    saveFormDraft(draftKey, { formData });
+  }, [draftKey, formData, open]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -370,7 +413,7 @@ export default function AddMemberModal({
     try {
       const result = await onSubmit(submitData);
       if (result?.success) {
-        handleClose();
+        finishClose({ clearDraft: true });
       } else if (result?.error) {
         setErrors((prev) => ({ ...prev, submit: result.error }));
       }
@@ -382,22 +425,41 @@ export default function AddMemberModal({
     }
   };
 
-  const handleClose = () => {
-    setFormData({
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      roleId: "",
-      departmentId: "",
-      location: "",
-      bio: "",
-    });
+  const finishClose = ({ clearDraft = false, saveDraft = false } = {}) => {
+    draftReadyRef.current = false;
+    setConfirmCloseOpen(false);
+    if (saveDraft) {
+      saveFormDraft(draftKey, { formData });
+    }
+    if (clearDraft) {
+      clearFormDraft(draftKey);
+    }
+    setFormData(BLANK_MEMBER_FORM);
     setErrors({});
     setFetchError(null);
     setRoleDialogOpen(false);
     setDeptDialogOpen(false);
     onClose();
+  };
+
+  const handleClose = () => {
+    if (!hasMemberDraftValues(formData)) {
+      finishClose({ clearDraft: true });
+      return;
+    }
+    if (isSameMemberDraft(formData, openedFormRef.current)) {
+      finishClose();
+      return;
+    }
+    setConfirmCloseOpen(true);
+  };
+
+  const handleKeepDraftAndClose = () => {
+    finishClose({ saveDraft: true });
+  };
+
+  const handleDiscardDraftAndClose = () => {
+    finishClose({ clearDraft: true });
   };
 
   const iconSx = { fontSize: "0.9rem", color: "text.secondary" };
@@ -631,6 +693,44 @@ export default function AddMemberModal({
         onSelectExisting={selectExistingDepartment}
         type="department"
       />
+
+      <Dialog
+        open={confirmCloseOpen}
+        onClose={() => setConfirmCloseOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        <DialogTitle sx={{ pb: 1, fontWeight: 700 }}>
+          Save details?
+        </DialogTitle>
+        <DialogContent sx={{ pt: 0 }}>
+          <Typography sx={{ color: "text.secondary", fontSize: "0.9rem" }}>
+            Do you want to save these details as a draft?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button
+            variant="outlined"
+            onClick={handleDiscardDraftAndClose}
+            sx={{ textTransform: "none", borderRadius: 1.5 }}
+          >
+            No
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleKeepDraftAndClose}
+            sx={{
+              textTransform: "none",
+              borderRadius: 1.5,
+              backgroundColor: C.primary,
+              "&:hover": { backgroundColor: C.primaryDark },
+            }}
+          >
+            Yes
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

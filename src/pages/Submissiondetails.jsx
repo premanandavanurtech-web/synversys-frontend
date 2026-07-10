@@ -128,7 +128,7 @@ const fileUrl = (file) => {
   if (publicIndex >= 0) path = path.slice(publicIndex + 1);
   if (path.startsWith("uploads/")) path = `public/${path}`;
   if (!path.startsWith("public/uploads/")) path = `public/uploads/checklists/${path}`;
-  return `https://synversys-backend-dxx1.onrender.com/${path.replace(/^\/+/, "")}`;
+  return `https://synversys-backend.onrender.com/${path.replace(/^\/+/, "")}`;
 };
 
 const isImageFile = (file) => {
@@ -209,7 +209,7 @@ export default function SubmissionDetails() {
         const token =
           localStorage.getItem("accessToken") || localStorage.getItem("token");
         const response = await fetch(
-          `https://synversys-backend-dxx1.onrender.com/api/v1/assignments/submissions/${id}/files/${photo._fileType}/${photo._fileIndex}`,
+          `https://synversys-backend.onrender.com/api/v1/assignments/submissions/${id}/files/${photo._fileType}/${photo._fileIndex}`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           },

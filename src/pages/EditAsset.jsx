@@ -880,7 +880,7 @@ export default function EditAsset() {
   };
 
   const getImageUrl = (name) =>
-    name ? `https://synversys-backend-dxx1.onrender.com/uploads/assets/${name}` : null;
+    name ? `https://synversys-backend.onrender.com/uploads/assets/${name}` : null;
 
   // ─── Submit ───────────────────────────────────────────────
   const handleSubmit = async () => {

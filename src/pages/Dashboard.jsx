@@ -294,6 +294,7 @@ const StatCard = ({
           p: { xs: 2, sm: 2.5 },
           borderRadius: 3,
           height: "100%",
+          minHeight: { xs: 156, sm: 174, lg: 190, xl: 176 },
           width: "100%",
           minWidth: 0,
           background: `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryLight} 100%)`,
@@ -389,6 +390,8 @@ const StatCard = ({
               fontSize: "0.72rem",
               fontWeight: 500,
               color: alpha("#ffffff", 0.65),
+              lineHeight: 1.25,
+              overflowWrap: "anywhere",
             }}
           >
             {title}
@@ -400,6 +403,8 @@ const StatCard = ({
                 fontSize: "0.65rem",
                 color: alpha("#ffffff", 0.45),
                 mt: 0.5,
+                lineHeight: 1.35,
+                overflowWrap: "anywhere",
               }}
             >
               {sub}
@@ -1411,7 +1416,21 @@ const AdminDashboard = ({ data, loading }) => {
   const activities = payload.recentActivities || [];
   const notifications = payload.notifications || [];
   const amcExpiryManagement = payload.amcExpiryManagement || {};
-  const amcSummary = amcExpiryManagement.summary || {};
+  const expiryByType = amcExpiryManagement.byType || {};
+  const expiryItems = amcExpiryManagement.items || [];
+  const emptyExpirySummary = {
+    totalTracked: 0,
+    expired: 0,
+    dueSoon: 0,
+    upcoming: 0,
+    active: 0,
+    attentionCount: 0,
+  };
+  const amcSummary = expiryByType.AMC || emptyExpirySummary;
+  const camcSummary = expiryByType.CAMC || emptyExpirySummary;
+  const attentionExpiryItems = expiryItems.filter((item) =>
+    ["Expired", "Due Soon"].includes(item.status),
+  );
 
   const assetByCategory = useMemo(
     () =>
@@ -1488,8 +1507,14 @@ const AdminDashboard = ({ data, loading }) => {
     {
       icon: CalendarIcon,
       title: "AMC Expiry",
-      value: fmt(amcSummary.totalTracked),
+      value: fmt(amcSummary.attentionCount),
       sub: `${fmt(amcSummary.expired)} expired - ${fmt(amcSummary.dueSoon)} due soon`,
+    },
+    {
+      icon: CalendarIcon,
+      title: "CAMC Expiry",
+      value: fmt(camcSummary.attentionCount),
+      sub: `${fmt(camcSummary.expired)} expired - ${fmt(camcSummary.dueSoon)} due soon`,
     },
   ];
 
@@ -1503,7 +1528,8 @@ const AdminDashboard = ({ data, loading }) => {
             xs: "1fr",
             sm: "repeat(2, minmax(0, 1fr))",
             md: "repeat(3, minmax(0, 1fr))",
-            lg: "repeat(5, minmax(0, 1fr))",
+            lg: "repeat(3, minmax(0, 1fr))",
+            xl: "repeat(6, minmax(0, 1fr))",
           },
           gap: { xs: 1.5, sm: 2 },
           mb: 3,
@@ -1517,6 +1543,122 @@ const AdminDashboard = ({ data, loading }) => {
       {/* Quick Actions — unchanged: this is the larger card-style grid,
           a different pattern from the super_admin pill buttons that moved
           into the FilterBar. Left as-is here. */} 
+
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: 3,
+          overflow: "hidden",
+          mb: 3,
+          border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
+        }}
+      >
+        <Box
+          sx={{
+            px: { xs: 2, sm: 2.5 },
+            py: 2,
+            borderBottom: `1px solid ${alpha(C.outlineVariant, 0.3)}`,
+          }}
+        >
+          <SectionTitle
+            icon={CalendarIcon}
+            title="AMC / CAMC Expiry Details"
+            chip={`${fmt(attentionExpiryItems.length)} due`}
+          />
+        </Box>
+        {attentionExpiryItems.length > 0 ? (
+          <TableContainer sx={{ overflowX: "auto" }}>
+            <Table size="small" sx={{ minWidth: 720 }}>
+              <TableHead>
+                <TableRow>
+                  {["Type", "Asset", "Asset ID", "Schedule", "Next Due", "Days", "Status"].map((h) => (
+                    <TableCell
+                      key={h}
+                      sx={{
+                        fontWeight: 700,
+                        color: C.secondary,
+                        bgcolor: C.surfaceContainerLow,
+                        fontSize: "0.72rem",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {h}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {attentionExpiryItems.map((item) => (
+                  <TableRow key={`${item.assetId}-${item.systemType}`} hover>
+                    <TableCell>
+                      <Chip
+                        label={item.systemType}
+                        size="small"
+                        sx={{
+                          height: 22,
+                          fontSize: "0.65rem",
+                          fontWeight: 700,
+                          bgcolor: alpha(C.primaryLight, 0.08),
+                          color: C.primaryLight,
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography sx={{ fontWeight: 600, fontSize: "0.75rem", whiteSpace: "nowrap" }}>
+                        {item.assetName || "Unnamed Asset"}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.65rem", color: C.outline }}>
+                        {item.assetStatus || "Status not set"}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.72rem", color: C.secondary, whiteSpace: "nowrap" }}>
+                      {item.assetCode || "-"}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.72rem", color: C.secondary, whiteSpace: "nowrap" }}>
+                      {item.schedule || "Not set"}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.72rem", whiteSpace: "nowrap" }}>
+                      {item.nextDueDate
+                        ? new Date(item.nextDueDate).toLocaleDateString("en-IN")
+                        : "-"}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.72rem", whiteSpace: "nowrap" }}>
+                      {item.daysRemaining < 0
+                        ? `${Math.abs(item.daysRemaining)}d overdue`
+                        : `${item.daysRemaining}d left`}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={item.status}
+                        size="small"
+                        sx={{
+                          height: 22,
+                          fontSize: "0.65rem",
+                          fontWeight: 700,
+                          bgcolor:
+                            item.status === "Expired"
+                              ? C.errorContainer
+                              : alpha(C.accent, 0.14),
+                          color:
+                            item.status === "Expired"
+                              ? C.onErrorContainer
+                              : C.accent,
+                        }}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : (
+          <Box sx={{ px: { xs: 2, sm: 2.5 }, py: 3 }}>
+            <Typography sx={{ color: C.outline, fontSize: "0.8rem" }}>
+              No AMC or CAMC assets are expired or due in the next 30 days.
+            </Typography>
+          </Box>
+        )}
+      </Paper>
 
       {/* Submission trend + Asset donut */}
       <Box

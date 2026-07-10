@@ -25,7 +25,7 @@ export const useAudit = () => {
   return context;
 };
 
-const API_BASE_URL = "https://synversys-backend-dxx1.onrender.com/api/v1";
+const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
 
 export const AuditProvider = ({ children }) => {
   const { token, user } = useAuth();

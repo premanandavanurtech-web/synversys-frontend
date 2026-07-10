@@ -10,7 +10,7 @@ export const useReport = () => {
   return ctx;
 };
 
-const API_BASE_URL = "https://synversys-backend-dxx1.onrender.com/api/v1";
+const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
 
 const getApiClient = (token) => {
   const client = axios.create({

@@ -56,6 +56,12 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { useTeamAssignment } from "../context/TeamAssignmentcontext";
 import { useAuth } from "../context/AuthContexts";
+import {
+  areDraftValuesEqual,
+  clearFormDraft,
+  loadFormDraft,
+  saveFormDraft,
+} from "../utils/formDraft";
 
 // ─── Theme (simplified, neutral) ───────────────────────────────────────────────
 const theme = createTheme({
@@ -657,6 +663,10 @@ export default function TaskDetails() {
     loading: contextLoading,
   } = useTeamAssignment();
   const mountedRef = useRef(true);
+  const draftReadyRef = useRef(false);
+  const openedDraftRef = useRef({ responses: {}, notes: "" });
+  const hadDraftOnOpenRef = useRef(false);
+  const draftKey = `taskInspectionDraft:${id || "unknown"}`;
 
   const [task, setTask] = useState(null);
   const [responses, setResponses] = useState({});
@@ -664,6 +674,7 @@ export default function TaskDetails() {
   const [attachments, setAttachments] = useState([]);
   const [attachPreviews, setAttachPreviews] = useState([]);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [localSubmitting, setLocalSubmitting] = useState(false);
   const [localLoading, setLocalLoading] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
@@ -754,13 +765,20 @@ export default function TaskDetails() {
           existing[r.fieldId] = r.value;
         });
       });
-      setResponses(existing);
-      if (t.notes) setNotes(t.notes);
+      const legacyDraft = !submitted ? loadFormDraft(`draft_${id}`) : null;
+      const draft = !submitted ? loadFormDraft(draftKey) || legacyDraft : null;
+      hadDraftOnOpenRef.current = Boolean(draft?.responses || draft?.notes);
+      const openingResponses = draft?.responses ? { ...existing, ...draft.responses } : existing;
+      const openingNotes = draft?.notes ?? t.notes ?? "";
+      openedDraftRef.current = { responses: openingResponses, notes: openingNotes };
+      setResponses(openingResponses);
+      setNotes(openingNotes);
+      draftReadyRef.current = true;
     } else {
       toast(result.error || "Failed to load task", "error");
       navigate("/team");
     }
-  }, [id, fetchTaskById, toast, navigate, checkIfAlreadySubmitted]);
+  }, [id, fetchTaskById, toast, navigate, checkIfAlreadySubmitted, draftKey]);
 
   useEffect(() => {
     loadTask();
@@ -949,35 +967,39 @@ export default function TaskDetails() {
       return;
     }
 
-    try {
-      const draftData = {
-        id,
-        responses,
-        notes,
-        savedAt: new Date().toISOString(),
-      };
-      localStorage.setItem(`draft_${id}`, JSON.stringify(draftData));
-      toast("Draft saved!", "success");
-    } catch {
-      toast("Could not save draft", "warning");
+    saveFormDraft(draftKey, { id, responses, notes });
+    toast("Draft saved!", "success");
+  };
+
+  const finishClose = ({ clearDraft = false, saveDraft = false } = {}) => {
+    setConfirmCloseOpen(false);
+    if (saveDraft) saveFormDraft(draftKey, { id, responses, notes });
+    if (clearDraft) {
+      clearFormDraft(draftKey);
+      clearFormDraft(`draft_${id}`);
     }
+    navigate("/team");
+  };
+
+  const handleCloseTask = () => {
+    if (alreadySubmitted) {
+      navigate("/team");
+      return;
+    }
+
+    const currentDraft = { responses, notes };
+    const unchanged = areDraftValuesEqual(currentDraft, openedDraftRef.current);
+    if (unchanged) {
+      finishClose({ clearDraft: !hadDraftOnOpenRef.current });
+      return;
+    }
+    setConfirmCloseOpen(true);
   };
 
   useEffect(() => {
-    if (!task?._id || alreadySubmitted) return;
-    try {
-      const raw = localStorage.getItem(`draft_${task._id}`);
-      if (raw) {
-        const draft = JSON.parse(raw);
-        if (Object.keys(responses).length === 0 && draft.responses) {
-          setResponses(draft.responses);
-          if (draft.notes) setNotes(draft.notes);
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }, [task, alreadySubmitted]);
+    if (!task?._id || alreadySubmitted || !draftReadyRef.current) return;
+    saveFormDraft(draftKey, { id, responses, notes });
+  }, [alreadySubmitted, draftKey, id, notes, responses, task?._id]);
 
   const handleSubmit = async () => {
     if (alreadySubmitted) {
@@ -1042,11 +1064,8 @@ export default function TaskDetails() {
       const result = await submitAssignment(id, formData);
 
       if (result.success) {
-        try {
-          localStorage.removeItem(`draft_${id}`);
-        } catch {
-          // ignore
-        }
+        clearFormDraft(draftKey);
+        clearFormDraft(`draft_${id}`);
 
         toast("Inspection submitted successfully!", "success");
         setSubmitDialogOpen(false);
@@ -1112,7 +1131,7 @@ export default function TaskDetails() {
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                 <Tooltip title="Back to tasks">
                   <IconButton
-                    onClick={() => navigate("/team")}
+                    onClick={handleCloseTask}
                     sx={{ border: "1px solid #E5E7EB", borderRadius: 1.5 }}
                   >
                     <ArrowBackIcon sx={{ fontSize: 19 }} />
@@ -1315,7 +1334,7 @@ export default function TaskDetails() {
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2.5 }}>
               <Tooltip title="Back to tasks">
                 <IconButton
-                  onClick={() => navigate("/team")}
+                  onClick={handleCloseTask}
                   sx={{ border: "1px solid #E5E7EB", borderRadius: 1.5 }}
                 >
                   <ArrowBackIcon sx={{ fontSize: 19 }} />
@@ -1748,6 +1767,39 @@ export default function TaskDetails() {
               sx={{ flex: 2, boxShadow: "none" }}
             >
               {isSubmitting ? "Submitting…" : "Confirm & Submit"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={confirmCloseOpen}
+          onClose={() => setConfirmCloseOpen(false)}
+          maxWidth="xs"
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 2, border: "1px solid #E5E7EB" } }}
+        >
+          <DialogTitle sx={{ pb: 1, fontWeight: 700 }}>
+            Save details?
+          </DialogTitle>
+          <DialogContent sx={{ pt: 0 }}>
+            <Typography sx={{ color: "#6B7280", fontSize: "0.9rem" }}>
+              Do you want to save these details as a draft?
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+            <Button
+              variant="outlined"
+              onClick={() => finishClose({ clearDraft: true })}
+              sx={{ color: "#043468", borderColor: "#D1D5DB" }}
+            >
+              No
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => finishClose({ saveDraft: true })}
+              sx={{ bgcolor: "#0c3d67", boxShadow: "none" }}
+            >
+              Yes
             </Button>
           </DialogActions>
         </Dialog>
