@@ -26,6 +26,7 @@ import {
   TableRow,
   Card,
   CardContent,
+  Stack,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -43,6 +44,7 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
@@ -115,6 +117,32 @@ function StatusChip({ status }) {
     />
   );
 }
+
+const API_ORIGIN =
+  (import.meta.env?.VITE_API_URL || "https://synversys-backend.onrender.com/api/v1")
+    .replace(/\/api\/v1\/?$/, "")
+    .replace(/\/$/, "");
+
+const fileUrl = (file) => {
+  let path =
+    typeof file === "string"
+      ? file
+      : file?.url || file?.filePath || file?.path || file?.originalName || file?.name;
+  if (!path) return "";
+  if (/^(https?:|blob:|data:)/i.test(path)) return path;
+  path = path.replace(/\\/g, "/");
+  const publicIndex = path.indexOf("/public/uploads/");
+  if (publicIndex >= 0) path = path.slice(publicIndex + 1);
+  if (path.startsWith("uploads/")) path = `public/${path}`;
+  if (!path.startsWith("public/uploads/")) path = `public/uploads/checklists/${path}`;
+  return `${API_ORIGIN}/${path.replace(/^\/+/, "")}`;
+};
+
+const isImageFile = (file) => {
+  const name = typeof file === "string" ? file : file?.originalName || file?.name || file?.filePath || "";
+  const mimetype = typeof file === "string" ? "" : file?.mimetype || "";
+  return mimetype.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(name);
+};
 
 export default function AssignmentDetails() {
   const { id } = useParams();
@@ -304,6 +332,7 @@ export default function AssignmentDetails() {
 
   const assignmentData = assignment;
   const checklistData = assignmentData?.checklist;
+  const poaSubmissions = assignmentData?.poaSubmissions || [];
 
   // Calculate completion rate
   const completionRate =
@@ -537,8 +566,9 @@ export default function AssignmentDetails() {
             onChange={(_, v) => setActiveTab(v)}
             TabIndicatorProps={{ style: { backgroundColor: TEAL } }}
           >
-            <Tab label="Submissions" />
-            <Tab label="Assignees" />
+            <Tab label={`Submissions (${submissions.length})`} />
+            <Tab label={`Assignees (${assignees.length})`} />
+            <Tab label={`POA (${poaSubmissions.length})`} />
           </Tabs>
         </Box>
 
@@ -784,6 +814,218 @@ export default function AssignmentDetails() {
                   })
                 )}
               </Grid>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* POA Tab */}
+        {activeTab === 2 && (
+          <Card
+            elevation={0}
+            sx={{ border: "1px solid #e8e8e8", borderRadius: 2 }}
+          >
+            <CardContent sx={{ p: 3 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 2,
+                  gap: 2,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Box>
+                  <Typography
+                    sx={{
+                      fontWeight: 700,
+                      color: TEAL,
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    POA Feedback
+                  </Typography>
+                  <Typography sx={{ color: "#6b7280", fontSize: "0.78rem", mt: 0.3 }}>
+                    {poaSubmissions.length} feedback record{poaSubmissions.length === 1 ? "" : "s"}
+                  </Typography>
+                </Box>
+              </Box>
+
+              {poaSubmissions.length === 0 ? (
+                <Box
+                  sx={{
+                    border: "1px dashed #d1d5db",
+                    borderRadius: 2,
+                    py: 5,
+                    textAlign: "center",
+                    bgcolor: "#fafafa",
+                  }}
+                >
+                  <ImageOutlinedIcon sx={{ color: "#9ca3af", fontSize: 34, mb: 1 }} />
+                  <Typography sx={{ color: "#6b7280", fontWeight: 600 }}>
+                    No POA feedback submitted yet
+                  </Typography>
+                  <Typography sx={{ color: "#9ca3af", fontSize: "0.8rem", mt: 0.5 }}>
+                    Feedback and uploaded images will appear here after a team member submits POA.
+                  </Typography>
+                </Box>
+              ) : (
+                <Grid container spacing={2}>
+                  {poaSubmissions.map((poa, idx) => {
+                    const attachments = poa.attachments || [];
+                    const imageAttachments = attachments.filter(isImageFile);
+                    const otherAttachments = attachments.filter((file) => !isImageFile(file));
+
+                    return (
+                      <Grid item xs={12} key={`${poa.submittedBy || idx}-${poa.submittedAt || idx}`}>
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 2,
+                            p: 2,
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 2,
+                              flexWrap: "wrap",
+                              mb: 1.5,
+                            }}
+                          >
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+                              <Avatar sx={{ bgcolor: TEAL, width: 36, height: 36 }}>
+                                {(poa.submittedByEmail || poa.submittedByName || "P").charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Box>
+                                <Typography sx={{ color: TEAL, fontWeight: 700, fontSize: "0.86rem" }}>
+                                  {poa.submittedByName || poa.submittedByEmail || "Team Member"}
+                                </Typography>
+                                <Typography sx={{ color: "#6b7280", fontSize: "0.76rem" }}>
+                                  {poa.submittedByEmail || "No email"}
+                                </Typography>
+                              </Box>
+                            </Box>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                              <CalendarTodayOutlinedIcon sx={{ fontSize: 14, color: "#9ca3af" }} />
+                              <Typography sx={{ color: "#6b7280", fontSize: "0.78rem" }}>
+                                {poa.submittedAt ? new Date(poa.submittedAt).toLocaleString() : "Date unavailable"}
+                              </Typography>
+                            </Box>
+                          </Box>
+
+                          <Typography sx={{ color: "#111827", fontWeight: 700, fontSize: "0.8rem", mb: 0.8 }}>
+                            Feedback
+                          </Typography>
+                          <Typography
+                            sx={{
+                              color: "#374151",
+                              fontSize: "0.84rem",
+                              lineHeight: 1.7,
+                              whiteSpace: "pre-wrap",
+                              bgcolor: "#f8fafc",
+                              border: "1px solid #eef2f7",
+                              borderRadius: 1.5,
+                              p: 1.5,
+                              mb: 2,
+                            }}
+                          >
+                            {poa.feedback || "No feedback provided"}
+                          </Typography>
+
+                          <Typography sx={{ color: TEAL, fontWeight: 700, fontSize: "0.82rem", mb: 1 }}>
+                            Uploaded Images ({imageAttachments.length})
+                          </Typography>
+                          {imageAttachments.length === 0 ? (
+                            <Typography sx={{ color: "#9ca3af", fontSize: "0.8rem", mb: 2 }}>
+                              No images uploaded with this POA.
+                            </Typography>
+                          ) : (
+                            <Grid container spacing={1.5} sx={{ mb: otherAttachments.length ? 2 : 0 }}>
+                              {imageAttachments.map((file, imageIdx) => {
+                                const url = fileUrl(file);
+                                return (
+                                  <Grid item xs={6} sm={4} md={3} lg={2} key={`${url}-${imageIdx}`}>
+                                    <Box
+                                      component="a"
+                                      href={url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      sx={{
+                                        display: "block",
+                                        border: "1px solid #e5e7eb",
+                                        borderRadius: 1.5,
+                                        overflow: "hidden",
+                                        textDecoration: "none",
+                                        bgcolor: "#fff",
+                                      }}
+                                    >
+                                      <Box
+                                        component="img"
+                                        src={url}
+                                        alt={file.originalName || `POA image ${imageIdx + 1}`}
+                                        sx={{
+                                          width: "100%",
+                                          aspectRatio: "4 / 3",
+                                          objectFit: "cover",
+                                          display: "block",
+                                        }}
+                                      />
+                                      <Typography
+                                        sx={{
+                                          color: "#4b5563",
+                                          fontSize: "0.72rem",
+                                          px: 1,
+                                          py: 0.75,
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        {file.originalName || `Image ${imageIdx + 1}`}
+                                      </Typography>
+                                    </Box>
+                                  </Grid>
+                                );
+                              })}
+                            </Grid>
+                          )}
+
+                          {otherAttachments.length > 0 && (
+                            <>
+                              <Typography sx={{ color: TEAL, fontWeight: 700, fontSize: "0.82rem", mb: 1 }}>
+                                Other Attachments ({otherAttachments.length})
+                              </Typography>
+                              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                                {otherAttachments.map((file, fileIdx) => {
+                                  const url = fileUrl(file);
+                                  return (
+                                    <Button
+                                      key={`${url}-${fileIdx}`}
+                                      component="a"
+                                      href={url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<FileDownloadOutlinedIcon />}
+                                      sx={{ textTransform: "none", borderColor: "#d1d5db", color: TEAL }}
+                                    >
+                                      {file.originalName || `Attachment ${fileIdx + 1}`}
+                                    </Button>
+                                  );
+                                })}
+                              </Stack>
+                            </>
+                          )}
+                        </Paper>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              )}
             </CardContent>
           </Card>
         )}

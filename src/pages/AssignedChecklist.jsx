@@ -4,6 +4,7 @@
 // ✅ Filter bar collapses cleanly on small screens
 // ✅ Dialogs are fullScreen on mobile
 // ✅ Header actions wrap gracefully on xs
+// ✅ Due From / Due To date filters fixed (timezone/end-of-day boundary bug)
 // ✅ All other fixes from previous version retained
 
 import React, {
@@ -90,6 +91,7 @@ import {
   FilterList as FilterListIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
+  CalendarMonth as CalendarMonthIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContexts";
 import { useAssignment } from "../context/AssignmentContext";
@@ -147,10 +149,10 @@ const theme = createTheme({
 // ─── Config ───────────────────────────────────────────────────────────────────
 const STATUS_CFG = {
   pending:     { label: "Pending",     color: "#f59e0b", bg: "#fffbeb", icon: HourglassTopIcon },
-  in_progress: { label: "Pending Approval", color: "#3b82f6", bg: "#eff6ff", icon: PendingActionsIcon },
+  // in_progress: { label: "Pending Approval", color: "#3b82f6", bg: "#eff6ff", icon: PendingActionsIcon },
   pending_approval: { label: "Pending Approval", color: "#3b82f6", bg: "#eff6ff", icon: PendingActionsIcon },
   submitted:   { label: "Submitted",   color: "#134b7c", bg: "#f5f3ff", icon: AssignmentIcon },
-  completed:   { label: "Submitted",   color: "#10b981", bg: "#ecfdf5", icon: CheckCircleIcon },
+  // completed:   { label: "Submitted",   color: "#10b981", bg: "#ecfdf5", icon: CheckCircleIcon },
   approved:    { label: "Approved",    color: "#10b981", bg: "#ecfdf5", icon: CheckCircleIcon },
   rejected:    { label: "Rejected",    color: "#ef4444", bg: "#fef2f2", icon: ErrorOutlineIcon },
   overdue:     { label: "Overdue",     color: "#ef4444", bg: "#fef2f2", icon: WarningAmberIcon },
@@ -496,6 +498,17 @@ const defaultReassignForm = () => ({
   notes: "",
 });
 
+// ─── Default Filters ──────────────────────────────────────────────────────────
+const defaultFilters = () => ({
+  status: "",
+  priority: "",
+  search: "",
+  dateFrom: "",
+  dateTo: "",
+  page: 1,
+  limit: 10,
+});
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function AssignedChecklist() {
   const { authRequest, user } = useAuth();
@@ -514,8 +527,19 @@ export default function AssignedChecklist() {
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
   const [stats, setStats] = useState(null);
-  const [filters, setFilters] = useState({ status: "", priority: "", search: "", page: 1, limit: 10 });
+  const [filters, setFilters] = useState(defaultFilters);
   const [filtersOpen, setFiltersOpen] = useState(false); // mobile filter drawer
+
+  // Raw date values bound to the <TextField type="date"> inputs.
+  // These stay as plain "YYYY-MM-DD" strings for the native date input.
+  // `filters.dateFrom` / `filters.dateTo` (sent to the API) are derived from
+  // these as full start-of-day / end-of-day ISO timestamps so the backend
+  // range query is inclusive of the entire selected day, regardless of timezone.
+  const [rawDateFrom, setRawDateFrom] = useState("");
+  const [rawDateTo, setRawDateTo] = useState("");
+
+  const toStartOfDay = (d) => (d ? `${d}T00:00:00.000Z` : "");
+  const toEndOfDay = (d) => (d ? `${d}T23:59:59.999Z` : "");
 
   const [assignOpen, setAssignOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
@@ -565,11 +589,11 @@ export default function AssignedChecklist() {
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const result = await getAssignmentStats();
+      const result = await getAssignmentStats(filters);
       if (result?.success) setStats(result.stats);
     } catch (err) { console.error("Stats fetch failed:", err); }
     finally { setStatsLoading(false); }
-  }, [getAssignmentStats]);
+  }, [getAssignmentStats, filters]);
 
   const fetchChecklists = useCallback(async () => {
     setChecklistsLoading(true);
@@ -611,18 +635,39 @@ export default function AssignedChecklist() {
 
   // ── Filter Handler ─────────────────────────────────────────────────────────
   const handleFilterChange = (key, value) => {
-    const newFilters = key === "page" ? { ...filters, page: value } : { ...filters, [key]: value, page: 1 };
+    let newFilters;
+
+    if (key === "page") {
+      newFilters = { ...filters, page: value };
+    } else if (key === "dateFrom") {
+      setRawDateFrom(value);
+      newFilters = { ...filters, dateFrom: toStartOfDay(value), page: 1 };
+    } else if (key === "dateTo") {
+      setRawDateTo(value);
+      newFilters = { ...filters, dateTo: toEndOfDay(value), page: 1 };
+    } else {
+      newFilters = { ...filters, [key]: value, page: 1 };
+    }
+
     setFilters(newFilters);
     getAssignments(newFilters).then((res) => {
       if (res?.success) { setAssignments(res.assignments); setPagination(res.pagination); }
     });
+    getAssignmentStats(newFilters).then((res) => {
+      if (res?.success) setStats(res.stats);
+    });
   };
 
   const clearFilters = () => {
-    const df = { status: "", priority: "", search: "", page: 1, limit: 10 };
+    const df = defaultFilters();
     setFilters(df);
+    setRawDateFrom("");
+    setRawDateTo("");
     getAssignments(df).then((res) => {
       if (res?.success) { setAssignments(res.assignments); setPagination(res.pagination); }
+    });
+    getAssignmentStats(df).then((res) => {
+      if (res?.success) setStats(res.stats);
     });
   };
 
@@ -706,7 +751,7 @@ export default function AssignedChecklist() {
     { label: "Overdue",           value: stats?.overdue ?? 0,                                                            icon: WarningAmberIcon, color: "#ef4444", trend: "+2%",  subtitle: "Past due date" },
   ], [pendingApprovalCount, stats]);
 
-  const hasFilters = !!(filters.status || filters.priority || filters.search);
+  const hasFilters = !!(filters.status || filters.priority || filters.search || filters.dateFrom || filters.dateTo);
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
@@ -808,6 +853,28 @@ export default function AssignedChecklist() {
                         ))}
                       </Select>
                     </FormControl>
+                    <TextField
+                      size="small"
+                      type="date"
+                      label="Due From"
+                      value={rawDateFrom}
+                      onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ max: rawDateTo || undefined }}
+                      InputProps={{ startAdornment: (<InputAdornment position="start"><CalendarMonthIcon sx={{ fontSize: 16, color: "#94a3b8" }} /></InputAdornment>) }}
+                      sx={{ minWidth: 150, flex: 1 }}
+                    />
+                    <TextField
+                      size="small"
+                      type="date"
+                      label="Due To"
+                      value={rawDateTo}
+                      onChange={(e) => handleFilterChange("dateTo", e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ min: rawDateFrom || undefined }}
+                      InputProps={{ startAdornment: (<InputAdornment position="start"><CalendarMonthIcon sx={{ fontSize: 16, color: "#94a3b8" }} /></InputAdornment>) }}
+                      sx={{ minWidth: 150, flex: 1 }}
+                    />
                     {hasFilters && (
                       <Button onClick={clearFilters} startIcon={<ClearIcon />} sx={{ color: "#ef4444" }} size="small">
                         Clear
@@ -818,7 +885,7 @@ export default function AssignedChecklist() {
               </>
             ) : (
               // Desktop: all filters in one row
-              <Stack direction="row" spacing={2} alignItems="center">
+              <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
                 <AssetSearchField
                   placeholder="Search by checklist or assignee..."
                   value={filters.search}
@@ -851,6 +918,26 @@ export default function AssignedChecklist() {
                     ))}
                   </Select>
                 </FormControl>
+                <TextField
+                  size="small"
+                  type="date"
+                  label="Due From"
+                  value={rawDateFrom}
+                  onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ max: rawDateTo || undefined }}
+                  sx={{ minWidth: 155 }}
+                />
+                <TextField
+                  size="small"
+                  type="date"
+                  label="Due To"
+                  value={rawDateTo}
+                  onChange={(e) => handleFilterChange("dateTo", e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ min: rawDateFrom || undefined }}
+                  sx={{ minWidth: 155 }}
+                />
                 {hasFilters && (
                   <Button onClick={clearFilters} startIcon={<ClearIcon />} sx={{ color: "#ef4444", whiteSpace: "nowrap" }}>
                     Clear Filters

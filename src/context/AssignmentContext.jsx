@@ -39,7 +39,7 @@ const buildParams = (filters = {}) => {
   const params = new URLSearchParams();
   const allowed = [
     "page", "limit", "status", "priority", "search",
-    "assignedTo", "fromDate", "toDate", "assignmentType",
+    "assignedTo", "fromDate", "toDate", "dateFrom", "dateTo", "assignmentType",
   ];
   allowed.forEach(k => { if (filters[k] != null) params.append(k, filters[k]); });
   return params.toString();
@@ -301,11 +301,12 @@ export const AssignmentProvider = ({ children }) => {
   }, [authRequest]);
 
   // ── 9. Get assignment stats (dashboard summary) ─────────────────────────────
-  const getAssignmentStats = useCallback(async () => {
+  const getAssignmentStats = useCallback(async (filters = {}) => {
     statsOp.setLoading(true);
     statsOp.setError(null);
     try {
-      const res = await authRequest("GET", "/assignments/stats");
+      const qs = buildParams(filters);
+      const res = await authRequest("GET", `/assignments/stats${qs ? `?${qs}` : ""}`);
       if (res?.success) {
         return {
           success: true,
