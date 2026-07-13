@@ -286,7 +286,7 @@ const ProfileContent = () => {
         firstName: profile.firstName || "",
         lastName: profile.lastName || "",
         phone: profile.phone || "",
-        location: profile.locationDetails?.name || profile.location || "",
+        location: profile.location || profile.locationDetails?.name || "",
         bio: profile.bio || "",
         department: profile.departmentDetails?.name || profile.department || "",
       });
@@ -354,7 +354,7 @@ const ProfileContent = () => {
         firstName: profile.firstName || "",
         lastName: profile.lastName || "",
         phone: profile.phone || "",
-        location: profile.locationDetails?.name || profile.location || "",
+        location: profile.location || profile.locationDetails?.name || "",
         bio: profile.bio || "",
         department: profile.departmentDetails?.name || profile.department || "",
       });
@@ -371,7 +371,7 @@ const ProfileContent = () => {
   };
   const getRoleDisplay = () => profile?.roleDetails?.name || profile?.teamRole || profile?.customRole || profile?.role || "Team Member";
   const getDeptName = () => profile?.departmentDetails?.name || profile?.department || "—";
-  const getLocName = () => profile?.locationDetails?.name || profile?.location || "—";
+  const getLocName = () => profile?.location || profile?.locationDetails?.name || "—";
   const isActive = profile?.status === "active";
 
   if (teamLoading && !profile) {

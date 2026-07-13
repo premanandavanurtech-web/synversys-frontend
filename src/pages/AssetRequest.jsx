@@ -1365,19 +1365,33 @@ export default function AssetRequests() {
           subtitleColor={T.textMuted}
         />
         {(
-          <Stack direction="row" spacing={1.5} flexWrap="wrap">
+          <Stack
+            direction="row"
+            spacing={0}
+            sx={{
+              width: { xs: "100%", sm: "auto" },
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr 1fr", sm: "auto auto" },
+              gap: { xs: 1, sm: 1.5 },
+            }}
+          >
             <Button
               variant="contained"
               size="small"
               startIcon={<Add sx={{ fontSize: 17 }} />}
               onClick={() => openAssetForm("parent")}
               sx={{
+                minWidth: 0,
+                px: { xs: 1, sm: 1.5 },
                 borderRadius: 1,
                 textTransform: "none",
                 fontWeight: 600,
-                fontSize: "0.82rem",
+                fontSize: { xs: "0.78rem", sm: "0.82rem" },
                 background: `linear-gradient(135deg, ${T.teal} 0%, ${T.tealDark} 100%)`,
                 boxShadow: "0 2px 8px rgba(10,97,87,0.25)",
+                "& .MuiButton-startIcon": {
+                  mr: { xs: 0.5, sm: 1 },
+                },
               }}
             >
               Add Asset
@@ -1388,13 +1402,19 @@ export default function AssetRequests() {
               startIcon={<Add sx={{ fontSize: 17 }} />}
               onClick={() => openAssetForm("child")}
               sx={{
+                minWidth: 0,
+                px: { xs: 1, sm: 1.5 },
                 borderRadius: 1,
                 textTransform: "none",
                 fontWeight: 600,
-                fontSize: "0.82rem",
+                fontSize: { xs: "0.78rem", sm: "0.82rem" },
                 borderColor: T.teal,
                 color: T.teal,
                 bgcolor: T.tealLight,
+                whiteSpace: "nowrap",
+                "& .MuiButton-startIcon": {
+                  mr: { xs: 0.5, sm: 1 },
+                },
                 "&:hover": {
                   borderColor: T.tealDark,
                   bgcolor: T.tealLight,
@@ -1438,6 +1458,12 @@ export default function AssetRequests() {
                 e.preventDefault();
                 handleStatFilter(statusValue);
               }
+            }}
+            sx={{
+              gridColumn: {
+                xs: key === "completed" ? "1 / -1" : "auto",
+                sm: "auto",
+              },
             }}
           >
             <CardContent sx={{ py: 2, px: 2.25, "&:last-child": { pb: 2 } }}>
@@ -1504,23 +1530,62 @@ export default function AssetRequests() {
           mb: 2,
           minHeight: 40,
           "& .MuiTabs-indicator": { display: "none" },
+          "& .MuiTabs-flexContainer": {
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: { xs: 1, sm: 1.25 },
+          },
         }}
       >
         {[
-          { value: "parent", label: `${requestVerb} Parent Asset Request`, count: parentCount },
-          { value: "child", label: `${requestVerb} Child Asset Request`, count: childCount },
+          {
+            value: "parent",
+            label: {
+              xs: `${requestVerb} Parent`,
+              sm: `${requestVerb} Parent Asset Request`,
+            },
+            count: parentCount,
+          },
+          {
+            value: "child",
+            label: {
+              xs: `${requestVerb} Child`,
+              sm: `${requestVerb} Child Asset Request`,
+            },
+            count: childCount,
+          },
         ].map((t) => (
           <Tab
             key={t.value}
             value={t.value}
-            label={`${t.label}${t.count ? ` (${t.count})` : ""}`}
+            label={
+              <Box
+                component="span"
+                sx={{
+                  display: "block",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  maxWidth: "100%",
+                }}
+              >
+                <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+                  {`${t.label.xs}${t.count ? ` (${t.count})` : ""}`}
+                </Box>
+                <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                  {`${t.label.sm}${t.count ? ` (${t.count})` : ""}`}
+                </Box>
+              </Box>
+            }
             sx={{
+              minWidth: 0,
+              width: "100%",
               minHeight: 40,
+              px: { xs: 1, sm: 2 },
               textTransform: "none",
               fontWeight: 700,
-              fontSize: "0.82rem",
+              fontSize: { xs: "0.78rem", sm: "0.82rem" },
               borderRadius: 2,
-              mr: 1,
               color: T.textMuted,
               bgcolor: "#eef2f5",
               "&.Mui-selected": {

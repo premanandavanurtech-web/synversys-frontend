@@ -21,6 +21,25 @@ import { api } from "./AssetContext";
 
 const AssetRequestContext = createContext();
 
+const normalizeRequestData = (value) => {
+  if (!value || typeof value !== "object") return null;
+
+  const candidate =
+    value._id || value.id
+      ? value
+      : value?.data?.request ||
+        value?.data?.assetRequest ||
+        value?.data ||
+        value?.request ||
+        value?.assetRequest ||
+        value?._doc;
+
+  if (!candidate || typeof candidate !== "object") return null;
+
+  const requestId = candidate._id || candidate.id;
+  return requestId ? { ...candidate, _id: requestId } : null;
+};
+
 export const useAssetRequest = () => {
   const ctx = useContext(AssetRequestContext);
   if (!ctx)
@@ -107,21 +126,9 @@ export const AssetRequestProvider = ({ children }) => {
       request(async () => {
         const res = await api.get(`/asset-requests/${id}`);
         
-        let requestData = null;
+        const requestData = normalizeRequestData(res.data);
         
-        if (res.data && res.data._id) {
-          requestData = res.data;
-        } else if (res.data?.data?.request && res.data.data.request._id) {
-          requestData = res.data.data.request;
-        } else if (res.data?.request && res.data.request._id) {
-          requestData = res.data.request;
-        } else if (res.data?.success && res.data?.data) {
-          requestData = res.data.data.request || res.data.data;
-        } else if (res.data && (res.data.status || res.data.requestType)) {
-          requestData = res.data;
-        }
-        
-        if (!requestData || !requestData._id) {
+        if (!requestData) {
           console.error("Invalid request data received:", res.data);
           throw new Error("Request not found or invalid data structure");
         }

@@ -217,7 +217,7 @@ const getTodayInputValue = () => {
 };
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
-const StatCard = ({ title, value, active = false, onClick }) => (
+const StatCard = ({ title, value, active = false, onClick, sx }) => (
   <Paper
     elevation={0}
     role={onClick ? "button" : undefined}
@@ -231,6 +231,7 @@ const StatCard = ({ title, value, active = false, onClick }) => (
       }
     }}
     sx={{
+      ...sx,
       p: { xs: 2, sm: 2.5 },
       border: active ? "1.5px solid #111827" : "1px solid #e2e8f0",
       bgcolor: "#fff",
@@ -396,9 +397,9 @@ const TaskCard = ({ task, onView, onPoa }) => {
         border: "1px solid #e8edf2",
         display: "flex",
         flexDirection: "column",
-        height: "100%",
-        // fluid on mobile/tablet, fixed 380px on desktop
-        width: { xs: "354px", md: "275px" },
+        height: { xs: 284, sm: 278, md: 272 },
+        width: "100%",
+        maxWidth: { xs: "100%", sm: "none" },
         minWidth: 0,
         overflow: "hidden",
         transition: "box-shadow 0.2s ease",
@@ -408,7 +409,7 @@ const TaskCard = ({ task, onView, onPoa }) => {
       {/* Card Body */}
       <Box
         sx={{
-          p: 3,
+          p: { xs: 2, sm: 2.25 },
           flex: 1,
           display: "flex",
           flexDirection: "column",
@@ -422,10 +423,13 @@ const TaskCard = ({ task, onView, onPoa }) => {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
-            mb: 2.5,
+            mb: 1.75,
             gap: 1,
             // Allow wrapping so pills never clip outside the card
             flexWrap: "wrap",
+            "& > *": {
+              minWidth: 0,
+            },
           }}
         >
           {/* Priority — solid filled pill */}
@@ -490,7 +494,7 @@ const TaskCard = ({ task, onView, onPoa }) => {
             alignItems: "flex-start",
             justifyContent: "space-between",
             gap: 1,
-            mb: 2,
+            mb: 1.5,
           }}
         >
           <Typography
@@ -502,6 +506,10 @@ const TaskCard = ({ task, onView, onPoa }) => {
               flex: 1,
               minWidth: 0,
               wordBreak: "break-word",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
             }}
           >
             {assetName}
@@ -532,7 +540,7 @@ const TaskCard = ({ task, onView, onPoa }) => {
         </Box>
 
         {/* Row 3: Meta info */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.85 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.7 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
             <DescriptionIcon
               sx={{ fontSize: 15, color: "#94a3b8", flexShrink: 0 }}
@@ -543,7 +551,11 @@ const TaskCard = ({ task, onView, onPoa }) => {
                 color: "#64748b",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                whiteSpace: { xs: "normal", sm: "nowrap" },
+                overflowWrap: "anywhere",
+                display: "-webkit-box",
+                WebkitLineClamp: { xs: 2, sm: 1 },
+                WebkitBoxOrient: "vertical",
               }}
             >
               {checklistName}
@@ -559,7 +571,11 @@ const TaskCard = ({ task, onView, onPoa }) => {
                 color: "#64748b",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                whiteSpace: { xs: "normal", sm: "nowrap" },
+                overflowWrap: "anywhere",
+                display: "-webkit-box",
+                WebkitLineClamp: { xs: 2, sm: 1 },
+                WebkitBoxOrient: "vertical",
               }}
             >
               {assetLocation}
@@ -578,6 +594,7 @@ const TaskCard = ({ task, onView, onPoa }) => {
                 fontSize: "0.82rem",
                 color: isOverdue ? "#ef4444" : "#64748b",
                 fontWeight: isOverdue ? 600 : 400,
+                overflowWrap: "anywhere",
               }}
             >
               {formattedDue}
@@ -622,10 +639,10 @@ const TaskCard = ({ task, onView, onPoa }) => {
       {/* CTA Button */}
       <Box
         sx={{
-          px: 3,
-          pb: 3,
+          px: { xs: 2, sm: 2.25 },
+          pb: { xs: 2, sm: 3 },
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", sm: "minmax(0, 1fr) full" },
+          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) auto" },
           gap: 1,
         }}
       >
@@ -635,9 +652,9 @@ const TaskCard = ({ task, onView, onPoa }) => {
           sx={{
             borderRadius: "10px",
             width:"100%",
-            py: 1.15,
+            py: 0.95,
             fontWeight: 600,
-            fontSize: "0.6rem",
+            fontSize: { xs: "0.72rem", sm: "0.75rem" },
             bgcolor: inspectionSubmitted ? "#2563eb" : "#0d3d52",
             boxShadow: "none",
             letterSpacing: "0.01em",
@@ -668,11 +685,11 @@ const TaskCard = ({ task, onView, onPoa }) => {
           }}
            sx={{
             borderRadius: "10px",
-            py: 1.15,
+            py: 0.95,
             px: 2,
             fontWeight: 700,
             width:"100%",
-            fontSize: "0.6rem",
+            fontSize: { xs: "0.72rem", sm: "0.75rem" },
             borderColor: poaSubmitted ? "#7c3aed" : "#bfe0ec",
             color: poaSubmitted ? "#fff" : "#0d3d52",
             bgcolor: poaSubmitted ? "#7c3aed" : "#fff",
@@ -1777,14 +1794,16 @@ export default function MyTask() {
       <Box sx={{ minHeight: "100vh", bgcolor: "#f8fafc", overflowX: "hidden" }}>
         <Container
           maxWidth="xl"
-          sx={{ py: { xs: 2.5, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}
+          sx={{ py: { xs: 2.5, sm: 3, md: 4 }, px: { xs: 1.5, sm: 3 } }}
         >
           {/* ── Header ── */}
           <Box
             sx={{
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center",
+              alignItems: { xs: "stretch", sm: "center" },
+              flexDirection: { xs: "column", sm: "row" },
+              gap: { xs: 2, sm: 1.5 },
               mb: 3,
             }}
           >
@@ -1811,9 +1830,10 @@ export default function MyTask() {
               sx={{
                 display: "flex",
                 alignItems: "center",
-                gap: 1,
+                gap: { xs: 1, sm: 1 },
                 flexWrap: "wrap",
-                justifyContent: "flex-end",
+                justifyContent: { xs: "stretch", sm: "flex-end" },
+                width: { xs: "100%", sm: "auto" },
               }}
             >
               <Button
@@ -1823,7 +1843,7 @@ export default function MyTask() {
                 onClick={() => setViewMode("calendar")}
                 title="My Plan of access"
                 sx={{
-                  px: 2,
+                  px: { xs: 1.5, sm: 2 },
                   py: 0.85,
                   borderRadius: 2,
                   bgcolor: "#0f4c5c",
@@ -1831,6 +1851,7 @@ export default function MyTask() {
                   fontSize: "0.8rem",
                   fontWeight: 700,
                   boxShadow: "none",
+                  flex: { xs: "1 1 100%", sm: "0 0 auto" },
                   "&:hover": {
                     bgcolor: "#0b3b48",
                     boxShadow: "0 6px 16px rgba(15, 76, 92, 0.18)",
@@ -1843,6 +1864,7 @@ export default function MyTask() {
                 elevation={0}
                 sx={{
                   display: "flex",
+                  flex: { xs: "1 1 100%", sm: "0 0 auto" },
                   border: "1px solid #e2e8f0",
                   borderRadius: 2,
                   overflow: "hidden",
@@ -1863,8 +1885,10 @@ export default function MyTask() {
                     startIcon={<Icon sx={{ fontSize: 15 }} />}
                     onClick={() => setViewMode(mode)}
                     sx={{
-                      px: 2,
+                      px: { xs: 1, sm: 2 },
                       py: 0.85,
+                      flex: 1,
+                      minWidth: 0,
                       borderRadius: 0,
                       fontWeight: 500,
                       fontSize: "0.8rem",
@@ -1875,6 +1899,9 @@ export default function MyTask() {
                       "&:hover": { bgcolor: "#f8fafc" },
                       transition: "all 0.15s",
                       position: "relative",
+                      "& .MuiButton-startIcon": {
+                        mr: { xs: 0.5, sm: 1 },
+                      },
                     }}
                   >
                     {label}
@@ -1896,11 +1923,16 @@ export default function MyTask() {
             }}
           >
             <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1.25}
-              alignItems="center"
-              flexWrap="wrap"
-              useFlexGap
+              spacing={0}
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "minmax(220px, 1fr) repeat(3, minmax(130px, auto)) auto",
+                },
+                gap: 1.25,
+                alignItems: "center",
+              }}
             >
               <TextField
                 size="small"
@@ -1915,11 +1947,7 @@ export default function MyTask() {
                   ),
                 }}
                 sx={{
-                  width: {
-                    xs: "100%",
-                    sm: 740,
-                    md: hasFormFilters ? 590 : 680,
-                  },
+                  width: "100%",
                   "& .MuiOutlinedInput-root": {
                     fontSize: "0.82rem",
                     bgcolor: "#fff",
@@ -1930,7 +1958,7 @@ export default function MyTask() {
               {/* Status */}
               <FormControl
                 size="small"
-                sx={{ minWidth: { xs: "100%", sm: 140 } }}
+                sx={{ width: "100%", minWidth: 0 }}
               >
                 <Select
                   value={filters.status}
@@ -1966,7 +1994,7 @@ export default function MyTask() {
               {/* Priority */}
               <FormControl
                 size="small"
-                sx={{ minWidth: { xs: "100%", sm: 130 } }}
+                sx={{ width: "100%", minWidth: 0 }}
               >
                 <Select
                   value={filters.priority}
@@ -2003,7 +2031,7 @@ export default function MyTask() {
                 value={filters.date || ""}
                 onChange={(e) => handleFilterChange("date", e.target.value)}
                 sx={{
-                  minWidth: { xs: "100%", sm: 160 },
+                  width: "100%",
                   "& .MuiOutlinedInput-root": {
                     fontSize: "0.82rem",
                     bgcolor: "#fff",
@@ -2024,6 +2052,7 @@ export default function MyTask() {
                     bgcolor: "#fef2f2",
                     "&:hover": { bgcolor: "#fee2e2" },
                     px: 1.5,
+                    width: { xs: "100%", sm: "auto" },
                   }}
                 >
                   Clear
@@ -2045,7 +2074,7 @@ export default function MyTask() {
               mb: 3,
             }}
           >
-            {visibleStatCards.map((card) => (
+            {visibleStatCards.map((card, index) => (
               <StatCard
                 key={card.type}
                 title={card.title}
@@ -2056,6 +2085,16 @@ export default function MyTask() {
                     : statFilter === card.type
                 }
                 onClick={() => handleStatFilter(card.type)}
+                sx={{
+                  gridColumn: {
+                    xs:
+                      visibleStatCards.length % 2 === 1 &&
+                      index === visibleStatCards.length - 1
+                        ? "1 / -1"
+                        : "auto",
+                    sm: "auto",
+                  },
+                }}
               />
             ))}
           </Box>
@@ -2139,18 +2178,28 @@ export default function MyTask() {
             >
               <Box sx={{ flex: 1, minWidth: 0, width: "100%" }}>
               {/* 3-column grid on desktop, 2 on tablet, 1 on mobile — showing
-                  CARDS_PER_PAGE (9) tasks at a time */}
-              <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+              CARDS_PER_PAGE (9) tasks at a time */}
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    md: "repeat(2, minmax(0, 1fr))",
+                  },
+                  gridAutoRows: { xs: "284px", sm: "278px", md: "272px" },
+                  gap: { xs: 1.5, sm: 2 },
+                  alignItems: "stretch",
+                }}
+              >
                 {paginatedTasks.map((task) => (
-                  <Grid item xs={12} sm={6} xl={4} key={task._id}>
-                    <TaskCard
-                      task={task}
-                      onView={handleViewTask}
-                      onPoa={handlePoaTask}
-                    />
-                  </Grid>
+                  <TaskCard
+                    key={task._id}
+                    task={task}
+                    onView={handleViewTask}
+                    onPoa={handlePoaTask}
+                  />
                 ))}
-              </Grid>
+              </Box>
 
               {totalClientPages > 1 && (
                 <Box

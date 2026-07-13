@@ -456,7 +456,7 @@ const StatCard = ({ label, value, icon: Icon, color, loading }) => {
         flexDirection: "column",
         gap: 0.5,
         height: "100%",
-        width:{xs:"145px",md:"175px"},
+        width: "100%",
         minWidth: 0,
       }}
     >
@@ -647,7 +647,7 @@ const ClientsTable = ({ data }) => {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        <Table stickyHeader size="small" sx={{ minWidth: { xs: 480, sm: "auto" } }}>
+        <Table stickyHeader size="small" sx={{ minWidth: { xs: 360, sm: "auto" } }}>
           <TableHead>
             <TableRow>
               <ColHead>Client</ColHead>
@@ -753,9 +753,20 @@ const ClientsTable = ({ data }) => {
             { fontSize: { xs: "0.6rem", sm: "0.71rem" } },
           "& .MuiTablePagination-toolbar": {
             flexWrap: "wrap",
+            justifyContent: { xs: "center", sm: "flex-end" },
+            gap: { xs: 0.5, sm: 0 },
             px: { xs: 0, sm: 2 },
             minHeight: { xs: "auto", sm: 52 },
             py: { xs: 1, sm: 0 },
+          },
+          "& .MuiTablePagination-spacer": {
+            display: { xs: "none", sm: "block" },
+          },
+          "& .MuiTablePagination-actions": {
+            mx: { xs: "auto", sm: 0 },
+            width: { xs: "100%", sm: "auto" },
+            display: "flex",
+            justifyContent: { xs: "center", sm: "flex-start" },
           },
         }}
       />
@@ -838,7 +849,7 @@ const TeamTable = ({ data }) => {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        <Table stickyHeader size="small" sx={{ minWidth: { xs: 480, sm: "auto" } }}>
+        <Table stickyHeader size="small" sx={{ minWidth: { xs: 360, sm: "auto" } }}>
           <TableHead>
             <TableRow>
               <ColHead>Member</ColHead>
@@ -953,9 +964,20 @@ const TeamTable = ({ data }) => {
             { fontSize: { xs: "0.6rem", sm: "0.71rem" } },
           "& .MuiTablePagination-toolbar": {
             flexWrap: "wrap",
+            justifyContent: { xs: "center", sm: "flex-end" },
+            gap: { xs: 0.5, sm: 0 },
             px: { xs: 0, sm: 2 },
             minHeight: { xs: "auto", sm: 52 },
             py: { xs: 1, sm: 0 },
+          },
+          "& .MuiTablePagination-spacer": {
+            display: { xs: "none", sm: "block" },
+          },
+          "& .MuiTablePagination-actions": {
+            mx: { xs: "auto", sm: 0 },
+            width: { xs: "100%", sm: "auto" },
+            display: "flex",
+            justifyContent: { xs: "center", sm: "flex-start" },
           },
         }}
       />
@@ -1035,7 +1057,7 @@ const AssetsTable = ({ data }) => {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        <Table stickyHeader size="small" sx={{ minWidth: { xs: 480, sm: "auto" } }}>
+        <Table stickyHeader size="small" sx={{ minWidth: { xs: 390, sm: "auto" } }}>
           <TableHead>
             <TableRow>
               <ColHead>Asset</ColHead>
@@ -1151,9 +1173,20 @@ const AssetsTable = ({ data }) => {
             { fontSize: { xs: "0.6rem", sm: "0.71rem" } },
           "& .MuiTablePagination-toolbar": {
             flexWrap: "wrap",
+            justifyContent: { xs: "center", sm: "flex-end" },
+            gap: { xs: 0.5, sm: 0 },
             px: { xs: 0, sm: 2 },
             minHeight: { xs: "auto", sm: 52 },
             py: { xs: 1, sm: 0 },
+          },
+          "& .MuiTablePagination-spacer": {
+            display: { xs: "none", sm: "block" },
+          },
+          "& .MuiTablePagination-actions": {
+            mx: { xs: "auto", sm: 0 },
+            width: { xs: "100%", sm: "auto" },
+            display: "flex",
+            justifyContent: { xs: "center", sm: "flex-start" },
           },
         }}
       />
@@ -1238,7 +1271,7 @@ const AssignmentsTable = ({ data }) => {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        <Table stickyHeader size="small" sx={{ minWidth: { xs: 480, sm: "auto" } }}>
+        <Table stickyHeader size="small" sx={{ minWidth: { xs: 360, sm: "auto" } }}>
           <TableHead>
             <TableRow>
               <ColHead>Customer</ColHead>
@@ -1327,9 +1360,20 @@ const AssignmentsTable = ({ data }) => {
             { fontSize: { xs: "0.6rem", sm: "0.71rem" } },
           "& .MuiTablePagination-toolbar": {
             flexWrap: "wrap",
+            justifyContent: { xs: "center", sm: "flex-end" },
+            gap: { xs: 0.5, sm: 0 },
             px: { xs: 0, sm: 2 },
             minHeight: { xs: "auto", sm: 52 },
             py: { xs: 1, sm: 0 },
+          },
+          "& .MuiTablePagination-spacer": {
+            display: { xs: "none", sm: "block" },
+          },
+          "& .MuiTablePagination-actions": {
+            mx: { xs: "auto", sm: 0 },
+            width: { xs: "100%", sm: "auto" },
+            display: "flex",
+            justifyContent: { xs: "center", sm: "flex-start" },
           },
         }}
       />
@@ -1417,9 +1461,20 @@ const GenericTable = ({ data }) => {
             { fontSize: { xs: "0.6rem", sm: "0.71rem" } },
           "& .MuiTablePagination-toolbar": {
             flexWrap: "wrap",
+            justifyContent: { xs: "center", sm: "flex-end" },
+            gap: { xs: 0.5, sm: 0 },
             px: { xs: 0, sm: 2 },
             minHeight: { xs: "auto", sm: 52 },
             py: { xs: 1, sm: 0 },
+          },
+          "& .MuiTablePagination-spacer": {
+            display: { xs: "none", sm: "block" },
+          },
+          "& .MuiTablePagination-actions": {
+            mx: { xs: "auto", sm: 0 },
+            width: { xs: "100%", sm: "auto" },
+            display: "flex",
+            justifyContent: { xs: "center", sm: "flex-start" },
           },
         }}
       />
@@ -1649,7 +1704,11 @@ const ReportsDashboard = () => {
 
   return (
     <Box
-      sx={{ minHeight: "100vh", p: { xs: 1, sm: 1.5, md: 3 }, overflowX: "hidden" }}
+      sx={{
+        minHeight: "100vh",
+        p: { xs: 2, sm: 2.25, md: 3 },
+        overflowX: "hidden",
+      }}
     >
       {/* Header */}
       <Box
@@ -1715,12 +1774,13 @@ const ReportsDashboard = () => {
         >
           <Box
             sx={{
-              display: "flex",
-              gap: 0.5,
-              flexWrap: "wrap",
-              overflowX: { xs: "auto", sm: "visible" },
-              WebkitOverflowScrolling: "touch",
-              pb: { xs: 0.5, sm: 0 },
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(3, minmax(0, 1fr))",
+                sm: "repeat(5, auto)",
+              },
+              gap: 0.6,
+              width: "100%",
             }}
           >
             {DATE_PRESETS.map((p) => (
@@ -1728,18 +1788,18 @@ const ReportsDashboard = () => {
                 key={p.value}
                 onClick={() => setDatePreset(p.value)}
                 sx={{
-                  px: { xs: 0.8, sm: 1.3 },
-                  py: { xs: 0.3, sm: 0.45 },
+                  px: { xs: 0.7, sm: 1.3 },
+                  py: { xs: 0.5, sm: 0.45 },
                   borderRadius: "20px",
                   cursor: "pointer",
-                  fontSize: { xs: "0.6rem", sm: "0.69rem" },
+                  fontSize: { xs: "0.66rem", sm: "0.69rem" },
                   fontWeight: 600,
+                  textAlign: "center",
                   transition: "all 0.15s",
                   bgcolor: datePreset === p.value ? T.brand : T.surface,
                   color: datePreset === p.value ? "#fff" : T.inkSub,
                   border: `1px solid ${datePreset === p.value ? T.brand : T.border}`,
                   whiteSpace: "nowrap",
-                  flexShrink: 0,
                   "&:hover": {
                     bgcolor:
                       datePreset === p.value ? T.brandDark : T.surfaceAlt,
@@ -1763,7 +1823,7 @@ const ReportsDashboard = () => {
               fontSize: { xs: "0.65rem", sm: "0.74rem" },
               fontWeight: 600,
               px: { xs: 1, sm: 1.5 },
-              height: { xs: 30, sm: 34 },
+              height: { xs: 42, sm: 34 },
               width: { xs: "100%", sm: "auto" },
               flexShrink: 0,
             }}
@@ -1789,7 +1849,7 @@ const ReportsDashboard = () => {
               fontSize: { xs: "0.65rem", sm: "0.74rem" },
               fontWeight: 700,
               px: { xs: 1.5, sm: 2 },
-              height: { xs: 30, sm: 34 },
+              height: { xs: 44, sm: 34 },
               width: { xs: "100%", sm: "auto" },
               flexShrink: 0,
               boxShadow: `0 2px 10px ${alpha(T.brand, 0.3)}`,
@@ -1899,7 +1959,13 @@ const ReportsDashboard = () => {
         >
           Report type
         </Typography>
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.8 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(4, minmax(0, 1fr))" },
+            gap: 0.8,
+          }}
+        >
           {allowed.map((rt) => {
             const m = REPORT_META[rt];
             const Icon = m.icon;
@@ -1920,7 +1986,7 @@ const ReportsDashboard = () => {
                   border: `1.5px solid ${sel ? m.color : T.border}`,
                   bgcolor: sel ? alpha(m.color, 0.07) : T.surface,
                   transition: "all 0.15s",
-                  flex: { xs: "1 1 calc(50% - 6px)", sm: "0 1 auto" },
+                  minHeight: { xs: 44, sm: 40 },
                   minWidth: 0,
                   "&:hover": {
                     bgcolor: alpha(m.color, 0.06),
@@ -1969,10 +2035,10 @@ const ReportsDashboard = () => {
             py: { xs: 1.5, sm: 2 },
             borderBottom: `1px solid ${T.border}`,
             display: "flex",
-            alignItems: "center",
             justifyContent: "space-between",
             flexWrap: "wrap",
             gap: 1.5,
+            alignItems: { xs: "flex-start", sm: "center" },
             background: `linear-gradient(to right, ${T.brandFaint}, ${T.surface})`,
           }}
         >
@@ -2020,7 +2086,15 @@ const ReportsDashboard = () => {
           </Box>
 
           {reportData?.data?.length > 0 && (
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{
+                flexShrink: 0,
+                ml: { xs: "auto", sm: 0 },
+              }}
+            >
               <Tooltip title="Export PDF">
                 <IconButton
                   onClick={() => handleExport("pdf")}
@@ -2063,7 +2137,7 @@ const ReportsDashboard = () => {
           )}
         </Box>
 
-        <Box sx={{ p: { xs: 1.5, sm: 2.5 } }}>
+        <Box sx={{ p: { xs: 1.25, sm: 2.5 } }}>
           {loading && !reportData ? (
             <Box sx={{ py: 4, display: "flex", justifyContent: "center" }}>
               <CircularProgress />
@@ -2078,21 +2152,32 @@ const ReportsDashboard = () => {
             <>
               {/* Summary KPIs */}
               {Object.keys(reportData.summary || {}).length > 0 && (
-                <Grid container spacing={1.5} mb={2.5}>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: {
+                      xs: "repeat(2, minmax(0, 1fr))",
+                      sm: "repeat(3, minmax(0, 1fr))",
+                      lg: "repeat(6, minmax(0, 1fr))",
+                    },
+                    gap: { xs: 1, sm: 1.5 },
+                    mb: 2.5,
+                  }}
+                >
                  {Object.entries(reportData.summary)
   .filter(([k, v]) => typeof v !== "object" && v !== null && k !== "suspendedClients")
   .slice(0, 6)
   .map(([k, v]) => (
-                      <Grid item xs={6} sm={4} md={2} key={k}>
+                      <Box key={k}>
                         <StatCard
                           label={k.replace(/([A-Z])/g, " $1").trim()}
                           value={String(v)}
                           loading={false}
                           small
                         />
-                      </Grid>
+                      </Box>
                     ))}
-                </Grid>
+                </Box>
               )}
               {renderTable()}
             </>
@@ -2400,6 +2485,7 @@ const ReportsDashboard = () => {
               textTransform: "none",
               fontSize: { xs: "0.7rem", sm: "0.75rem" },
               color: T.inkLight,
+              flex: { xs: "1 1 100%", sm: "0 0 auto" },
             }}
           >
             Clear all
@@ -2410,6 +2496,7 @@ const ReportsDashboard = () => {
               textTransform: "none",
               fontSize: { xs: "0.7rem", sm: "0.75rem" },
               color: T.inkSub,
+              flex: { xs: "1", sm: "0 0 auto" },
             }}
           >
             Cancel
@@ -2425,7 +2512,7 @@ const ReportsDashboard = () => {
               fontSize: { xs: "0.7rem", sm: "0.77rem" },
               fontWeight: 700,
               px: { xs: 2, sm: 2.5 },
-              flex: { xs: "1", sm: "auto" },
+              flex: { xs: "1", sm: "0 0 auto" },
             }}
           >
             {generating ? (

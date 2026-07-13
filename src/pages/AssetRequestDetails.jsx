@@ -774,11 +774,21 @@ function CompleteDialog({ open, onClose, onSubmit, submitting }) {
 // ─── Extract request data helper ───────────────────────────────────────────────
 function extractRequestData(responseData) {
   if (!responseData) return null;
-  if (responseData._id) return responseData;
-  if (responseData?.data?.request?._id) return responseData.data.request;
-  if (responseData?.data?._id) return responseData.data;
-  if (responseData?.request?._id) return responseData.request;
-  return null;
+
+  const candidate =
+    responseData._id || responseData.id
+      ? responseData
+      : responseData?.data?.request ||
+        responseData?.data?.assetRequest ||
+        responseData?.data ||
+        responseData?.request ||
+        responseData?.assetRequest ||
+        responseData?._doc;
+
+  if (!candidate || typeof candidate !== "object") return null;
+
+  const requestId = candidate._id || candidate.id;
+  return requestId ? { ...candidate, _id: requestId } : null;
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────────
@@ -940,9 +950,9 @@ export default function AssetRequestDetails() {
     try {
       const raw = await getRequestById(id);
       const req = extractRequestData(raw) ?? raw;
-      if (!req?._id)
+      if (!req?._id && !req?.id)
         throw new Error("Request not found or invalid data structure received");
-      setRequest(req);
+      setRequest({ ...req, _id: req._id || req.id });
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
