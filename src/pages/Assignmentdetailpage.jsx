@@ -106,6 +106,8 @@ const makeBadge = (map, key, fallback) => {
 const StatusBadge = ({ status }) => makeBadge(STATUS_MAP, status, status);
 const PriorityBadge = ({ priority }) =>
   makeBadge(PRIORITY_MAP, priority, priority);
+const submissionGridColumns =
+  "minmax(260px, 1.45fr) minmax(210px, 0.95fr) minmax(140px, 0.7fr) minmax(220px, 1fr) minmax(96px, 0.45fr)";
 
 const API_ORIGIN =
   (import.meta.env?.VITE_API_URL || "https://synversys-backend.onrender.com/api/v1")
@@ -153,6 +155,9 @@ const normalizeSubmissionRow = (sub = {}) => {
     submittedByEmail,
     reviewStatus:
       sub.reviewStatus || sub.submissionStatus || sub.status || "pending_review",
+    submissionDisplayStatus: sub.submittedAt
+      ? "submitted"
+      : sub.submissionStatus || sub.status || "pending",
     overallCompletionRate:
       sub.overallCompletionRate ?? sub.completionRate ?? sub.completion ?? 0,
     score: sub.score ?? sub.overallRating ?? 0,
@@ -195,7 +200,7 @@ const buildSubmissionCsvRows = (items) => [
       sub.submittedByName,
       sub.submittedByEmail,
       sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("en-IN") : "",
-      STATUS_MAP[sub.reviewStatus]?.label || sub.reviewStatus,
+      STATUS_MAP[sub.submissionDisplayStatus]?.label || sub.submissionDisplayStatus,
       `${sub.overallCompletionRate}%`,
       sub.score || "",
       sub.itemsPassed || 0,
@@ -454,14 +459,16 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
             px: 2.5,
             py: 1.25,
             display: "grid",
-            gridTemplateColumns: "2fr 2fr 1.2fr 1.5fr 1fr",
+            gridTemplateColumns: submissionGridColumns,
+            columnGap: 2,
+            alignItems: "center",
             borderBottom: "0.5px solid",
             borderColor: "divider",
             bgcolor: "grey.50",
           }}
         >
           {["Submitted By", "Date", "Status", "Completion", "Actions"].map(
-            (h) => (
+            (h, index) => (
               <Typography
                 key={h}
                 variant="caption"
@@ -471,6 +478,7 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
                   fontSize: "0.66rem",
                   textTransform: "uppercase",
                   letterSpacing: 0.5,
+                  justifySelf: index === 4 ? "end" : "start",
                 }}
               >
                 {h}
@@ -507,7 +515,8 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
                     px: 2.5,
                     py: 1.75,
                     display: "grid",
-                    gridTemplateColumns: "2fr 2fr 1.2fr 1.5fr 1fr",
+                    gridTemplateColumns: submissionGridColumns,
+                    columnGap: 2,
                     alignItems: "center",
                     "&:hover": { bgcolor: "action.hover" },
                     transition: "background .15s",
@@ -567,10 +576,12 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
                   </Box>
 
                   {/* Status */}
-                  <StatusBadge status={sub.reviewStatus} />
+                  <Box sx={{ justifySelf: "start" }}>
+                    <StatusBadge status={sub.submissionDisplayStatus} />
+                  </Box>
 
                   {/* Completion */}
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
                     <LinearProgress
                       variant="determinate"
                       value={rate}
@@ -597,7 +608,12 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
 
                   {/* Actions */}
                   <Box
-                    sx={{ display: "flex", alignItems: "center", gap: 0.25 }}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-end",
+                      gap: 0.25,
+                    }}
                   >
                     <Tooltip title="View submission">
                       <IconButton
@@ -668,7 +684,7 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
                     <Box
                       sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
                     >
-                      <StatusBadge status={sub.reviewStatus} />
+                      <StatusBadge status={sub.submissionDisplayStatus} />
                       <IconButton
                         size="small"
                         onClick={() => onViewSubmission(sub._id)}
