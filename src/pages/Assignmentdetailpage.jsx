@@ -147,16 +147,19 @@ const normalizeSubmissionRow = (sub = {}) => {
     submittedBy.email ||
     sub.assignedToTeamMembers?.[0]?.userId?.email ||
     "";
+  const reviewStatus =
+    sub.reviewStatus || sub.submissionStatus || sub.status || "pending_review";
 
   return {
     ...sub,
     _id: sub._id || sub.submissionId || sub.id,
     submittedByName,
     submittedByEmail,
-    reviewStatus:
-      sub.reviewStatus || sub.submissionStatus || sub.status || "pending_review",
+    reviewStatus,
     submissionDisplayStatus: sub.submittedAt
-      ? "submitted"
+      ? reviewStatus === "approved"
+        ? "submitted"
+        : "pending_approval"
       : sub.submissionStatus || sub.status || "pending",
     overallCompletionRate:
       sub.overallCompletionRate ?? sub.completionRate ?? sub.completion ?? 0,
