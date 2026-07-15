@@ -291,10 +291,10 @@ const StatCard = ({
         sx={{
           position: "relative",
           overflow: "hidden",
-          p: { xs: 2, sm: 2.5 },
-          borderRadius: 3,
+          p: { xs: 1.5, sm: 2.5 },
+          borderRadius: { xs: 2.5, sm: 3 },
           height: "100%",
-          minHeight: { xs: 156, sm: 174, lg: 190, xl: 176 },
+          minHeight: { xs: 132, sm: 174, lg: 190, xl: 176 },
           width: "100%",
           minWidth: 0,
           background: `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryLight} 100%)`,
@@ -339,12 +339,12 @@ const StatCard = ({
           >
             <Box
               sx={{
-                p: 1,
-                borderRadius: 2,
+                p: { xs: 0.85, sm: 1 },
+                borderRadius: { xs: 1.75, sm: 2 },
                 bgcolor: alpha("#ffffff", 0.1),
               }}
             >
-              <Icon sx={{ fontSize: 20, color: "#ffffff" }} />
+              <Icon sx={{ fontSize: { xs: 18, sm: 20 }, color: "#ffffff" }} />
             </Box>
             {trend && (
               <Chip
@@ -372,7 +372,7 @@ const StatCard = ({
           <Typography
             sx={{
               fontWeight: 800,
-              fontSize: { xs: "1.4rem", sm: "1.7rem" },
+              fontSize: { xs: "1.35rem", sm: "1.7rem" },
               color: "#ffffff",
               lineHeight: 1,
               mb: 0.75,
@@ -387,7 +387,7 @@ const StatCard = ({
 
           <Typography
             sx={{
-              fontSize: "0.72rem",
+              fontSize: { xs: "0.68rem", sm: "0.72rem" },
               fontWeight: 500,
               color: alpha("#ffffff", 0.65),
               lineHeight: 1.25,
@@ -400,7 +400,7 @@ const StatCard = ({
           {sub && (
             <Typography
               sx={{
-                fontSize: "0.65rem",
+                fontSize: { xs: "0.6rem", sm: "0.65rem" },
                 color: alpha("#ffffff", 0.45),
                 mt: 0.5,
                 lineHeight: 1.35,
@@ -1150,7 +1150,7 @@ const SuperAdminDashboard = ({ data, loading }) => {
         sx={{
           display: "grid",
           gridTemplateColumns: {
-            xs: "1fr",
+            xs: "repeat(2, minmax(0, 1fr))",
             sm: "repeat(2, minmax(0, 1fr))",
             lg: "repeat(4, minmax(0, 1fr))",
           },
@@ -1525,7 +1525,7 @@ const AdminDashboard = ({ data, loading }) => {
         sx={{
           display: "grid",
           gridTemplateColumns: {
-            xs: "1fr",
+            xs: "repeat(2, minmax(0, 1fr))",
             sm: "repeat(2, minmax(0, 1fr))",
             md: "repeat(3, minmax(0, 1fr))",
             lg: "repeat(3, minmax(0, 1fr))",
@@ -2114,7 +2114,7 @@ const TeamDashboard = ({ data, loading }) => {
             sub: `Score: ${overview.avgScore}%`,
           },
         ].map((s, i) => (
-          <Grid item xs={12} sm={6} lg={3} key={i}>
+          <Grid item xs={6} sm={6} lg={3} key={i}>
             <StatCard {...s} loading={loading} />
           </Grid>
         ))}

@@ -371,11 +371,15 @@ const TaskCard = ({ task, onView, onPoa }) => {
     task.checklistData?.[0]?.completionRate ?? task.completionRate ?? 0;
   const isInProgress = stKey === "in_progress";
   const memberStatus = (task.myStatus || "").toLowerCase();
+  const assignmentStatus = (task.status || "").toLowerCase();
   const inspectionSubmitted =
     ["pending_approval", "pending_review", "submitted", "completed", "approved"].includes(stKey) ||
     ["completed", "submitted"].includes(memberStatus);
   const poaSubmitted =
-    stKey === "submitted" || (Array.isArray(task.poaSubmissions) && task.poaSubmissions.length > 0);
+    task.poaSubmitted === true ||
+    assignmentStatus === "submitted" ||
+    (Array.isArray(task.poaSubmissions) && task.poaSubmissions.length > 0) ||
+    Number(task.poaSubmissionsCount || 0) > 0;
   const canSubmitPoa =
     !poaSubmitted && ["pending_approval", "pending_review"].includes(stKey);
   const inspectionButtonLabel = inspectionSubmitted
@@ -383,7 +387,7 @@ const TaskCard = ({ task, onView, onPoa }) => {
     : isInProgress
       ? "Continue Inspection"
       : "Start Inspection";
-  const poaButtonLabel = poaSubmitted ? "POA Submitted" : "POA";
+  const poaButtonLabel = poaSubmitted ? "POA Submitted" : "Add POA";
 
   const formattedDue = dueDate
     ? `Due: ${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`
@@ -1724,7 +1728,7 @@ export default function MyTask() {
       setTasks((prev) =>
         prev.map((task) =>
           task._id === poaTask._id
-            ? { ...task, status: "submitted", myStatus: "submitted" }
+            ? { ...task, status: "pending_approval", myStatus: "submitted", poaSubmitted: true, poaSubmissionsCount: 1 }
             : task,
         ),
       );
@@ -1836,30 +1840,6 @@ export default function MyTask() {
                 width: { xs: "100%", sm: "auto" },
               }}
             >
-              <Button
-                size="small"
-                variant="contained"
-                startIcon={<CalendarTodayIcon sx={{ fontSize: 15 }} />}
-                onClick={() => setViewMode("calendar")}
-                title="My Plan of access"
-                sx={{
-                  px: { xs: 1.5, sm: 2 },
-                  py: 0.85,
-                  borderRadius: 2,
-                  bgcolor: "#0f4c5c",
-                  color: "#fff",
-                  fontSize: "0.8rem",
-                  fontWeight: 700,
-                  boxShadow: "none",
-                  flex: { xs: "1 1 100%", sm: "0 0 auto" },
-                  "&:hover": {
-                    bgcolor: "#0b3b48",
-                    boxShadow: "0 6px 16px rgba(15, 76, 92, 0.18)",
-                  },
-                }}
-              >
-                My POA
-              </Button>
               <Paper
                 elevation={0}
                 sx={{

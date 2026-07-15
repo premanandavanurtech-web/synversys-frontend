@@ -476,11 +476,46 @@ const PriorityBadge = ({ priority }) => {
 };
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
-const StatCard = ({ label, value, sub, accent, icon, loading,changeCartWidth}) => (
+const StatCard = ({
+  label,
+  value,
+  sub,
+  accent,
+  icon,
+  loading,
+  active = false,
+  onClick,
+}) => (
   
-  <Card sx={{ height: "100%", border: "1px solid", borderColor: "divider",
-   width: changeCartWidth === 1 ? { xs: "173px", md: "276px" } : { xs: "365px", md: "374px" }
-  }}>
+  <Card
+    role={onClick ? "button" : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    onClick={onClick}
+    onKeyDown={(e) => {
+      if (!onClick) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onClick();
+      }
+    }}
+    sx={{
+      height: "100%",
+      width: "100%",
+      border: "1px solid",
+      borderColor: active ? accent || "primary.main" : "divider",
+      cursor: onClick ? "pointer" : "default",
+      boxShadow: active ? 2 : 0,
+      transition: "all 0.2s ease",
+      "&:hover": onClick
+        ? { transform: "translateY(-2px)", boxShadow: 2 }
+        : undefined,
+      "&:focus-visible": {
+        outline: "2px solid",
+        outlineColor: accent || "primary.main",
+        outlineOffset: 2,
+      },
+    }}
+  >
     <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
       <Box
         sx={{
@@ -598,12 +633,14 @@ const PaginationComponent = ({ pagination, onPageChange }) => {
     <Box
       sx={{
         p: { xs: 1.5, sm: 2 },
+        pb: { xs: 2, sm: 2 },
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
         gap: 1,
         borderTop: "1px solid",
         borderColor: "divider",
+        bgcolor: "background.paper",
         flexWrap: "wrap",
       }}
     >
@@ -613,10 +650,20 @@ const PaginationComponent = ({ pagination, onPageChange }) => {
         disabled={pagination.page === 1}
         onClick={() => onPageChange(pagination.page - 1)}
         startIcon={<ChevronLeftIcon />}
+        sx={{ minWidth: { xs: 96, sm: 88 } }}
       >
         Prev
       </Button>
-      <Typography variant="body2" fontWeight={600} color="text.secondary">
+      <Typography
+        variant="body2"
+        fontWeight={600}
+        color="text.secondary"
+        sx={{
+          width: { xs: "100%", sm: "auto" },
+          order: { xs: -1, sm: 0 },
+          textAlign: "center",
+        }}
+      >
         Page <strong>{pagination.page}</strong> of{" "}
         <strong>{pagination.pages}</strong>
       </Typography>
@@ -626,6 +673,7 @@ const PaginationComponent = ({ pagination, onPageChange }) => {
         disabled={pagination.page === pagination.pages}
         onClick={() => onPageChange(pagination.page + 1)}
         endIcon={<ChevronRightIcon />}
+        sx={{ minWidth: { xs: 96, sm: 88 } }}
       >
         Next
       </Button>
@@ -1412,6 +1460,8 @@ export default function ChecklistPage() {
     page: 1,
     limit: 10,
   });
+  const [listStatFilter, setListStatFilter] = useState("");
+  const [requestStatFilter, setRequestStatFilter] = useState("");
   const [showDeleted, setShowDeleted] = useState(false);
 
   const [tab, setTab] = useState(0);
@@ -1451,7 +1501,8 @@ export default function ChecklistPage() {
     try {
       const params = { page: listFilters.page, limit: isSmallMobile ? 5 : 10 };
       if (listFilters.search) params.search = listFilters.search;
-      if (listFilters.status) params.status = listFilters.status;
+      if (listStatFilter || listFilters.status)
+        params.status = listStatFilter || listFilters.status;
       if (listFilters.checklistType)
         params.checklistType = listFilters.checklistType;
       const res = await getAllChecklists(params);
@@ -1485,7 +1536,7 @@ export default function ChecklistPage() {
     } finally {
       setListLoading(false);
     }
-  }, [getAllChecklists, listFilters, showSnack, isSmallMobile]);
+  }, [getAllChecklists, listFilters, listStatFilter, showSnack, isSmallMobile]);
 
   // Fetch Requests
   const fetchRequests = useCallback(async () => {
@@ -1496,7 +1547,8 @@ export default function ChecklistPage() {
         limit: isSmallMobile ? 5 : 10,
       };
       if (requestsFilters.search) params.search = requestsFilters.search;
-      if (requestsFilters.status) params.status = requestsFilters.status;
+      if (requestStatFilter || requestsFilters.status)
+        params.status = requestStatFilter || requestsFilters.status;
       if (requestsFilters.urgencyLevel)
         params.urgencyLevel = requestsFilters.urgencyLevel;
       if (isSuperAdmin && showDeleted) params.includeDeleted = true;
@@ -1518,6 +1570,7 @@ export default function ChecklistPage() {
     getAllRequests,
     getMyRequests,
     requestsFilters,
+    requestStatFilter,
     isSuperAdmin,
     showDeleted,
     showSnack,
@@ -1661,9 +1714,23 @@ export default function ChecklistPage() {
   };
 
   const updateListFilter = (k, v) =>
-    setListFilters((p) => ({ ...p, [k]: v, page: 1 }));
+    setListFilters((p) => {
+      if (k === "status") setListStatFilter("");
+      return { ...p, [k]: v, page: 1 };
+    });
   const updateReqFilter = (k, v) =>
-    setRequestsFilters((p) => ({ ...p, [k]: v, page: 1 }));
+    setRequestsFilters((p) => {
+      if (k === "status") setRequestStatFilter("");
+      return { ...p, [k]: v, page: 1 };
+    });
+  const handleChecklistStatClick = (status) => {
+    setListStatFilter(status);
+    setListFilters((p) => ({ ...p, page: 1 }));
+  };
+  const handleRequestStatClick = (status) => {
+    setRequestStatFilter(status);
+    setRequestsFilters((p) => ({ ...p, page: 1 }));
+  };
 
   console.log("tab===>",tab)
 
@@ -1788,7 +1855,11 @@ export default function ChecklistPage() {
       <Box sx={{ minHeight: "100vh" }}>
         <Container
           maxWidth="xl"
-          sx={{ py: { xs: 2, md: 3.5 }, px: { xs: 1.5, md: 3 } }}
+          sx={{
+            pt: { xs: 2, md: 3.5 },
+            pb: { xs: 13, md: 3.5 },
+            px: { xs: 1.5, md: 3 },
+          }}
         >
           {/* Header */}
           <Box
@@ -1847,7 +1918,17 @@ export default function ChecklistPage() {
 
           {/* Stats */}
           {tab === 0 && (
-            <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "repeat(2, minmax(0, 1fr))",
+                  md: "repeat(3, minmax(0, 1fr))",
+                },
+                gap: 2,
+                mb: 3,
+              }}
+            >
               {[
                 {
                   label: "Total Checklists",
@@ -1855,6 +1936,7 @@ export default function ChecklistPage() {
                   sub: "All types",
                   accent: "primary.main",
                   icon: <ArticleIcon />,
+                  filterStatus: "",
                 },
                 {
                   label: "Published",
@@ -1862,6 +1944,7 @@ export default function ChecklistPage() {
                   sub: "Currently active",
                   accent: "success.main",
                   icon: <CheckCircleIcon />,
+                  filterStatus: "published",
                 },
                 {
                   label: "Total Fields",
@@ -1877,15 +1960,50 @@ export default function ChecklistPage() {
                 //   accent: "warning.main",
                 //   icon: <PendingIcon />,
                 // },
-              ].map((s) => (
-                <Grid item xs={6} sm={3} key={s.label}>
-                  <StatCard {...s} loading={listLoading} changeCartWidth={changeCartWidth}/>
-                </Grid>
+              ].map((s, index, cards) => (
+                <Box
+                  key={s.label}
+                  sx={{
+                    minWidth: 0,
+                    gridColumn: {
+                      xs:
+                        cards.length % 2 === 1 && index === cards.length - 1
+                          ? "1 / -1"
+                          : "auto",
+                      md: "auto",
+                    },
+                  }}
+                >
+                  <StatCard
+                    {...s}
+                    loading={listLoading}
+                    active={
+                      s.filterStatus !== undefined &&
+                      listStatFilter === s.filterStatus &&
+                      (s.filterStatus !== "" || !listFilters.status)
+                    }
+                    onClick={
+                      s.filterStatus !== undefined
+                        ? () => handleChecklistStatClick(s.filterStatus)
+                        : undefined
+                    }
+                  />
+                </Box>
               ))}
-            </Grid>
+            </Box>
           )}
           {tab === 1 && (
-            <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "repeat(2, minmax(0, 1fr))",
+                  md: "repeat(4, minmax(0, 1fr))",
+                },
+                gap: 2,
+                mb: 3,
+              }}
+            >
               {[
                 {
                   label: "Total Requests",
@@ -1893,6 +2011,7 @@ export default function ChecklistPage() {
                   sub: "All requests",
                   accent: "primary.main",
                   icon: <RequestPageIcon />,
+                  filterStatus: "",
                 },
                 {
                   label: "Pending",
@@ -1900,6 +2019,7 @@ export default function ChecklistPage() {
                   sub: "Awaiting review",
                   accent: "warning.main",
                   icon: <PendingIcon />,
+                  filterStatus: "pending",
                 },
                 {
                   label: "Approved",
@@ -1907,6 +2027,7 @@ export default function ChecklistPage() {
                   sub: "Completed",
                   accent: "success.main",
                   icon: <CheckCircleIcon />,
+                  filterStatus: "approved",
                 },
                 {
                   label: "Rejected",
@@ -1914,13 +2035,22 @@ export default function ChecklistPage() {
                   sub: "Not approved",
                   accent: "error.main",
                   icon: <ErrorIcon />,
+                  filterStatus: "rejected",
                 },
               ].map((s) => (
-                <Grid item xs={6} sm={3} key={s.label}>
-                  <StatCard {...s} loading={requestsLoading} changeCartWidth={changeCartWidth} />
-                </Grid>
+                <Box key={s.label} sx={{ minWidth: 0 }}>
+                  <StatCard
+                    {...s}
+                    loading={requestsLoading}
+                    active={
+                      requestStatFilter === s.filterStatus &&
+                      (s.filterStatus !== "" || !requestsFilters.status)
+                    }
+                    onClick={() => handleRequestStatClick(s.filterStatus)}
+                  />
+                </Box>
               ))}
-            </Grid>
+            </Box>
           )}
 
           {/* Tabs */}
@@ -2079,7 +2209,7 @@ export default function ChecklistPage() {
                 </Box>
 
                 {isMobile ? (
-                  <Box sx={{ p: 2 }}>
+                  <Box sx={{ p: 2, pb: { xs: 3, sm: 2 } }}>
                     {listLoading ? (
                       [...Array(3)].map((_, i) => (
                         <Skeleton
@@ -2444,7 +2574,7 @@ export default function ChecklistPage() {
                 </Box>
 
                 {isMobile ? (
-                  <Box sx={{ p: 2 }}>
+                  <Box sx={{ p: 2, pb: { xs: 3, sm: 2 } }}>
                     {requestsLoading ? (
                       [...Array(3)].map((_, i) => (
                         <Skeleton

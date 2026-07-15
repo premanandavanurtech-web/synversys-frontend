@@ -376,6 +376,48 @@ export const AssignmentProvider = ({ children }) => {
   }, [authRequest]);
 
   // ── 12. Bulk restore from trash ─────────────────────────────────────────────
+  const approveAssignment = useCallback(async (assignmentId) => {
+    detailOp.setLoading(true);
+    detailOp.setError(null);
+    try {
+      const res = await authRequest("PATCH", `/assignments/${assignmentId}/approve`);
+      if (res?.success) {
+        return { success: true, data: res.assignment || res.data || res, message: res.message };
+      }
+      const msg = res?.message || "Failed to approve assignment";
+      detailOp.setError(msg);
+      return { success: false, error: msg };
+    } catch (err) {
+      const msg = extractError(err, "Failed to approve assignment");
+      detailOp.setError(msg);
+      return { success: false, error: msg };
+    } finally {
+      detailOp.setLoading(false);
+    }
+  }, [authRequest]);
+
+  const submitAssignmentPoa = useCallback(async (assignmentId, formData) => {
+    detailOp.setLoading(true);
+    detailOp.setError(null);
+    try {
+      const res = await authRequest("POST", `/assignments/${assignmentId}/poa`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      if (res?.success) {
+        return { success: true, data: res.assignment || res.data || res, message: res.message };
+      }
+      const msg = res?.message || "Failed to submit POA";
+      detailOp.setError(msg);
+      return { success: false, error: msg };
+    } catch (err) {
+      const msg = extractError(err, "Failed to submit POA");
+      detailOp.setError(msg);
+      return { success: false, error: msg };
+    } finally {
+      detailOp.setLoading(false);
+    }
+  }, [authRequest]);
+
   const bulkRestoreAssignments = useCallback(async (assignmentIds) => {
     restoreOp.setLoading(true);
     restoreOp.setError(null);
@@ -584,6 +626,8 @@ export const AssignmentProvider = ({ children }) => {
     getDeletedAssignments,
 
     // Mutate
+    approveAssignment,
+    submitAssignmentPoa,
     softDeleteAssignment,
     restoreAssignment,
     bulkRestoreAssignments,

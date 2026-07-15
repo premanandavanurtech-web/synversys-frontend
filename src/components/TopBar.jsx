@@ -611,10 +611,24 @@ function MobileUserMenu({
       onOpen={() => {}}
       PaperProps={{
         sx: {
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
           bgcolor: "#fff",
           maxHeight: "75vh",
+          overflow: "hidden",
+          animation: open ? "mobileSheetIn 260ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
+          "@keyframes mobileSheetIn": {
+            "0%": { transform: "translateY(24px)", opacity: 0 },
+            "100%": { transform: "translateY(0)", opacity: 1 },
+          },
+        },
+      }}
+      ModalProps={{
+        BackdropProps: {
+          sx: {
+            bgcolor: "rgba(15, 23, 42, 0.55)",
+            backdropFilter: "blur(2px)",
+          },
         },
       }}
     >
@@ -667,14 +681,21 @@ function MobileUserMenu({
       <MenuItem
         onClick={onLogout}
         sx={{
-          py: 1.5,
-          mx: 1.5,
-          borderRadius: 2,
+          py: 1.25,
+          px: 2,
+          mx: "auto",
+          width: "calc(100% - 32px)",
+          maxWidth: 320,
+          borderRadius: 2.25,
           mb: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 1.25,
           "&:active": { bgcolor: alpha("#ef4444", 0.08) },
         }}
       >
-        <ListItemIcon>
+        <ListItemIcon sx={{ minWidth: 0 }}>
           <Box
             sx={{
               width: 36,
@@ -691,10 +712,12 @@ function MobileUserMenu({
         </ListItemIcon>
         <ListItemText
           primary="Logout"
+          sx={{ flex: "0 0 auto", m: 0 }}
           primaryTypographyProps={{
             fontSize: 15,
             fontWeight: 600,
             color: "#ef4444",
+            textAlign: "center",
           }}
         />
       </MenuItem>

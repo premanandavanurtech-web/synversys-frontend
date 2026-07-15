@@ -274,6 +274,7 @@ export const ClientProvider = ({ children }) => {
         const membershipPlan = params.membershipPlan !== undefined
           ? params.membershipPlan
           : state.filters.membershipPlan;
+        const expiringSoon = params.expiringSoon;
         const sortBy = params.sortBy || state.filters.sortBy;
         const sortOrder = params.sortOrder || state.filters.sortOrder;
 
@@ -289,6 +290,8 @@ export const ClientProvider = ({ children }) => {
         if (status && status !== "all") queryParams.append("status", status);
         if (membershipPlan && membershipPlan !== "all")
           queryParams.append("membershipPlan", membershipPlan);
+        if (expiringSoon === true || expiringSoon === "true")
+          queryParams.append("expiringSoon", "true");
 
         const url = `${API_BASE_URL}/clients?${queryParams.toString()}`;
         const headers = getCurrentAuthHeaders();

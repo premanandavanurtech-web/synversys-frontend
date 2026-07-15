@@ -151,15 +151,31 @@ const getPerformanceColor = (score) => {
 };
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ title, value, icon: Icon, color }) {
+function StatCard({ title, value, icon: Icon, color, active, onClick }) {
   return (
     <Card
       elevation={0}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (!onClick) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
       sx={{
         borderRadius: "14px",
         width: {xs:"169px",md:"276px"},
-        border: `1px solid ${C.border}`,
+        border: `1px solid ${active ? color : C.border}`,
+        cursor: onClick ? "pointer" : "default",
+        outline: "none",
+        boxShadow: active ? `0 8px 24px ${alpha(color, 0.14)}` : "none",
         transition: "all 0.2s",
+        "&:focus-visible": {
+          boxShadow: `0 0 0 3px ${alpha(color, 0.22)}`,
+        },
         "&:hover": {
           borderColor: color,
           boxShadow: `0 4px 12px ${alpha(color, 0.1)}`,
@@ -984,6 +1000,7 @@ export default function TeamManagement() {
     actionLoading,
     error,
     pagination,
+    teamStats,
     addTeamMember,
     updateTeamMember,
     deleteTeamMember,
@@ -994,6 +1011,7 @@ export default function TeamManagement() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [statFilter, setStatFilter] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -1025,7 +1043,7 @@ export default function TeamManagement() {
       updateFilters({
         search: searchTerm,
         role: filters.role || "all",
-        status: filters.status || "all",
+        status: statFilter || filters.status || "all",
         page: currentPage + 1,
         limit: rowsPerPage,
       });
@@ -1033,7 +1051,7 @@ export default function TeamManagement() {
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
-  }, [searchTerm, filters, currentPage, rowsPerPage, updateFilters]);
+  }, [searchTerm, filters, statFilter, currentPage, rowsPerPage, updateFilters]);
 
   // NEW: client-side safety-net sort, newest first. The context now asks the
   // backend to sort with `sort=-createdAt`, but if the backend ignores that
@@ -1052,21 +1070,11 @@ export default function TeamManagement() {
     });
   }, [teamMembers]);
 
-  // Computed stats from members list
-  const totalMembers = teamMembers?.length || 0;
-  const activeMembers =
-    teamMembers?.filter((m) => m.status === "active").length || 0;
-  const onLeaveMembers =
-    teamMembers?.filter((m) =>
-      ["onLeave", "on_leave", "on leave"].includes(m.status?.toLowerCase()),
-    ).length || 0;
-  const avgPerformance =
-    teamMembers?.length > 0
-      ? Math.round(
-          teamMembers.reduce((sum, m) => sum + (m.performanceScore || 0), 0) /
-            teamMembers.length,
-        )
-      : 0;
+  // Stats come from the full filtered result set, not only the current page.
+  const totalMembers = pagination?.total ?? teamStats?.total ?? teamMembers?.length ?? 0;
+  const activeMembers = teamStats?.active ?? 0;
+  const onLeaveMembers = teamStats?.onLeave ?? 0;
+  const avgPerformance = teamStats?.avgPerformanceScore ?? 0;
 
   const activeFilterCount = Object.values(filters).filter(
     (v) => v !== "" && v !== null,
@@ -1074,16 +1082,26 @@ export default function TeamManagement() {
   const hasAnySearch = searchTerm.trim() !== "";
 
   const handleClearSearch = useCallback(() => {
+    setStatFilter("");
     setSearchTerm("");
     setCurrentPage(0);
   }, []);
   const handleClearAll = useCallback(() => {
+    setStatFilter("");
     setSearchTerm("");
     setFilters(EMPTY_FILTERS);
     setCurrentPage(0);
   }, []);
   const handleFilterChange = useCallback((newFilters) => {
+    setStatFilter("");
     setFilters(newFilters);
+    setCurrentPage(0);
+  }, []);
+
+  const handleStatCardClick = useCallback((status) => {
+    setStatFilter(status || "");
+    setSearchTerm("");
+    setFilters(EMPTY_FILTERS);
     setCurrentPage(0);
   }, []);
 
@@ -1139,22 +1157,25 @@ export default function TeamManagement() {
       value: totalMembers,
       icon: PersonAddOutlined,
       color: C.primary,
+      filterStatus: "",
     },
     {
       title: "Active Members",
       value: activeMembers,
       icon: CheckCircleIcon,
       color: C.success,
+      filterStatus: "active",
     },
     {
       title: "On Leave",
       value: onLeaveMembers,
       icon: WorkIcon,
       color: C.warning,
+      filterStatus: "on_leave",
     },
     {
       title: "Avg Performance",
-      value: avgPerformance ? `${avgPerformance}%` : "—",
+      value: `${Math.round(Number(avgPerformance) || 0)}%`,
       icon: BarChartIcon,
       color: C.info,
     },
@@ -1265,7 +1286,18 @@ export default function TeamManagement() {
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {statCards.map((card, i) => (
             <Grid item xs={6} sm={3} key={i}>
-              <StatCard {...card} />
+              <StatCard
+                {...card}
+                active={
+                  card.filterStatus !== undefined &&
+                  (statFilter ? statFilter === card.filterStatus : !card.filterStatus && !searchTerm && !activeFilterCount)
+                }
+                onClick={
+                  card.filterStatus !== undefined
+                    ? () => handleStatCardClick(card.filterStatus)
+                    : undefined
+                }
+              />
             </Grid>
           ))}
         </Grid>

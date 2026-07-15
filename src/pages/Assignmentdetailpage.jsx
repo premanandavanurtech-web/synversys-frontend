@@ -21,6 +21,15 @@ import {
   Skeleton,
   Fade,
   Alert,
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Stack,
+  FormHelperText,
+  CircularProgress,
   useTheme,
   useMediaQuery,
 } from "@mui/material";
@@ -38,6 +47,8 @@ import {
   Schedule as ScheduleIcon,
   Inventory2 as AssetIcon,
   Image as ImageIcon,
+  AttachFile as AttachFileIcon,
+  Send as SendIcon,
 } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAssignment } from "../context/AssignmentContext";
@@ -50,6 +61,7 @@ const BRAND_LIGHT = "#e1f5ee";
 // ── Status / Priority maps ────────────────────────────────────────────────────
 const STATUS_MAP = {
   approved: { label: "Approved", bg: "#eaf3de", color: "#3b6d11" },
+  pending_approval: { label: "Pending Approval", bg: "#faeeda", color: "#854f0b" },
   pending_review: { label: "Pending Review", bg: "#faeeda", color: "#854f0b" },
   rejected: { label: "Rejected", bg: "#fcebeb", color: "#a32d2d" },
   needs_revision: { label: "Needs Revision", bg: "#eeedfe", color: "#534ab7" },
@@ -1353,7 +1365,7 @@ const AssigneesTab = ({
 
 // ── POA Tab ───────────────────────────────────────────────────────────────────
 // Shows proof-of-action feedback and uploaded images/files from assignment.poaSubmissions.
-const POATab = ({ poaSubmissions }) => {
+const POATab = ({ poaSubmissions, canAddPoa, onAddPoa }) => {
   const submissions = poaSubmissions || [];
 
   if (!submissions.length) {
@@ -1368,13 +1380,25 @@ const POATab = ({ poaSubmissions }) => {
           textAlign: "center",
         }}
       >
-        <ImageIcon sx={{ color: "text.disabled", fontSize: 34, mb: 1 }} />
-        <Typography variant="body2" fontWeight={600} color="text.secondary">
-          No POA feedback submitted yet
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          POA feedback and uploaded images will appear here after a team member submits them.
-        </Typography>
+        
+        {canAddPoa && (
+          <Button
+            variant="contained"
+            startIcon={<AttachFileIcon />}
+            onClick={onAddPoa}
+            sx={{
+              mt: 2,
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 700,
+              bgcolor: BRAND,
+              boxShadow: "none",
+              "&:hover": { bgcolor: BRAND_DARK, boxShadow: "none" },
+            }}
+          >
+            Add POA
+          </Button>
+        )}
       </Card>
     );
   }
@@ -1558,6 +1582,112 @@ const POATab = ({ poaSubmissions }) => {
 };
 
 // ── Page skeleton ─────────────────────────────────────────────────────────────
+const AdminPoaDialog = ({
+  open,
+  feedback,
+  files,
+  error,
+  submitting,
+  onFeedbackChange,
+  onFilesChange,
+  onRemoveFile,
+  onClose,
+  onSubmit,
+}) => (
+  <Dialog
+    open={open}
+    onClose={submitting ? undefined : onClose}
+    fullWidth
+    maxWidth="sm"
+    PaperProps={{ sx: { borderRadius: 3 } }}
+  >
+    <DialogTitle sx={{ pb: 1 }}>
+      <Typography fontWeight={800} fontSize="1.05rem">
+        Add POA
+      </Typography>
+      <Typography color="text.secondary" fontSize="0.8rem" sx={{ mt: 0.35 }}>
+        Submit proof of action for this completed inspection.
+      </Typography>
+    </DialogTitle>
+    <DialogContent sx={{ pt: 1 }}>
+      <Stack spacing={2}>
+        <TextField
+          label="POA Feedback"
+          value={feedback}
+          onChange={(event) => onFeedbackChange(event.target.value)}
+          multiline
+          minRows={4}
+          required
+          error={!!error}
+          helperText={error || " "}
+          fullWidth
+        />
+        <Box>
+          <Button
+            component="label"
+            variant="outlined"
+            startIcon={<AttachFileIcon sx={{ fontSize: 17 }} />}
+            sx={{
+              borderRadius: 2,
+              borderColor: "divider",
+              color: BRAND,
+              textTransform: "none",
+              "&:hover": { borderColor: BRAND, bgcolor: BRAND_LIGHT },
+            }}
+          >
+            Upload Attachments
+            <input hidden multiple type="file" onChange={onFilesChange} />
+          </Button>
+          <FormHelperText sx={{ ml: 0.25 }}>
+            Attach supporting files if needed.
+          </FormHelperText>
+          {files.length > 0 && (
+            <Stack spacing={1} sx={{ mt: 1.25 }}>
+              {files.map((file, index) => (
+                <Chip
+                  key={`${file.name}-${index}`}
+                  icon={<AttachFileIcon />}
+                  label={file.name}
+                  onDelete={() => onRemoveFile(index)}
+                  sx={{
+                    justifyContent: "space-between",
+                    maxWidth: "100%",
+                    "& .MuiChip-label": {
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    },
+                  }}
+                />
+              ))}
+            </Stack>
+          )}
+        </Box>
+      </Stack>
+    </DialogContent>
+    <DialogActions sx={{ px: 3, pb: 2.5, pt: 1 }}>
+      <Button onClick={onClose} disabled={submitting} sx={{ color: "text.secondary" }}>
+        Cancel
+      </Button>
+      <Button
+        variant="contained"
+        onClick={onSubmit}
+        disabled={submitting}
+        startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
+        sx={{
+          borderRadius: 2,
+          bgcolor: BRAND,
+          boxShadow: "none",
+          textTransform: "none",
+          fontWeight: 700,
+          "&:hover": { bgcolor: BRAND_DARK, boxShadow: "none" },
+        }}
+      >
+        Submit POA
+      </Button>
+    </DialogActions>
+  </Dialog>
+);
+
 const PageSkeleton = () => (
   <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: "#f0f6f8", minHeight: "100vh" }}>
     <Skeleton width={120} height={20} sx={{ mb: 3 }} />
@@ -1590,12 +1720,19 @@ const AssignmentDetailPage = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const { getAssignmentById } = useAssignment();
+  const { getAssignmentById, approveAssignment, submitAssignmentPoa } = useAssignment();
 
   const [tab, setTab] = useState("submissions");
   const [assignment, setAssignment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [approving, setApproving] = useState(false);
+  const [poaDialogOpen, setPoaDialogOpen] = useState(false);
+  const [poaFeedback, setPoaFeedback] = useState("");
+  const [poaFiles, setPoaFiles] = useState([]);
+  const [poaError, setPoaError] = useState("");
+  const [poaSubmitting, setPoaSubmitting] = useState(false);
+  const [toast, setToast] = useState({ open: false, message: "", severity: "success" });
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -1630,6 +1767,84 @@ const AssignmentDetailPage = () => {
   useEffect(() => {
     loadAssignment();
   }, [loadAssignment]);
+
+  const handleApproveAssignment = useCallback(async () => {
+    if (!assignment?._id || approving) return;
+    setApproving(true);
+    const result = await approveAssignment(assignment._id);
+    if (result.success) {
+      setAssignment((prev) => ({
+        ...prev,
+        ...(result.data || {}),
+        status: "submitted",
+      }));
+      setToast({ open: true, message: "Assignment submitted successfully", severity: "success" });
+      loadAssignment();
+    } else {
+      setToast({ open: true, message: result.error || "Failed to approve assignment", severity: "error" });
+    }
+    setApproving(false);
+  }, [approveAssignment, approving, assignment?._id, loadAssignment]);
+
+  const handleOpenPoaDialog = useCallback(() => {
+    setPoaFeedback("");
+    setPoaFiles([]);
+    setPoaError("");
+    setPoaDialogOpen(true);
+  }, []);
+
+  const handleClosePoaDialog = useCallback(() => {
+    if (poaSubmitting) return;
+    setPoaDialogOpen(false);
+    setPoaFeedback("");
+    setPoaFiles([]);
+    setPoaError("");
+  }, [poaSubmitting]);
+
+  const handlePoaFilesChange = useCallback((event) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    setPoaFiles((prev) => [...prev, ...selectedFiles]);
+    event.target.value = "";
+  }, []);
+
+  const handleRemovePoaFile = useCallback((index) => {
+    setPoaFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
+  }, []);
+
+  const handleSubmitAdminPoa = useCallback(async () => {
+    const feedback = poaFeedback.trim();
+    if (!feedback) {
+      setPoaError("POA feedback is required");
+      return;
+    }
+    if (!assignment?._id || poaSubmitting) return;
+
+    const formData = new FormData();
+    formData.append("feedback", feedback);
+    poaFiles.forEach((file) => formData.append("attachments", file));
+
+    setPoaSubmitting(true);
+    const result = await submitAssignmentPoa(assignment._id, formData);
+    if (result.success) {
+      setToast({ open: true, message: "POA submitted successfully", severity: "success" });
+      setPoaDialogOpen(false);
+      setPoaFeedback("");
+      setPoaFiles([]);
+      setPoaError("");
+      setTab("poa");
+      loadAssignment();
+    } else {
+      setToast({ open: true, message: result.error || "Failed to submit POA", severity: "error" });
+    }
+    setPoaSubmitting(false);
+  }, [
+    assignment?._id,
+    loadAssignment,
+    poaFeedback,
+    poaFiles,
+    poaSubmitting,
+    submitAssignmentPoa,
+  ]);
 
   if (loading) return <PageSkeleton />;
 
@@ -1672,6 +1887,13 @@ const AssignmentDetailPage = () => {
   const hasAssets = (assignment.assets || []).length > 0;
   const hasChecklists = (assignment.checklistData || []).length > 0;
   const poaSubmissions = assignment.poaSubmissions || [];
+  const canAddPoa =
+    poaSubmissions.length === 0 &&
+    (assignment.totalSubmissions > 0 || completedMem > 0) &&
+    ["pending_approval", "submitted"].includes((assignment.status || "").toLowerCase());
+  const canApproveAssignment =
+    ["pending_approval", "submitted"].includes((assignment.status || "").toLowerCase()) &&
+    poaSubmissions.length > 0;
 
   const tabs = [
     {
@@ -1825,6 +2047,25 @@ const AssignmentDetailPage = () => {
           </Box>
 
           <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
+            {canApproveAssignment && (
+              <Button
+                variant="contained"
+                startIcon={<CheckCircleIcon />}
+                onClick={handleApproveAssignment}
+                disabled={approving}
+                sx={{
+                  borderRadius: 2.5,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  fontSize: "0.8rem",
+                  bgcolor: "#0f6e56",
+                  boxShadow: "none",
+                  "&:hover": { bgcolor: "#0b5f4a", boxShadow: "none" },
+                }}
+              >
+                {isMobile ? "" : approving ? "Approving..." : "Approved"}
+              </Button>
+            )}
             <Button
               variant="outlined"
               startIcon={<BarChartIcon />}
@@ -2054,10 +2295,46 @@ const AssignmentDetailPage = () => {
                 assignedByRole={assignment.assignedByRole}
               />
             )}
-            {tab === "poa" && <POATab poaSubmissions={poaSubmissions} />}
+            {tab === "poa" && (
+              <POATab
+                poaSubmissions={poaSubmissions}
+                canAddPoa={canAddPoa}
+                onAddPoa={handleOpenPoaDialog}
+              />
+            )}
           </Box>
         </Fade>
       </Box>
+      <AdminPoaDialog
+        open={poaDialogOpen}
+        feedback={poaFeedback}
+        files={poaFiles}
+        error={poaError}
+        submitting={poaSubmitting}
+        onFeedbackChange={(value) => {
+          setPoaFeedback(value);
+          if (poaError && value.trim()) setPoaError("");
+        }}
+        onFilesChange={handlePoaFilesChange}
+        onRemoveFile={handleRemovePoaFile}
+        onClose={handleClosePoaDialog}
+        onSubmit={handleSubmitAdminPoa}
+      />
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={3000}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          severity={toast.severity}
+          variant="filled"
+          onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+          sx={{ borderRadius: 2 }}
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

@@ -305,7 +305,8 @@ const ProfileContent = () => {
   const handleUpdateProfile = async () => {
     if (phoneError) { toast("Phone number must be exactly 10 digits", "error"); return; }
     setSaving(true);
-    const result = await updateTeamProfile(formData);
+    const { department, ...editableProfileData } = formData;
+    const result = await updateTeamProfile(editableProfileData);
     setSaving(false);
     if (result.success) { toast(result.message); setIsEditing(false); await fetchTeamProfile(); }
     else toast(result.error, "error");
@@ -710,8 +711,7 @@ const ProfileContent = () => {
                   <FieldCell>
                     <Label>Department</Label>
                     <StyledField fullWidth size="small" placeholder="Your department"
-                      value={formData.department} disabled={!isEditing}
-                      onChange={e => setFormData(p => ({ ...p, department: e.target.value }))}
+                      value={formData.department} disabled
                       InputProps={{
                         startAdornment: <InputAdornment position="start"><WorkIcon sx={{ fontSize: "0.8rem", color: T.ink4 }} /></InputAdornment>,
                       }}

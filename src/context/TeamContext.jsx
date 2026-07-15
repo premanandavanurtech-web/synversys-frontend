@@ -40,6 +40,8 @@ const getApiErrorMessage = (err, fallback) =>
 // it's the single place this is wired up.
 const buildSortParams = (params) => {
   params.append("sort", "-createdAt");
+  params.append("sortBy", "createdAt");
+  params.append("sortOrder", "desc");
 };
 
 export const TeamProvider = ({ children }) => {
@@ -445,6 +447,7 @@ export const TeamProvider = ({ children }) => {
         if (response.data.success) {
           const members = response.data.members || [];
           const paginationData = response.data.pagination || {};
+          const statsData = response.data.stats || {};
 
           // Also seed dropdowns from the filters block if present
           const filtersBlock = response.data.filters || {};
@@ -486,6 +489,18 @@ export const TeamProvider = ({ children }) => {
           }
 
           setTeamMembers(members);
+          setTeamStats((prev) => ({
+            ...prev,
+            total: paginationData.total || statsData.total || members.length,
+            active: statsData.active || 0,
+            onLeave: statsData.onLeave || 0,
+            inactive: statsData.inactive || 0,
+            avgPerformanceScore:
+              statsData.avgPerformanceScore ??
+              (parseInt(String(statsData.avgPerformance || "0").replace("%", ""), 10) || 0),
+            totalInspections: statsData.totalInspections || 0,
+            totalAssigned: statsData.totalAssigned || 0,
+          }));
           setPagination({
             page: paginationData.page || filters.page || 1,
             limit: paginationData.limit || filters.limit || 10,
@@ -530,7 +545,20 @@ export const TeamProvider = ({ children }) => {
         if (response.data.success) {
           const members = response.data.members || [];
           const paginationData = response.data.pagination || {};
+          const statsData = response.data.stats || {};
           setTeamMembers(members);
+          setTeamStats((prev) => ({
+            ...prev,
+            total: paginationData.total || statsData.total || members.length,
+            active: statsData.active || 0,
+            onLeave: statsData.onLeave || 0,
+            inactive: statsData.inactive || 0,
+            avgPerformanceScore:
+              statsData.avgPerformanceScore ??
+              (parseInt(String(statsData.avgPerformance || "0").replace("%", ""), 10) || 0),
+            totalInspections: statsData.totalInspections || 0,
+            totalAssigned: statsData.totalAssigned || 0,
+          }));
           setPagination({
             page: paginationData.page || page,
             limit: paginationData.limit || limit,

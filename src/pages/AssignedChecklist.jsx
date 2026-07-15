@@ -197,10 +197,34 @@ const GradientText = styled(Typography)(() => ({
 }));
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
-const ModernStatCard = ({ label, value, icon: Icon, trend, subtitle, loading, color }) => (
+const ModernStatCard = ({ label, value, icon: Icon, trend, subtitle, loading, color, active, onClick }) => (
   <Zoom in timeout={300}>
-    <GlassCard sx={{ height: "100%", width:{xs: "173px",md: "273px"}, overflow: "hidden" }}>
-      <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
+    <GlassCard
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (!onClick) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      sx={{
+        height: "100%",
+        width: "100%",
+        minHeight: { xs: 132, md: 150 },
+        overflow: "hidden",
+        cursor: onClick ? "pointer" : "default",
+        borderColor: active ? color || "#084d68" : undefined,
+        boxShadow: active ? `0 10px 28px ${alpha(color || "#084d68", 0.18)}` : undefined,
+        outline: "none",
+        "&:focus-visible": {
+          boxShadow: `0 0 0 3px ${alpha(color || "#084d68", 0.22)}`,
+        },
+      }}
+    >
+      <CardContent sx={{ p: { xs: 1.75, md: 2 } }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <Box sx={{ minWidth: 0, flex: 1, mr: 1 }}>
             <Typography
@@ -215,13 +239,13 @@ const ModernStatCard = ({ label, value, icon: Icon, trend, subtitle, loading, co
             ) : (
               <Typography
                 fontWeight={700}
-                sx={{ mt: 0.5, color: color || "text.primary", fontSize: { xs: "1.5rem", md: "1.75rem" } }}
+                sx={{ mt: 0.25, color: color || "text.primary", fontSize: { xs: "1.5rem", md: "1.65rem" }, lineHeight: 1.15 }}
               >
                 {value ?? 0}
               </Typography>
             )}
             {trend && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.75, flexWrap: "wrap" }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5, flexWrap: "wrap" }}>
                 <TrendingUpIcon sx={{ fontSize: 10, color: "#10b981" }} />
                 <Typography variant="caption" sx={{ color: "#10b981", fontWeight: 600 }}>
                   {trend}
@@ -235,7 +259,7 @@ const ModernStatCard = ({ label, value, icon: Icon, trend, subtitle, loading, co
               <Typography
                 variant="caption"
                 color="text.disabled"
-                sx={{ mt: 0.5, display: "block", fontSize: { xs: "0.65rem", md: "0.72rem" } }}
+                sx={{ mt: 0.35, display: "block", fontSize: { xs: "0.65rem", md: "0.7rem" } }}
               >
                 {subtitle}
               </Typography>
@@ -245,12 +269,12 @@ const ModernStatCard = ({ label, value, icon: Icon, trend, subtitle, loading, co
             sx={{
               bgcolor: alpha(color || "#6366f1", 0.1),
               color: color || "#6366f1",
-              width: { xs: 40, md: 48 },
-              height: { xs: 40, md: 48 },
+              width: { xs: 40, md: 44 },
+              height: { xs: 40, md: 44 },
               flexShrink: 0,
             }}
           >
-            <Icon sx={{ fontSize: { xs: 20, md: 24 } }} />
+            <Icon sx={{ fontSize: { xs: 20, md: 22 } }} />
           </Avatar>
         </Box>
       </CardContent>
@@ -392,9 +416,21 @@ const SelectionModal = ({ open, onClose, title, items, loading, selectedIds, onT
     if (!search.trim()) return items;
     const q = search.toLowerCase();
     return items.filter((item) => {
-      const name = (item.name || item.customerName || item.fullName || item.email || "").toLowerCase();
-      const email = (item.email || "").toLowerCase();
-      return name.includes(q) || email.includes(q);
+      const text = [
+        item.name,
+        item.customerName,
+        item.fullName,
+        item.firstName,
+        item.lastName,
+        item.email,
+        item.role,
+        item.teamRole,
+        item.customRole,
+        item.department,
+        item.location,
+        item.status,
+      ].filter(Boolean).join(" ").toLowerCase();
+      return text.includes(q);
     });
   }, [items, search]);
 
@@ -436,25 +472,45 @@ const SelectionModal = ({ open, onClose, title, items, loading, selectedIds, onT
           <List dense disablePadding>
             {filtered.map((item) => {
               const id = item._id || item.id;
-              const name = item.name || item.customerName || item.fullName || item.email || item.assetName || "Unknown";
-              const sub = item.email !== name ? item.email : item.role || "";
+              const fullName = `${item.firstName || ""} ${item.lastName || ""}`.trim();
+              const name = item.name || item.customerName || item.fullName || fullName || item.assetName || item.email || "Unknown";
+              const initialsSource = name !== item.email ? name : item.email || "?";
+              const details = [
+                item.role || item.teamRole || item.customRole,
+                item.department,
+                item.location,
+                item.status,
+              ].filter(Boolean);
               const selected = isSelected(id);
               return (
                 <ListItem
                   key={id} divider onClick={() => onToggle(id)}
-                  sx={{ py: 1.5, cursor: "pointer", transition: "all 0.2s", "&:hover": { bgcolor: alpha("#084d68", 0.04) }, bgcolor: selected ? alpha("#084d68", 0.04) : "transparent" }}
+                  sx={{ py: 1.4, cursor: "pointer", transition: "all 0.2s", "&:hover": { bgcolor: alpha("#084d68", 0.04) }, bgcolor: selected ? alpha("#084d68", 0.04) : "transparent" }}
                 >
                   {multiSelect
                     ? <Checkbox checked={selected} size="small" sx={{ mr: 1, color: "#084d68" }} />
                     : <Radio checked={selected} size="small" sx={{ mr: 1, color: "#084d68" }} />}
                   <ListItemAvatar>
                     <Avatar sx={{ width: 36, height: 36, bgcolor: selected ? "#084d68" : alpha("#084d68", 0.1), color: selected ? "white" : "#084d68" }}>
-                      {name.charAt(0).toUpperCase()}
+                      {initialsSource.charAt(0).toUpperCase()}
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
-                    primary={<Typography fontWeight={600} sx={{ fontSize: "12px" }}>{name}</Typography>}
-                    secondary={sub && <Typography variant="caption" color="text.secondary">{sub}</Typography>}
+                    primary={<Typography fontWeight={700} sx={{ fontSize: "13px", color: "#0f172a" }}>{name}</Typography>}
+                    secondary={
+                      <Box sx={{ mt: 0.25 }}>
+                        {item.email && item.email !== name && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.35 }}>
+                            {item.email}
+                          </Typography>
+                        )}
+                        {details.length > 0 && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.35 }}>
+                            {details.join(" · ")}
+                          </Typography>
+                        )}
+                      </Box>
+                    }
                   />
                   {selected && <CheckCircleIcon sx={{ fontSize: 12, color: "#10b981" }} />}
                 </ListItem>
@@ -528,6 +584,7 @@ export default function AssignedChecklist() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [stats, setStats] = useState(null);
   const [filters, setFilters] = useState(defaultFilters);
+  const [statFilter, setStatFilter] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false); // mobile filter drawer
 
   // Raw date values bound to the <TextField type="date"> inputs.
@@ -572,7 +629,18 @@ export default function AssignedChecklist() {
   const closeModal = (key) => setModalStates((p) => ({ ...p, [key]: false }));
 
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
-  const toast    = useCallback((msg, severity = "success") => setSnack({ open: true, msg, severity }), []);
+  const formatToastMessage = useCallback((msg) => {
+    const text = String(msg || "").trim();
+    if (/already has an active assignment/i.test(text)) {
+      return "This team member already has an active assignment for the selected checklist. Complete or remove it first.";
+    }
+    return text || "Something went wrong. Please try again.";
+  }, []);
+  const toast = useCallback(
+    (msg, severity = "success") =>
+      setSnack({ open: true, msg: formatToastMessage(msg), severity }),
+    [formatToastMessage],
+  );
   const closeSnack = useCallback(() => setSnack((p) => ({ ...p, open: false })), []);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -613,7 +681,7 @@ export default function AssignedChecklist() {
   const fetchTeamMembers = useCallback(async () => {
     if (!isAdmin) return;
     setTeamLoading(true);
-    try { const res = await authRequest("GET", "/team"); setTeamMembers(res?.members ?? []); }
+    try { const res = await authRequest("GET", "/team?limit=100"); setTeamMembers(res?.members ?? []); }
     catch (err) { console.error(err); }
     finally { setTeamLoading(false); }
   }, [authRequest, isAdmin]);
@@ -640,26 +708,36 @@ export default function AssignedChecklist() {
     if (key === "page") {
       newFilters = { ...filters, page: value };
     } else if (key === "dateFrom") {
+      setStatFilter("");
       setRawDateFrom(value);
       newFilters = { ...filters, dateFrom: toStartOfDay(value), page: 1 };
     } else if (key === "dateTo") {
+      setStatFilter("");
       setRawDateTo(value);
       newFilters = { ...filters, dateTo: toEndOfDay(value), page: 1 };
     } else {
+      setStatFilter("");
       newFilters = { ...filters, [key]: value, page: 1 };
     }
 
     setFilters(newFilters);
-    getAssignments(newFilters).then((res) => {
+    const queryFilters = key === "page" && statFilter
+      ? { ...newFilters, status: statFilter }
+      : newFilters;
+
+    getAssignments(queryFilters).then((res) => {
       if (res?.success) { setAssignments(res.assignments); setPagination(res.pagination); }
     });
-    getAssignmentStats(newFilters).then((res) => {
-      if (res?.success) setStats(res.stats);
-    });
+    if (key !== "page") {
+      getAssignmentStats(queryFilters).then((res) => {
+        if (res?.success) setStats(res.stats);
+      });
+    }
   };
 
   const clearFilters = () => {
     const df = defaultFilters();
+    setStatFilter("");
     setFilters(df);
     setRawDateFrom("");
     setRawDateTo("");
@@ -744,11 +822,29 @@ export default function AssignedChecklist() {
   const pendingApprovalCount =
     (stats?.byStatus?.pending_approval ?? 0) + (stats?.byStatus?.in_progress ?? 0);
 
+  const handleStatCardClick = useCallback((status) => {
+    if (!status) {
+      clearFilters();
+      return;
+    }
+
+    const newFilters = defaultFilters();
+    const queryFilters = { ...newFilters, status, page: 1 };
+    setStatFilter(status);
+    setRawDateFrom("");
+    setRawDateTo("");
+    setFilters(newFilters);
+    getAssignments(queryFilters).then((res) => {
+      if (res?.success) { setAssignments(res.assignments); setPagination(res.pagination); }
+    });
+  }, [clearFilters, getAssignments]);
+
   const statCards = useMemo(() => [
-    { label: "Total Assignments", value: stats?.total ?? 0,                                                              icon: AssignmentIcon,   color: "#084d68", trend: "+12%", subtitle: "All active records" },
-    { label: "Pending Assignments",           value: stats?.byStatus?.pending ?? 0,                                                  icon: PendingActionsIcon, color: "#f59e0b", trend: "+5%",  subtitle: "Awaiting action" },
-    { label: "Pending Approval",  value: pendingApprovalCount,                                                           icon: PendingActionsIcon, color: "#3b82f6", trend: "+8%",  subtitle: "Waiting for approval" },
-    { label: "Overdue",           value: stats?.overdue ?? 0,                                                            icon: WarningAmberIcon, color: "#ef4444", trend: "+2%",  subtitle: "Past due date" },
+    { label: "Total Assignments", value: stats?.total ?? 0,                                                              icon: AssignmentIcon,   color: "#084d68", trend: "+12%", subtitle: "All active records", filterStatus: "" },
+    { label: "Pending Assignments",           value: stats?.byStatus?.pending ?? 0,                                                  icon: PendingActionsIcon, color: "#f59e0b", trend: "+5%",  subtitle: "Awaiting action", filterStatus: "pending" },
+    { label: "Pending Approval Assignments",  value: pendingApprovalCount,                                                           icon: PendingActionsIcon, color: "#3b82f6", trend: "+8%",  subtitle: "Waiting for approval", filterStatus: "pending_approval" },
+    { label: "Submitted Assignments",         value: stats?.byStatus?.submitted ?? 0,                                                 icon: CheckCircleIcon, color: "#10b981", trend: "+6%",  subtitle: "Sent for review", filterStatus: "submitted" },
+    { label: "Overdue Assignments",           value: stats?.overdue ?? 0,                                                            icon: WarningAmberIcon, color: "#ef4444", trend: "+2%",  subtitle: "Past due date", filterStatus: "overdue" },
   ], [pendingApprovalCount, stats]);
 
   const hasFilters = !!(filters.status || filters.priority || filters.search || filters.dateFrom || filters.dateTo);
@@ -797,14 +893,29 @@ export default function AssignedChecklist() {
             </Box>
           </Fade>
 
-          {/* ── Stat Cards: 2 columns on xs/sm, 4 on md+ ── */}
-          <Grid container spacing={{ xs: 1.5, md: 2.5 }} sx={{ mb: 3 }} columns={12}>
-  {statCards.map((card, i) => (
-    <Grid item xs={6} sm={6} md={3} key={i} sx={{ display: "flex" }}>
-      <ModernStatCard {...card} loading={statsLoading} />
-    </Grid>
-  ))}
-</Grid>
+          {/* ── Stat Cards: 2 columns on xs/sm, 5 on md+ ── */}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                sm: "repeat(2, minmax(0, 1fr))",
+                md: "repeat(5, minmax(0, 1fr))",
+              },
+              gap: { xs: 1.5, md: 2.5 },
+              mb: 3,
+            }}
+          >
+            {statCards.map((card, i) => (
+              <ModernStatCard
+                key={i}
+                {...card}
+                loading={statsLoading}
+                active={statFilter ? statFilter === card.filterStatus : !card.filterStatus && !hasFilters}
+                onClick={() => handleStatCardClick(card.filterStatus)}
+              />
+            ))}
+          </Box>
 
           {/* ── Filters Bar ── */}
           <Paper sx={{ mb: 2.5, p: { xs: 1.5, md: 2 }, borderRadius: 1 }}>

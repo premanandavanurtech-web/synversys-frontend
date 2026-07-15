@@ -32,6 +32,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Divider,
   CircularProgress,
   LinearProgress,
   alpha,
@@ -56,6 +57,8 @@ import {
   ErrorOutline,
   Inbox,
   SearchOff,
+  Workspaces,
+  AddBusiness,
 } from "@mui/icons-material";
 import { api, useAsset } from "../context/AssetContext";
 import { useAuth } from "../context/AuthContexts";
@@ -209,9 +212,19 @@ const isCloneAssetRecord = (asset) => {
 };
 
 // ── Asset Card — matches screenshot cards exactly ────────────────────────────
-const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin, canViewFinancials }) => {
+const AssetCard = ({
+  asset,
+  onView,
+  onClone,
+  onDelete,
+  onEdit,
+  onPortfolio,
+  isAdmin,
+  canViewFinancials,
+}) => {
   const canClone = !asset.isClone && asset.canBeCloned !== false;
   const isChildAsset = isChildAssetRecord(asset);
+  const portfolioName = getAssetPortfolioName(asset);
 
   const formatDate = (d) => {
     if (!d) return "—";
@@ -388,6 +401,34 @@ const AssetCard = ({ asset, onView, onClone, onDelete, onEdit, isAdmin, canViewF
               <Visibility sx={{ fontSize: 13, color: T.text.secondary }} />
             </IconButton>
           </Tooltip>
+          {portfolioName ? (
+            <Tooltip title={`Portfolio: ${portfolioName}`}>
+              <IconButton
+                size="small"
+                sx={{
+                  borderRadius: "8px",
+                  bgcolor: "#ecfdf5",
+                  "&:hover": { bgcolor: "#d1fae5" },
+                }}
+              >
+                <Workspaces sx={{ fontSize: 13, color: T.success }} />
+              </IconButton>
+            </Tooltip>
+          ) : (
+            <Tooltip title="Add portfolio name">
+              <IconButton
+                size="small"
+                onClick={() => onPortfolio(asset)}
+                sx={{
+                  borderRadius: "8px",
+                  bgcolor: "#fff7ed",
+                  "&:hover": { bgcolor: "#ffedd5" },
+                }}
+              >
+                <AddBusiness sx={{ fontSize: 13, color: T.warning }} />
+              </IconButton>
+            </Tooltip>
+          )}
           {isAdmin && (
             <Tooltip title="Delete">
               <IconButton
@@ -543,7 +584,7 @@ export default function AssetManagement() {
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const canViewFinancials = user?.role !== "team";
 
-  const { getAllAssets, cloneAsset, deleteAsset, assetStats } = useAsset();
+  const { getAllAssets, cloneAsset, deleteAsset, updateAsset, assetStats } = useAsset();
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
@@ -572,9 +613,12 @@ export default function AssetManagement() {
 
   const [cloneOpen, setCloneOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [portfolioOpen, setPortfolioOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [cloneName, setCloneName] = useState("");
   const [cloneLocation, setCloneLocation] = useState("");
+  const [portfolioName, setPortfolioName] = useState("");
+  const [portfolioEntryMode, setPortfolioEntryMode] = useState("select");
   const [actionLoading, setActionLoading] = useState(false);
   const [dialogError, setDialogError] = useState("");
   const [snackbar, setSnackbar] = useState({
@@ -718,6 +762,13 @@ export default function AssetManagement() {
     });
   }, [assets, debouncedSearch, statusFilter, categoryFilter, portfolioFilter, assetTypeFilter]);
 
+  const portfolioDialogOptions = useMemo(() => {
+    const names = new Set(portfolioOptions);
+    const current = getAssetPortfolioName(selectedAsset);
+    if (current) names.add(current);
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [portfolioOptions, selectedAsset]);
+
   const clearFilters = () => {
     setCategoryFilter("");
     setPortfolioFilter("");
@@ -737,6 +788,49 @@ export default function AssetManagement() {
     navigate(`/admin/assets/view/${a.id || a._id}`);
   const handleEditAsset = (a) =>
     navigate(`/admin/assets/edit/${a.id || a._id}`);
+
+  const openPortfolioDialog = (asset) => {
+    const currentPortfolio = getAssetPortfolioName(asset);
+    setSelectedAsset(asset);
+    setPortfolioName(currentPortfolio);
+    setPortfolioEntryMode(currentPortfolio ? "existing" : "select");
+    setDialogError("");
+    setPortfolioOpen(true);
+  };
+
+  const handlePortfolioConfirm = async () => {
+    const trimmed = portfolioName.trim();
+    if (!trimmed) {
+      setDialogError("Portfolio name is required.");
+      return;
+    }
+
+    setActionLoading(true);
+    setDialogError("");
+    try {
+      await updateAsset(selectedAsset.id || selectedAsset._id, {
+        portfolioName: trimmed,
+      });
+      setPortfolioOptions((prev) =>
+        Array.from(new Set([...prev, trimmed])).sort((a, b) =>
+          a.localeCompare(b),
+        ),
+      );
+      toast("Portfolio name added successfully");
+      setPortfolioOpen(false);
+      setPortfolioName("");
+      setPortfolioEntryMode("select");
+      await fetchAssets();
+    } catch (err) {
+      setDialogError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to update portfolio name.",
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const openCloneDialog = (asset) => {
     if (asset.isClone) {
@@ -1280,6 +1374,7 @@ export default function AssetManagement() {
                       onView={handleViewAsset}
                       onClone={openCloneDialog}
                       onEdit={handleEditAsset}
+                      onPortfolio={openPortfolioDialog}
                       onDelete={
                         isAdmin
                           ? (a) => {
@@ -1699,6 +1794,202 @@ export default function AssetManagement() {
       </Dialog>
 
       {/* ── Delete Dialog ── */}
+      <Dialog
+        open={portfolioOpen}
+        onClose={() => !actionLoading && setPortfolioOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          elevation: 0,
+          sx: {
+            borderRadius: T.radius.dialog,
+            border: `1px solid ${T.border}`,
+            boxShadow: T.shadowMd,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            fontWeight: 700,
+            fontSize: "0.95rem",
+            borderBottom: `1px solid #f1f5f9`,
+            pb: 1.5,
+          }}
+        >
+          Add Portfolio Name
+          <Typography
+            fontSize="0.75rem"
+            color={T.text.muted}
+            fontWeight={400}
+            mt={0.25}
+          >
+            {selectedAsset?.assetName || "Asset"}
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: "20px !important" }}>
+          {dialogError && (
+            <Alert
+              severity="error"
+              sx={{ mb: 2, borderRadius: "8px", fontSize: "0.78rem" }}
+            >
+              {dialogError}
+            </Alert>
+          )}
+          <Typography
+            sx={{
+              mb: 0.75,
+              fontSize: "0.72rem",
+              fontWeight: 800,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: T.text.secondary,
+            }}
+          >
+            Portfolio Name *
+          </Typography>
+          <FormControl fullWidth size="small">
+            <Select
+              autoFocus
+              displayEmpty
+              value={
+                portfolioEntryMode === "new"
+                  ? "__new__"
+                  : portfolioName || ""
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                setDialogError("");
+                if (value === "__new__") {
+                  setPortfolioEntryMode("new");
+                  setPortfolioName("");
+                  return;
+                }
+                setPortfolioEntryMode(value ? "existing" : "select");
+                setPortfolioName(value);
+              }}
+              renderValue={(value) => {
+                if (value === "__new__") return "New portfolio";
+                if (value) return value;
+                return (
+                  <span style={{ color: T.text.muted }}>
+                    Select portfolio...
+                  </span>
+                );
+              }}
+              sx={{
+                borderRadius: "10px",
+                fontSize: "0.9rem",
+                "& .MuiSelect-select": { py: "10px", px: "14px" },
+              }}
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    borderRadius: "12px",
+                    mt: 0.5,
+                    border: `1px solid ${T.border}`,
+                    boxShadow: T.shadowMd,
+                  },
+                },
+              }}
+            >
+              {portfolioDialogOptions.length > 0 ? (
+                portfolioDialogOptions.map((name) => (
+                  <MenuItem key={name} value={name}>
+                    {name}
+                  </MenuItem>
+                ))
+              ) : (
+                <MenuItem disabled>
+                  <Typography
+                    sx={{
+                      fontSize: "0.8rem",
+                      color: T.text.muted,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    No portfolios available
+                  </Typography>
+                </MenuItem>
+              )}
+              <Divider sx={{ my: 0.5 }} />
+              <MenuItem value="__new__">
+                <Stack direction="row" alignItems="center" spacing={0.75}>
+                  <AddBusiness sx={{ fontSize: 16, color: T.brand }} />
+                  <Typography
+                    sx={{
+                      color: T.brand,
+                      fontSize: "0.875rem",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Add New Portfolio
+                  </Typography>
+                </Stack>
+              </MenuItem>
+            </Select>
+          </FormControl>
+          {portfolioEntryMode === "new" && (
+            <TextField
+              fullWidth
+              label="Enter Portfolio Name *"
+              size="small"
+              value={portfolioName}
+              onChange={(e) => {
+                setPortfolioName(e.target.value);
+                if (dialogError) setDialogError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && portfolioName.trim() && !actionLoading) {
+                  handlePortfolioConfirm();
+                }
+              }}
+              sx={{
+                mt: 2,
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "8px",
+                  fontSize: "0.85rem",
+                },
+              }}
+              error={!portfolioName.trim()}
+              helperText={!portfolioName.trim() ? "Required" : ""}
+            />
+          )}
+        </DialogContent>
+        <DialogActions
+          sx={{ p: 2.5, pt: 2, borderTop: `1px solid #f1f5f9`, gap: 1 }}
+        >
+          <Button
+            onClick={() => setPortfolioOpen(false)}
+            disabled={actionLoading}
+            sx={{
+              textTransform: "none",
+              borderRadius: "8px",
+              borderColor: T.border,
+              color: T.text.secondary,
+              fontSize: "0.82rem",
+            }}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handlePortfolioConfirm}
+            disabled={actionLoading || !portfolioName.trim()}
+            startIcon={
+              actionLoading ? (
+                <CircularProgress size={13} color="inherit" />
+              ) : (
+                <AddBusiness sx={{ fontSize: 14 }} />
+              )
+            }
+            sx={primaryBtn}
+          >
+            {actionLoading ? "Saving..." : "Save Portfolio"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Dialog
         open={deleteOpen}
         onClose={() => !actionLoading && setDeleteOpen(false)}

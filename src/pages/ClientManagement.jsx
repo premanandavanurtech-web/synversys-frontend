@@ -269,7 +269,15 @@ const PwRule = ({ ok, label }) => (
 );
 
 // Stat Card Component
-const StatCard = ({ icon: Icon, label, value, color, loading }) => {
+const StatCard = ({
+  icon: Icon,
+  label,
+  value,
+  color,
+  loading,
+  active = false,
+  onClick,
+}) => {
   if (loading)
     return (
       <Card
@@ -277,7 +285,7 @@ const StatCard = ({ icon: Icon, label, value, color, loading }) => {
         sx={{
           borderRadius: 2,
           height: "100%",
-          width: { xs: "100%", md: "275px" },
+          width: "100%",
           border: `1px solid ${C.border}`,
         }}
       >
@@ -290,13 +298,31 @@ const StatCard = ({ icon: Icon, label, value, color, loading }) => {
     );
   return (
     <Card
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (!onClick) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       sx={{
         borderRadius: 2,
         height: "100%",
-        width:{xs:"172px",md:"275px"},
-        border: `1px solid ${C.border}`,
+        width: "100%",
+        cursor: onClick ? "pointer" : "default",
+        border: `1px solid ${active ? color : C.border}`,
+        boxShadow: active ? `0 12px 30px ${color}18` : "none",
         transition: "all 0.2s",
-        "&:hover": { transform: "translateY(-2px)", boxShadow: 2 },
+        "&:hover": onClick
+          ? { transform: "translateY(-2px)", boxShadow: 2 }
+          : undefined,
+        "&:focus-visible": {
+          outline: `2px solid ${color}`,
+          outlineOffset: 2,
+        },
       }}
       elevation={0}
     >
@@ -1460,12 +1486,14 @@ export default function ClientManagement() {
   const [selectedClient, setSelectedClient] = useState(null);
   const [statusAnchor, setStatusAnchor] = useState(null);
   const [planAnchor, setPlanAnchor] = useState(null);
+  const [statFilter, setStatFilter] = useState("all");
   const [toast, setToast] = useState({
     open: false,
     message: "",
     severity: "success",
   });
   const searchTimer = useRef(null);
+  const lastFetchedSearch = useRef(filters.search || "");
   const isInitMount = useRef(true);
 
   const canManageCustomers = useMemo(
@@ -1481,6 +1509,22 @@ export default function ClientManagement() {
     setToast((p) => ({ ...p, open: false }));
   }, []);
 
+  const getStatFilterParams = useCallback(
+    (nextFilter = statFilter) => {
+      if (nextFilter === "active") {
+        return { status: "active", membershipPlan: "all", expiringSoon: false };
+      }
+      if (nextFilter === "enterprise") {
+        return { status: "all", membershipPlan: "enterprise", expiringSoon: false };
+      }
+      if (nextFilter === "expiringSoon") {
+        return { status: "all", membershipPlan: "all", expiringSoon: true };
+      }
+      return { status: "all", membershipPlan: "all", expiringSoon: false };
+    },
+    [statFilter],
+  );
+
   useEffect(() => {
     if (filters.search !== search) setSearch(filters.search);
   }, [filters.search]);
@@ -1492,13 +1536,18 @@ export default function ClientManagement() {
     }
     clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => {
-      if (search !== filters.search) {
-        updateFilters({ search: search.trim() });
-        fetchClients({ search: search.trim(), page: 1 });
+      const nextSearch = search.trim();
+      if (nextSearch !== lastFetchedSearch.current) {
+        lastFetchedSearch.current = nextSearch;
+        fetchClients({
+          search: nextSearch,
+          page: 1,
+          ...getStatFilterParams(),
+        });
       }
     }, 500);
     return () => clearTimeout(searchTimer.current);
-  }, [search, updateFilters, fetchClients, filters.search]);
+  }, [search, fetchClients, filters.search, getStatFilterParams]);
 
   const handleAddClient = async (formData) => {
   try {
@@ -1561,8 +1610,9 @@ export default function ClientManagement() {
 
   const handleFilterChange = useCallback(
     (type, value) => {
+      setStatFilter("all");
       updateFilters({ [type]: value });
-      fetchClients({ [type]: value, page: 1 });
+      fetchClients({ [type]: value, page: 1, expiringSoon: false });
     },
     [updateFilters, fetchClients],
   );
@@ -1570,23 +1620,44 @@ export default function ClientManagement() {
   const handleClearFilters = useCallback(() => {
     resetFilters();
     setSearch("");
-    fetchClients({ search: "", status: "all", membershipPlan: "all", page: 1 });
+    lastFetchedSearch.current = "";
+    setStatFilter("all");
+    fetchClients({
+      search: "",
+      status: "all",
+      membershipPlan: "all",
+      expiringSoon: false,
+      page: 1,
+    });
   }, [resetFilters, fetchClients]);
 
   const handleRefresh = useCallback(() => {
-    fetchClients({ page: pagination.page });
-  }, [fetchClients, pagination.page]);
+    fetchClients({ page: pagination.page, ...getStatFilterParams() });
+  }, [fetchClients, pagination.page, getStatFilterParams]);
 
   const handlePageChange = useCallback(
     (newPage) => {
       changePage(newPage);
-      fetchClients({ page: newPage });
+      fetchClients({ page: newPage, ...getStatFilterParams() });
     },
-    [changePage, fetchClients],
+    [changePage, fetchClients, getStatFilterParams],
+  );
+
+  const handleStatCardClick = useCallback(
+    (nextFilter) => {
+      setStatFilter(nextFilter);
+      const nextSearch = search.trim();
+      lastFetchedSearch.current = nextSearch;
+      fetchClients({ page: 1, search: nextSearch, ...getStatFilterParams(nextFilter) });
+    },
+    [fetchClients, getStatFilterParams, search],
   );
 
   const hasFilters =
-    filters.status !== "all" || filters.membershipPlan !== "all" || search;
+    filters.status !== "all" ||
+    filters.membershipPlan !== "all" ||
+    statFilter !== "all" ||
+    search;
 
   const statCards = useMemo(
     () => [
@@ -1595,24 +1666,28 @@ export default function ClientManagement() {
         label: "Total Customers",
         value: stats?.total || 0,
         color: C.primary,
+        filterKey: "all",
       },
       {
         icon: ActiveIcon,
         label: "Active Customers",
         value: stats?.active || 0,
         color: C.success,
+        filterKey: "active",
       },
       {
         icon: BusinessIcon,
         label: "Enterprise",
         value: stats?.byPlan?.enterprise || 0,
         color: "#7c3aed",
+        filterKey: "enterprise",
       },
       {
         icon: WarningIcon,
         label: "Expiring Soon",
         value: stats?.expiringSoon || 0,
         color: C.warning,
+        filterKey: "expiringSoon",
       },
     ],
     [stats],
@@ -1708,13 +1783,30 @@ export default function ClientManagement() {
         </Alert>
       )}
 
-      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "repeat(2, minmax(0, 1fr))",
+            sm: "repeat(2, minmax(0, 1fr))",
+            md: "repeat(4, minmax(0, 1fr))",
+          },
+          gap: { xs: 1.5, sm: 2 },
+          mb: 3,
+          width: "100%",
+        }}
+      >
         {statCards.map((s, i) => (
-          <Grid key={i} item xs={6} sm={6} md={3}>
-            <StatCard {...s} loading={initialLoading} />
-          </Grid>
+          <Box key={i} sx={{ minWidth: 0 }}>
+            <StatCard
+              {...s}
+              loading={initialLoading}
+              active={statFilter === s.filterKey}
+              onClick={() => handleStatCardClick(s.filterKey)}
+            />
+          </Box>
         ))}
-      </Grid>
+      </Box>
 
       <Paper
         sx={{

@@ -1,5 +1,5 @@
 // src/pages/EditAsset.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -23,7 +23,7 @@ import {
 } from "@mui/material";
 import { styled, keyframes } from "@mui/material/styles";
 import { useParams, useNavigate } from "react-router-dom";
-import { useAsset } from "../context/AssetContext";
+import { api, useAsset } from "../context/AssetContext";
 import { useAssetCategory } from "../context/AssetCategoryContexts";
 import { useTeam } from "../context/TeamContext";
 import { useAuth } from "../context/AuthContexts";
@@ -650,6 +650,8 @@ export default function EditAsset() {
   const [imageError, setImageError] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [portfolioOptions, setPortfolioOptions] = useState([]);
+  const [portfolioEntryMode, setPortfolioEntryMode] = useState("select");
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -717,6 +719,7 @@ export default function EditAsset() {
     assetCategoryId: "",
     currentLocation: "",
     department: "",
+    portfolioName: "",
     // Financial
     purchaseCost: "",
     commissioningDate: "",
@@ -753,6 +756,31 @@ export default function EditAsset() {
     getAllCategories?.({ limit: 100 });
   }, [getAllCategories]);
 
+  useEffect(() => {
+    let active = true;
+
+    api
+      .get("/assets/portfolios")
+      .then((res) => {
+        if (!active) return;
+        const portfolios = Array.isArray(res.data?.portfolios)
+          ? res.data.portfolios
+          : [];
+        setPortfolioOptions(portfolios);
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const portfolioSelectOptions = useMemo(() => {
+    const names = new Set(portfolioOptions);
+    if (form.portfolioName?.trim()) names.add(form.portfolioName.trim());
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [portfolioOptions, form.portfolioName]);
+
   const fetchAsset = async () => {
     setPageLoading(true);
     try {
@@ -760,6 +788,11 @@ export default function EditAsset() {
       if (res && res.success !== false) {
         const a = res.asset || res.data || res;
         const addr = a.customPhysicalAddress || {};
+        const currentPortfolioName =
+          a.portfolioName ||
+          a.metadata?.portfolioName ||
+          a.metadata?.portfolio ||
+          "";
         setForm({
           assetName: a.assetName || "",
           assetId: a.assetId || "",
@@ -772,6 +805,7 @@ export default function EditAsset() {
           assetCategoryId: a.assetCategoryId?._id || a.assetCategoryId || "",
           currentLocation: a.currentLocation || "",
           department: a.department || "",
+          portfolioName: currentPortfolioName,
           purchaseCost: a.purchaseCost || "",
           commissioningDate: toDateInput(a.commissioningDate),
           warrantyExpiryDate: toDateInput(a.warrantyExpiry),
@@ -790,6 +824,7 @@ export default function EditAsset() {
             a.inspectionSystems?.camcInspection?.schedule || "Annual",
           assetImages: a.assetImages || [],
         });
+        setPortfolioEntryMode(currentPortfolioName ? "existing" : "select");
         const primary =
           (a.assetImages || []).find((i) => i.isPrimary) ||
           (a.assetImages || [])[0];
@@ -892,6 +927,7 @@ export default function EditAsset() {
       ["Asset name", form.assetName],
       ["Tag number", form.tagNumber],
       ["Serial number", form.serialNumber],
+      ["Portfolio name", form.portfolioName],
     ];
     for (const [label, value] of validationChecks) {
       const error = getAllowedNameError(label, value);
@@ -917,6 +953,7 @@ export default function EditAsset() {
         assetCategoryId: form.assetCategoryId || undefined,
         currentLocation: form.currentLocation,
         department: form.department,
+        portfolioName: form.portfolioName.trim(),
         assignedUsers: {
           primaryUser: form.primaryUser || null,
           secondaryUser: form.secondaryUser || null,
@@ -946,6 +983,14 @@ export default function EditAsset() {
         },
       };
       await updateAsset(id, payload);
+      if (payload.portfolioName) {
+        setPortfolioOptions((prev) =>
+          Array.from(new Set([...prev, payload.portfolioName])).sort((a, b) =>
+            a.localeCompare(b),
+          ),
+        );
+        setPortfolioEntryMode("existing");
+      }
       showSnackbar("Asset updated successfully!");
       setTimeout(() => navigate(`/admin/assets/view/${id}`), 1200);
     } catch (err) {
@@ -1345,6 +1390,100 @@ export default function EditAsset() {
           </FormCard>
 
           {/* ─ Financial ─ */}
+          <FormCard>
+            <SectionLabel>
+              <AccountTree /> Portfolio Information
+            </SectionLabel>
+            <FieldGrid cols={1}>
+              <Field
+                label="Portfolio Name"
+                icon={<AccountTree sx={{ fontSize: 13 }} />}
+                required
+              >
+                <FormControl fullWidth size="small">
+                  <Select
+                    displayEmpty
+                    value={
+                      portfolioEntryMode === "new"
+                        ? "__new__"
+                        : form.portfolioName || ""
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "__new__") {
+                        setPortfolioEntryMode("new");
+                        setForm((prev) => ({ ...prev, portfolioName: "" }));
+                        return;
+                      }
+                      setPortfolioEntryMode(value ? "existing" : "select");
+                      setForm((prev) => ({ ...prev, portfolioName: value }));
+                    }}
+                    renderValue={(value) => {
+                      if (value === "__new__") return "New portfolio";
+                      if (value) return value;
+                      return (
+                        <span style={{ color: "#9a978d" }}>
+                          Select portfolio...
+                        </span>
+                      );
+                    }}
+                    sx={categorySelectSx}
+                    MenuProps={categoryMenuProps}
+                  >
+                    {portfolioSelectOptions.length > 0 ? (
+                      portfolioSelectOptions.map((name) => (
+                        <MenuItem key={name} value={name}>
+                          {name}
+                        </MenuItem>
+                      ))
+                    ) : (
+                      <MenuItem disabled>
+                        <Typography
+                          sx={{
+                            fontSize: 12,
+                            color: C.muted,
+                            fontStyle: "italic",
+                          }}
+                        >
+                          No portfolios available
+                        </Typography>
+                      </MenuItem>
+                    )}
+                    <Divider sx={{ my: 0.5 }} />
+                    <MenuItem value="__new__">
+                      <Stack direction="row" alignItems="center" spacing={0.75}>
+                        <AddCircleOutline sx={{ fontSize: 16, color: C.teal }} />
+                        <Typography
+                          sx={{
+                            color: C.teal,
+                            fontSize: 13,
+                            fontWeight: 700,
+                          }}
+                        >
+                          Add New Portfolio
+                        </Typography>
+                      </Stack>
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+                {portfolioEntryMode === "new" && (
+                  <Box sx={{ mt: 1.5 }}>
+                    <FieldLabel>
+                      <AccountTree sx={{ fontSize: 13 }} />
+                      Enter Portfolio Name
+                      <FieldRequired>*</FieldRequired>
+                    </FieldLabel>
+                    <StyledInput
+                      value={form.portfolioName}
+                      onChange={set("portfolioName")}
+                      placeholder="Enter portfolio name"
+                    />
+                  </Box>
+                )}
+              </Field>
+            </FieldGrid>
+          </FormCard>
+
           <FormCard>
             <SectionLabel>
               <CurrencyRupeeIcon sx={{ fontSize: 14 }} /> Financial Details
