@@ -221,7 +221,7 @@ const navItemsConfig = {
     {
       id: "clients",
       icon: GroupOutlinedIcon,
-      label: "Customer Management",
+      label: "Admin Management",
       path: "/admin/clients",
       roles: ["admin"],
       order: 20,

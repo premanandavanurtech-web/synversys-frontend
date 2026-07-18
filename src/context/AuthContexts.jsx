@@ -211,10 +211,13 @@ export const AuthProvider = ({ children }) => {
             backendRole: userData.role,
             name: userData.customerName || userData.name || "Admin",
             customerName: userData.customerName,
+            adminId: userData.adminId,
+            accountAdminId: userData.accountAdminId || userData.adminId || userData.id || userData._id,
             membershipPlan: userData.membershipPlan,
             daysRemaining: userData.daysRemaining,
             usagePercentage: userData.usagePercentage,
             licenseLimit: userData.licenseLimit,
+            assetLimit: userData.assetLimit,
             usersUsed: userData.usersUsed,
             phone: userData.phone,
             website: userData.website,
@@ -583,6 +586,16 @@ export const AuthProvider = ({ children }) => {
   const isAdmin = () => user?.role === "admin";
   const isTeam = () => user?.role === "team";
 
+  const updateCurrentUser = useCallback((patch) => {
+    if (!patch || typeof patch !== "object") return;
+    setUser((currentUser) => {
+      if (!currentUser) return currentUser;
+      const nextUser = { ...currentUser, ...patch };
+      localStorage.setItem("user", JSON.stringify(nextUser));
+      return nextUser;
+    });
+  }, []);
+
   const isAuthenticated = useMemo(() => {
     const authStatus = !!user && isValidToken(token);
     return authStatus;
@@ -787,6 +800,7 @@ export const AuthProvider = ({ children }) => {
       delete: del,
       checkBackendStatus,
       refreshToken,
+      updateCurrentUser,
       expireSessionDueToInactivity,
     }),
     [
@@ -805,6 +819,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       checkBackendStatus,
       refreshToken,
+      updateCurrentUser,
       expireSessionDueToInactivity,
     ],
   );

@@ -198,7 +198,7 @@ const AccessDenied = () => {
 };
 
 // Stepper Component
-const Stepper = ({ value, onChange, min = 1, max = 1000, label }) => (
+const Stepper = ({ value, onChange, min = 1, max = 1000, label, disabled = false }) => (
   <Box>
     <Typography sx={{ fontSize: "0.72rem", color: C.text.secondary, mb: 0.75 }}>
       {label}
@@ -213,12 +213,14 @@ const Stepper = ({ value, onChange, min = 1, max = 1000, label }) => (
         px: 1,
         py: 0.5,
         width: "fit-content",
+        bgcolor: disabled ? "#f8fafc" : "transparent",
+        opacity: disabled ? 0.72 : 1,
       }}
     >
       <IconButton
         size="small"
         onClick={() => onChange(Math.max(min, value - 1))}
-        disabled={value <= min}
+        disabled={disabled || value <= min}
         sx={{ width: 24, height: 24 }}
       >
         <Remove sx={{ fontSize: "0.85rem" }} />
@@ -237,7 +239,7 @@ const Stepper = ({ value, onChange, min = 1, max = 1000, label }) => (
       <IconButton
         size="small"
         onClick={() => onChange(Math.min(max, value + 1))}
-        disabled={value >= max}
+        disabled={disabled || value >= max}
         sx={{ width: 24, height: 24 }}
       >
         <Add sx={{ fontSize: "0.85rem" }} />
@@ -747,11 +749,13 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
 };
 
 // Client Modal Component
-const ClientModal = ({ open, client, onClose, onSave, loading }) => {
+const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) => {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isEdit = !!client;
+  const isAdminActor = currentUser?.role === "admin";
+  const showPlanLimits = true;
 
   const [tab, setTab] = useState(0);
   const [form, setForm] = useState({});
@@ -780,6 +784,13 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
       setErrors({});
       draftReadyRef.current = false;
       const draft = !client ? loadFormDraft(draftKey) : null;
+      const inheritedPlanLimits = isAdminActor
+        ? {
+            membershipPlan: currentUser?.membershipPlan || "standard",
+            licenseLimit: Math.max(0, Number(currentUser?.licenseLimit ?? 10) - 1),
+            assetLimit: Math.max(0, Number(currentUser?.assetLimit ?? 100)),
+          }
+        : {};
       const openingForm = client
         ? {
             customerName: client.customerName || "",
@@ -792,7 +803,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
             duration: 30,
             notes: client.notes || "",
           }
-        : draft?.form || blank;
+        : { ...(draft?.form || blank), ...inheritedPlanLimits };
       hadDraftOnOpenRef.current = Boolean(!client && draft?.form);
       openedFormRef.current = openingForm;
       setForm(
@@ -806,7 +817,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
         draftReadyRef.current = true;
       }
     }
-  }, [client, open]);
+  }, [client, currentUser, isAdminActor, open]);
 
   useEffect(() => {
     if (!open || isEdit || !draftReadyRef.current) return;
@@ -879,9 +890,9 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
     setConfirmCloseOpen(true);
   };
 
-  const TABS = isEdit
+  const TABS = showPlanLimits
     ? ["Account info", "Plan & limits"]
-    : ["Account info", "Plan & limits"];
+    : ["Account info"];
 
   const tabHasError = (i) => {
     if (i === 0)
@@ -893,6 +904,10 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
       );
     return false;
   };
+  const limitUnavailable =
+    !isEdit &&
+    isAdminActor &&
+    ((Number(form.licenseLimit) || 0) < 1 || (Number(form.assetLimit) || 0) < 1);
 
   const inputSx = (hasError = false) => ({
     "& .MuiOutlinedInput-root": {
@@ -1025,10 +1040,12 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
             <Chip
               key={p}
               label={p.charAt(0).toUpperCase() + p.slice(1)}
-              onClick={() => setForm((f) => ({ ...f, membershipPlan: p }))}
+              onClick={() => {
+                if (!isAdminActor) setForm((f) => ({ ...f, membershipPlan: p }));
+              }}
               size="small"
               sx={{
-                cursor: "pointer",
+                cursor: isAdminActor ? "not-allowed" : "pointer",
                 fontWeight: form.membershipPlan === p ? 700 : 400,
                 fontSize: "0.75rem",
                 py: 0.5,
@@ -1053,6 +1070,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
             onChange={(v) => setForm((f) => ({ ...f, licenseLimit: v }))}
             min={1}
             max={1000}
+            disabled={isAdminActor}
           />
         </Grid>
         <Grid item xs={12} sm={4}>
@@ -1062,6 +1080,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
             onChange={(v) => setForm((f) => ({ ...f, assetLimit: v }))}
             min={1}
             max={10000}
+            disabled={isAdminActor}
           />
         </Grid>
         {!isEdit && (
@@ -1223,7 +1242,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
         }}
       >
         {tab === 0 && TabAccountInfo}
-        {tab === 1 && TabPlanLimits}
+        {showPlanLimits && tab === 1 && TabPlanLimits}
       </DialogContent>
 
       <DialogActions
@@ -1262,7 +1281,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading }) => {
             onClick={handleSubmit}
             variant="contained"
             size="small"
-            disabled={loading}
+            disabled={loading || limitUnavailable}
             startIcon={
               loading ? null : isEdit ? (
                 <SaveIcon sx={{ fontSize: "0.9rem" }} />
@@ -1458,7 +1477,7 @@ export default function ClientManagement() {
   const theme = useTheme();
   const nav = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, updateCurrentUser } = useAuth();
 
   const {
     clients,
@@ -1551,17 +1570,31 @@ export default function ClientManagement() {
 
   const handleAddClient = async (formData) => {
   try {
-    await addClient({
+    const planLimitData = user?.role === "admin"
+      ? {}
+      : {
+          membershipPlan: formData.membershipPlan,
+          licenseLimit: parseInt(formData.licenseLimit),
+          assetLimit: parseInt(formData.assetLimit),
+        };
+    const response = await addClient({
       customerName: formData.customerName,
       email: formData.email,
       phone: formData.phone,
       website: formData.website,
-      membershipPlan: formData.membershipPlan,
-      licenseLimit: parseInt(formData.licenseLimit),
-      assetLimit: parseInt(formData.assetLimit),
+      ...planLimitData,
       duration: parseInt(formData.duration),
       notes: formData.notes,
     });
+    const creator = response?.data?.creator || response?.creator;
+    if (user?.role === "admin" && creator) {
+      updateCurrentUser({
+        licenseLimit: creator.licenseLimit,
+        assetLimit: creator.assetLimit,
+        usersUsed: creator.usersUsed,
+        usagePercentage: creator.usagePercentage,
+      });
+    }
     showToast("Customer created. Set Password email sent.", "success");
     setModalOpen(false);
     fetchClients({ page: 1 });
@@ -1574,11 +1607,16 @@ export default function ClientManagement() {
 
   const handleEditClient = async (formData) => {
   try {
+    const planLimitData = user?.role === "admin"
+      ? {}
+      : {
+          membershipPlan: formData.membershipPlan,
+          licenseLimit: parseInt(formData.licenseLimit),
+          assetLimit: parseInt(formData.assetLimit),
+        };
     await editClient(editingClient._id, {
       customerName: formData.customerName,
-      membershipPlan: formData.membershipPlan,
-      licenseLimit: parseInt(formData.licenseLimit),
-      assetLimit: parseInt(formData.assetLimit),
+      ...planLimitData,
       phone: formData.phone,
       website: formData.website,
       notes: formData.notes,
@@ -2094,6 +2132,7 @@ export default function ClientManagement() {
         }}
         onSave={editingClient ? handleEditClient : handleAddClient}
         loading={actionLoading}
+        currentUser={user}
       />
       <StatusDialog
         open={deleteOpen}

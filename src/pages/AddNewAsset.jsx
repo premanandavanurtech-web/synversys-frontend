@@ -588,7 +588,7 @@ export default function AddNewAsset({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
 
-  const { user } = useAuth() || {};
+  const { user, updateCurrentUser } = useAuth() || {};
   const { createAsset, loading, assets = [] } = useAsset() || {};
   const {
     categories,
@@ -1110,6 +1110,15 @@ export default function AddNewAsset({
 
       const res = await createAsset(payload);
       if (res?.success) {
+        const creator = res?.data?.data?.creator || res?.data?.creator || res?.creator;
+        if (user?.role === "admin" && creator && updateCurrentUser) {
+          updateCurrentUser({
+            assetLimit: creator.assetLimit,
+            licenseLimit: creator.licenseLimit,
+            usersUsed: creator.usersUsed,
+            usagePercentage: creator.usagePercentage,
+          });
+        }
         clearFormDraft(draftKey);
         toast(res?.data?.message || "Asset created successfully!");
         if (embeddedMode && onEmbeddedSuccess) {

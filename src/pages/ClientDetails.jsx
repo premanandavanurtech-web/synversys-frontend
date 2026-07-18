@@ -243,7 +243,15 @@ const StatTile = ({
 };
 
 // Edit Modal
-const EditModal = ({ open, client, onClose, onSave, loading }) => {
+const EditModal = ({
+  open,
+  client,
+  onClose,
+  onSave,
+  loading,
+  canEditPlanLimits = true,
+  showPlanLimits = true,
+}) => {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
 
@@ -255,6 +263,7 @@ const EditModal = ({ open, client, onClose, onSave, loading }) => {
         website: client.website || "",
         membershipPlan: client.membershipPlan || "standard",
         licenseLimit: client.licenseLimit || 10,
+        assetLimit: client.assetLimit || 100,
         notes: client.notes || "",
       });
       setErrors({});
@@ -278,8 +287,12 @@ const EditModal = ({ open, client, onClose, onSave, loading }) => {
       )
     )
       e.website = "Invalid URL";
-    if (form.licenseLimit < 1) e.licenseLimit = "Min 1";
-    if (form.licenseLimit > 10000) e.licenseLimit = "Max 10000";
+    if (canEditPlanLimits) {
+      if (form.licenseLimit < 1) e.licenseLimit = "Min 1";
+      if (form.licenseLimit > 10000) e.licenseLimit = "Max 10000";
+      if (form.assetLimit < 1) e.assetLimit = "Min 1";
+      if (form.assetLimit > 10000) e.assetLimit = "Max 10000";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -356,6 +369,7 @@ const EditModal = ({ open, client, onClose, onSave, loading }) => {
             placeholder="https://example.com"
             InputLabelProps={{ shrink: true }}
           />
+          {showPlanLimits && (
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth size="small">
@@ -365,6 +379,7 @@ const EditModal = ({ open, client, onClose, onSave, loading }) => {
                   value={form.membershipPlan || "standard"}
                   onChange={handleChange}
                   label="Membership Plan"
+                  disabled={!canEditPlanLimits}
                 >
                   {Object.entries(PLANS).map(([k, v]) => (
                     <MenuItem key={k} value={k}>
@@ -383,13 +398,31 @@ const EditModal = ({ open, client, onClose, onSave, loading }) => {
                 onChange={handleChange}
                 fullWidth
                 size="small"
+                disabled={!canEditPlanLimits}
                 error={!!errors.licenseLimit}
                 helperText={errors.licenseLimit}
                 InputLabelProps={{ shrink: true }}
                 InputProps={{ inputProps: { min: 1, max: 10000 } }}
               />
             </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                name="assetLimit"
+                label="Asset Limit"
+                type="number"
+                value={form.assetLimit || 100}
+                onChange={handleChange}
+                fullWidth
+                size="small"
+                disabled={!canEditPlanLimits}
+                error={!!errors.assetLimit}
+                helperText={errors.assetLimit}
+                InputLabelProps={{ shrink: true }}
+                InputProps={{ inputProps: { min: 1, max: 10000 } }}
+              />
+            </Grid>
           </Grid>
+          )}
           <TextField
             name="notes"
             label="Notes"
@@ -768,6 +801,8 @@ export default function ClientDetails() {
   const clientId = id || location.state?.clientId;
   const canManageCustomers =
     user?.role === "super_admin" || user?.role === "admin";
+  const canEditPlanLimits = user?.role === "super_admin";
+  const showPlanLimits = true;
 
   const [tab, setTab] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
@@ -850,10 +885,16 @@ export default function ClientDetails() {
 
   const handleEdit = async (formData) => {
     try {
+      const planLimitData = user?.role === "admin"
+        ? {}
+        : {
+            membershipPlan: formData.membershipPlan,
+            licenseLimit: parseInt(formData.licenseLimit),
+            assetLimit: parseInt(formData.assetLimit),
+          };
       await editClient(clientId, {
         customerName: formData.customerName,
-        membershipPlan: formData.membershipPlan,
-        licenseLimit: parseInt(formData.licenseLimit),
+        ...planLimitData,
         phone: formData.phone,
         website: formData.website,
         notes: formData.notes,
@@ -867,6 +908,7 @@ export default function ClientDetails() {
   };
 
   const handleUpgrade = async (newPlan, extendDays) => {
+    if (!canEditPlanLimits) return;
     try {
       await editClient(clientId, {
         membershipPlan: newPlan,
@@ -972,9 +1014,10 @@ export default function ClientDetails() {
 
   const TABS = [
     { icon: DashboardIcon, label: "Overview" },
-    { icon: SubscriptionIcon, label: "Subscription" },
+    ...(showPlanLimits ? [{ icon: SubscriptionIcon, label: "Subscription" }] : []),
     { icon: SettingsIcon, label: "Settings" },
   ];
+  const settingsTabIndex = showPlanLimits ? 2 : 1;
 
   return (
     <Box sx={{ bgcolor: C.surface, minHeight: "100vh" }}>
@@ -1404,7 +1447,7 @@ export default function ClientDetails() {
         )}
 
         {/* Subscription Tab */}
-        {tab === 1 && (
+        {showPlanLimits && tab === 1 && (
           <Box
             sx={{
               display: "grid",
@@ -1510,24 +1553,26 @@ export default function ClientDetails() {
                     flexDirection: { xs: "column", sm: "row" },
                   }}
                 >
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    startIcon={
-                      <TrendingUpIcon sx={{ fontSize: "0.85rem" }} />
-                    }
-                    onClick={() => setUpgradeOpen(true)}
-                    disabled={actionLoading}
-                    sx={{
-                      bgcolor: C.warning,
-                      textTransform: "none",
-                      borderRadius: "8px",
-                      fontSize: "0.8rem",
-                      "&:hover": { bgcolor: "#ea580c" },
-                    }}
-                  >
-                    Upgrade Plan
-                  </Button>
+                  {canEditPlanLimits && (
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      startIcon={
+                        <TrendingUpIcon sx={{ fontSize: "0.85rem" }} />
+                      }
+                      onClick={() => setUpgradeOpen(true)}
+                      disabled={actionLoading}
+                      sx={{
+                        bgcolor: C.warning,
+                        textTransform: "none",
+                        borderRadius: "8px",
+                        fontSize: "0.8rem",
+                        "&:hover": { bgcolor: "#ea580c" },
+                      }}
+                    >
+                      Upgrade Plan
+                    </Button>
+                  )}
                   <Button
                     fullWidth
                     variant="outlined"
@@ -1613,7 +1658,7 @@ export default function ClientDetails() {
         )}
 
         {/* Settings Tab */}
-        {tab === 2 && (
+        {tab === settingsTabIndex && (
           <Card
             sx={{ borderRadius: 2, border: `1px solid ${C.border}` }}
             elevation={0}
@@ -1735,6 +1780,8 @@ export default function ClientDetails() {
         onClose={() => setEditOpen(false)}
         onSave={handleEdit}
         loading={actionLoading}
+        canEditPlanLimits={canEditPlanLimits}
+        showPlanLimits={showPlanLimits}
       />
       <RenewModal
         open={renewOpen}

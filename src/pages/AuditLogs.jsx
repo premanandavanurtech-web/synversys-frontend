@@ -120,6 +120,14 @@ const EMPTY_AUDIT_FILTERS = {
 const hasActiveAuditFilters = (filters = {}) =>
   Object.entries(EMPTY_AUDIT_FILTERS).some(([key]) => Boolean(filters[key]));
 
+const humanize = (value = "") =>
+  String(value || "")
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
 /* ─── Action config ─── */
 const ACTION_CONFIG = {
   CREATE: {
@@ -439,7 +447,7 @@ function ResourceChip({ resource }) {
         textTransform: "capitalize",
       }}
     >
-      {resource}
+      {humanize(resource)}
     </Box>
   );
 }
@@ -876,6 +884,9 @@ function FilterBar({
 function DetailDialog({ open, onClose, log, onExportSingle }) {
   if (!log) return null;
 
+  const beforeChanges = log.oldData || log.changes?.old;
+  const afterChanges = log.newData || log.changes?.new;
+
   const Field = ({ label, children }) => (
     <Box>
       <Typography
@@ -1000,7 +1011,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
                 color={T.textPrimary}
                 textTransform="capitalize"
               >
-                {log.resource}
+                {humanize(log.resource)}
               </Typography>
               {log.resourceId && (
                 <Typography
@@ -1066,7 +1077,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
           )}
 
           {/* Before / After diffs */}
-          {log.oldData && (
+          {beforeChanges && (
             <Field label="Before changes">
               <Box
                 sx={{
@@ -1088,12 +1099,12 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
                     lineHeight: 1.6,
                   }}
                 >
-                  {JSON.stringify(log.oldData, null, 2)}
+                  {JSON.stringify(beforeChanges, null, 2)}
                 </pre>
               </Box>
             </Field>
           )}
-          {log.newData && (
+          {afterChanges && (
             <Field label="After changes">
               <Box
                 sx={{
@@ -1115,7 +1126,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
                     lineHeight: 1.6,
                   }}
                 >
-                  {JSON.stringify(log.newData, null, 2)}
+                  {JSON.stringify(afterChanges, null, 2)}
                 </pre>
               </Box>
             </Field>
@@ -1344,8 +1355,8 @@ const AuditLogs = () => {
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
-  const [orderBy, setOrderBy] = useState("createdAt");
-  const [order, setOrder] = useState("desc");
+  const [orderBy, setOrderBy] = useState("action");
+  const [order, setOrder] = useState("asc");
   const [selectedLog, setSelectedLog] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -1415,9 +1426,10 @@ const AuditLogs = () => {
         let av = a[orderBy],
           bv = b[orderBy];
         if (orderBy === "createdAt") {
-          av = new Date(av);
-          bv = new Date(bv);
+          av = av ? new Date(av).getTime() : 0;
+          bv = bv ? new Date(bv).getTime() : 0;
         }
+        if (av === bv) return 0;
         return order === "asc" ? (av > bv ? 1 : -1) : av < bv ? 1 : -1;
       }),
     [auditLogs, orderBy, order],
@@ -1500,28 +1512,35 @@ const AuditLogs = () => {
     () => [
       { id: "createdAt", label: "Timestamp", sortable: true, width: "15%" },
       {
+        id: "action",
+        label: "Action",
+        sortable: true,
+        width: "12%",
+        hideOnMobile: true,
+      },
+      {
         id: "actor",
         label: "User",
         sortable: false,
-        width: "24%",
+        width: "22%",
         hideOnMobile: true,
       },
       {
         id: "resource",
         label: "Resource",
         sortable: true,
-        width: "12%",
+        width: "13%",
         hideOnMobile: true,
       },
       {
         id: "description",
         label: "Description",
         sortable: false,
-        width: "31%",
+        width: "22%",
         hideOnMobile: true,
       },
       { id: "status", label: "Status", sortable: false, width: "10%" },
-      { id: "_view", label: "Action", sortable: false, width: "8%" },
+      { id: "_view", label: "View", sortable: false, width: "6%" },
     ],
     [],
   );
@@ -1812,6 +1831,12 @@ const AuditLogs = () => {
                       </Typography>
                     </TableCell>
 
+                    {!isMobile && (
+                      <TableCell sx={cellSx}>
+                        <ActionChip action={log.action} />
+                      </TableCell>
+                    )}
+
                     {/* User — shown for every role, hidden only on mobile */}
                     {!isMobile && (
                       <TableCell sx={cellSx}>
@@ -1845,7 +1870,10 @@ const AuditLogs = () => {
                               fontSize={11.5}
                               fontWeight={500}
                               color={T.textPrimary}
-                              noWrap
+                              sx={{
+                                overflowWrap: "anywhere",
+                                lineHeight: 1.35,
+                              }}
                             >
                               {log.actor?.email || "Unknown"}
                             </Typography>
@@ -1868,8 +1896,15 @@ const AuditLogs = () => {
                         <Typography
                           fontSize={11.5}
                           color={T.textSecondary}
-                          noWrap
                           title={log.description}
+                          sx={{
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                            lineHeight: 1.45,
+                            overflowWrap: "anywhere",
+                          }}
                         >
                           {log.description || "—"}
                         </Typography>
