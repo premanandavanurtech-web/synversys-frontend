@@ -287,14 +287,20 @@ const StatCard = ({
         sx={{
           borderRadius: 2,
           height: "100%",
+          minHeight: { xs: 132, sm: 146 },
           width: "100%",
           border: `1px solid ${C.border}`,
         }}
       >
         <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-          <Skeleton variant="circular" width={36} height={36} sx={{ mb: 1 }} />
-          <Skeleton variant="text" width="60%" height={14} />
-          <Skeleton variant="text" width="40%" height={28} />
+          <Skeleton
+            variant="rounded"
+            width={40}
+            height={40}
+            sx={{ borderRadius: "10px", mb: 1.5 }}
+          />
+          <Skeleton variant="text" width={130} height={18} />
+          <Skeleton variant="text" width={44} height={38} />
         </CardContent>
       </Card>
     );
@@ -383,7 +389,7 @@ const ClientCardSkeleton = () => (
     sx={{
       borderRadius: 2,
       width: "100%",
-      minHeight: 176,
+      minHeight: 238,
       border: `1px solid ${C.border}`,
     }}
   >
@@ -441,13 +447,25 @@ const ClientManagementSkeleton = () => (
       <Skeleton variant="rounded" width={170} height={46} sx={{ borderRadius: "10px" }} />
     </Box>
 
-    <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "repeat(2, minmax(0, 1fr))",
+          sm: "repeat(2, minmax(0, 1fr))",
+          md: "repeat(4, minmax(0, 1fr))",
+        },
+        gap: { xs: 1.5, sm: 2 },
+        mb: 3,
+        width: "100%",
+      }}
+    >
       {[1, 2, 3, 4].map((i) => (
-        <Grid key={i} item xs={6} sm={6} md={3}>
+        <Box key={i} sx={{ minWidth: 0 }}>
           <StatCard loading />
-        </Grid>
+        </Box>
       ))}
-    </Grid>
+    </Box>
 
     <Paper
       elevation={0}
@@ -472,13 +490,24 @@ const ClientManagementSkeleton = () => (
 
     <Skeleton variant="text" width={170} height={18} sx={{ mb: 2 }} />
 
-    <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "1fr",
+          sm: "repeat(2, minmax(0, 1fr))",
+          lg: "repeat(3, minmax(0, 1fr))",
+          xl: "repeat(4, minmax(0, 1fr))",
+        },
+        gap: { xs: 1.5, sm: 2 },
+      }}
+    >
       {[1, 2, 3, 4, 5, 6].map((i) => (
-        <Grid key={i} item xs={12} sm={6} lg={4} xl={3}>
+        <Box key={i} sx={{ minWidth: 0 }}>
           <ClientCardSkeleton />
-        </Grid>
+        </Box>
       ))}
-    </Grid>
+    </Box>
   </Box>
 );
 
