@@ -117,6 +117,20 @@ const EMPTY_AUDIT_FILTERS = {
   search: "",
 };
 
+const getTodayAuditFilters = () => {
+  const startDate = new Date();
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date();
+  endDate.setHours(23, 59, 59, 999);
+
+  return {
+    ...EMPTY_AUDIT_FILTERS,
+    startDate,
+    endDate,
+  };
+};
+
 const hasActiveAuditFilters = (filters = {}) =>
   Object.entries(EMPTY_AUDIT_FILTERS).some(([key]) => Boolean(filters[key]));
 
@@ -313,7 +327,16 @@ const fmtFull = (d) =>
   d ? format(new Date(d), "MMM dd, yyyy · HH:mm:ss") : "—";
 
 /* ─── StatCard ─── */
-function StatCard({ label, value, icon, color, loading, subtitle }) {
+function StatCard({
+  label,
+  value,
+  icon,
+  color,
+  loading,
+  subtitle,
+  active,
+  onClick,
+}) {
   if (loading)
     return (
       <Skeleton
@@ -327,15 +350,35 @@ function StatCard({ label, value, icon, color, loading, subtitle }) {
       sx={{
         bgcolor: T.cardBg,
         border: T.border,
-        borderColor: T.borderColor,
         borderRadius: T.radius,
         p: "14px 16px",
         display: "flex",
         alignItems: "center",
         gap: 1.5,
-        transition: "box-shadow 0.15s",
-        "&:hover": { boxShadow: "0 2px 12px rgba(0,0,0,0.07)" },
+        cursor: onClick ? "pointer" : "default",
+        outline: "none",
+        transition: "box-shadow 0.15s, border-color 0.15s",
+        boxShadow: active ? `0 0 0 2px ${alpha(color, 0.18)}` : "none",
+        borderColor: active ? alpha(color, 0.38) : T.borderColor,
+        "&:hover": {
+          boxShadow: onClick
+            ? `0 2px 12px ${alpha(color, 0.16)}`
+            : "0 2px 12px rgba(0,0,0,0.07)",
+        },
+        "&:focus-visible": {
+          boxShadow: `0 0 0 3px ${alpha(color, 0.22)}`,
+        },
       }}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (!onClick) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
     >
       <Box
         sx={{
@@ -1048,7 +1091,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
           </Field>
 
           {/* IP / UA */}
-          {(log.ipAddress || log.userAgent) && (
+          {/* {(log.ipAddress || log.userAgent) && (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
               {log.ipAddress && (
                 <Field label="IP Address">
@@ -1074,7 +1117,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
                 </Field>
               )}
             </Box>
-          )}
+          )} */}
 
           {/* Before / After diffs */}
           {beforeChanges && (
@@ -1133,7 +1176,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
           )}
 
           {/* Metadata */}
-          {log.metadata && Object.keys(log.metadata).length > 0 && (
+          {/* {log.metadata && Object.keys(log.metadata).length > 0 && (
             <Field label="Metadata">
               <Box
                 sx={{
@@ -1159,7 +1202,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
                 </pre>
               </Box>
             </Field>
-          )}
+          )} */}
         </Stack>
       </DialogContent>
 
@@ -1363,6 +1406,7 @@ const AuditLogs = () => {
   const [datePickerKey, setDatePickerKey] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState(filters);
+  const [activeStatFilter, setActiveStatFilter] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -1372,12 +1416,17 @@ const AuditLogs = () => {
   const showSnackbar = (message, severity = "success") =>
     setSnackbar({ open: true, message, severity });
 
+  const effectiveFilters = useMemo(
+    () => (activeStatFilter === "today" ? getTodayAuditFilters() : filters),
+    [activeStatFilter, filters],
+  );
+
   /* ── Fetch on mount / page / filter change ── */
   useEffect(() => {
     fetchAuditLogs(page + 1, rowsPerPage);
-    if (isSuperAdmin) fetchAuditStats();
+    fetchAuditStats(effectiveFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, rowsPerPage, filters]);
+  }, [page, rowsPerPage, effectiveFilters]);
 
   useEffect(() => {
     setDraftFilters(filters);
@@ -1385,31 +1434,36 @@ const AuditLogs = () => {
 
   /* ── Derived stats for non-super-admin (computed from loaded page) ── */
   const derivedStats = useMemo(() => {
-    if (isSuperAdmin) return null;
     const today = format(new Date(), "yyyy-MM-dd");
     const todayCount = (auditLogs || []).filter(
       (l) =>
         l.createdAt && format(new Date(l.createdAt), "yyyy-MM-dd") === today,
     ).length;
-    const unique = new Set((auditLogs || []).map((l) => l.actor?.email)).size;
+    const unique = new Set(
+      (auditLogs || []).map((l) => l.actor?.email).filter(Boolean),
+    ).size;
     const types = new Set((auditLogs || []).map((l) => l.action)).size;
+    const total = pagination?.total ?? auditLogs?.length ?? 0;
     return {
-      total: pagination?.total || auditLogs?.length || 0,
-      today: todayCount,
+      total,
+      today: activeStatFilter === "today" ? total : todayCount,
       unique,
       types,
     };
-  }, [isSuperAdmin, auditLogs, pagination]);
+  }, [activeStatFilter, auditLogs, pagination]);
 
   /* ── Stats display values ── */
   // Super admin: real API stats shape → { total, byAction, byResource, today }
   // Others: derived from current page data
-  const displayStats = isSuperAdmin
+  const statsMatchCurrentResult =
+    stats && Number(stats.total ?? 0) === Number(pagination?.total ?? 0);
+
+  const displayStats = statsMatchCurrentResult
     ? {
         total: stats?.total,
         today: stats?.today,
         // API has no uniqueActors — use resource count as a proxy
-        unique: stats?.byResource?.reduce((s, r) => s + r.count, 0),
+        unique: stats?.uniqueActors ?? derivedStats.unique,
         types: stats?.byAction?.length,
       }
     : derivedStats;
@@ -1441,24 +1495,42 @@ const AuditLogs = () => {
   };
 
   const handleApplyFilters = () => {
+    setActiveStatFilter(null);
     updateFilters(draftFilters);
     setPage(0);
     fetchAuditLogs(1, rowsPerPage, draftFilters);
-    if (isSuperAdmin) fetchAuditStats();
+    fetchAuditStats(draftFilters);
   };
 
   const handleReset = () => {
+    setActiveStatFilter(null);
     setDraftFilters(EMPTY_AUDIT_FILTERS);
     resetFilters();
     setPage(0);
     setDatePickerKey((p) => p + 1);
     fetchAuditLogs(1, rowsPerPage, EMPTY_AUDIT_FILTERS);
-    if (isSuperAdmin) fetchAuditStats();
+    fetchAuditStats(EMPTY_AUDIT_FILTERS);
   };
 
   const handleRefresh = () => {
-    fetchAuditLogs(page + 1, rowsPerPage);
-    if (isSuperAdmin) fetchAuditStats();
+    fetchAuditLogs(page + 1, rowsPerPage, effectiveFilters);
+    fetchAuditStats(effectiveFilters);
+  };
+
+  const handleTodayStatClick = () => {
+    setActiveStatFilter("today");
+    setPage(0);
+    const todayFilters = getTodayAuditFilters();
+    fetchAuditLogs(1, rowsPerPage, todayFilters);
+    fetchAuditStats(todayFilters);
+  };
+
+  const handleTotalStatClick = () => {
+    if (!activeStatFilter) return;
+    setActiveStatFilter(null);
+    setPage(0);
+    fetchAuditLogs(1, rowsPerPage, filters);
+    fetchAuditStats(filters);
   };
 
   /* ── Export (client-side, current page data) ── */
@@ -1657,29 +1729,32 @@ const AuditLogs = () => {
           value={displayStats?.total}
           icon={<TrendingUpIcon sx={{ fontSize: 16 }} />}
           color="#4f46e5"
-          loading={isSuperAdmin ? statsLoading : loading}
-          subtitle={!isSuperAdmin ? "in current view" : undefined}
+          loading={statsLoading && !stats}
+          subtitle={activeStatFilter === "today" ? "clear today view" : !isSuperAdmin ? "in current view" : undefined}
+          onClick={handleTotalStatClick}
         />
         <StatCard
           label="Today"
           value={displayStats?.today}
           icon={<TodayIcon sx={{ fontSize: 16 }} />}
           color="#16a34a"
-          loading={isSuperAdmin ? statsLoading : loading}
+          loading={statsLoading && !stats}
+          active={activeStatFilter === "today"}
+          onClick={handleTodayStatClick}
         />
         <StatCard
           label={isSuperAdmin ? "Total Events" : "Unique Users"}
           value={displayStats?.unique}
           icon={<PeopleIcon sx={{ fontSize: 16 }} />}
           color="#ea580c"
-          loading={isSuperAdmin ? statsLoading : loading}
+          loading={statsLoading && !stats}
         />
         <StatCard
           label="Action Types"
           value={displayStats?.types}
           icon={<CategoryIcon sx={{ fontSize: 16 }} />}
           color="#d97706"
-          loading={isSuperAdmin ? statsLoading : loading}
+          loading={statsLoading && !stats}
         />
       </Box>
 

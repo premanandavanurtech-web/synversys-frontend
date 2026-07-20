@@ -1519,7 +1519,7 @@ export default function MyTask() {
   // NEW: client-side pagination for the card grid — shows a fixed number of
   // cards per "page" regardless of how many tasks the backend returned in
   // this batch, with simple Previous/Next controls.
-  const CARDS_PER_PAGE = 9;
+  const CARDS_PER_PAGE = 6;
   const [clientPage, setClientPage] = useState(1);
   const [poaTask, setPoaTask] = useState(null);
   const [poaFeedback, setPoaFeedback] = useState("");
@@ -1828,7 +1828,7 @@ export default function MyTask() {
                 Your assigned inspection tasks
               </Typography>
             </Box>
-
+ 
             {/* View Toggle — pill style matching Figma */}
             <Box
               sx={{

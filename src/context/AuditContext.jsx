@@ -27,6 +27,18 @@ export const useAudit = () => {
 
 const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
 
+const appendAuditFilters = (params, appliedFilters = {}) => {
+  if (appliedFilters.action) params.append("action", appliedFilters.action);
+  if (appliedFilters.resource) params.append("resource", appliedFilters.resource);
+  if (appliedFilters.actorRole) params.append("actorRole", appliedFilters.actorRole);
+  if (appliedFilters.status) params.append("status", appliedFilters.status);
+  if (appliedFilters.startDate)
+    params.append("startDate", appliedFilters.startDate.toISOString());
+  if (appliedFilters.endDate)
+    params.append("endDate", appliedFilters.endDate.toISOString());
+  if (appliedFilters.search) params.append("search", appliedFilters.search);
+};
+
 export const AuditProvider = ({ children }) => {
   const { token, user } = useAuth();
 
@@ -86,20 +98,7 @@ export const AuditProvider = ({ children }) => {
           page: page.toString(),
           limit: limit.toString(),
         });
-        if (appliedFilters.action)
-          params.append("action", appliedFilters.action);
-        if (appliedFilters.resource)
-          params.append("resource", appliedFilters.resource);
-        if (appliedFilters.actorRole)
-          params.append("actorRole", appliedFilters.actorRole);
-        if (appliedFilters.status)
-          params.append("status", appliedFilters.status);
-        if (appliedFilters.startDate)
-          params.append("startDate", appliedFilters.startDate.toISOString());
-        if (appliedFilters.endDate)
-          params.append("endDate", appliedFilters.endDate.toISOString());
-        if (appliedFilters.search)
-          params.append("search", appliedFilters.search);
+        appendAuditFilters(params, appliedFilters);
 
         const response = await axios.get(
           `${API_BASE_URL}/audit-logs?${params.toString()}`,
@@ -133,13 +132,14 @@ export const AuditProvider = ({ children }) => {
      fetchAuditStats — super admin only.
      stats shape: { total, byAction:[{_id,count}], byResource:[{_id,count}], today }
   ══════════════════════════════════════════ */
-  const fetchAuditStats = useCallback(async () => {
-    if (!isSuperAdmin) return null;
+  const fetchAuditStats = useCallback(async (appliedFilters = filters) => {
     setStatsLoading(true);
     setError(null);
     try {
+      const params = new URLSearchParams();
+      appendAuditFilters(params, appliedFilters);
       const response = await axios.get(
-        `${API_BASE_URL}/audit-logs/statistics`,
+        `${API_BASE_URL}/audit-logs/statistics?${params.toString()}`,
         getAuthHeaders(),
       );
       if (response.data.success) {
@@ -158,7 +158,7 @@ export const AuditProvider = ({ children }) => {
     } finally {
       setStatsLoading(false);
     }
-  }, [isSuperAdmin, getAuthHeaders]);
+  }, [getAuthHeaders, filters]);
 
   /* ══════════════ FILTERS ══════════════ */
 

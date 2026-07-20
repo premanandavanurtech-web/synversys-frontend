@@ -281,6 +281,7 @@ const StatCard = ({
   loading,
   trend,
   trendUp,
+  active,
   onClick,
 }) => {
   return (
@@ -299,7 +300,9 @@ const StatCard = ({
           minWidth: 0,
           background: `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryLight} 100%)`,
           cursor: onClick ? "pointer" : "default",
-          transition: "transform 0.3s ease, box-shadow 0.3s ease",
+          border: active ? `2px solid ${alpha("#ffffff", 0.9)}` : "2px solid transparent",
+          boxShadow: active ? `0 0 0 3px ${alpha(C.accentLight, 0.35)}` : "none",
+          transition: "transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease",
           "&:hover": {
             transform: "translateY(-4px)",
             boxShadow: `0 10px 28px ${alpha(C.primary, 0.35)}`,
@@ -1408,6 +1411,7 @@ const SuperAdminDashboard = ({ data, loading }) => {
 // ─── ADMIN VIEW ────────────────────────────────────────────────────────────────
 const AdminDashboard = ({ data, loading }) => {
   const chartH = useChartHeight(240, 190);
+  const [expiryTypeFilter, setExpiryTypeFilter] = useState("");
 
   const payload = data?.data || data || {};
   const summary = payload.summary || {};
@@ -1431,6 +1435,9 @@ const AdminDashboard = ({ data, loading }) => {
   const attentionExpiryItems = expiryItems.filter((item) =>
     ["Expired", "Due Soon"].includes(item.status),
   );
+  const filteredExpiryItems = expiryTypeFilter
+    ? attentionExpiryItems.filter((item) => item.systemType === expiryTypeFilter)
+    : attentionExpiryItems;
 
   const assetByCategory = useMemo(
     () =>
@@ -1439,6 +1446,10 @@ const AdminDashboard = ({ data, loading }) => {
         value: a.value,
       })),
     [distribution],
+  );
+  const assetStatusTotal = useMemo(
+    () => assetByCategory.reduce((sum, item) => sum + num(item.value), 0),
+    [assetByCategory],
   );
   const teamByStatus = useMemo(
     () =>
@@ -1509,12 +1520,18 @@ const AdminDashboard = ({ data, loading }) => {
       title: "AMC Expiry",
       value: fmt(amcSummary.attentionCount),
       sub: `${fmt(amcSummary.expired)} expired - ${fmt(amcSummary.dueSoon)} due soon`,
+      active: expiryTypeFilter === "AMC",
+      onClick: () =>
+        setExpiryTypeFilter((current) => (current === "AMC" ? "" : "AMC")),
     },
     {
       icon: CalendarIcon,
       title: "CAMC Expiry",
       value: fmt(camcSummary.attentionCount),
       sub: `${fmt(camcSummary.expired)} expired - ${fmt(camcSummary.dueSoon)} due soon`,
+      active: expiryTypeFilter === "CAMC",
+      onClick: () =>
+        setExpiryTypeFilter((current) => (current === "CAMC" ? "" : "CAMC")),
     },
   ];
 
@@ -1563,10 +1580,25 @@ const AdminDashboard = ({ data, loading }) => {
           <SectionTitle
             icon={CalendarIcon}
             title="AMC / CAMC Expiry Details"
-            chip={`${fmt(attentionExpiryItems.length)} due`}
+            chip={`${fmt(filteredExpiryItems.length)} due`}
           />
+          {expiryTypeFilter && (
+            <Box display="flex" alignItems="center" gap={1} mt={-1} mb={2}>
+              <Chip
+                label={`${expiryTypeFilter} filter`}
+                size="small"
+                onDelete={() => setExpiryTypeFilter("")}
+                sx={{
+                  bgcolor: alpha(C.primaryLight, 0.08),
+                  color: C.primaryLight,
+                  fontWeight: 700,
+                  fontSize: "0.68rem",
+                }}
+              />
+            </Box>
+          )}
         </Box>
-        {attentionExpiryItems.length > 0 ? (
+        {filteredExpiryItems.length > 0 ? (
           <TableContainer sx={{ overflowX: "auto" }}>
             <Table size="small" sx={{ minWidth: 720 }}>
               <TableHead>
@@ -1588,7 +1620,7 @@ const AdminDashboard = ({ data, loading }) => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {attentionExpiryItems.map((item) => (
+                {filteredExpiryItems.map((item) => (
                   <TableRow key={`${item.assetId}-${item.systemType}`} hover>
                     <TableCell>
                       <Chip
@@ -1654,7 +1686,9 @@ const AdminDashboard = ({ data, loading }) => {
         ) : (
           <Box sx={{ px: { xs: 2, sm: 2.5 }, py: 3 }}>
             <Typography sx={{ color: C.outline, fontSize: "0.8rem" }}>
-              No AMC or CAMC assets are expired or due in the next 30 days.
+              {expiryTypeFilter
+                ? `No ${expiryTypeFilter} assets are expired or due in the next 30 days.`
+                : "No AMC or CAMC assets are expired or due in the next 30 days."}
             </Typography>
           </Box>
         )}
@@ -1740,28 +1774,77 @@ const AdminDashboard = ({ data, loading }) => {
         <Box sx={{ minWidth: 0 }}>
           <ChartCard title="Assets by status">
             {assetByCategory.length > 0 ? (
-              <ResponsiveContainer width="100%" height={chartH}>
-                <PieChart>
-                  <Pie
-                    data={assetByCategory}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="50%"
-                    outerRadius="72%"
-                    dataKey="value"
-                    paddingAngle={3}
-                    label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
-                    }
-                    labelLine={false}
-                  >
-                    {assetByCategory.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RTooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              <Box>
+                <Box sx={{ height: Math.max(chartH - 70, 150), minWidth: 0 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+                      <Pie
+                        data={assetByCategory}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius="52%"
+                        outerRadius="78%"
+                        dataKey="value"
+                        paddingAngle={3}
+                        labelLine={false}
+                      >
+                        {assetByCategory.map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RTooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Box>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                    gap: 0.75,
+                    mt: 1,
+                  }}
+                >
+                  {assetByCategory.map((item, i) => {
+                    const percent = assetStatusTotal
+                      ? Math.round((num(item.value) / assetStatusTotal) * 100)
+                      : 0;
+                    return (
+                      <Box
+                        key={item.name || i}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.75,
+                          minWidth: 0,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 9,
+                            height: 9,
+                            borderRadius: "50%",
+                            bgcolor: PIE_COLORS[i % PIE_COLORS.length],
+                            flexShrink: 0,
+                          }}
+                        />
+                        <Typography
+                          title={`${item.name}: ${percent}%`}
+                          sx={{
+                            fontSize: "0.68rem",
+                            color: C.secondary,
+                            minWidth: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {item.name} {percent}%
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </Box>
             ) : (
               <EmptyChart />
             )}
