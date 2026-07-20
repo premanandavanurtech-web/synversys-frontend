@@ -1628,7 +1628,7 @@ const AdminPoaDialog = ({
         Submit proof of action for this completed inspection.
       </Typography>
     </DialogTitle>
-    <DialogContent sx={{ pt: 1 }}>
+    <DialogContent sx={{ pt: "12px !important" }}>
       <Stack spacing={2}>
         <TextField
           label="POA Feedback"
@@ -1640,6 +1640,13 @@ const AdminPoaDialog = ({
           error={!!error}
           helperText={error || " "}
           fullWidth
+          sx={{
+            mt: 0.5,
+            "& .MuiInputLabel-root": {
+              bgcolor: "background.paper",
+              px: 0.5,
+            },
+          }}
         />
         <Box>
           <Button
@@ -1911,7 +1918,7 @@ const AssignmentDetailPage = () => {
     (assignment.totalSubmissions > 0 || completedMem > 0) &&
     ["pending_approval", "submitted"].includes((assignment.status || "").toLowerCase());
   const canApproveAssignment =
-    ["pending_approval", "submitted"].includes((assignment.status || "").toLowerCase()) &&
+    (assignment.status || "").toLowerCase() === "pending_approval" &&
     poaSubmissions.length > 0;
 
   const tabs = [
