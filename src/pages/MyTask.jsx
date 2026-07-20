@@ -211,10 +211,20 @@ const getTaskCreatedAt = (task) =>
   task?.createdOn ||
   null;
 
+const toDateInputValue = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
 const getTodayInputValue = () => {
   const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  return toDateInputValue(today);
 };
+
+const isSameCalendarDate = (a, b) =>
+  a &&
+  b &&
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate();
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 const StatCard = ({ title, value, active = false, onClick, sx }) => (
@@ -900,23 +910,14 @@ const MiniMonthCalendar = ({
     tasks.filter((t) => {
       if (!t.dueDate) return false;
       const dd = new Date(t.dueDate);
-      return (
-        dd.getFullYear() === date.getFullYear() &&
-        dd.getMonth() === date.getMonth() &&
-        dd.getDate() === date.getDate()
-      );
+      return isSameCalendarDate(dd, date);
     });
 
   const isToday = (date) =>
-    today.getFullYear() === date.getFullYear() &&
-    today.getMonth() === date.getMonth() &&
-    today.getDate() === date.getDate();
+    isSameCalendarDate(today, date);
 
   const isSelected = (date) =>
-    selectedDay &&
-    selectedDay.getFullYear() === date.getFullYear() &&
-    selectedDay.getMonth() === date.getMonth() &&
-    selectedDay.getDate() === date.getDate();
+    isSameCalendarDate(selectedDay, date);
 
   return (
     <Box>
@@ -975,13 +976,18 @@ const MiniMonthCalendar = ({
           const hasPendingApproval = dayTasks.some((task) =>
             ["pending_approval", "pending_review"].includes(getTaskStatus(task)),
           );
+          const hasSubmitted = dayTasks.some((task) =>
+            ["submitted", "completed", "approved"].includes(getTaskStatus(task)),
+          );
           const todayCell = isToday(cellDate);
           const selectedCell = isSelected(cellDate);
           const isMuted = cell.offset !== 0;
           const markerBg = hasTasks
             ? hasPendingApproval
-              ? "#fef3c7"
-              : "#ef4444"
+              ? "#f59e0b"
+              : hasSubmitted
+                ? "#10b981"
+                : "#ef4444"
             : todayCell
               ? "#dbeafe"
               : selectedCell
@@ -989,8 +995,10 @@ const MiniMonthCalendar = ({
                 : "transparent";
           const markerColor = hasTasks
             ? hasPendingApproval
-              ? "#b45309"
-              : "#fff"
+              ? "#fff"
+              : hasSubmitted
+                ? "#fff"
+                : "#fff"
             : selectedCell
               ? "#fff"
               : isMuted
@@ -1011,6 +1019,7 @@ const MiniMonthCalendar = ({
                 sx={{
                   width: 24,
                   height: 24,
+                  boxSizing: "border-box",
                   borderRadius: "50%",
                   display: "flex",
                   alignItems: "center",
@@ -1018,7 +1027,11 @@ const MiniMonthCalendar = ({
                   cursor: "pointer",
                   bgcolor: markerBg,
                   color: markerColor,
-                  border: todayCell && !hasTasks ? "1px solid #bfdbfe" : "none",
+                  border: selectedCell
+                    ? "2px solid #0d3d52"
+                    : todayCell && !hasTasks
+                      ? "1px solid #bfdbfe"
+                      : "none",
                   fontWeight: todayCell || hasTasks || selectedCell ? 800 : 500,
                   fontSize: "0.68rem",
                   transition: "background 0.12s",
@@ -1037,10 +1050,10 @@ const MiniMonthCalendar = ({
   );
 };
 
-const CalendarSidebar = ({ tasks }) => {
+const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
   const today = new Date();
   const [offset, setOffset] = useState(0);
-  const [selectedDay, setSelectedDay] = useState(null);
+  const selectedDay = selectedDate;
 
   const baseIndex = today.getFullYear() * 12 + today.getMonth() + offset;
   const monthsToShow = [-1, 0, 1].map((delta) => {
@@ -1054,17 +1067,16 @@ const CalendarSidebar = ({ tasks }) => {
     return tasks.filter((t) => {
       if (!t.dueDate) return false;
       const d = new Date(t.dueDate);
-      return (
-        d.getFullYear() === date.getFullYear() &&
-        d.getMonth() === date.getMonth() &&
-        d.getDate() === date.getDate()
-      );
+      return isSameCalendarDate(d, date);
     });
   };
 
   const prev = () => setOffset((o) => o - 1);
   const next = () => setOffset((o) => o + 1);
   const selectedTasks = selectedDay ? getTasksForDate(selectedDay) : [];
+  const handleSelectDay = (date) => {
+    onSelectDate?.(date);
+  };
 
   return (
     <Paper
@@ -1119,7 +1131,7 @@ const CalendarSidebar = ({ tasks }) => {
           tasks={tasks}
           today={today}
           selectedDay={selectedDay}
-          onSelectDay={setSelectedDay}
+          onSelectDay={handleSelectDay}
           onPrev={prev}
           onNext={next}
         />
@@ -1129,7 +1141,7 @@ const CalendarSidebar = ({ tasks }) => {
           tasks={tasks}
           today={today}
           selectedDay={selectedDay}
-          onSelectDay={setSelectedDay}
+          onSelectDay={handleSelectDay}
           onPrev={prev}
           onNext={next}
         />
@@ -1139,7 +1151,7 @@ const CalendarSidebar = ({ tasks }) => {
           tasks={tasks}
           today={today}
           selectedDay={selectedDay}
-          onSelectDay={setSelectedDay}
+          onSelectDay={handleSelectDay}
           onPrev={prev}
           onNext={next}
         />
@@ -1179,7 +1191,7 @@ const CalendarSidebar = ({ tasks }) => {
                   {selectedTasks.length !== 1 ? "s" : ""}
                 </Typography>
               </Box>
-              <IconButton size="small" onClick={() => setSelectedDay(null)}>
+              <IconButton size="small" onClick={() => onSelectDate?.(null)}>
                 <CloseIcon sx={{ fontSize: 14 }} />
               </IconButton>
             </Box>
@@ -1203,10 +1215,24 @@ const CalendarSidebar = ({ tasks }) => {
                   return (
                     <Box
                       key={t._id}
+                      role={onView ? "button" : undefined}
+                      tabIndex={onView ? 0 : undefined}
+                      onClick={() => t._id && onView?.(t._id)}
+                      onKeyDown={(event) => {
+                        if (!onView) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          t._id && onView(t._id);
+                        }
+                      }}
                       sx={{
                         borderRadius: 2,
                         border: `1px solid ${pCfg.border}`,
                         p: 1.5,
+                        cursor: onView ? "pointer" : "default",
+                        "&:hover": onView
+                          ? { bgcolor: "#f8fafc", borderColor: pCfg.color }
+                          : undefined,
                       }}
                     >
                       <Typography
@@ -1233,6 +1259,12 @@ const CalendarSidebar = ({ tasks }) => {
           <Box sx={{ width: 9, height: 9, borderRadius: "50%", bgcolor: "#f59e0b" }} />
           <Typography sx={{ fontSize: "0.72rem", color: "#475569", fontWeight: 600 }}>
             Pending Approval
+          </Typography>
+        </Stack>
+        <Stack direction="row" spacing={0.8} alignItems="center">
+          <Box sx={{ width: 9, height: 9, borderRadius: "50%", bgcolor: "#10b981" }} />
+          <Typography sx={{ fontSize: "0.72rem", color: "#475569", fontWeight: 600 }}>
+            Submitted
           </Typography>
         </Stack>
       </Box>
@@ -1290,9 +1322,7 @@ const CalendarView = ({ tasks, onView }) => {
   }
 
   const sameDay = (a, b) =>
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
+    isSameCalendarDate(a, b);
 
   const getTasksForDate = (date) =>
     tasks.filter((task) => {
@@ -1517,6 +1547,7 @@ export default function MyTask() {
     limit: 20,
   });
   const [statFilter, setStatFilter] = useState("");
+  const [calendarDateFilter, setCalendarDateFilter] = useState(null);
   const [snack, setSnack] = useState({
     open: false,
     msg: "",
@@ -1602,9 +1633,16 @@ export default function MyTask() {
 
   const displayedTasks = useMemo(() => {
     const query = filters.search.trim().toLowerCase();
-    if (!query) return sortedTasks;
-
     return sortedTasks.filter((task) => {
+      if (calendarDateFilter) {
+        if (!task.dueDate) return false;
+        if (!isSameCalendarDate(new Date(task.dueDate), calendarDateFilter)) {
+          return false;
+        }
+      }
+
+      if (!query) return true;
+
       const assetName =
         task.assets?.[0]?.assetName || task.assetIds?.[0]?.assetName || "";
       const checklistName =
@@ -1626,7 +1664,7 @@ export default function MyTask() {
 
       return searchableText.includes(query);
     });
-  }, [filters.search, sortedTasks]);
+  }, [calendarDateFilter, filters.search, sortedTasks]);
 
   // NEW: reset back to page 1 whenever the underlying task list changes
   // shape (new filters, new search term, a new batch loaded from the API).
@@ -1637,6 +1675,7 @@ export default function MyTask() {
     filters.priority,
     filters.date,
     filters.search,
+    calendarDateFilter,
     statFilter,
     tasks,
   ]);
@@ -1665,14 +1704,21 @@ export default function MyTask() {
     if (key === "status" || key === "date") {
       setStatFilter("");
     }
+    setCalendarDateFilter(null);
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
   };
   const handleStatFilter = (type) => {
     setStatFilter(type === "total" ? "" : type);
+    setCalendarDateFilter(null);
     setFilters((prev) => ({ ...prev, page: 1 }));
+  };
+  const handleCalendarDateSelect = (date) => {
+    setCalendarDateFilter(date);
+    setClientPage(1);
   };
   const clearFilters = () => {
     setStatFilter("");
+    setCalendarDateFilter(null);
     setFilters({
       status: "",
       priority: "",
@@ -1688,7 +1734,7 @@ export default function MyTask() {
     filters.date ||
     filters.search
   );
-  const hasFilters = !!(hasFormFilters || statFilter);
+  const hasFilters = !!(hasFormFilters || statFilter || calendarDateFilter);
   const handleViewTask = (id) => navigate(`/team/task/${id}`);
   const handlePoaTask = (task) => {
     setPoaTask(task);
@@ -2026,7 +2072,7 @@ export default function MyTask() {
                 }}
               />
 
-              {hasFormFilters && (
+              {hasFilters && (
                 <Button
                   size="small"
                   onClick={clearFilters}
@@ -2068,7 +2114,7 @@ export default function MyTask() {
                 value={card.value}
                 active={
                   card.type === "total"
-                    ? !statFilter && !filters.status && !filters.date
+                    ? !statFilter && !filters.status && !filters.date && !calendarDateFilter
                     : statFilter === card.type
                 }
                 onClick={() => handleStatFilter(card.type)}
@@ -2255,7 +2301,12 @@ export default function MyTask() {
                 </Box>
               )}
               </Box>
-              <CalendarSidebar tasks={displayedTasks} />
+              <CalendarSidebar
+                tasks={tasks}
+                selectedDate={calendarDateFilter}
+                onSelectDate={handleCalendarDateSelect}
+                onView={handleViewTask}
+              />
             </Box>
           )}
         </Container>
