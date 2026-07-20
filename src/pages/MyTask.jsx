@@ -769,7 +769,7 @@ const PoaDialog = ({
           {assetName}
         </Typography>
       </DialogTitle>
-      <DialogContent sx={{ pt: 1 }}>
+      <DialogContent sx={{ pt: "12px !important" }}>
         <Stack spacing={2}>
           <TextField
             label="Feedback"
@@ -781,6 +781,13 @@ const PoaDialog = ({
             error={!!error}
             helperText={error || " "}
             fullWidth
+            sx={{
+              mt: 0.5,
+              "& .MuiInputLabel-root": {
+                bgcolor: "background.paper",
+                px: 0.5,
+              },
+            }}
           />
           <Box>
             <Button

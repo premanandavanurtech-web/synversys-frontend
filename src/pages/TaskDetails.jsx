@@ -1217,7 +1217,7 @@ export default function TaskDetails() {
                 {assetName}
               </Typography>
             </DialogTitle>
-            <DialogContent sx={{ pt: 1 }}>
+            <DialogContent sx={{ pt: "12px !important" }}>
               <Stack spacing={2}>
                 <TextField
                   label="Feedback"
@@ -1232,6 +1232,13 @@ export default function TaskDetails() {
                   error={!!poaError}
                   helperText={poaError || " "}
                   fullWidth
+                  sx={{
+                    mt: 0.5,
+                    "& .MuiInputLabel-root": {
+                      bgcolor: "background.paper",
+                      px: 0.5,
+                    },
+                  }}
                 />
                 <Box>
                   <Button
