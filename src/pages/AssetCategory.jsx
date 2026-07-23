@@ -171,6 +171,7 @@ const StatCard = ({
   isMobile,
   active = false,
   onClick,
+  sx,
 }) => (
   <Box
     role={onClick ? "button" : undefined}
@@ -204,6 +205,7 @@ const StatCard = ({
         boxShadow: `0 0 0 3px ${alpha(T.brand, 0.18)}, ${T.sh.md}`,
         borderColor: T.brand,
       },
+      ...sx,
     }}
   >
     <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -1628,10 +1630,15 @@ export default function AssetCategoryPage() {
       {/* Main Content */}
       <Box sx={{ px: isMobile ? 1.5 : 3, py: isMobile ? 2 : 3 }}>
         {/* Stats Row */}
-        <Stack
-          direction="row"
-          spacing={isMobile ? 1 : 1.5}
-          sx={{ mb: isMobile ? 2 : 3, flexWrap: "wrap" }}
+        <Box
+          sx={{
+            mb: isMobile ? 2 : 3,
+            display: "grid",
+            gridTemplateColumns: isMobile
+              ? "repeat(2, minmax(0, 1fr))"
+              : "repeat(3, minmax(0, 1fr))",
+            gap: isMobile ? 1 : 1.5,
+          }}
         >
           <StatCard
             label="Total"
@@ -1669,8 +1676,9 @@ export default function AssetCategoryPage() {
             isMobile={isMobile}
             active={statFilter === "inactive"}
             onClick={() => handleStatFilter("inactive")}
+            sx={{ gridColumn: isMobile ? "1 / -1" : "auto" }}
           />
-        </Stack>
+        </Box>
 
         {/* Error Banners */}
         {fetchError && (
