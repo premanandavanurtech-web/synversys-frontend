@@ -1270,13 +1270,13 @@ const FloatingAddButton = ({ onClick }) => (
       onClick={onClick}
       sx={{
         position: "fixed",
-        bottom: 16,
+        bottom: "calc(72px + env(safe-area-inset-bottom))",
         right: 16,
         bgcolor: T.brand,
         color: "#fff",
         "&:hover": { bgcolor: T.brandMid },
         boxShadow: T.sh.lg,
-        zIndex: 1000,
+        zIndex: 1200,
       }}
     >
       <Add />
@@ -1580,6 +1580,23 @@ export default function AssetCategoryPage() {
             >
               Add Category
             </Button>
+          )}
+
+          {isMobile && (
+            <Tooltip title="Add Category">
+              <IconButton
+                onClick={openNew}
+                sx={{
+                  bgcolor: T.brand,
+                  borderRadius: T.r.sm,
+                  color: "#fff",
+                  flexShrink: 0,
+                  "&:hover": { bgcolor: T.brandMid },
+                }}
+              >
+                <Add sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
           )}
 
           {/* Refresh Button */}
