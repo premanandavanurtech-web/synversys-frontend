@@ -34,6 +34,8 @@ import {
   TableSortLabel,
   Tabs,
   Tab,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -46,6 +48,7 @@ import {
   Refresh as RefreshIcon,
   Visibility as ViewIcon,
   ArrowBack as ArrowBackIcon, // Added back icon
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom"; // Added for navigation
 import { useRoles } from "../context/RoleContext";
@@ -53,6 +56,8 @@ import { useAuth } from "../context/AuthContexts";
 
 const RolesManagement = () => {
   const navigate = useNavigate(); // Added for navigation
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user } = useAuth();
   const {
     roles,
@@ -288,6 +293,11 @@ const RolesManagement = () => {
     setOrderBy(property);
   };
 
+  const handleStatCardClick = (tabIndex) => {
+    setActiveTab(tabIndex);
+    setSelectedRoles([]);
+  };
+
   const sortedRoles = [...roles].sort((a, b) => {
     if (order === "asc") {
       return a[orderBy]?.toString().localeCompare(b[orderBy]?.toString());
@@ -322,16 +332,16 @@ const RolesManagement = () => {
   }
 
   return (
-    <Box sx={{ p: 3, minHeight: "100vh" }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, minHeight: "100vh", maxWidth: "100%", overflowX: "hidden" }}>
       {/* Header with Back Button */}
-      <Box sx={{ mb: 4, display: "flex", alignItems: "center", gap: 2 }}>
+      <Box sx={{ mb: { xs: 3, sm: 4 }, display: "flex", alignItems: "center", gap: { xs: 1.25, sm: 2 } }}>
         {/* Back Button */}
         <Tooltip title="Go Back" arrow>
           <IconButton
             onClick={handleGoBack}
             sx={{
-              width: 40,
-              height: 40,
+              width: { xs: 34, sm: 40 },
+              height: { xs: 34, sm: 40 },
               borderRadius: "10px",
               bgcolor: "#f5f5f5",
               color: primaryColor,
@@ -353,25 +363,48 @@ const RolesManagement = () => {
               display: "flex",
               alignItems: "center",
               gap: 1,
+              fontSize: { xs: "1.35rem", sm: "1.5rem" },
             }}
           >
-            <SecurityIcon sx={{ fontSize: 28 }} />
+            <SecurityIcon sx={{ fontSize: { xs: 24, sm: 28 } }} />
             Roles Management
           </Typography>
-          <Typography variant="body2" sx={{ color: "#666" }}>
+          <Typography variant="body2" sx={{ color: "#666", fontSize: { xs: "0.8rem", sm: "0.875rem" } }}>
             Manage user roles and permissions for your organization
           </Typography>
         </Box>
       </Box>
 
       {/* Stats Cards */}
-      <Box sx={{ display: "flex", gap: 3, mb: 3, flexWrap: "wrap" }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(3, minmax(0, 1fr))" },
+          gap: { xs: 1.5, sm: 3 },
+          mb: 3,
+        }}
+      >
         <Paper
+          role="button"
+          tabIndex={0}
+          onClick={() => handleStatCardClick(0)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleStatCardClick(0);
+            }
+          }}
           sx={{
             p: 2,
-            flex: 1,
-            minWidth: 150,
+            minWidth: 0,
+            width: "100%",
             borderLeft: `4px solid ${primaryColor}`,
+            cursor: "pointer",
+            boxShadow: activeTab === 0 ? "0 8px 20px rgba(13,79,99,0.16)" : undefined,
+            outline: activeTab === 0 ? `2px solid rgba(13,79,99,0.18)` : "none",
+            transition: "all 0.2s ease",
+            "&:hover": { transform: "translateY(-2px)", boxShadow: "0 8px 20px rgba(13,79,99,0.16)" },
+            "&:focus-visible": { outline: `2px solid ${primaryColor}` },
           }}
         >
           <Typography
@@ -393,7 +426,27 @@ const RolesManagement = () => {
           </Typography>
         </Paper>
         <Paper
-          sx={{ p: 2, flex: 1, minWidth: 150, borderLeft: "4px solid #4caf50" }}
+          role="button"
+          tabIndex={0}
+          onClick={() => handleStatCardClick(1)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleStatCardClick(1);
+            }
+          }}
+          sx={{
+            p: 2,
+            minWidth: 0,
+            width: "100%",
+            borderLeft: "4px solid #4caf50",
+            cursor: "pointer",
+            boxShadow: activeTab === 1 ? "0 8px 20px rgba(76,175,80,0.16)" : undefined,
+            outline: activeTab === 1 ? "2px solid rgba(76,175,80,0.18)" : "none",
+            transition: "all 0.2s ease",
+            "&:hover": { transform: "translateY(-2px)", boxShadow: "0 8px 20px rgba(76,175,80,0.16)" },
+            "&:focus-visible": { outline: "2px solid #4caf50" },
+          }}
         >
           <Typography
             variant="caption"
@@ -411,7 +464,28 @@ const RolesManagement = () => {
           </Typography>
         </Paper>
         <Paper
-          sx={{ p: 2, flex: 1, minWidth: 150, borderLeft: "4px solid #f44336" }}
+          role="button"
+          tabIndex={0}
+          onClick={() => handleStatCardClick(2)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleStatCardClick(2);
+            }
+          }}
+          sx={{
+            p: 2,
+            minWidth: 0,
+            width: "100%",
+            gridColumn: { xs: "1 / -1", sm: "auto" },
+            borderLeft: "4px solid #f44336",
+            cursor: "pointer",
+            boxShadow: activeTab === 2 ? "0 8px 20px rgba(244,67,54,0.16)" : undefined,
+            outline: activeTab === 2 ? "2px solid rgba(244,67,54,0.18)" : "none",
+            transition: "all 0.2s ease",
+            "&:hover": { transform: "translateY(-2px)", boxShadow: "0 8px 20px rgba(244,67,54,0.16)" },
+            "&:focus-visible": { outline: "2px solid #f44336" },
+          }}
         >
           <Typography
             variant="caption"
@@ -431,11 +505,11 @@ const RolesManagement = () => {
       </Box>
 
       {/* Main Card */}
-      <Paper sx={{ borderRadius: 2, overflow: "hidden" }}>
+      <Paper sx={{ borderRadius: 2, overflow: "hidden", maxWidth: "100%" }}>
         {/* Toolbar */}
         <Box
           sx={{
-            p: 2,
+            p: { xs: 1.25, sm: 2 },
             borderBottom: 1,
             borderColor: "#e0e0e0",
             display: "flex",
@@ -448,7 +522,8 @@ const RolesManagement = () => {
           <Tabs
             value={activeTab}
             onChange={(e, v) => setActiveTab(v)}
-            sx={{ minHeight: 36 }}
+            variant={isMobile ? "fullWidth" : "standard"}
+            sx={{ minHeight: 36, width: { xs: "100%", sm: "auto" } }}
           >
             <Tab label="All" sx={{ textTransform: "none", minHeight: 36 }} />
             <Tab label="Active" sx={{ textTransform: "none", minHeight: 36 }} />
@@ -458,13 +533,13 @@ const RolesManagement = () => {
             />
           </Tabs>
 
-          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center", width: { xs: "100%", sm: "auto" }, flexWrap: "wrap" }}>
             <SearchField
               placeholder="Search roles..."
               size="small"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              sx={{ width: 250 }}
+              sx={{ width: { xs: "100%", sm: 250 }, flex: { xs: "1 1 100%", sm: "0 0 auto" } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -530,9 +605,101 @@ const RolesManagement = () => {
           </Box>
         )}
 
+        {/* Mobile Cards */}
+        {isMobile && (
+          <Box sx={{ p: 1.25, display: "grid", gap: 1.25 }}>
+            {filteredRoles.map((role) => (
+              <Paper
+                key={role._id}
+                elevation={0}
+                sx={{
+                  p: 1.5,
+                  border: "1px solid #e0e0e0",
+                  borderRadius: "12px",
+                  bgcolor: "#fff",
+                }}
+              >
+                <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1}>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
+                      <Checkbox
+                        checked={selectedRoles.includes(role._id)}
+                        onChange={() => handleSelectRole(role._id)}
+                        size="small"
+                        sx={{ p: 0.25 }}
+                      />
+                      <Typography
+                        fontWeight={700}
+                        sx={{ color: primaryColor, fontSize: "0.9rem", wordBreak: "break-word" }}
+                      >
+                        {role.displayName || role.name}
+                      </Typography>
+                    </Stack>
+                    <Stack spacing={0.8}>
+                      <Box>
+                        <Typography sx={{ color: "#999", fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" }}>
+                          Description
+                        </Typography>
+                        <Typography
+                          sx={{
+                            color: "#666",
+                            fontSize: "0.78rem",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {role.description || "No description"}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography sx={{ color: "#999", fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", mb: 0.5 }}>
+                          Status
+                        </Typography>
+                        <Chip
+                          label={role.isActive ? "Active" : "Inactive"}
+                          size="small"
+                          sx={{
+                            bgcolor: role.isActive ? "#e8f5e9" : "#eeeeee",
+                            color: role.isActive ? "#2e7d32" : "#757575",
+                            fontSize: "11px",
+                            height: 24,
+                            borderRadius: "999px",
+                          }}
+                        />
+                      </Box>
+                    </Stack>
+                  </Box>
+                  <Stack direction="row" spacing={0.25}>
+                    <IconButton size="small" onClick={() => handleViewRole(role)}>
+                      <ViewIcon fontSize="small" sx={{ color: "#666" }} />
+                    </IconButton>
+                    {isEditable && (
+                      <>
+                        <IconButton size="small" onClick={() => handleOpenDialog(role)}>
+                          <EditIcon fontSize="small" sx={{ color: "#666" }} />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => handleDelete(role._id)}>
+                          <DeleteIcon fontSize="small" sx={{ color: "#f44336" }} />
+                        </IconButton>
+                      </>
+                    )}
+                  </Stack>
+                </Stack>
+              </Paper>
+            ))}
+            {filteredRoles.length === 0 && (
+              <Box sx={{ py: 5, textAlign: "center" }}>
+                <Typography variant="body2" sx={{ color: "#999" }}>
+                  No roles found
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        )}
+
         {/* Table */}
-        <TableContainer>
-          <Table size="small">
+        {!isMobile && (
+        <TableContainer sx={{ overflowX: "auto" }}>
+          <Table size="small" sx={{ minWidth: { xs: 560, sm: 720 } }}>
             <TableHead>
               <TableRow sx={{ bgcolor: "#fafafa" }}>
                 <TableCell padding="checkbox" sx={{ width: 40 }}>
@@ -673,6 +840,7 @@ const RolesManagement = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        )}
 
         {/* Pagination */}
         {pagination.pages > 1 && (
@@ -714,11 +882,32 @@ const RolesManagement = () => {
         onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
+        sx={{
+          "& .MuiDialog-container": {
+            alignItems: { xs: "flex-end", sm: "center" },
+          },
+        }}
+        PaperProps={{
+          sx: {
+            m: { xs: 0, sm: 2 },
+            width: { xs: "100%", sm: "calc(100% - 64px)" },
+            height: { xs: "100dvh", sm: "auto" },
+            maxHeight: { xs: "100dvh", sm: "90vh" },
+            borderRadius: { xs: 0, sm: 2 },
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
       >
-        <DialogTitle sx={{ color: primaryColor, fontWeight: 600, pb: 1 }}>
-          {editingRole ? "Edit Role" : "New Role"}
+        <DialogTitle sx={{ color: primaryColor, fontWeight: 600, pb: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span>{editingRole ? "Edit Role" : "New Role"}</span>
+          {isMobile && (
+            <IconButton size="small" onClick={handleCloseDialog}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          )}
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ flex: 1, overflowY: "auto" }}>
           <TextField
             fullWidth
             label="Role Name"
@@ -766,7 +955,7 @@ const RolesManagement = () => {
             sx={{ mt: 1 }}
           />
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
+        <DialogActions sx={{ px: 3, pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2 }, gap: 1 }}>
           <Button
             onClick={handleCloseDialog}
             sx={{ textTransform: "none", color: "#666" }}

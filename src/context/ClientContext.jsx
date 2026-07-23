@@ -509,12 +509,12 @@ export const ClientProvider = ({ children }) => {
       } catch (error) {
         let errorMessage = getApiErrorMessage(error, "Failed to create client");
         
-        if (error.response?.status === 401) {
-          errorMessage = "Session expired. Please login again.";
-          handleUnauthorized();
-        } else if (error.response?.status === 403) {
-          errorMessage = "Access denied. You don't have permission to create clients.";
-        }
+      if (error.response?.status === 401) {
+        errorMessage = "Session expired. Please login again.";
+        handleUnauthorized();
+      } else if (error.response?.status === 403) {
+        errorMessage = getApiErrorMessage(error, "You don't have permission to create");
+      }
         
         throw new Error(errorMessage);
       } finally {
@@ -556,12 +556,12 @@ export const ClientProvider = ({ children }) => {
       } catch (error) {
         let errorMessage = "Failed to update client";
         
-        if (error.response?.status === 401) {
-          errorMessage = "Session expired. Please login again.";
-          handleUnauthorized();
-        } else if (error.response?.status === 403) {
-          errorMessage = "Access denied. You don't have permission to update clients.";
-        } else if (error.response?.data?.message) {
+      if (error.response?.status === 401) {
+        errorMessage = "Session expired. Please login again.";
+        handleUnauthorized();
+      } else if (error.response?.status === 403) {
+        errorMessage = getApiErrorMessage(error, "You don't have permission to edit");
+      } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         }
         
@@ -599,12 +599,12 @@ export const ClientProvider = ({ children }) => {
       } catch (error) {
         let errorMessage = "Failed to update status";
         
-        if (error.response?.status === 401) {
-          errorMessage = "Session expired. Please login again.";
-          handleUnauthorized();
-        } else if (error.response?.status === 403) {
-          errorMessage = "Access denied. You don't have permission to update client status.";
-        } else if (error.response?.data?.message) {
+      if (error.response?.status === 401) {
+        errorMessage = "Session expired. Please login again.";
+        handleUnauthorized();
+      } else if (error.response?.status === 403) {
+        errorMessage = getApiErrorMessage(error, "You don't have permission to edit");
+      } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         }
         
@@ -641,12 +641,12 @@ export const ClientProvider = ({ children }) => {
       } catch (error) {
         let errorMessage = "Failed to delete client";
         
-        if (error.response?.status === 401) {
-          errorMessage = "Session expired. Please login again.";
-          handleUnauthorized();
-        } else if (error.response?.status === 403) {
-          errorMessage = "Access denied. You don't have permission to delete clients.";
-        } else if (error.response?.data?.message) {
+      if (error.response?.status === 401) {
+        errorMessage = "Session expired. Please login again.";
+        handleUnauthorized();
+      } else if (error.response?.status === 403) {
+        errorMessage = getApiErrorMessage(error, "You don't have permission to delete");
+      } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         }
         

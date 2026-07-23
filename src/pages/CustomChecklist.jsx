@@ -408,6 +408,7 @@ useEffect(() => {
           value={value || ""}
           onChange={(e) => handleChange(e.target.value)}
           sx={{
+            width: "100%",
             "& .MuiOutlinedInput-root": {
               borderRadius: "10px",
               fontSize: { xs: "0.75rem", sm: "0.8125rem" },
@@ -427,6 +428,7 @@ useEffect(() => {
           value={value || ""}
           onChange={(e) => handleChange(e.target.value)}
           sx={{
+            width: "100%",
             "& .MuiOutlinedInput-root": {
               borderRadius: "10px",
               fontSize: { xs: "0.75rem", sm: "0.8125rem" },
@@ -437,7 +439,7 @@ useEffect(() => {
 
     case "dropdown":
       return (
-        <FormControl fullWidth size="small">
+        <FormControl fullWidth size="small" sx={{ width: "100%" }}>
           <Select
             value={value || ""}
             onChange={(e) => handleChange(e.target.value)}
@@ -472,6 +474,7 @@ useEffect(() => {
       return (
         <Box
           sx={{
+            width: "100%",
             border: "1px solid #dde3e8",
             borderRadius: "10px",
             px: { xs: 1.5, sm: 2 },
@@ -525,6 +528,7 @@ useEffect(() => {
       return (
         <Box
           sx={{
+            width: "100%",
             border: "1px solid #dde3e8",
             borderRadius: "10px",
             px: { xs: 1.5, sm: 2 },
@@ -568,6 +572,7 @@ useEffect(() => {
           onChange={(e) => handleChange(e.target.value)}
           InputLabelProps={{ shrink: true }}
           sx={{
+            width: "100%",
             "& .MuiOutlinedInput-root": {
               borderRadius: "10px",
               fontSize: { xs: "0.75rem", sm: "0.8125rem" },
@@ -1697,9 +1702,9 @@ export default function CustomChecklist({ checklistId }) {
 
         {/* Main Content */}
         <Box sx={{ p: { xs: 1.5, sm: 2, md: 3.5 } }}>
-          <Grid container spacing={{ xs: 2, sm: 2.5 }} alignItems="flex-start">
+          <Grid container spacing={{ xs: 2, sm: 2.5 }} alignItems="flex-start" sx={{ minWidth: 0 }}>
             {/* Form Column */}
-            <Grid item xs={12} md={9}>
+            <Grid item xs={12} md={9} sx={{ minWidth: 0 }}>
               {fetchError && (
                 <Paper sx={{ borderRadius: "14px", p: 4, textAlign: "center" }}>
                   <Typography
@@ -1730,6 +1735,8 @@ export default function CustomChecklist({ checklistId }) {
                     borderRadius: "14px",
                     p: { xs: 2, sm: 3, md: 4.5 },
                     overflow: "hidden",
+                    width: "100%",
+                    minWidth: 0,
                   }}
                 >
                   {/* Form Header */}
@@ -1791,7 +1798,7 @@ export default function CustomChecklist({ checklistId }) {
 
                   {/* Dynamic Sections with Collapse Support */}
                   {sections.map((section, si) => (
-                    <Box key={si} sx={{ mb: { xs: 2, sm: 3 } , width:"700px" }}>
+                    <Box key={si} sx={{ mb: { xs: 2, sm: 3 }, width: "100%", minWidth: 0 }}>
                       <SectionHeader
                         title={section.title}
                         isCollapsed={collapsedSections[si]}
@@ -1825,16 +1832,24 @@ export default function CustomChecklist({ checklistId }) {
                           return rows.map((row, ri) => {
                             if (row.type === "pair") {
                               return (
-                                <Grid
-                                  container
-                                  spacing={{ xs: 1.5, sm: 2.5 }}
-                                  sx={{ mb: { xs: 2, sm: 2.5 } }}
+                                <Box
+                                  sx={{
+                                    display: "grid",
+                                    gridTemplateColumns: {
+                                      xs: "1fr",
+                                      sm: "repeat(2, minmax(0, 1fr))",
+                                    },
+                                    gap: { xs: 2, sm: 2.5 },
+                                    mb: { xs: 2, sm: 2.5 },
+                                    width: "100%",
+                                    minWidth: 0,
+                                  }}
                                   key={ri}
                                 >
                                   {row.fields.map((field) => {
                                     const key = field._id || field.label;
                                     return (
-                                      <Grid item xs={12} sm={6} key={key} sx={{ width:"300px"}}>
+                                      <Box key={key} sx={{ minWidth: 0, width: "100%" }}>
                                         <FieldLabel
                                           label={field.label}
                                           required={field.required}
@@ -1844,16 +1859,16 @@ export default function CustomChecklist({ checklistId }) {
                                           value={formValues[key]}
                                           onChange={handleFieldChange}
                                         />
-                                      </Grid>
+                                      </Box>
                                     );
                                   })}
-                                </Grid>
+                                </Box>
                               );
                             }
                             const field = row.field;
                             const key = field._id || field.label;
                             return (
-                              <Box sx={{ mb: { xs: 2, sm: 2.5 } }} key={key}>
+                              <Box sx={{ mb: { xs: 2, sm: 2.5 }, width: "100%", minWidth: 0 }} key={key}>
                                 <FieldLabel
                                   label={field.label}
                                   required={field.required}

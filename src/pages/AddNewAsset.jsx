@@ -606,6 +606,7 @@ export default function AddNewAsset({
   const isTeam = user?.role === "team";
   const canEdit = isAdmin || isTeam;
   const canViewFinancials = !isTeam;
+  const canViewPortfolio = !isTeam;
   const currentUserId = user?._id || user?.id;
   const formAssetType = defaultAssetType === "child" ? "child" : "parent";
   const formAssetLabel = formAssetType === "child" ? "Child Asset" : "Parent Asset";
@@ -741,9 +742,9 @@ export default function AddNewAsset({
     if (draft) {
       if (draft.formData) setFormData((prev) => ({ ...prev, ...draft.formData }));
       if (draft.selectedCategoryId !== undefined) setSelectedCategoryId(draft.selectedCategoryId);
-      if (draft.addPortfolio !== undefined) setAddPortfolio(Boolean(draft.addPortfolio));
-      if (draft.portfolioEntryMode) setPortfolioEntryMode(draft.portfolioEntryMode);
-      if (draft.portfolioName !== undefined) setPortfolioName(draft.portfolioName);
+      if (canViewPortfolio && draft.addPortfolio !== undefined) setAddPortfolio(Boolean(draft.addPortfolio));
+      if (canViewPortfolio && draft.portfolioEntryMode) setPortfolioEntryMode(draft.portfolioEntryMode);
+      if (canViewPortfolio && draft.portfolioName !== undefined) setPortfolioName(draft.portfolioName);
       if (draft.mheFilters) setMheFilters(draft.mheFilters);
       if (draft.vehicleFilters) setVehicleFilters(draft.vehicleFilters);
       if (draft.faultTypeFilters) setFaultTypeFilters(draft.faultTypeFilters);
@@ -761,9 +762,9 @@ export default function AddNewAsset({
         openedDraftRef.current = {
           formData: draft.formData || formData,
           selectedCategoryId: draft.selectedCategoryId ?? selectedCategoryId,
-          addPortfolio: draft.addPortfolio ?? addPortfolio,
-          portfolioEntryMode: draft.portfolioEntryMode || portfolioEntryMode,
-          portfolioName: draft.portfolioName ?? portfolioName,
+          addPortfolio: canViewPortfolio ? draft.addPortfolio ?? addPortfolio : false,
+          portfolioEntryMode: canViewPortfolio ? draft.portfolioEntryMode || portfolioEntryMode : "select",
+          portfolioName: canViewPortfolio ? draft.portfolioName ?? portfolioName : "",
           mheFilters: draft.mheFilters || mheFilters,
           vehicleFilters: draft.vehicleFilters || vehicleFilters,
           faultTypeFilters: draft.faultTypeFilters || faultTypeFilters,
@@ -784,7 +785,7 @@ export default function AddNewAsset({
     }
     openedDraftRef.current = buildAssetDraft();
     draftReadyRef.current = true;
-  }, [draftKey]);
+  }, [draftKey, canViewPortfolio]);
 
   useEffect(() => {
     if (!draftReadyRef.current || !draftKey) return;
@@ -836,7 +837,7 @@ export default function AddNewAsset({
   }, [getAllCategories, fetchTeamMembers]);
 
   useEffect(() => {
-    if (!canEdit) return undefined;
+    if (!canEdit || !canViewPortfolio) return undefined;
 
     let active = true;
     api
@@ -860,7 +861,7 @@ export default function AddNewAsset({
     return () => {
       active = false;
     };
-  }, [canEdit]);
+  }, [canEdit, canViewPortfolio]);
 
   // ─── Build team options based on role ────────────────────────────────────
   const teamOptions = (() => {
@@ -996,13 +997,14 @@ export default function AddNewAsset({
       toast("Please select a category", "error");
       return;
     }
-    const trimmedPortfolioName = portfolioName.trim();
-    if (addPortfolio && !trimmedPortfolioName) {
+    const shouldAddPortfolio = canViewPortfolio && addPortfolio;
+    const trimmedPortfolioName = shouldAddPortfolio ? portfolioName.trim() : "";
+    if (shouldAddPortfolio && !trimmedPortfolioName) {
       toast("Portfolio name is required", "error");
       return;
     }
     const portfolioNameError =
-      addPortfolio && trimmedPortfolioName
+      shouldAddPortfolio && trimmedPortfolioName
         ? getAllowedNameError("Portfolio name", trimmedPortfolioName)
         : null;
     if (portfolioNameError) {
@@ -1034,7 +1036,7 @@ export default function AddNewAsset({
           defaultAssetType === "child" ? defaultParentAssetId || undefined : undefined,
         description: formData.description.trim(),
         serialNumber: formData.serialNumber.trim() || undefined,
-        portfolioName: addPortfolio ? trimmedPortfolioName : undefined,
+        portfolioName: shouldAddPortfolio ? trimmedPortfolioName : undefined,
 
         assetCategoryId: selectedCategoryId,
 
@@ -1064,7 +1066,7 @@ export default function AddNewAsset({
         metadata: {
           tags: formData.metadata.tags,
           notes: formData.metadata.notes.trim(),
-          portfolioName: addPortfolio ? trimmedPortfolioName : undefined,
+          portfolioName: shouldAddPortfolio ? trimmedPortfolioName : undefined,
         },
 
         mhe: {
@@ -1207,6 +1209,14 @@ export default function AddNewAsset({
     const cat = categories?.find((c) => c._id === selectedCategoryId);
     return cat?.name || null;
   })();
+
+  const activeCategories = useMemo(
+    () =>
+      Array.isArray(categories)
+        ? categories.filter((category) => category.isActive !== false)
+        : [],
+    [categories],
+  );
 
   const portfolioOptions = useMemo(() => {
     const names = new Set();
@@ -1423,6 +1433,7 @@ export default function AddNewAsset({
                 </Typography>
               </Stack>
               <Stack spacing={2}>
+                {canViewPortfolio && (
                 <Box>
                   <FormControlLabel
                     control={
@@ -1573,6 +1584,7 @@ export default function AddNewAsset({
                     </Box>
                   </Collapse>
                 </Box>
+                )}
                 <Box>
                   <Label required>Asset Name</Label>
                   <TextField
@@ -1686,9 +1698,8 @@ export default function AddNewAsset({
                             );
                           }}
                         >
-                          {Array.isArray(categories) &&
-                          categories.length > 0 ? (
-                            categories.map((cat) => (
+                          {activeCategories.length > 0 ? (
+                            activeCategories.map((cat) => (
                               <MenuItem key={cat._id} value={cat._id}>
                                 <Stack>
                                   <Typography

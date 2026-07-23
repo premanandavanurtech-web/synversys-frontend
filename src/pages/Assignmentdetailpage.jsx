@@ -1612,107 +1612,148 @@ const AdminPoaDialog = ({
   onRemoveFile,
   onClose,
   onSubmit,
-}) => (
-  <Dialog
-    open={open}
-    onClose={submitting ? undefined : onClose}
-    fullWidth
-    maxWidth="sm"
-    PaperProps={{ sx: { borderRadius: 3 } }}
-  >
-    <DialogTitle sx={{ pb: 1 }}>
-      <Typography fontWeight={800} fontSize="1.05rem">
-        Add POA
-      </Typography>
-      <Typography color="text.secondary" fontSize="0.8rem" sx={{ mt: 0.35 }}>
-        Submit proof of action for this completed inspection.
-      </Typography>
-    </DialogTitle>
-    <DialogContent sx={{ pt: "12px !important" }}>
-      <Stack spacing={2}>
-        <TextField
-          label="POA Feedback"
-          value={feedback}
-          onChange={(event) => onFeedbackChange(event.target.value)}
-          multiline
-          minRows={4}
-          required
-          error={!!error}
-          helperText={error || " "}
-          fullWidth
-          sx={{
-            mt: 0.5,
-            "& .MuiInputLabel-root": {
-              bgcolor: "background.paper",
-              px: 0.5,
-            },
-          }}
-        />
-        <Box>
-          <Button
-            component="label"
-            variant="outlined"
-            startIcon={<AttachFileIcon sx={{ fontSize: 17 }} />}
+}) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  return (
+    <Dialog
+      open={open}
+      onClose={submitting ? undefined : onClose}
+      fullWidth
+      maxWidth="sm"
+      fullScreen={isMobile}
+      sx={{
+        "& .MuiDialog-container": {
+          alignItems: { xs: "stretch", sm: "center" },
+        },
+      }}
+      PaperProps={{
+        sx: {
+          borderRadius: { xs: 0, sm: 3 },
+          m: { xs: 0, sm: 2 },
+          width: { xs: "100%", sm: "calc(100% - 32px)" },
+          maxWidth: { xs: "none", sm: 600 },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          "@media (max-width:600px)": {
+            position: "fixed",
+            inset: 0,
+            m: 0,
+            width: "100vw",
+            maxWidth: "100vw",
+            height: "100dvh",
+            maxHeight: "100dvh",
+            borderRadius: 0,
+          },
+        },
+      }}
+    >
+      <DialogTitle sx={{ pb: 1 }}>
+        <Typography fontWeight={800} fontSize="1.05rem">
+          Add POA
+        </Typography>
+        <Typography color="text.secondary" fontSize="0.8rem" sx={{ mt: 0.35 }}>
+          Submit proof of action for this completed inspection.
+        </Typography>
+      </DialogTitle>
+      <DialogContent sx={{ pt: "12px !important", flex: 1, overflowY: "auto" }}>
+        <Stack spacing={2}>
+          <TextField
+            label="POA Feedback"
+            value={feedback}
+            onChange={(event) => onFeedbackChange(event.target.value)}
+            multiline
+            minRows={4}
+            required
+            error={!!error}
+            helperText={error || " "}
+            fullWidth
             sx={{
-              borderRadius: 2,
-              borderColor: "divider",
-              color: BRAND,
-              textTransform: "none",
-              "&:hover": { borderColor: BRAND, bgcolor: BRAND_LIGHT },
+              mt: 0.5,
+              "& .MuiInputLabel-root": {
+                bgcolor: "background.paper",
+                px: 0.5,
+              },
             }}
-          >
-            Upload Attachments
-            <input hidden multiple type="file" onChange={onFilesChange} />
-          </Button>
-          <FormHelperText sx={{ ml: 0.25 }}>
-            Attach supporting files if needed.
-          </FormHelperText>
-          {files.length > 0 && (
-            <Stack spacing={1} sx={{ mt: 1.25 }}>
-              {files.map((file, index) => (
-                <Chip
-                  key={`${file.name}-${index}`}
-                  icon={<AttachFileIcon />}
-                  label={file.name}
-                  onDelete={() => onRemoveFile(index)}
-                  sx={{
-                    justifyContent: "space-between",
-                    maxWidth: "100%",
-                    "& .MuiChip-label": {
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    },
-                  }}
-                />
-              ))}
-            </Stack>
-          )}
-        </Box>
-      </Stack>
-    </DialogContent>
-    <DialogActions sx={{ px: 3, pb: 2.5, pt: 1 }}>
-      <Button onClick={onClose} disabled={submitting} sx={{ color: "text.secondary" }}>
-        Cancel
-      </Button>
-      <Button
-        variant="contained"
-        onClick={onSubmit}
-        disabled={submitting}
-        startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
+          />
+          <Box>
+            <Button
+              component="label"
+              variant="outlined"
+              startIcon={<AttachFileIcon sx={{ fontSize: 17 }} />}
+              sx={{
+                borderRadius: 2,
+                borderColor: "divider",
+                color: BRAND,
+                textTransform: "none",
+                "&:hover": { borderColor: BRAND, bgcolor: BRAND_LIGHT },
+              }}
+            >
+              Upload Attachments
+              <input hidden multiple type="file" onChange={onFilesChange} />
+            </Button>
+            <FormHelperText sx={{ ml: 0.25 }}>
+              Attach supporting files if needed.
+            </FormHelperText>
+            {files.length > 0 && (
+              <Stack spacing={1} sx={{ mt: 1.25 }}>
+                {files.map((file, index) => (
+                  <Chip
+                    key={`${file.name}-${index}`}
+                    icon={<AttachFileIcon />}
+                    label={file.name}
+                    onDelete={() => onRemoveFile(index)}
+                    sx={{
+                      justifyContent: "space-between",
+                      maxWidth: "100%",
+                      "& .MuiChip-label": {
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      },
+                    }}
+                  />
+                ))}
+              </Stack>
+            )}
+          </Box>
+        </Stack>
+      </DialogContent>
+      <DialogActions
         sx={{
-          borderRadius: 2,
-          bgcolor: BRAND,
-          boxShadow: "none",
-          textTransform: "none",
-          fontWeight: 700,
-          "&:hover": { bgcolor: BRAND_DARK, boxShadow: "none" },
+          px: 3,
+          pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 },
+          pt: 1,
+          borderTop: { xs: "1px solid", sm: "none" },
+          borderColor: "divider",
         }}
       >
-        Submit POA
-      </Button>
-    </DialogActions>
-  </Dialog>
-);
+        <Button onClick={onClose} disabled={submitting} sx={{ color: "text.secondary" }}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={onSubmit}
+          disabled={submitting}
+          startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
+          sx={{
+            borderRadius: 2,
+            bgcolor: BRAND,
+            boxShadow: "none",
+            textTransform: "none",
+            fontWeight: 700,
+            "&:hover": { bgcolor: BRAND_DARK, boxShadow: "none" },
+          }}
+        >
+          Submit POA
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
 
 const PageSkeleton = () => (
   <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: "#f0f6f8", minHeight: "100vh" }}>

@@ -25,6 +25,7 @@ import {
   TextField,
   FormControl,
   InputLabel,
+  InputAdornment,
   Select,
   MenuItem,
   Skeleton,
@@ -54,6 +55,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Download as DownloadIcon,
   OpenInNew as OpenInNewIcon,
+  Save as SaveIcon,
 } from "@mui/icons-material";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useClient } from "../context/ClientContext";
@@ -116,6 +118,35 @@ const PLANS = {
       "Advanced analytics",
     ],
   },
+};
+
+const ACCESS_TYPES = [
+  { value: "read_only", label: "Read only" },
+  { value: "edit_only", label: "Edit only" },
+];
+
+const getAccountCopy = (role) => {
+  const isSuperAdmin = role === "super_admin";
+  const singular = isSuperAdmin ? "Customer" : "Admin";
+  const plural = isSuperAdmin ? "Customers" : "Admins";
+  const singularLower = singular.toLowerCase();
+
+  return {
+    singular,
+    plural,
+    singularLower,
+    nameLabel: `${singular} name`,
+    editTitle: `Edit ${singularLower}`,
+    updateSubtitle: `Update the ${singular}'s details`,
+    updatedToast: `${singular} updated successfully!`,
+    statusToast: (status) =>
+      `${singular} ${status === "active" ? "activated" : "deactivated"} successfully!`,
+    deactivateTitle: (isActive) => `${isActive ? "Deactivate" : "Activate"} ${singular}`,
+    loadFailed: `Failed to Load ${singular}`,
+    notFound: `${singular} Not Found`,
+    backLabel: `Back to ${plural}`,
+    detailsIdLabel: `${singular} ID`,
+  };
 };
 
 const fmtDate = (d) =>
@@ -251,16 +282,24 @@ const EditModal = ({
   loading,
   canEditPlanLimits = true,
   showPlanLimits = true,
+  copy = getAccountCopy("admin"),
 }) => {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [activeTab, setActiveTab] = useState(0);
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (client && open) {
+      setActiveTab(0);
       setForm({
         customerName: client.customerName || "",
+        email: client.email || "",
         phone: client.phone || "",
         website: client.website || "",
+        accessType: client.accessType || "read_only",
         membershipPlan: client.membershipPlan || "standard",
         licenseLimit: client.licenseLimit || 10,
         assetLimit: client.assetLimit || 100,
@@ -293,6 +332,9 @@ const EditModal = ({
       if (form.assetLimit < 1) e.assetLimit = "Min 1";
       if (form.assetLimit > 10000) e.assetLimit = "Max 10000";
     }
+    if (!ACCESS_TYPES.some((option) => option.value === form.accessType)) {
+      e.accessType = "Access type is required";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -302,52 +344,70 @@ const EditModal = ({
     await onSave(form);
   };
 
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{ sx: { borderRadius: "16px" } }}
-    >
-      <DialogTitle sx={{ p: 0 }}>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            px: 2.5,
-            py: 1.75,
-            bgcolor: C.primary,
-          }}
-        >
-          <Typography
-            sx={{ fontWeight: 700, fontSize: "0.9rem", color: "white" }}
-          >
-            Edit Customer
-          </Typography>
-          <IconButton size="small" onClick={onClose} sx={{ color: "white" }}>
-            <CloseIcon sx={{ fontSize: "1rem" }} />
-          </IconButton>
-        </Box>
-      </DialogTitle>
-     <DialogContent sx={{ p: 2.5, pt: 4, overflow: 'visible' }}>
-  <Stack spacing={2} sx={{ mt: 2 }}>
+  const tabs = showPlanLimits ? ["Account info", "Plan & limits"] : ["Account info"];
+  const tabHasError = (index) => {
+    if (index === 0) {
+      return Boolean(errors.customerName || errors.phone || errors.website || errors.accessType);
+    }
+    return Boolean(errors.licenseLimit || errors.assetLimit);
+  };
+
+  const inputSx = (hasError = false) => ({
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "12px",
+      fontSize: "0.875rem",
+      "& fieldset": { borderColor: hasError ? C.error : C.border },
+      "&:hover fieldset": { borderColor: hasError ? C.error : C.primary },
+      "&.Mui-focused fieldset": {
+        borderColor: hasError ? C.error : C.primary,
+        borderWidth: "1.5px",
+      },
+    },
+    "& .MuiInputLabel-root": { fontSize: "0.8rem" },
+    "& .MuiInputBase-input": { py: 1.3 },
+    "& .MuiFormHelperText-root": { fontSize: "0.68rem", ml: 0, mt: 0.5 },
+  });
+
+  const accountInfo = (
+    <Stack spacing={2} sx={{ mt: 2 }}>
+      <TextField
+        name="customerName"
+        label={copy.nameLabel}
+        value={form.customerName || ""}
+        onChange={handleChange}
+        fullWidth
+        size="small"
+        required
+        error={!!errors.customerName}
+        helperText={errors.customerName}
+        InputLabelProps={{ shrink: true }}
+        sx={inputSx(!!errors.customerName)}
+      />
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
           <TextField
-            name="customerName"
-            label="Customer Name"
-            value={form.customerName || ""}
-            onChange={handleChange}
+            name="email"
+            label="Email address"
+            type="email"
+            value={form.email || ""}
             fullWidth
             size="small"
-            required
-            error={!!errors.customerName}
-            helperText={errors.customerName}
+            disabled
             InputLabelProps={{ shrink: true }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <EmailIcon sx={{ fontSize: 16, color: C.text.muted }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={inputSx()}
           />
+        </Grid>
+        <Grid item xs={12} sm={6}>
           <TextField
             name="phone"
-            label="Phone Number"
+            label="Phone number"
             value={form.phone || ""}
             onChange={handleChange}
             fullWidth
@@ -356,102 +416,326 @@ const EditModal = ({
             error={!!errors.phone}
             helperText={errors.phone}
             InputLabelProps={{ shrink: true }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <PhoneIcon sx={{ fontSize: 16, color: C.text.muted }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={inputSx(!!errors.phone)}
           />
-          <TextField
-            name="website"
-            label="Website"
-            value={form.website || ""}
-            onChange={handleChange}
-            fullWidth
-            size="small"
-            error={!!errors.website}
-            helperText={errors.website}
-            placeholder="https://example.com"
-            InputLabelProps={{ shrink: true }}
-          />
-          {showPlanLimits && (
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Membership Plan</InputLabel>
-                <Select
-                  name="membershipPlan"
-                  value={form.membershipPlan || "standard"}
-                  onChange={handleChange}
-                  label="Membership Plan"
-                  disabled={!canEditPlanLimits}
-                >
-                  {Object.entries(PLANS).map(([k, v]) => (
-                    <MenuItem key={k} value={k}>
-                      {v.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                name="licenseLimit"
-                label="License Limit"
-                type="number"
-                value={form.licenseLimit || 10}
-                onChange={handleChange}
-                fullWidth
-                size="small"
-                disabled={!canEditPlanLimits}
-                error={!!errors.licenseLimit}
-                helperText={errors.licenseLimit}
-                InputLabelProps={{ shrink: true }}
-                InputProps={{ inputProps: { min: 1, max: 10000 } }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                name="assetLimit"
-                label="Asset Limit"
-                type="number"
-                value={form.assetLimit || 100}
-                onChange={handleChange}
-                fullWidth
-                size="small"
-                disabled={!canEditPlanLimits}
-                error={!!errors.assetLimit}
-                helperText={errors.assetLimit}
-                InputLabelProps={{ shrink: true }}
-                InputProps={{ inputProps: { min: 1, max: 10000 } }}
-              />
-            </Grid>
-          </Grid>
-          )}
-          <TextField
-            name="notes"
-            label="Notes"
-            multiline
-            rows={3}
-            value={form.notes || ""}
-            onChange={handleChange}
-            fullWidth
-            size="small"
-            InputLabelProps={{ shrink: true }}
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ p: 2, gap: 1 }}>
-        <Button onClick={onClose} size="small" sx={{ textTransform: "none" }}>
-          Cancel
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={loading}
+        </Grid>
+      </Grid>
+      <TextField
+        name="website"
+        label="Website (optional)"
+        value={form.website || ""}
+        onChange={handleChange}
+        fullWidth
+        size="small"
+        error={!!errors.website}
+        helperText={errors.website}
+        placeholder="https://acme.com"
+        InputLabelProps={{ shrink: true }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <LanguageIcon sx={{ fontSize: 16, color: C.text.muted }} />
+            </InputAdornment>
+          ),
+        }}
+        sx={inputSx(!!errors.website)}
+      />
+      <FormControl fullWidth size="small" error={!!errors.accessType} sx={inputSx(!!errors.accessType)}>
+        <InputLabel id="details-access-type-label">Access type</InputLabel>
+        <Select
+          labelId="details-access-type-label"
+          label="Access type"
+          name="accessType"
+          value={form.accessType || "read_only"}
+          onChange={handleChange}
+          MenuProps={{ PaperProps: { sx: { borderRadius: 2, mt: 0.5 } } }}
+        >
+          {ACCESS_TYPES.map((option) => (
+            <MenuItem key={option.value} value={option.value} sx={{ fontSize: "0.85rem" }}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </Select>
+        {errors.accessType && (
+          <Typography sx={{ color: C.error, fontSize: "0.68rem", mt: 0.5 }}>
+            {errors.accessType}
+          </Typography>
+        )}
+      </FormControl>
+      <TextField
+        name="notes"
+        label="Notes (optional)"
+        multiline
+        rows={isMobile ? 2 : 4}
+        value={form.notes || ""}
+        onChange={handleChange}
+        fullWidth
+        size="small"
+        InputLabelProps={{ shrink: true }}
+        sx={{
+          ...inputSx(),
+          "& .MuiOutlinedInput-root": {
+            ...inputSx()["& .MuiOutlinedInput-root"],
+            alignItems: "flex-start",
+          },
+        }}
+      />
+    </Stack>
+  );
+
+  const planLimits = (
+    <Stack spacing={2.5} sx={{ mt: 2 }}>
+      <Box>
+        <Typography
           sx={{
-            bgcolor: C.primary,
-            textTransform: "none",
-            "&:hover": { bgcolor: C.primaryDark },
+            fontSize: "0.72rem",
+            fontWeight: 600,
+            color: C.text.muted,
+            textTransform: "uppercase",
+            letterSpacing: "0.07em",
+            mb: 1.5,
           }}
         >
-          {loading ? <CircularProgress size={20} /> : "Save Changes"}
-        </Button>
+          Membership plan
+        </Typography>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+          {Object.entries(PLANS).map(([key, plan]) => (
+            <Chip
+              key={key}
+              label={plan.label}
+              onClick={() => {
+                if (canEditPlanLimits) {
+                  setForm((prev) => ({ ...prev, membershipPlan: key }));
+                }
+              }}
+              size="small"
+              sx={{
+                cursor: canEditPlanLimits ? "pointer" : "not-allowed",
+                height: 30,
+                fontWeight: form.membershipPlan === key ? 700 : 500,
+                fontSize: "0.75rem",
+                bgcolor: form.membershipPlan === key ? C.primary : "transparent",
+                color: form.membershipPlan === key ? "white" : C.text.secondary,
+                border: `1px solid ${form.membershipPlan === key ? C.primary : C.border}`,
+                "&:hover": {
+                  bgcolor: form.membershipPlan === key ? C.primaryDark : C.surface,
+                },
+              }}
+            />
+          ))}
+        </Box>
+      </Box>
+      <Divider />
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            name="licenseLimit"
+            label="License limit"
+            type="number"
+            value={form.licenseLimit || 10}
+            onChange={handleChange}
+            fullWidth
+            size="small"
+            disabled={!canEditPlanLimits}
+            error={!!errors.licenseLimit}
+            helperText={errors.licenseLimit}
+            InputLabelProps={{ shrink: true }}
+            InputProps={{ inputProps: { min: 1, max: 10000 } }}
+            sx={inputSx(!!errors.licenseLimit)}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            name="assetLimit"
+            label="Asset limit"
+            type="number"
+            value={form.assetLimit || 100}
+            onChange={handleChange}
+            fullWidth
+            size="small"
+            disabled={!canEditPlanLimits}
+            error={!!errors.assetLimit}
+            helperText={errors.assetLimit}
+            InputLabelProps={{ shrink: true }}
+            InputProps={{ inputProps: { min: 1, max: 10000 } }}
+            sx={inputSx(!!errors.assetLimit)}
+          />
+        </Grid>
+      </Grid>
+    </Stack>
+  );
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      fullScreen={fullScreen}
+      PaperProps={{
+        sx: {
+          borderRadius: fullScreen ? 0 : "16px",
+          overflow: "hidden",
+          margin: { xs: 0, sm: 2 },
+        },
+      }}
+    >
+      <DialogTitle sx={{ p: 0 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: { xs: 2, sm: 2.5 },
+            py: { xs: 1.5, sm: 1.75 },
+            bgcolor: "white",
+            borderBottom: `1px solid ${C.border}`,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+            <Box
+              sx={{
+                width: { xs: 30, sm: 34 },
+                height: { xs: 30, sm: 34 },
+                borderRadius: "8px",
+                bgcolor: C.primaryLight,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <DashboardIcon sx={{ fontSize: "1rem", color: C.primary }} />
+            </Box>
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: C.text.primary }}>
+                {copy.editTitle}
+              </Typography>
+              <Typography sx={{ fontSize: "0.72rem", color: C.text.secondary }}>
+                {copy.updateSubtitle}
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton
+            size="small"
+            onClick={onClose}
+            sx={{
+              border: `1px solid ${C.border}`,
+              borderRadius: "8px",
+              width: 32,
+              height: 32,
+              color: C.text.secondary,
+            }}
+          >
+            <CloseIcon sx={{ fontSize: "0.9rem" }} />
+          </IconButton>
+        </Box>
+        <Box
+          sx={{
+            display: "flex",
+            borderBottom: `1px solid ${C.border}`,
+            px: { xs: 1.5, sm: 2.5 },
+            bgcolor: C.surface,
+            overflowX: "auto",
+          }}
+        >
+          {tabs.map((label, index) => (
+            <Box
+              key={label}
+              onClick={() => setActiveTab(index)}
+              sx={{
+                px: { xs: 1.5, sm: 2 },
+                py: 1.25,
+                cursor: "pointer",
+                fontSize: "0.8rem",
+                fontWeight: activeTab === index ? 700 : 500,
+                color: activeTab === index ? C.primary : C.text.secondary,
+                borderBottom: "2px solid",
+                borderColor: activeTab === index ? C.primary : "transparent",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.75,
+                flexShrink: 0,
+              }}
+            >
+              {label}
+              {tabHasError(index) && (
+                <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: C.error }} />
+              )}
+            </Box>
+          ))}
+        </Box>
+      </DialogTitle>
+
+      <DialogContent
+        sx={{
+          px: { xs: 2, sm: 2.5 },
+          py: { xs: 2, sm: 2.5 },
+          maxHeight: { xs: "calc(100vh - 180px)", sm: "60vh" },
+          overflowY: "auto",
+        }}
+      >
+        {activeTab === 0 && accountInfo}
+        {showPlanLimits && activeTab === 1 && planLimits}
+      </DialogContent>
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 2.5 },
+          py: 1.5,
+          borderTop: `1px solid ${C.border}`,
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 1,
+          bgcolor: "white",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+          <LockIcon sx={{ fontSize: "0.9rem", color: "#8aa0bb" }} />
+          <Typography sx={{ fontSize: "0.72rem", color: "#8aa0bb" }}>
+            {copy.singular} receives a secure Set Password email
+          </Typography>
+        </Box>
+        <Box sx={{ display: "flex", gap: 1.5 }}>
+          <Button
+            onClick={onClose}
+            size="small"
+            variant="outlined"
+            sx={{
+              textTransform: "none",
+              fontSize: "0.8rem",
+              borderRadius: "8px",
+              borderColor: C.border,
+              color: C.text.secondary,
+              px: 2.5,
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            size="small"
+            disabled={loading}
+            startIcon={loading ? null : <SaveIcon sx={{ fontSize: "0.9rem" }} />}
+            sx={{
+              bgcolor: C.primary,
+              textTransform: "none",
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              borderRadius: "8px",
+              px: 2.5,
+              "&:hover": { bgcolor: C.primaryDark },
+            }}
+          >
+            {loading ? <CircularProgress size={18} color="inherit" /> : "Save changes"}
+          </Button>
+        </Box>
       </DialogActions>
     </Dialog>
   );
@@ -645,7 +929,7 @@ const UpgradeModal = ({
 };
 
 // Deactivate Dialog
-const DeactivateDialog = ({ open, client, onClose, onConfirm, loading }) => {
+const DeactivateDialog = ({ open, client, onClose, onConfirm, loading, copy = getAccountCopy("super_admin") }) => {
   const isActive = client?.status === "active";
 
   return (
@@ -658,7 +942,7 @@ const DeactivateDialog = ({ open, client, onClose, onConfirm, loading }) => {
     >
       <DialogTitle sx={{ p: 2, pb: 0 }}>
         <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
-          {isActive ? "Deactivate" : "Activate"} Customer
+          {copy.deactivateTitle(isActive)}
         </Typography>
       </DialogTitle>
       <DialogContent sx={{ p: 2 }}>
@@ -768,10 +1052,10 @@ const AccessDenied = () => {
       </Typography>
       <Button
         variant="contained"
-        onClick={() => nav("/admin/clients")}
+        onClick={() => nav("/dashboard")}
         sx={{ bgcolor: C.primary, textTransform: "none" }}
       >
-        Back to Customers
+        Back to Dashboard
       </Button>
     </Box>
   );
@@ -802,6 +1086,10 @@ export default function ClientDetails() {
   const canManageCustomers =
     user?.role === "super_admin" || user?.role === "admin";
   const canEditPlanLimits = user?.role === "super_admin";
+  const isRestrictedAdmin = user?.role === "admin" && Boolean(user?.adminId);
+  const canEditAdmins = !isRestrictedAdmin || user?.accessType === "edit_only";
+  const canDeleteAdmins = !isRestrictedAdmin || !["read_only", "edit_only"].includes(user?.accessType);
+  const copy = getAccountCopy(user?.role);
   const showPlanLimits = true;
 
   const [tab, setTab] = useState(0);
@@ -820,6 +1108,11 @@ export default function ClientDetails() {
   const showToast = useCallback((msg, sev = "success") => {
     setToast({ open: true, message: msg, severity: sev });
   }, []);
+
+  const showPermissionToast = useCallback(
+    (action) => showToast(`You don't have permission to ${action}`, "error"),
+    [showToast],
+  );
 
   const closeToast = useCallback(() => {
     setToast((p) => ({ ...p, open: false }));
@@ -884,6 +1177,10 @@ export default function ClientDetails() {
   const expiring = daysLeft > 0 && daysLeft <= 7;
 
   const handleEdit = async (formData) => {
+    if (!canEditAdmins) {
+      showPermissionToast("Edit");
+      return;
+    }
     try {
       const planLimitData = user?.role === "admin"
         ? {}
@@ -897,9 +1194,10 @@ export default function ClientDetails() {
         ...planLimitData,
         phone: formData.phone,
         website: formData.website,
+        accessType: formData.accessType,
         notes: formData.notes,
       });
-      showToast("Customer updated successfully!");
+      showToast(copy.updatedToast);
       setEditOpen(false);
       await loadData();
     } catch (e) {
@@ -936,11 +1234,15 @@ export default function ClientDetails() {
   };
 
   const handleDeactivate = async () => {
+    if (!canDeleteAdmins) {
+      showPermissionToast("Delete");
+      return;
+    }
     const newStatus = isActive ? "inactive" : "active";
     try {
       await changeClientStatus(clientId, newStatus);
       showToast(
-        `Customer ${newStatus === "active" ? "activated" : "deactivated"} successfully!`,
+        copy.statusToast(newStatus),
       );
       setDeactivateOpen(false);
       await loadData();
@@ -965,7 +1267,7 @@ export default function ClientDetails() {
             mb: 1,
           }}
         >
-          Failed to Load Customer
+          {copy.loadFailed}
         </Typography>
         <Typography
           sx={{ fontSize: "0.75rem", color: C.text.secondary, mb: 3 }}
@@ -998,7 +1300,7 @@ export default function ClientDetails() {
     return (
       <Box sx={{ textAlign: "center", py: 8, px: 2 }}>
         <Typography sx={{ fontWeight: 700, fontSize: "1rem", mb: 1 }}>
-          Customer Not Found
+          {copy.notFound}
         </Typography>
         <Button
           variant="outlined"
@@ -1162,7 +1464,13 @@ export default function ClientDetails() {
               size="small"
               variant="contained"
               startIcon={<EditIcon sx={{ fontSize: "0.8rem" }} />}
-              onClick={() => setEditOpen(true)}
+              onClick={() => {
+                if (!canEditAdmins) {
+                  showPermissionToast("Edit");
+                  return;
+                }
+                setEditOpen(true);
+              }}
               disabled={actionLoading}
               sx={{
                 textTransform: "none",
@@ -1172,12 +1480,18 @@ export default function ClientDetails() {
                 "&:hover": { bgcolor: C.primaryDark },
               }}
             >
-              Edit Customer
+              {copy.editTitle}
             </Button>
             <Button
               size="small"
               variant="outlined"
-              onClick={() => setDeactivateOpen(true)}
+              onClick={() => {
+                if (!canDeleteAdmins) {
+                  showPermissionToast("Delete");
+                  return;
+                }
+                setDeactivateOpen(true);
+              }}
               disabled={actionLoading}
               sx={{
                 textTransform: "none",
@@ -1306,7 +1620,7 @@ export default function ClientDetails() {
                 <Stack divider={<Divider sx={{ my: 1 }} />}>
                   {[
                     {
-                      label: "Customer ID",
+                      label: copy.detailsIdLabel,
                       value: client?._id?.slice(-8) || "—",
                     },
                     { label: "Email", value: client?.email || "—" },
@@ -1782,6 +2096,7 @@ export default function ClientDetails() {
         loading={actionLoading}
         canEditPlanLimits={canEditPlanLimits}
         showPlanLimits={showPlanLimits}
+        copy={copy}
       />
       <RenewModal
         open={renewOpen}
@@ -1804,6 +2119,7 @@ export default function ClientDetails() {
         onClose={() => setDeactivateOpen(false)}
         onConfirm={handleDeactivate}
         loading={actionLoading}
+        copy={copy}
       />
 
       <Snackbar

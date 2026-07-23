@@ -225,9 +225,16 @@ function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: "16px",
+          borderRadius: { xs: 0, sm: "16px" },
           boxShadow: C.shadowLg,
           overflow: "hidden",
+          m: { xs: 0, sm: 2 },
+          width: { xs: "100%", sm: "calc(100% - 32px)" },
+          maxWidth: { xs: "none", sm: 600 },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+          display: "flex",
+          flexDirection: "column",
         },
       }}
     >
@@ -294,8 +301,23 @@ function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
 
       <Box sx={{ borderTop: `1px solid ${C.border}` }} />
 
-      <form onSubmit={handleSubmit}>
-        <DialogContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+      <Box
+        component="form"
+        onSubmit={handleSubmit}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        <DialogContent
+          sx={{
+            p: { xs: 2.5, sm: 3 },
+            flex: 1,
+            overflowY: "auto",
+          }}
+        >
           {!success ? (
             <>
               <Typography
@@ -430,6 +452,8 @@ function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
               p: { xs: 2.5, sm: 3 },
               pt: 0.5,
               gap: 1,
+              borderTop: { xs: `1px solid ${C.border}`, sm: "none" },
+              pb: { xs: "calc(20px + env(safe-area-inset-bottom))", sm: 3 },
             }}
           >
             <Button
@@ -480,7 +504,7 @@ function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
             </Button>
           </DialogActions>
         )}
-      </form>
+      </Box>
     </Dialog>
   );
 }

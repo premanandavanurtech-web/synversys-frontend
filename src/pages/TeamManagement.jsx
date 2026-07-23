@@ -27,6 +27,10 @@ import {
   Alert,
   LinearProgress,
   Popover,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   FormControl,
   InputLabel,
   Select,
@@ -414,6 +418,8 @@ function NoResultsState({
 
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
 function FilterBar({ filters, onFilterChange, activeFilterCount, roles }) {
+  const muiTheme = useMuiTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
   const [anchorEl, setAnchorEl] = useState(null);
   const [local, setLocal] = useState(filters);
 
@@ -430,6 +436,130 @@ function FilterBar({ filters, onFilterChange, activeFilterCount, roles }) {
     onFilterChange(EMPTY_FILTERS);
     setAnchorEl(null);
   };
+
+  const filterFields = (
+    <>
+      <FormControl size="small" fullWidth sx={{ mb: 2 }}>
+        <InputLabel sx={{ fontSize: "0.8rem" }}>Role</InputLabel>
+        <Select
+          value={local.role}
+          label="Role"
+          onChange={(e) => setLocal({ ...local, role: e.target.value })}
+          sx={{ fontSize: "0.85rem", borderRadius: "8px" }}
+        >
+          <MenuItem value="" sx={{ fontSize: "0.85rem" }}>
+            All Roles
+          </MenuItem>
+          {roles && roles.length > 0
+            ? roles.map((r) => (
+                <MenuItem
+                  key={r._id || r.id || r.value}
+                  value={r.name || r.label}
+                  sx={{ fontSize: "0.85rem" }}
+                >
+                  {r.name || r.label}
+                </MenuItem>
+              ))
+            : ["Inspector", "Senior Inspector", "Supervisor", "Manager"].map(
+                (r) => (
+                  <MenuItem key={r} value={r} sx={{ fontSize: "0.85rem" }}>
+                    {r}
+                  </MenuItem>
+                ),
+              )}
+        </Select>
+      </FormControl>
+
+      <FormControl size="small" fullWidth sx={{ mb: 2 }}>
+        <InputLabel sx={{ fontSize: "0.8rem" }}>Status</InputLabel>
+        <Select
+          value={local.status}
+          label="Status"
+          onChange={(e) => setLocal({ ...local, status: e.target.value })}
+          sx={{ fontSize: "0.85rem", borderRadius: "8px" }}
+        >
+          <MenuItem value="" sx={{ fontSize: "0.85rem" }}>
+            All Statuses
+          </MenuItem>
+          {STATUS_OPTIONS.map((s) => (
+            <MenuItem key={s} value={s} sx={{ fontSize: "0.85rem" }}>
+              {s === "active"
+                ? "Active"
+                : s === "inactive"
+                  ? "Inactive"
+                  : "On Leave"}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <TextField
+        size="small"
+        fullWidth
+        type="number"
+        label="Min Performance (%)"
+        value={local.performanceMin}
+        onChange={(e) =>
+          setLocal({ ...local, performanceMin: e.target.value })
+        }
+        sx={{
+          mb: 2,
+          "& input": { fontSize: "0.85rem" },
+          "& label": { fontSize: "0.8rem" },
+        }}
+        InputProps={{ inputProps: { min: 0, max: 100 } }}
+      />
+
+      <TextField
+        size="small"
+        fullWidth
+        type="number"
+        label="Max Performance (%)"
+        value={local.performanceMax}
+        onChange={(e) =>
+          setLocal({ ...local, performanceMax: e.target.value })
+        }
+        sx={{
+          mb: 2,
+          "& input": { fontSize: "0.85rem" },
+          "& label": { fontSize: "0.8rem" },
+        }}
+        InputProps={{ inputProps: { min: 0, max: 100 } }}
+      />
+    </>
+  );
+
+  const filterActions = (
+    <Stack direction="row" spacing={1.5} sx={{ width: "100%" }}>
+      <Button
+        variant="outlined"
+        onClick={handleReset}
+        fullWidth
+        startIcon={<ClearIcon sx={{ fontSize: 16 }} />}
+        sx={{
+          textTransform: "none",
+          fontSize: "0.8rem",
+          borderRadius: "8px",
+        }}
+      >
+        Reset
+      </Button>
+      <Button
+        variant="contained"
+        onClick={handleApply}
+        fullWidth
+        sx={{
+          textTransform: "none",
+          fontSize: "0.8rem",
+          borderRadius: "8px",
+          bgcolor: C.primary,
+          "&:hover": { bgcolor: C.primaryDark },
+        }}
+      >
+        Apply
+      </Button>
+    </Stack>
+  );
 
   return (
     <>
@@ -473,7 +603,7 @@ function FilterBar({ filters, onFilterChange, activeFilterCount, roles }) {
       </Button>
 
       <Popover
-        open={Boolean(anchorEl)}
+        open={Boolean(anchorEl) && !isMobile}
         anchorEl={anchorEl}
         onClose={() => setAnchorEl(null)}
         anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
@@ -498,124 +628,65 @@ function FilterBar({ filters, onFilterChange, activeFilterCount, roles }) {
         >
           Filter Team Members
         </Typography>
-
-        <FormControl size="small" fullWidth sx={{ mb: 2 }}>
-          <InputLabel sx={{ fontSize: "0.8rem" }}>Role</InputLabel>
-          <Select
-            value={local.role}
-            label="Role"
-            onChange={(e) => setLocal({ ...local, role: e.target.value })}
-            sx={{ fontSize: "0.85rem", borderRadius: "8px" }}
-          >
-            <MenuItem value="" sx={{ fontSize: "0.85rem" }}>
-              All Roles
-            </MenuItem>
-            {roles && roles.length > 0
-              ? roles.map((r) => (
-                  <MenuItem
-                    key={r._id || r.id || r.value}
-                    value={r.name || r.label}
-                    sx={{ fontSize: "0.85rem" }}
-                  >
-                    {r.name || r.label}
-                  </MenuItem>
-                ))
-              : ["Inspector", "Senior Inspector", "Supervisor", "Manager"].map(
-                  (r) => (
-                    <MenuItem key={r} value={r} sx={{ fontSize: "0.85rem" }}>
-                      {r}
-                    </MenuItem>
-                  ),
-                )}
-          </Select>
-        </FormControl>
-
-        <FormControl size="small" fullWidth sx={{ mb: 2 }}>
-          <InputLabel sx={{ fontSize: "0.8rem" }}>Status</InputLabel>
-          <Select
-            value={local.status}
-            label="Status"
-            onChange={(e) => setLocal({ ...local, status: e.target.value })}
-            sx={{ fontSize: "0.85rem", borderRadius: "8px" }}
-          >
-            <MenuItem value="" sx={{ fontSize: "0.85rem" }}>
-              All Statuses
-            </MenuItem>
-            {STATUS_OPTIONS.map((s) => (
-              <MenuItem key={s} value={s} sx={{ fontSize: "0.85rem" }}>
-                {s === "active"
-                  ? "Active"
-                  : s === "inactive"
-                    ? "Inactive"
-                    : "On Leave"}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <TextField
-          size="small"
-          fullWidth
-          type="number"
-          label="Min Performance (%)"
-          value={local.performanceMin}
-          onChange={(e) =>
-            setLocal({ ...local, performanceMin: e.target.value })
-          }
-          sx={{
-            mb: 2,
-            "& input": { fontSize: "0.85rem" },
-            "& label": { fontSize: "0.8rem" },
-          }}
-          InputProps={{ inputProps: { min: 0, max: 100 } }}
-        />
-
-        <TextField
-          size="small"
-          fullWidth
-          type="number"
-          label="Max Performance (%)"
-          value={local.performanceMax}
-          onChange={(e) =>
-            setLocal({ ...local, performanceMax: e.target.value })
-          }
-          sx={{
-            mb: 2,
-            "& input": { fontSize: "0.85rem" },
-            "& label": { fontSize: "0.8rem" },
-          }}
-          InputProps={{ inputProps: { min: 0, max: 100 } }}
-        />
-
-        <Stack direction="row" spacing={1.5}>
-          <Button
-            variant="outlined"
-            onClick={handleReset}
-            fullWidth
-            startIcon={<ClearIcon sx={{ fontSize: 16 }} />}
-            sx={{
-              textTransform: "none",
-              fontSize: "0.8rem",
-              borderRadius: "8px",
-            }}
-          >
-            Reset
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleApply}
-            fullWidth
-            sx={{
-              textTransform: "none",
-              fontSize: "0.8rem",
-              borderRadius: "8px",
-              bgcolor: C.primary,
-            }}
-          >
-            Apply
-          </Button>
-        </Stack>
+        {filterFields}
+        {filterActions}
       </Popover>
+
+      <Dialog
+        open={Boolean(anchorEl) && isMobile}
+        onClose={() => setAnchorEl(null)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            m: 0,
+            width: "100%",
+            maxWidth: "none",
+            borderRadius: "22px 22px 0 0",
+            maxHeight: "88dvh",
+          },
+        }}
+      >
+        <Box sx={{ display: "flex", justifyContent: "center", pt: 1.4 }}>
+          <Box sx={{ width: 44, height: 4, borderRadius: 999, bgcolor: C.border }} />
+        </Box>
+        <DialogTitle
+          sx={{
+            px: 2.25,
+            py: 1.5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <FilterIcon sx={{ fontSize: 18, color: C.primary }} />
+            <Typography sx={{ fontWeight: 700, fontSize: "1rem", color: C.text.primary }}>
+              Filter Team Members
+            </Typography>
+          </Stack>
+          <IconButton size="small" onClick={() => setAnchorEl(null)}>
+            <CloseIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ px: 2.25, pb: 1 }}>
+          {filterFields}
+        </DialogContent>
+        <DialogActions
+          sx={{
+            px: 2.25,
+            pt: 1,
+            pb: "calc(16px + env(safe-area-inset-bottom))",
+            borderTop: `1px solid ${C.borderLight}`,
+          }}
+        >
+          {filterActions}
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
@@ -1073,8 +1144,8 @@ export default function TeamManagement() {
   // Stats come from the full filtered result set, not only the current page.
   const totalMembers = pagination?.total ?? teamStats?.total ?? teamMembers?.length ?? 0;
   const activeMembers = teamStats?.active ?? 0;
+  const inactiveMembers = teamStats?.inactive ?? 0;
   const onLeaveMembers = teamStats?.onLeave ?? 0;
-  const avgPerformance = teamStats?.avgPerformanceScore ?? 0;
 
   const activeFilterCount = Object.values(filters).filter(
     (v) => v !== "" && v !== null,
@@ -1174,10 +1245,11 @@ export default function TeamManagement() {
       filterStatus: "on_leave",
     },
     {
-      title: "Avg Performance",
-      value: `${Math.round(Number(avgPerformance) || 0)}%`,
+      title: "Inactive Members",
+      value: inactiveMembers,
       icon: BarChartIcon,
       color: C.info,
+      filterStatus: "inactive",
     },
   ];
 

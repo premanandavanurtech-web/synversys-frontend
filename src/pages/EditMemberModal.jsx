@@ -18,6 +18,8 @@ import {
   IconButton,
   InputAdornment,
   FormHelperText,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { Close as CloseIcon, Save as SaveIcon } from "@mui/icons-material";
 import PersonIcon from "@mui/icons-material/Person";
@@ -52,10 +54,16 @@ const STATUS_OPTIONS = [
   { value: "on_leave",  label: "On Leave", color: "#eab308" },
 ];
 
-// Two equal columns, always side-by-side
 function FormRow({ children }) {
   return (
-    <Box sx={{ display: "flex", gap: 1.5, width: "100%" }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: { xs: "column", sm: "row" },
+        gap: 1.5,
+        width: "100%",
+      }}
+    >
       <Box sx={{ flex: 1, minWidth: 0 }}>{children[0]}</Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>{children[1]}</Box>
     </Box>
@@ -63,6 +71,8 @@ function FormRow({ children }) {
 }
 
 const EditTeamMemberModal = ({ open, onClose, member, onSuccess }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { updateTeamMember, actionLoading } = useTeam();
   const { roles, fetchRoles, loading: rolesLoading } = useRoles();
   const { departments, fetchDepartments, loading: deptLoading } = useDepartment();
@@ -155,15 +165,34 @@ const EditTeamMemberModal = ({ open, onClose, member, onSuccess }) => {
 
   const iconSx     = { fontSize: "0.9rem", color: "text.secondary" };
   const fieldSize  = "small";
+  const activeRoles = Array.isArray(roles)
+    ? roles.filter((role) => role.isActive !== false)
+    : [];
+  const activeDepartments = Array.isArray(departments)
+    ? departments.filter((department) => department.isActive !== false)
+    : [];
   const isBusy     = loading || actionLoading;
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
+      fullScreen={isMobile}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { borderRadius: 2, overflow: "hidden" } }}
+      PaperProps={{
+        sx: {
+          borderRadius: { xs: 0, sm: 2 },
+          overflow: "hidden",
+          m: { xs: 0, sm: 2 },
+          width: { xs: "100%", sm: "calc(100% - 32px)" },
+          maxWidth: { xs: "none", sm: 600 },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+          display: "flex",
+          flexDirection: "column",
+        },
+      }}
     >
       {/* ── Header ── */}
       <DialogTitle sx={{ pb: 1, pt: 2, px: { xs: 2, sm: 2.5 } }}>
@@ -183,7 +212,14 @@ const EditTeamMemberModal = ({ open, onClose, member, onSuccess }) => {
       </DialogTitle>
 
       {/* ── Body ── */}
-      <DialogContent sx={{ px: { xs: 2, sm: 2.5 }, py: 2 }}>
+      <DialogContent
+        sx={{
+          px: { xs: 2, sm: 2.5 },
+          py: 2,
+          flex: 1,
+          overflowY: "auto",
+        }}
+      >
         {errors.submit && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: 1.5 }}
             onClose={() => setErrors((p) => ({ ...p, submit: "" }))}>
@@ -253,7 +289,7 @@ const EditTeamMemberModal = ({ open, onClose, member, onSuccess }) => {
                 <MenuItem value="" disabled>
                   <Typography color="text.secondary" fontSize="0.85rem">Select a role</Typography>
                 </MenuItem>
-                {roles.map((role) => (
+                {activeRoles.map((role) => (
                   <MenuItem key={role._id || role.value} value={role.label || role.name}
                     sx={{ fontSize: "0.85rem" }}>
                     {role.label || role.name}
@@ -275,7 +311,7 @@ const EditTeamMemberModal = ({ open, onClose, member, onSuccess }) => {
                 <MenuItem value="">
                   <Typography color="text.secondary" fontSize="0.85rem">Select a department</Typography>
                 </MenuItem>
-                {departments.map((dept) => (
+                {activeDepartments.map((dept) => (
                   <MenuItem key={dept._id || dept.value} value={dept.label || dept.name}
                     sx={{ fontSize: "0.85rem" }}>
                     {dept.label || dept.name}
@@ -344,7 +380,15 @@ const EditTeamMemberModal = ({ open, onClose, member, onSuccess }) => {
       </DialogContent>
 
       {/* ── Footer ── */}
-      <DialogActions sx={{ px: { xs: 2, sm: 2.5 }, pb: 2.5, gap: 1.5 }}>
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 2.5 },
+          pt: 1.25,
+          pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 },
+          gap: 1.5,
+          borderTop: { xs: "1px solid #e5e7eb", sm: "none" },
+        }}
+      >
         <Button
           onClick={onClose} disabled={isBusy}
           variant="outlined"

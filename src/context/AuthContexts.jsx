@@ -213,6 +213,7 @@ export const AuthProvider = ({ children }) => {
             customerName: userData.customerName,
             adminId: userData.adminId,
             accountAdminId: userData.accountAdminId || userData.adminId || userData.id || userData._id,
+            accessType: userData.accessType || "read_only",
             membershipPlan: userData.membershipPlan,
             daysRemaining: userData.daysRemaining,
             usagePercentage: userData.usagePercentage,

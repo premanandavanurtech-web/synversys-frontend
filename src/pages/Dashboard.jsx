@@ -1,4 +1,4 @@
-// pages/Dashboard.jsx
+﻿// pages/Dashboard.jsx
 import React, {
   useState,
   useEffect,
@@ -65,7 +65,6 @@ import {
   Warning as WarningIcon,
   AssignmentTurnedIn as AssignmentTurnedInIcon,
   CalendarMonth as CalendarIcon,
-  FilterList as FilterListIcon,
   Notifications as NotifIcon,
   AccountBalance as RevenueIcon,
   Category as CategoryIcon,
@@ -93,7 +92,7 @@ import {
   Area,
 } from "recharts";
 
-// ─── Design Tokens ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Design Tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const C = {
   primary: "#002631",
   primaryLight: "#003d4d",
@@ -123,15 +122,15 @@ const PIE_COLORS = [
 
 const FILTER_PRESETS = [
   { label: "Today", value: "today" },
-  { label: "Week", value: "7d" }, // ✅ fixed typo (was "Weak")
+  { label: "Week", value: "7d" }, // âœ… fixed typo (was "Weak")
   // { label: "30 Days", value: "30d" },
   { label: "Monthly", value: "monthly" },
   { label: "Yearly", value: "yearly" },
   { label: "Custom", value: "custom" },
 ];
 
-// ─── Quick actions shown inline in the filter bar, per role ───────────────────
-// ✅ Moved out of SuperAdminDashboard's standalone "Quick Actions" Paper so the
+// â”€â”€â”€ Quick actions shown inline in the filter bar, per role â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// âœ… Moved out of SuperAdminDashboard's standalone "Quick Actions" Paper so the
 // pill buttons render to the right of the Period filter bar instead.
 const QUICK_ACTIONS_BY_ROLE = {
   super_admin: [
@@ -147,18 +146,19 @@ const QUICK_ACTIONS_BY_ROLE = {
   ],
 };
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const num = (n, fallback = 0) => {
   const value = Number(n);
   return Number.isFinite(value) ? value : fallback;
 };
 const fmt = (n) => {
-  if (n === undefined || n === null) return "—";
+  if (n === undefined || n === null) return "â€”";
   const value = Number(n);
-  return Number.isFinite(value) ? value.toLocaleString("en-IN") : "—";
+  return Number.isFinite(value) ? value.toLocaleString("en-IN") : "â€”";
 };
+const fmtStat = (n) => fmt(n ?? 0);
 const pct = (n) => `${n ?? 0}%`;
-const fmtRs = (n) => `₹${fmt(n)}`;
+const fmtRs = (n) => `â‚¹${fmt(n)}`;
 
 // CSV export
 const doCSV = (data, filename) => {
@@ -257,7 +257,7 @@ const doPDF = async (overview, filename) => {
         )
         .join("")}</tbody>
     </table>
-    <p style="color:#71787c;font-size:10px;text-align:center;margin-top:36px;padding-top:12px;border-top:1px solid #e0e3e5">Confidential — Internal Use Only</p>`;
+    <p style="color:#71787c;font-size:10px;text-align:center;margin-top:36px;padding-top:12px;border-top:1px solid #e0e3e5">Confidential â€” Internal Use Only</p>`;
   document.body.appendChild(el);
   await html2pdf()
     .set({
@@ -271,7 +271,7 @@ const doPDF = async (overview, filename) => {
   document.body.removeChild(el);
 };
 
-// ─── Reusable Components ───────────────────────────────────────────────────────
+// â”€â”€â”€ Reusable Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const StatCard = ({
   icon: Icon,
@@ -288,7 +288,16 @@ const StatCard = ({
     <Zoom in style={{ transitionDelay: "60ms" }}>
       <Paper
         elevation={0}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
         onClick={onClick}
+        onKeyDown={(event) => {
+          if (!onClick) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onClick();
+          }
+        }}
         sx={{
           position: "relative",
           overflow: "hidden",
@@ -306,6 +315,10 @@ const StatCard = ({
           "&:hover": {
             transform: "translateY(-4px)",
             boxShadow: `0 10px 28px ${alpha(C.primary, 0.35)}`,
+          },
+          "&:focus-visible": {
+            outline: `3px solid ${alpha(C.accentLight, 0.65)}`,
+            outlineOffset: 3,
           },
         }}
       >
@@ -440,7 +453,7 @@ const SectionTitle = ({ icon: Icon, title, chip }) => (
   </Box>
 );
 
-// ✅ ChartCard: removed fixed width, now fully fluid
+// âœ… ChartCard: removed fixed width, now fully fluid
 const ChartCard = ({ title, sub, children, minH = 280, action }) => (
   <Paper
     elevation={0}
@@ -452,7 +465,7 @@ const ChartCard = ({ title, sub, children, minH = 280, action }) => (
       minWidth: 0,
       bgcolor: C.white,
       border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
-      minHeight: { xs: 240, sm: minH }, // ✅ smaller minimum on mobile
+      minHeight: { xs: 240, sm: minH }, // âœ… smaller minimum on mobile
     }}
   >
     <Box
@@ -465,7 +478,7 @@ const ChartCard = ({ title, sub, children, minH = 280, action }) => (
         sx={{
           fontWeight: 700,
           color: C.primary,
-          fontSize: { xs: "0.8rem", sm: "0.85rem" }, // ✅ fluid
+          fontSize: { xs: "0.8rem", sm: "0.85rem" }, // âœ… fluid
         }}
       >
         {title}
@@ -487,8 +500,8 @@ const EmptyChart = ({ msg = "No data available" }) => (
   </Box>
 );
 
-// ✅ ActivityTable: wrapped in overflow scroll container for mobile
-// ─── REPLACE ActivityTable ─────────────────────────────────────────────────────
+// âœ… ActivityTable: wrapped in overflow scroll container for mobile
+// â”€â”€â”€ REPLACE ActivityTable â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ActivityTable = ({ activities }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -548,20 +561,20 @@ const ActivityTable = ({ activities }) => {
                         month: "short",
                         year: "numeric",
                       })
-                    : "—"}
+                    : "â€”"}
                 </Typography>
               </Box>
               {/* Row 2: Description */}
               <Typography sx={{ fontSize: "0.72rem", color: C.secondary, mb: 0.5 }}>
-                {act.description || act.desc || "—"}
+                {act.description || act.desc || "â€”"}
               </Typography>
               {/* Row 3: User + Role chip */}
               <Box display="flex" justifyContent="space-between" alignItems="center">
                 <Typography sx={{ fontSize: "0.7rem", color: C.primary, fontWeight: 600 }}>
-                  {act.actor?.email || act.actor || "—"}
+                  {act.actor?.email || act.actor || "â€”"}
                 </Typography>
                 <Chip
-                  label={act.actor?.role || act.role || "—"}
+                  label={act.actor?.role || act.role || "â€”"}
                   size="small"
                   sx={{
                     height: 16,
@@ -603,7 +616,7 @@ const ActivityTable = ({ activities }) => {
     );
   }
 
-  // ── Desktop: original table, unchanged ──
+  // â”€â”€ Desktop: original table, unchanged â”€â”€
   return (
     <TableContainer sx={{ maxHeight: 500, overflowX: "auto" }}>
       <Table stickyHeader size="small" sx={{ minWidth: 1130 }}>
@@ -663,7 +676,7 @@ const ActivityTable = ({ activities }) => {
                 </TableCell>
                 <TableCell sx={{ maxWidth: { xs: 140, sm: 220 } }}>
                   <Typography sx={{ fontSize: "0.72rem", color: C.secondary }}>
-                    {act.description || act.desc || "—"}
+                    {act.description || act.desc || "â€”"}
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -675,12 +688,12 @@ const ActivityTable = ({ activities }) => {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {act.actor?.email || act.actor || "—"}
+                    {act.actor?.email || act.actor || "â€”"}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Chip
-                    label={act.actor?.role || act.role || "—"}
+                    label={act.actor?.role || act.role || "â€”"}
                     size="small"
                     sx={{
                       height: 18,
@@ -705,7 +718,7 @@ const ActivityTable = ({ activities }) => {
                           month: "short",
                           year: "numeric",
                         })
-                      : "—"}
+                      : "â€”"}
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -725,7 +738,7 @@ const ActivityTable = ({ activities }) => {
   );
 };
 
-// ─── REPLACE NotifList — only change: remove width: "1090px" → width: "100%" ──
+// â”€â”€â”€ REPLACE NotifList â€” only change: remove width: "1090px" â†’ width: "100%" â”€â”€
 const NotifList = ({ notifications }) => (
   <Stack spacing={1}>
     {notifications.length > 0 ? (
@@ -783,7 +796,7 @@ const NotifList = ({ notifications }) => (
                   hour: "2-digit",
                   minute: "2-digit",
                 })
-              : "—"}
+              : "â€”"}
           </Typography>
         </Box>
       ))
@@ -797,8 +810,8 @@ const NotifList = ({ notifications }) => (
   </Stack>
 );
 
-// ─── Filter Bar ────────────────────────────────────────────────────────────────
-// ✅ Now accepts an `actions` prop — when present, quick-action pill buttons
+// â”€â”€â”€ Filter Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// âœ… Now accepts an `actions` prop â€” when present, quick-action pill buttons
 // render right-aligned next to the Period filters (previously a separate
 // "Quick Actions" Paper block lower on the page for super_admin).
 const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
@@ -832,7 +845,7 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
         border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
       }}
     >
-      {/* ✅ Period filters (left) + quick-action pills (right), wraps on small screens */}
+      {/* âœ… Period filters (left) + quick-action pills (right), wraps on small screens */}
       <Box
         display="flex"
         alignItems="center"
@@ -847,31 +860,26 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
           alignItems="center"
           gap={1}
           flexWrap="wrap"
-          sx={{ rowGap: 1, minWidth: 0, flex: "1 1 360px" }}
+          sx={{
+            rowGap: 1,
+            minWidth: 0,
+            flex: "1 1 360px",
+            width: { xs: "100%", lg: "auto" },
+          }}
         >
           <Box
+            display="grid"
+            gap={0.75}
             sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-              color: C.secondary,
-              mr: 0.5,
+              width: { xs: "100%", sm: "auto" },
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                sm: "none",
+              },
+              display: { xs: "grid", sm: "flex" },
+              flexWrap: { sm: "wrap" },
             }}
           >
-            <FilterListIcon sx={{ fontSize: 16 }} />
-            <Typography
-              sx={{
-                fontSize: "0.72rem",
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-              }}
-            >
-              Period
-            </Typography>
-          </Box>
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-          <Box display="flex" gap={0.75} flexWrap="wrap" sx={{ rowGap: 0.75 }}>
             {FILTER_PRESETS.map((p) => (
               <Button
                 key={p.value}
@@ -917,14 +925,16 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
         {/* Right side: Quick action pills (e.g. Manage Clients / Checklists / Reports) */}
         {actions.length > 0 && (
           <Box
-            display="flex"
+            display={{ xs: "grid", sm: "flex" }}
             gap={1}
-            flexWrap="wrap"
+            flexWrap={{ sm: "wrap" }}
             sx={{
               rowGap: 1,
-              justifyContent: { xs: "flex-start", md: "flex-end" },
+              gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "none" },
+              justifyContent: { xs: "stretch", md: "flex-end" },
               flex: { xs: "1 1 100%", lg: "0 1 auto" },
               minWidth: 0,
+              width: { xs: "100%", lg: "auto" },
             }}
           >
             {actions.map((act, i) => (
@@ -944,6 +954,10 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
                   textTransform: "none",
                   boxShadow: "none",
                   whiteSpace: "nowrap",
+                  width: { xs: "100%", sm: "auto" },
+                  ...(actions.length % 2 === 1 && i === actions.length - 1
+                    ? { gridColumn: { xs: "1 / -1", sm: "auto" } }
+                    : {}),
                   "&:hover": { bgcolor: C.primary },
                 }}
               >
@@ -955,7 +969,7 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
       </Box>
 
       <Collapse in={showCustom}>
-        {/* ✅ Date pickers stack vertically on xs */}
+        {/* âœ… Date pickers stack vertically on xs */}
         <Box
           display="flex"
           alignItems={{ xs: "stretch", sm: "center" }}
@@ -1034,7 +1048,7 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
   );
 };
 
-// ─── Responsive chart height hook ─────────────────────────────────────────────
+// â”€â”€â”€ Responsive chart height hook â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Returns a chart height appropriate to screen width
 const useChartHeight = (defaultH = 240, mobileH = 200) => {
   const theme = useTheme();
@@ -1042,11 +1056,12 @@ const useChartHeight = (defaultH = 240, mobileH = 200) => {
   return isMobile ? mobileH : defaultH;
 };
 
-// ─── SUPER ADMIN VIEW ──────────────────────────────────────────────────────────
+// â”€â”€â”€ SUPER ADMIN VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SuperAdminDashboard = ({ data, loading }) => {
+  const navigate = useNavigate();
   const chartH = useChartHeight(240, 190);
 
-  // Server returns nested under data.data or flat — handle both shapes
+  // Server returns nested under data.data or flat â€” handle both shapes
   const payload = data?.data || data || {};
   const summary = payload.summary || {};
   const distribution = payload.distribution || {};
@@ -1110,45 +1125,49 @@ const SuperAdminDashboard = ({ data, loading }) => {
     {
       icon: PeopleIcon,
       title: "Total Customer",
-      value: fmt(summary.totalClients),
+      value: fmtStat(summary.totalClients),
       sub: ``,
       trend: summary.clientGrowth ? `${summary.clientGrowth}%` : null,
       trendUp: (summary.clientGrowth ?? 0) >= 0,
+      onClick: () => navigate("/admin/clients"),
     },
     {
   icon: PeopleIcon,
   title: "Active Customers",
-  value: fmt(summary.activeSubscriptions),
+  value: fmtStat(summary.activeSubscriptions),
   sub: ``,
   trend: summary.clientGrowth ? `${summary.clientGrowth}%` : null,
   trendUp: (summary.clientGrowth ?? 0) >= 0,
+  onClick: () => navigate("/admin/clients"),
 },
     {
       icon: AssignmentIcon,
       title: "Checklists",
-      value: fmt(summary.totalChecklists),
-      sub: `${fmt(summary.publishedChecklists)} published`,
+      value: fmtStat(summary.totalChecklists),
+      sub: `${fmtStat(summary.publishedChecklists)} published`,
+      onClick: () => navigate("/admin/checklists"),
     },
     {
       icon: TaskAltIcon,
       title: "Assignments",
+      onClick: () => navigate("/admin/assigned-checklists"),
       value: fmt(
         summary.totalAssignments ??
           num(summary.pendingAssignments) + num(summary.completedAssignments),
       ),
-      sub: `${fmt(summary.pendingAssignments)} pending · ${fmt(summary.completedAssignments)} done`,
+      sub: `${fmtStat(summary.pendingAssignments)} Pending · ${fmtStat(summary.pendingApprovalAssignments)} Pending Approval · ${fmtStat(summary.submittedAssignments)} Submission`,
     },
   ];
 
-  // ✅ NOTE: the standalone "Quick Actions" Paper block (Manage Clients /
+  // âœ… NOTE: the standalone "Quick Actions" Paper block (Manage Clients /
   // Checklists / Reports) that used to render here has been removed.
   // Those same pill buttons now render inline in the FilterBar, to the
-  // right of the Period filters — see QUICK_ACTIONS_BY_ROLE.super_admin
+  // right of the Period filters â€” see QUICK_ACTIONS_BY_ROLE.super_admin
   // and the <FilterBar actions={...} /> usage in the root Dashboard component.
 
   return (
     <Box>
-      {/* ✅ 2-col on sm, 4-col on lg */}
+      {/* âœ… 2-col on sm, 4-col on lg */}
       <Box
         sx={{
           display: "grid",
@@ -1167,7 +1186,7 @@ const SuperAdminDashboard = ({ data, loading }) => {
       </Box>
 
       {/* Revenue trend + Clients by plan */}
-      {/* ✅ Both charts full-width on mobile, split on md+ */}
+      {/* âœ… Both charts full-width on mobile, split on md+ */}
       <Box
         sx={{
           display: "grid",
@@ -1214,7 +1233,7 @@ const SuperAdminDashboard = ({ data, loading }) => {
                       border: `1px solid ${C.outlineVariant}`,
                       fontSize: "0.75rem",
                     }}
-                    formatter={(v) => [`₹${v.toLocaleString()}`, "Revenue"]}
+                    formatter={(v) => [`â‚¹${v.toLocaleString()}`, "Revenue"]}
                   />
                   <Area
                     type="monotone"
@@ -1349,7 +1368,7 @@ const SuperAdminDashboard = ({ data, loading }) => {
       </Box>
 
       {/* Activities + Notifications side by side */}
-      {/* ✅ Stack vertically on mobile */}
+      {/* âœ… Stack vertically on mobile */}
       <Box
         sx={{
           display: "grid",
@@ -1408,8 +1427,9 @@ const SuperAdminDashboard = ({ data, loading }) => {
   );
 };
 
-// ─── ADMIN VIEW ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ ADMIN VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const AdminDashboard = ({ data, loading }) => {
+  const navigate = useNavigate();
   const chartH = useChartHeight(240, 190);
   const [expiryTypeFilter, setExpiryTypeFilter] = useState("");
 
@@ -1486,40 +1506,53 @@ const AdminDashboard = ({ data, loading }) => {
     [assignTrend],
   );
   const topPerformers = useMemo(() => payload.topPerformers || [], [payload]);
+  const hasAssetTypeBreakdown =
+    summary.parentAssets !== undefined || summary.childAssets !== undefined;
+  const parentAssetCount = Number(summary.parentAssets || 0);
+  const childAssetCount = Number(summary.childAssets || 0);
+  const totalAssetCount = hasAssetTypeBreakdown
+    ? parentAssetCount + childAssetCount
+    : summary.totalAssets;
 
   const statCards = [
     {
       icon: GroupIcon,
       title: "Team Members",
-      value: fmt(summary.totalTeamMembers),
-      sub: `${fmt(summary.activeTeamMembers)} active`,
+      value: fmtStat(summary.totalTeamMembers),
+      sub: `${fmtStat(summary.activeTeamMembers)} active`,
       trend: summary.teamGrowth ? `${summary.teamGrowth}%` : null,
       trendUp: true,
+      onClick: () => navigate("/admin/team"),
     },
     {
       icon: InventoryIcon,
       title: "Total Assets",
-      value: fmt(summary.totalAssets),
-      sub: `${fmt(summary.activeAssets)} active · ${fmt(summary.assetsNeedingAttention)} need attention`,
+      onClick: () => navigate("/admin/assets"),
+      value: fmtStat(totalAssetCount),
+      sub: hasAssetTypeBreakdown
+        ? `${fmtStat(parentAssetCount)} parent · ${fmtStat(childAssetCount)} child`
+        : `${fmtStat(summary.activeAssets)} active · ${fmtStat(summary.assetsNeedingAttention)} need attention`,
     },
     {
       icon: AssignmentIcon,
       title: "Checklists",
-      value: fmt(summary.totalChecklists),
-      sub: `${fmt(summary.publishedChecklists)} published`,
+      onClick: () => navigate("/admin/checklists"),
+      value: fmtStat(summary.totalChecklists),
+      sub: `${fmtStat(summary.publishedChecklists)} published`,
     },
     {
       icon: TaskAltIcon,
       title: "Submissions",
-      value: fmt(num(summary.pendingSubmissions) + num(summary.pendingReviewsCount)),
-      sub: `${fmt(summary.pendingReviewsCount)} pending review`,
+      onClick: () => navigate("/admin/assigned-checklists"),
+      value: fmtStat(summary.submittedAssignments),
+      sub: `${fmtStat(summary.pendingReviewsCount)} pending review`,
       accent: true,
     },
     {
       icon: CalendarIcon,
       title: "AMC Expiry",
-      value: fmt(amcSummary.attentionCount),
-      sub: `${fmt(amcSummary.expired)} expired - ${fmt(amcSummary.dueSoon)} due soon`,
+      value: fmtStat(amcSummary.attentionCount),
+      sub: `${fmtStat(amcSummary.expired)} expired - ${fmtStat(amcSummary.dueSoon)} due soon`,
       active: expiryTypeFilter === "AMC",
       onClick: () =>
         setExpiryTypeFilter((current) => (current === "AMC" ? "" : "AMC")),
@@ -1527,8 +1560,8 @@ const AdminDashboard = ({ data, loading }) => {
     {
       icon: CalendarIcon,
       title: "CAMC Expiry",
-      value: fmt(camcSummary.attentionCount),
-      sub: `${fmt(camcSummary.expired)} expired - ${fmt(camcSummary.dueSoon)} due soon`,
+      value: fmtStat(camcSummary.attentionCount),
+      sub: `${fmtStat(camcSummary.expired)} expired - ${fmtStat(camcSummary.dueSoon)} due soon`,
       active: expiryTypeFilter === "CAMC",
       onClick: () =>
         setExpiryTypeFilter((current) => (current === "CAMC" ? "" : "CAMC")),
@@ -1537,7 +1570,7 @@ const AdminDashboard = ({ data, loading }) => {
 
   return (
     <Box>
-      {/* ✅ Stat cards: 1-col xs, 2-col sm, 4-col lg */}
+      {/* âœ… Stat cards: 1-col xs, 2-col sm, 4-col lg */}
       <Box
         sx={{
           display: "grid",
@@ -1557,7 +1590,7 @@ const AdminDashboard = ({ data, loading }) => {
         ))}
       </Box>
 
-      {/* Quick Actions — unchanged: this is the larger card-style grid,
+      {/* Quick Actions â€” unchanged: this is the larger card-style grid,
           a different pattern from the super_admin pill buttons that moved
           into the FilterBar. Left as-is here. */} 
 
@@ -1987,7 +2020,7 @@ const AdminDashboard = ({ data, loading }) => {
                       <Typography
                         sx={{ fontSize: "0.62rem", color: C.outline, mt: 0.3 }}
                       >
-                        {m.role} · {m.totalCompleted}/{m.totalAssigned} tasks
+                        {m.role} Â· {m.totalCompleted}/{m.totalAssigned} tasks
                       </Typography>
                     </Box>
                   </Box>
@@ -2083,7 +2116,7 @@ const AdminDashboard = ({ data, loading }) => {
   );
 };
 
-// ─── TEAM VIEW ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ TEAM VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const TeamDashboard = ({ data, loading }) => {
   const navigate = useNavigate();
   const chartH = useChartHeight(220, 180);
@@ -2116,7 +2149,7 @@ const TeamDashboard = ({ data, loading }) => {
           border: "none",
         }}
       >
-        {/* ✅ Banner: stack on xs, row on sm */}
+        {/* âœ… Banner: stack on xs, row on sm */}
         <Box
           display="flex"
           alignItems={{ xs: "flex-start", sm: "center" }}
@@ -2149,7 +2182,7 @@ const TeamDashboard = ({ data, loading }) => {
             </Typography>
             <Typography sx={{ color: alpha("#fff", 0.7), fontSize: "0.75rem" }}>
               {member.role}
-              {member.department ? ` · ${member.department}` : ""}
+              {member.department ? ` Â· ${member.department}` : ""}
             </Typography>
           </Box>
           <Box textAlign="right" flexShrink={0} ml={{ xs: "auto" }}>
@@ -2207,7 +2240,7 @@ const TeamDashboard = ({ data, loading }) => {
         <Grid item xs={12} md={7}>
           <ChartCard
             title="Weekly activity"
-            sub="Completed vs pending — last 7 days"
+            sub="Completed vs pending â€” last 7 days"
           >
             <ResponsiveContainer width="100%" height={chartH}>
               <BarChart data={weeklyTrend} barSize={20}>
@@ -2275,7 +2308,7 @@ const TeamDashboard = ({ data, loading }) => {
         </Grid>
       </Grid>
 
-      {/* ✅ Upcoming tasks table: horizontally scrollable on mobile */}
+      {/* âœ… Upcoming tasks table: horizontally scrollable on mobile */}
       {upcoming.length > 0 && (
         <Paper
           elevation={0}
@@ -2333,14 +2366,14 @@ const TeamDashboard = ({ data, loading }) => {
                       <Typography
                         sx={{ fontSize: "0.72rem", color: C.secondary, whiteSpace: "nowrap" }}
                       >
-                        {t.assetName || "—"}
+                        {t.assetName || "â€”"}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Typography sx={{ fontSize: "0.72rem", whiteSpace: "nowrap" }}>
                         {t.dueDate
                           ? new Date(t.dueDate).toLocaleDateString("en-IN")
-                          : "—"}
+                          : "â€”"}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -2402,7 +2435,7 @@ const TeamDashboard = ({ data, loading }) => {
       )}
 
       <SectionTitle icon={BoltIcon} title="Quick Actions" />
-      {/* ✅ 3 equal columns on all sizes, full-width buttons */}
+      {/* âœ… 3 equal columns on all sizes, full-width buttons */}
       <Grid container spacing={{ xs: 1.5, sm: 2 }}>
         {[
           {
@@ -2474,7 +2507,7 @@ const TeamDashboard = ({ data, loading }) => {
   );
 };
 
-// ─── Root Dashboard ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Root Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function Dashboard() {
   const { user } = useAuth();
   const {
@@ -2518,7 +2551,7 @@ export default function Dashboard() {
 
   const handleRefresh = useCallback(() => {
     refresh();
-    toast$("Refreshing dashboard…", "info");
+    toast$("Refreshing dashboardâ€¦", "info");
   }, [refresh, toast$]);
 
   const handleExport = useCallback(
@@ -2573,7 +2606,7 @@ export default function Dashboard() {
     if (p === "monthly") return "This month";
     if (p === "yearly") return "This year";
     if (p === "custom")
-      return `${activeFilter.startDate} → ${activeFilter.endDate}`;
+      return `${activeFilter.startDate} â†’ ${activeFilter.endDate}`;
     return "";
   })();
 
@@ -2581,9 +2614,9 @@ export default function Dashboard() {
     <Box
       sx={{
         minHeight: "100%",
-        // ✅ Fluid padding: tighter on mobile, comfortable on desktop
+        // âœ… Fluid padding: tighter on mobile, comfortable on desktop
         p: { xs: 1.5, sm: 2, md: 3 },
-        // ✅ Prevent horizontal overflow at any viewport
+        // âœ… Prevent horizontal overflow at any viewport
         overflowX: "hidden",
         boxSizing: "border-box",
       }}
@@ -2617,7 +2650,7 @@ export default function Dashboard() {
             sx={{
               fontWeight: 800,
               color: C.primary,
-              fontSize: { xs: "1.1rem", sm: "1.35rem", md: "1.5rem" }, // ✅ fluid heading
+              fontSize: { xs: "1.1rem", sm: "1.35rem", md: "1.5rem" }, // âœ… fluid heading
             }}
           >
             {role === "super_admin"
@@ -2626,7 +2659,7 @@ export default function Dashboard() {
                 ? "Dashboard"
                 : "My Dashboard"}
           </Typography>
-          {/* ✅ Date/filter label: wrap on xs */}
+          {/* âœ… Date/filter label: wrap on xs */}
           <Box
             display="flex"
             alignItems="center"
@@ -2645,7 +2678,7 @@ export default function Dashboard() {
             {filterLabel && (
               <>
                 <Typography sx={{ color: C.outlineVariant, fontSize: "0.72rem" }}>
-                  ·
+                  Â·
                 </Typography>
                 <Chip
                   label={filterLabel}
@@ -2664,7 +2697,7 @@ export default function Dashboard() {
           </Box>
         </Box>
 
-        {/* ✅ Action buttons stay on the right even on mobile, shrink gracefully */}
+        {/* âœ… Action buttons stay on the right even on mobile, shrink gracefully */}
         <Stack direction="row" spacing={1} flexShrink={0}>
           <Tooltip title="Refresh data">
             <IconButton
@@ -2744,8 +2777,8 @@ export default function Dashboard() {
         </Stack>
       </Box>
 
-      {/* Filter bar — shown for admin and super_admin.
-          ✅ `actions` injects the role-specific quick-action pills
+      {/* Filter bar â€” shown for admin and super_admin.
+          âœ… `actions` injects the role-specific quick-action pills
           (currently only super_admin: Manage Clients / Checklists / Reports) */}
       {role !== "team" && (
         <FilterBar
@@ -2786,7 +2819,7 @@ export default function Dashboard() {
   );
 }
 
-// ─── Skeleton / Error ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Skeleton / Error â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const LoadingSkeleton = () => (
   <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
     <Skeleton variant="text" width={220} height={44} sx={{ mb: 2 }} />

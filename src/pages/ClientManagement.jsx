@@ -20,6 +20,7 @@ import {
   Chip,
   Divider,
   FormControl,
+  InputLabel,
   Select,
   MenuItem,
   Stack,
@@ -68,7 +69,6 @@ import {
   Email as EmailIcon,
   Phone as PhoneIcon,
   Language as LanguageIcon,
-  Business as BusinessIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useClient } from "../context/ClientContext";
@@ -108,6 +108,48 @@ const PLAN_META = {
 };
 
 const PLANS = ["free", "standard", "premium"];
+
+const ACCESS_TYPES = [
+  { value: "read_only", label: "Read only" },
+  { value: "edit_only", label: "Edit only" },
+];
+
+const getAccessTypeLabel = (value) =>
+  ACCESS_TYPES.find((option) => option.value === value)?.label || "Read only";
+
+const getAccountCopy = (role) => {
+  const isSuperAdmin = role === "super_admin";
+  const singular = isSuperAdmin ? "Customer" : "Admin";
+  const plural = isSuperAdmin ? "Customers" : "Admins";
+  const singularLower = singular.toLowerCase();
+  const pluralLower = plural.toLowerCase();
+
+  return {
+    singular,
+    plural,
+    singularLower,
+    pluralLower,
+    managementTitle: `${singular} Management`,
+    managementSubtitle: `Manage ${singularLower} accounts and memberships`,
+    addButton: `Add ${singular}`,
+    addEmptyButton: `Add ${plural}`,
+    addTitle: `Add new ${singularLower}`,
+    editTitle: `Edit ${singularLower}`,
+    updateSubtitle: `Update the ${singular}'s details`,
+    nameLabel: `${singular} name`,
+    createButton: `Create ${singularLower}`,
+    createdToast: `${singular} created. Set Password email sent.`,
+    updatedToast: `${singular} updated successfully!`,
+    statusToast: (status) =>
+      `${singular} ${status === "active" ? "activated" : "deactivated"} successfully!`,
+    totalStat: `Total ${plural}`,
+    activeStat: `Active ${plural}`,
+    deactiveStat: `Deactive ${singular}`,
+    searchPlaceholder: `Search ${plural}...`,
+    noYet: `No ${plural} yet`,
+    emptyHint: `Add your first ${singularLower} to get started`,
+  };
+};
 
 const initials = (name) =>
   !name
@@ -512,7 +554,7 @@ const ClientManagementSkeleton = () => (
 );
 
 // Client Card Component
-const ClientCard = ({ client, onEdit, onDelete, onView }) => {
+const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
   const [anchor, setAnchor] = useState(null);
   const plan = PLAN_META[client.membershipPlan] || PLAN_META.free;
   const isActive = client.status === "active";
@@ -521,6 +563,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
   const limit = client.licenseLimit || 1;
   const pct = Math.min(100, Math.round((used / limit) * 100));
   const expiring = daysLeft > 0 && daysLeft <= 7;
+  const isSubAdmin = Boolean(client.adminId);
 
   console.log("client====>>>>",client)
 
@@ -627,6 +670,21 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
                 border: "none",
               }}
             />
+            {isSubAdmin && (
+              <Chip
+                label={getAccessTypeLabel(client.accessType)}
+                size="small"
+                sx={{
+                  height: 22,
+                  ml: 0.75,
+                  fontSize: "0.6rem",
+                  fontWeight: 700,
+                  bgcolor: client.accessType === "read_only" ? "#f1f5f9" : C.primaryLight,
+                  color: client.accessType === "read_only" ? C.text.secondary : C.primary,
+                  border: "none",
+                }}
+              />
+            )}
           </Box>
           <Box sx={{ textAlign: "right" }}>
             <Typography
@@ -707,32 +765,36 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
             View
           </Button>
           <Box sx={{ display: "flex", gap: 0.5 }}>
-            <Tooltip title="Edit">
-              <IconButton
-                size="small"
-                onClick={() => onEdit(client)}
-                sx={{
-                  p: 0.5,
-                  color: C.text.muted,
-                  "&:hover": { color: C.primary, bgcolor: C.primaryLight },
-                }}
-              >
-                <EditIcon sx={{ fontSize: "0.85rem" }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={isActive ? "Deactivate" : "Activate"}>
-              <IconButton
-                size="small"
-                onClick={() => onDelete(client)}
-                sx={{
-                  p: 0.5,
-                  color: C.text.muted,
-                  "&:hover": { color: C.error, bgcolor: "#fef2f2" },
-                }}
-              >
-                <DeleteIcon sx={{ fontSize: "0.85rem" }} />
-              </IconButton>
-            </Tooltip>
+            {canModify && (
+              <>
+                <Tooltip title="Edit">
+                  <IconButton
+                    size="small"
+                    onClick={() => onEdit(client)}
+                    sx={{
+                      p: 0.5,
+                      color: C.text.muted,
+                      "&:hover": { color: C.primary, bgcolor: C.primaryLight },
+                    }}
+                  >
+                    <EditIcon sx={{ fontSize: "0.85rem" }} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title={isActive ? "Deactivate" : "Activate"}>
+                  <IconButton
+                    size="small"
+                    onClick={() => onDelete(client)}
+                    sx={{
+                      p: 0.5,
+                      color: C.text.muted,
+                      "&:hover": { color: C.error, bgcolor: "#fef2f2" },
+                    }}
+                  >
+                    <DeleteIcon sx={{ fontSize: "0.85rem" }} />
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
           </Box>
         </Box>
 
@@ -742,15 +804,17 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
           onClose={() => setAnchor(null)}
           PaperProps={{ sx: { minWidth: 140, borderRadius: 2, mt: 0.5 } }}
         >
-          <MenuItem
-            onClick={() => {
-              onEdit(client);
-              setAnchor(null);
-            }}
-            sx={{ fontSize: "0.75rem", gap: 1 }}
-          >
-            <EditIcon sx={{ fontSize: "0.8rem" }} /> Edit
-          </MenuItem>
+          {canModify && (
+            <MenuItem
+              onClick={() => {
+                onEdit(client);
+                setAnchor(null);
+              }}
+              sx={{ fontSize: "0.75rem", gap: 1 }}
+            >
+              <EditIcon sx={{ fontSize: "0.8rem" }} /> Edit
+            </MenuItem>
+          )}
           <MenuItem
             onClick={() => {
               onView(client._id);
@@ -760,17 +824,19 @@ const ClientCard = ({ client, onEdit, onDelete, onView }) => {
           >
             <VisibilityIcon sx={{ fontSize: "0.8rem" }} /> View Details
           </MenuItem>
-          <Divider />
-          <MenuItem
-            onClick={() => {
-              onDelete(client);
-              setAnchor(null);
-            }}
-            sx={{ fontSize: "0.75rem", gap: 1, color: C.error }}
-          >
-            <DeleteIcon sx={{ fontSize: "0.8rem" }} />{" "}
-            {isActive ? "Deactivate" : "Activate"}
-          </MenuItem>
+          {canModify && <Divider />}
+          {canModify && (
+            <MenuItem
+              onClick={() => {
+                onDelete(client);
+                setAnchor(null);
+              }}
+              sx={{ fontSize: "0.75rem", gap: 1, color: C.error }}
+            >
+              <DeleteIcon sx={{ fontSize: "0.8rem" }} />{" "}
+              {isActive ? "Deactivate" : "Activate"}
+            </MenuItem>
+          )}
         </Menu>
       </CardContent>
     </Card>
@@ -784,6 +850,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isEdit = !!client;
   const isAdminActor = currentUser?.role === "admin";
+  const copy = getAccountCopy(currentUser?.role);
   const showPlanLimits = true;
 
   const [tab, setTab] = useState(0);
@@ -805,6 +872,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
     assetLimit: 100,
     duration: 30,
     notes: "",
+    accessType: "read_only",
   };
 
   useEffect(() => {
@@ -831,8 +899,9 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
             assetLimit: client.assetLimit || 100,
             duration: 30,
             notes: client.notes || "",
+            accessType: client.accessType || "read_only",
           }
-        : { ...(draft?.form || blank), ...inheritedPlanLimits };
+        : { ...(draft?.form || blank), ...inheritedPlanLimits, accessType: draft?.form?.accessType || "read_only" };
       hadDraftOnOpenRef.current = Boolean(!client && draft?.form);
       openedFormRef.current = openingForm;
       setForm(
@@ -877,6 +946,9 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
       )
     )
       e.website = "Invalid URL";
+    if (isAdminActor && !ACCESS_TYPES.some((option) => option.value === form.accessType)) {
+      e.accessType = "Access type is required";
+    }
     setErrors(e);
     return e;
   };
@@ -929,7 +1001,8 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
         errors.customerName ||
         errors.email ||
         errors.phone ||
-        errors.website
+        errors.website ||
+        errors.accessType
       );
     return false;
   };
@@ -958,7 +1031,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
     <Stack spacing={2} sx={{ mt: 2}}>
       <TextField
         name="customerName"
-        label="Customer name"
+        label={copy.nameLabel}
         value={form.customerName || ""}
         onChange={handleChange}
         fullWidth
@@ -1034,6 +1107,32 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
         }}
         sx={inputSx(!!errors.website)}
       />
+      {isAdminActor && (
+        <FormControl fullWidth size="small" error={!!errors.accessType} sx={inputSx(!!errors.accessType)}>
+          <InputLabel id="access-type-label">Access type</InputLabel>
+          <Select
+            labelId="access-type-label"
+            label="Access type"
+            name="accessType"
+            value={form.accessType || "read_only"}
+            onChange={handleChange}
+            MenuProps={{
+              PaperProps: { sx: { borderRadius: 2, mt: 0.5 } },
+            }}
+          >
+            {ACCESS_TYPES.map((option) => (
+              <MenuItem key={option.value} value={option.value} sx={{ fontSize: "0.85rem" }}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+          {errors.accessType && (
+            <Typography sx={{ color: C.error, fontSize: "0.68rem", mt: 0.5 }}>
+              {errors.accessType}
+            </Typography>
+          )}
+        </FormControl>
+      )}
       <TextField
         name="notes"
         label="Notes (optional)"
@@ -1182,7 +1281,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
                   color: C.text.primary,
                 }}
               >
-                {isEdit ? "Edit customer" : "Add new customer"}
+                {isEdit ? copy.editTitle : copy.addTitle}
               </Typography>
               <Typography
                 sx={{
@@ -1192,7 +1291,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
                 }}
               >
                 {isEdit
-                  ? "Update the customer's details"
+                  ? copy.updateSubtitle
                   : "Fill in the details to create an account"}
               </Typography>
             </Box>
@@ -1288,7 +1387,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
           <ShieldIcon sx={{ fontSize: "0.9rem", color: C.text.muted }} />
           <Typography sx={{ fontSize: "0.7rem", color: C.text.muted }}>
-            Customer receives a secure Set Password email
+            {copy.singular} receives a secure Set Password email
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1.5 }}>
@@ -1334,7 +1433,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
             ) : isEdit ? (
               "Save changes"
             ) : (
-              "Create customer"
+              copy.createButton
             )}
           </Button>
         </Box>
@@ -1380,7 +1479,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
 };
 
 // Status Dialog Component
-const StatusDialog = ({ open, client, onClose, onConfirm, loading }) => (
+const StatusDialog = ({ open, client, onClose, onConfirm, loading, copy = getAccountCopy("admin") }) => (
   <Dialog
     open={open}
     onClose={onClose}
@@ -1420,7 +1519,7 @@ const StatusDialog = ({ open, client, onClose, onConfirm, loading }) => (
               color: C.text.primary,
             }}
           >
-            {client?.status === "active" ? "Deactivate" : "Activate"} customer
+            {client?.status === "active" ? "Deactivate" : "Activate"} {copy.singularLower}
           </Typography>
         </Box>
         <IconButton
@@ -1548,10 +1647,36 @@ export default function ClientManagement() {
     () => user?.role === "super_admin" || user?.role === "admin",
     [user],
   );
+  const isRestrictedAdmin = user?.role === "admin" && Boolean(user?.adminId);
+  const canCreateAdmins = !isRestrictedAdmin || !["read_only", "edit_only"].includes(user?.accessType);
+  const canEditAdmins = !isRestrictedAdmin || user?.accessType === "edit_only";
+  const canDeleteAdmins = !isRestrictedAdmin || !["read_only", "edit_only"].includes(user?.accessType);
+  const copy = useMemo(() => getAccountCopy(user?.role), [user?.role]);
 
   const showToast = useCallback((msg, sev = "success") => {
     setToast({ open: true, message: msg, severity: sev });
   }, []);
+
+  const showPermissionToast = useCallback(
+    (action) => showToast(`You don't have permission to ${action}`, "error"),
+    [showToast],
+  );
+
+  const guardAdminAction = useCallback(
+    (action, callback) => {
+      const allowedByAction = {
+        Create: canCreateAdmins,
+        Edit: canEditAdmins,
+        Delete: canDeleteAdmins,
+      };
+      if (!allowedByAction[action]) {
+        showPermissionToast(action);
+        return;
+      }
+      callback();
+    },
+    [canCreateAdmins, canDeleteAdmins, canEditAdmins, showPermissionToast],
+  );
 
   const closeToast = useCallback(() => {
     setToast((p) => ({ ...p, open: false }));
@@ -1562,8 +1687,8 @@ export default function ClientManagement() {
       if (nextFilter === "active") {
         return { status: "active", membershipPlan: "all", expiringSoon: false };
       }
-      if (nextFilter === "enterprise") {
-        return { status: "all", membershipPlan: "enterprise", expiringSoon: false };
+      if (nextFilter === "inactive") {
+        return { status: "inactive", membershipPlan: "all", expiringSoon: false };
       }
       if (nextFilter === "expiringSoon") {
         return { status: "all", membershipPlan: "all", expiringSoon: true };
@@ -1598,6 +1723,10 @@ export default function ClientManagement() {
   }, [search, fetchClients, filters.search, getStatFilterParams]);
 
   const handleAddClient = async (formData) => {
+  if (!canCreateAdmins) {
+    showPermissionToast("Create");
+    return { success: false, error: "Permission denied" };
+  }
   try {
     const planLimitData = user?.role === "admin"
       ? {}
@@ -1614,6 +1743,7 @@ export default function ClientManagement() {
       ...planLimitData,
       duration: parseInt(formData.duration),
       notes: formData.notes,
+      accessType: formData.accessType,
     });
     const creator = response?.data?.creator || response?.creator;
     if (user?.role === "admin" && creator) {
@@ -1624,7 +1754,7 @@ export default function ClientManagement() {
         usagePercentage: creator.usagePercentage,
       });
     }
-    showToast("Customer created. Set Password email sent.", "success");
+    showToast(copy.createdToast, "success");
     setModalOpen(false);
     fetchClients({ page: 1 });
     return { success: true };
@@ -1635,6 +1765,10 @@ export default function ClientManagement() {
 };
 
   const handleEditClient = async (formData) => {
+  if (!canEditAdmins) {
+    showPermissionToast("Edit");
+    return { success: false, error: "Permission denied" };
+  }
   try {
     const planLimitData = user?.role === "admin"
       ? {}
@@ -1649,8 +1783,9 @@ export default function ClientManagement() {
       phone: formData.phone,
       website: formData.website,
       notes: formData.notes,
+      accessType: formData.accessType,
     });
-    showToast("Customer updated successfully!", "success");
+    showToast(copy.updatedToast, "success");
     setModalOpen(false);
     setEditingClient(null);
     fetchClients();
@@ -1660,12 +1795,16 @@ export default function ClientManagement() {
 };
 
   const handleStatusChange = async () => {
+    if (!canDeleteAdmins) {
+      showPermissionToast("Delete");
+      return;
+    }
     try {
       const newStatus =
         selectedClient?.status === "active" ? "inactive" : "active";
       await changeClientStatus(selectedClient._id, newStatus);
       showToast(
-        `Customer ${newStatus === "active" ? "activated" : "deactivated"} successfully!`,
+        copy.statusToast(newStatus),
       );
       setDeleteOpen(false);
       setSelectedClient(null);
@@ -1730,24 +1869,24 @@ export default function ClientManagement() {
     () => [
       {
         icon: GroupIcon,
-        label: "Total Customers",
+        label: copy.totalStat,
         value: stats?.total || 0,
         color: C.primary,
         filterKey: "all",
       },
       {
         icon: ActiveIcon,
-        label: "Active Customers",
+        label: copy.activeStat,
         value: stats?.active || 0,
         color: C.success,
         filterKey: "active",
       },
       {
-        icon: BusinessIcon,
-        label: "Enterprise",
-        value: stats?.byPlan?.enterprise || 0,
-        color: "#7c3aed",
-        filterKey: "enterprise",
+        icon: WarningIcon,
+        label: copy.deactiveStat,
+        value: Math.max(0, (stats?.total || 0) - (stats?.active || 0)),
+        color: C.error,
+        filterKey: "inactive",
       },
       {
         icon: WarningIcon,
@@ -1757,7 +1896,7 @@ export default function ClientManagement() {
         filterKey: "expiringSoon",
       },
     ],
-    [stats],
+    [stats, copy],
   );
 
   if (!isAuthenticated) {
@@ -1808,7 +1947,7 @@ export default function ClientManagement() {
               mb: 0.25,
             }}
           >
-            Customer Management
+            {copy.managementTitle}
           </Typography>
           <Typography
             sx={{
@@ -1816,16 +1955,18 @@ export default function ClientManagement() {
               color: C.text.secondary,
             }}
           >
-            Manage customer accounts and memberships
+            {copy.managementSubtitle}
           </Typography>
         </Box>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => {
-            setEditingClient(null);
-            setModalOpen(true);
-          }}
+          onClick={() =>
+            guardAdminAction("Create", () => {
+              setEditingClient(null);
+              setModalOpen(true);
+            })
+          }
           sx={{
             bgcolor: C.primary,
             textTransform: "none",
@@ -1836,7 +1977,7 @@ export default function ClientManagement() {
             "&:hover": { bgcolor: C.primaryDark },
           }}
         >
-          Add Customer
+          {copy.addButton}
         </Button>
       </Box>
 
@@ -1893,7 +2034,7 @@ export default function ClientManagement() {
           }}
         >
           <AssetSearchField
-            placeholder="Search customers..."
+            placeholder={copy.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onClear={() => setSearch("")}
@@ -1990,7 +2131,7 @@ export default function ClientManagement() {
       >
         <Typography sx={{ fontSize: "0.7rem", color: C.text.muted }}>
           Showing <strong>{clients?.length || 0}</strong> of{" "}
-          <strong>{pagination?.total || 0}</strong> customers
+          <strong>{pagination?.total || 0}</strong> {copy.pluralLower}
         </Typography>
         {loading && <CircularProgress size={16} sx={{ color: C.primary }} />}
       </Box>
@@ -2020,30 +2161,32 @@ export default function ClientManagement() {
               mb: 0.5,
             }}
           >
-            {search ? "No results found" : "No customers yet"}
+            {search ? "No results found" : copy.noYet}
           </Typography>
           <Typography
             sx={{ fontSize: "0.75rem", color: C.text.secondary, mb: 2 }}
           >
             {search
               ? "Try adjusting your search"
-              : "Add your first customer to get started"}
+              : copy.emptyHint}
           </Typography>
           {!search && (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => {
+              onClick={() =>
+                guardAdminAction("Create", () => {
                 setEditingClient(null);
                 setModalOpen(true);
-              }}
+                })
+              }
               sx={{
                 bgcolor: C.primary,
                 textTransform: "none",
                 borderRadius: "10px",
               }}
             >
-              Add Customer
+              {copy.addEmptyButton}
             </Button>
           )}
         </Box>
@@ -2054,10 +2197,18 @@ export default function ClientManagement() {
               <ClientCard
                 client={c}
                 onEdit={(cl) => {
+                  if (!canEditAdmins) {
+                    showPermissionToast("Edit");
+                    return;
+                  }
                   setEditingClient(cl);
                   setModalOpen(true);
                 }}
                 onDelete={(cl) => {
+                  if (!canDeleteAdmins) {
+                    showPermissionToast("Delete");
+                    return;
+                  }
                   setSelectedClient(cl);
                   setDeleteOpen(true);
                 }}
@@ -2172,6 +2323,7 @@ export default function ClientManagement() {
         }}
         onConfirm={handleStatusChange}
         loading={actionLoading}
+        copy={copy}
       />
 
       <Snackbar

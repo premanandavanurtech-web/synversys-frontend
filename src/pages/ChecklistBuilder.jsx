@@ -202,6 +202,7 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState("");
   const inputRef = useRef(null);
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   useEffect(() => {
     if (open && checklist) {
@@ -239,7 +240,20 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
       onClose={!loading ? onClose : undefined}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { borderRadius: 3, m: { xs: 1, sm: 2 } } }}
+      fullScreen={isMobile}
+      PaperProps={{
+        sx: {
+          borderRadius: { xs: 0, sm: 3 },
+          m: { xs: 0, sm: 2 },
+          width: { xs: "100%", sm: "calc(100% - 32px)" },
+          maxWidth: { xs: "none", sm: 600 },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        },
+      }}
     >
       <Box
         sx={{
@@ -247,7 +261,7 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
           px: 3,
           pt: 3,
           pb: 2,
-          borderRadius: "12px 12px 0 0",
+          borderRadius: { xs: 0, sm: "12px 12px 0 0" },
         }}
       >
         <Box
@@ -278,7 +292,7 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
           </IconButton>
         </Box>
       </Box>
-      <DialogContent sx={{ p: 3 }}>
+      <DialogContent sx={{ p: 3, flex: 1, overflowY: "auto" }}>
         <Stack spacing={3}>
           <Box
             sx={{
@@ -326,7 +340,16 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
           />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3, gap: 1.5 }}>
+      <DialogActions
+        sx={{
+          px: 3,
+          pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 3 },
+          gap: 1.5,
+          pt: { xs: 1.5, sm: 0 },
+          borderTop: { xs: "1px solid", sm: "none" },
+          borderColor: "divider",
+        }}
+      >
         <Button onClick={onClose} disabled={loading} variant="outlined">
           Cancel
         </Button>
@@ -850,7 +873,7 @@ const MobileRequestCard = ({ row, onView, onDelete, isSuperAdmin }) => (
             <IconButton
               size="small"
               color="error"
-              onClick={() => onDelete(row._id)}
+              onClick={() => onDelete(row)}
               sx={{ border: "1px solid", borderColor: "error.light" }}
             >
               <DeleteIcon sx={{ fontSize: 16 }} />
@@ -874,8 +897,18 @@ const ViewChecklistModal = ({
   const fields = checklist.fields || [];
   return (
     <Modal open={open} onClose={onClose}>
-      <ModalBox sx={{ width: { xs: "95vw", sm: 660 } }}>
-        <ModalHeader>
+      <ModalBox
+        sx={{
+          width: { xs: "100vw", sm: 660 },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "95vh" },
+          top: { xs: 0, sm: "50%" },
+          left: { xs: 0, sm: "50%" },
+          transform: { xs: "none", sm: "translate(-50%, -50%)" },
+          borderRadius: { xs: 0, sm: "20px" },
+        }}
+      >
+        <ModalHeader sx={{ borderRadius: { xs: 0, sm: "20px 20px 0 0" } }}>
           <Box
             sx={{
               display: "flex",
@@ -1068,9 +1101,10 @@ const ViewChecklistModal = ({
             alignItems: "center",
             flexShrink: 0,
             bgcolor: "#fafbfc",
-            borderRadius: "0 0 20px 20px",
+            borderRadius: { xs: 0, sm: "0 0 20px 20px" },
             flexWrap: "wrap",
             gap: 1,
+            pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 },
           }}
         >
           <Stack direction="row" spacing={1}>
@@ -1129,8 +1163,18 @@ const CreateModal = ({ open, onClose }) => {
   ];
   return (
     <Modal open={open} onClose={onClose}>
-      <ModalBox sx={{ width: { xs: "92vw", sm: 500 } }}>
-        <ModalHeader>
+      <ModalBox
+        sx={{
+          width: { xs: "100vw", sm: 500 },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "95vh" },
+          top: { xs: 0, sm: "50%" },
+          left: { xs: 0, sm: "50%" },
+          transform: { xs: "none", sm: "translate(-50%, -50%)" },
+          borderRadius: { xs: 0, sm: "20px" },
+        }}
+      >
+        <ModalHeader sx={{ borderRadius: { xs: 0, sm: "20px 20px 0 0" } }}>
           <Box
             sx={{
               display: "flex",
@@ -1172,7 +1216,7 @@ const CreateModal = ({ open, onClose }) => {
             </IconButton>
           </Box>
         </ModalHeader>
-        <Box sx={{ p: { xs: 2, sm: 2.5 } }}>
+        <Box sx={{ p: { xs: 2, sm: 2.5 }, flex: 1, overflowY: "auto" }}>
           <Stack spacing={1.5}>
             {OPTIONS.map((opt) => (
               <Box
@@ -1231,11 +1275,23 @@ const CreateModal = ({ open, onClose }) => {
               </Box>
             ))}
           </Stack>
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2.5 }}>
-            <Button onClick={onClose} variant="outlined" size="small">
-              Cancel
-            </Button>
-          </Box>
+        </Box>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "flex-end",
+            p: { xs: 2, sm: 2.5 },
+            pt: 1.5,
+            pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 },
+            borderTop: { xs: "1px solid", sm: "none" },
+            borderColor: "divider",
+            bgcolor: "#fafbfc",
+            borderRadius: { xs: 0, sm: "0 0 20px 20px" },
+          }}
+        >
+          <Button onClick={onClose} variant="outlined" size="small">
+            Cancel
+          </Button>
         </Box>
       </ModalBox>
     </Modal>
@@ -1475,6 +1531,8 @@ export default function ChecklistPage() {
   const [selectedChecklist, setSelectedChecklist] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [requestDeleteTarget, setRequestDeleteTarget] = useState(null);
+  const [requestDeleteDialogOpen, setRequestDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [changeCartWidth,setChangeCartWidth]=useState(tab)
 
@@ -1638,6 +1696,27 @@ export default function ChecklistPage() {
     },
     [softDeleteRequest, fetchRequests, showSnack],
   );
+
+  const handleRequestDeleteClick = useCallback((request) => {
+    setRequestDeleteTarget(request);
+    setRequestDeleteDialogOpen(true);
+  }, []);
+
+  const handleRequestDeleteConfirm = useCallback(async () => {
+    if (!requestDeleteTarget?._id) return;
+    setDeleting(true);
+    const res = await softDeleteRequest(requestDeleteTarget._id);
+    if (res.success) {
+      showSnack("Request deleted");
+      fetchRequests();
+      if (viewRequest?._id === requestDeleteTarget._id) setViewRequest(null);
+    } else {
+      showSnack(res.error || "Failed to delete request", "error");
+    }
+    setDeleting(false);
+    setRequestDeleteDialogOpen(false);
+    setRequestDeleteTarget(null);
+  }, [requestDeleteTarget, softDeleteRequest, fetchRequests, showSnack, viewRequest]);
 
   const handleReviewRequest = useCallback(
     async (id, status, data) => {
@@ -2595,7 +2674,7 @@ export default function ChecklistPage() {
                           key={row._id}
                           row={row}
                           onView={openViewRequest}
-                          onDelete={handleSoftDeleteRequest}
+                          onDelete={handleRequestDeleteClick}
                           isSuperAdmin={isSuperAdmin}
                         />
                       ))
@@ -2740,9 +2819,7 @@ export default function ChecklistPage() {
                                         <IconButton
                                           size="small"
                                           color="error"
-                                          onClick={() =>
-                                            handleSoftDeleteRequest(row._id)
-                                          }
+                                          onClick={() => handleRequestDeleteClick(row)}
                                           sx={{
                                             border: "1px solid",
                                             borderColor: "error.light",
@@ -2848,7 +2925,20 @@ export default function ChecklistPage() {
           onClose={() => setViewRequest(null)}
           maxWidth="md"
           fullWidth
-          PaperProps={{ sx: { borderRadius: 3 } }}
+          fullScreen={isMobile}
+          PaperProps={{
+            sx: {
+              borderRadius: { xs: 0, sm: 3 },
+              m: { xs: 0, sm: 2 },
+              width: { xs: "100%", sm: "calc(100% - 32px)" },
+              maxWidth: { xs: "none", sm: 900 },
+              height: { xs: "100dvh", sm: "auto" },
+              maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            },
+          }}
         >
           <DialogTitle
             sx={{ bgcolor: "#0d4a5c", color: "white", p: { xs: 2, sm: 3 } }}
@@ -2884,7 +2974,14 @@ export default function ChecklistPage() {
               </IconButton>
             </Box>
           </DialogTitle>
-          <DialogContent sx={{ p: { xs: 2, sm: 3 } ,mt:2 ,}}>
+          <DialogContent
+            sx={{
+              p: { xs: 2, sm: 3 },
+              mt: { xs: 0, sm: 2 },
+              flex: 1,
+              overflowY: "auto",
+            }}
+          >
             <Stack spacing={2.5}>
               <Grid container spacing={1.5} >
                 {[
@@ -2916,7 +3013,7 @@ export default function ChecklistPage() {
                   },
                 ].map(({ label, content }) => (
                   <Grid item xs={6} sm={3} key={label}>
-                    <InfoTile sx={{ height: "100%" ,width:{xs:"132px",md:"203px"}}}>
+                    <InfoTile sx={{ height: "100%", width: "100%" }}>
                       <Typography
                         variant="caption"
                         color="text.secondary"
@@ -3020,9 +3117,12 @@ export default function ChecklistPage() {
           <DialogActions
             sx={{
               px: { xs: 2, sm: 3 },
-              pb: { xs: 2, sm: 2.5 },
+              pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 },
+              pt: { xs: 1.5, sm: 1 },
               gap: 1,
               flexWrap: "wrap",
+              borderTop: { xs: "1px solid", sm: "none" },
+              borderColor: "divider",
             }}
           >
             {isSuperAdmin &&
@@ -3059,6 +3159,20 @@ export default function ChecklistPage() {
           onConfirm={handleDeleteConfirm}
           title="Delete Checklist"
           message={`Delete "${deleteTarget?.name}"? This action can be reversed from the admin panel.`}
+          deleting={deleting}
+        />
+
+        <DeleteConfirmDialog
+          open={requestDeleteDialogOpen}
+          onClose={() => {
+            if (!deleting) {
+              setRequestDeleteDialogOpen(false);
+              setRequestDeleteTarget(null);
+            }
+          }}
+          onConfirm={handleRequestDeleteConfirm}
+          title="Delete Request"
+          message={`Delete "${requestDeleteTarget?.checklistName}" request? This action can be reversed from the admin panel.`}
           deleting={deleting}
         />
 

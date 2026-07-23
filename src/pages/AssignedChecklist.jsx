@@ -627,6 +627,9 @@ export default function AssignedChecklist() {
   });
   const openModal  = (key) => setModalStates((p) => ({ ...p, [key]: true }));
   const closeModal = (key) => setModalStates((p) => ({ ...p, [key]: false }));
+  const activeTeamMembers = teamMembers.filter(
+    (member) => String(member?.status || "").toLowerCase() === "active",
+  );
 
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
   const formatToastMessage = useCallback((msg) => {
@@ -907,13 +910,22 @@ export default function AssignedChecklist() {
             }}
           >
             {statCards.map((card, i) => (
-              <ModernStatCard
+              <Box
                 key={i}
-                {...card}
-                loading={statsLoading}
-                active={statFilter ? statFilter === card.filterStatus : !card.filterStatus && !hasFilters}
-                onClick={() => handleStatCardClick(card.filterStatus)}
-              />
+                sx={{
+                  minWidth: 0,
+                  gridColumn: card.filterStatus === "overdue"
+                    ? { xs: "1 / -1", sm: "1 / -1", md: "auto" }
+                    : "auto",
+                }}
+              >
+                <ModernStatCard
+                  {...card}
+                  loading={statsLoading}
+                  active={statFilter ? statFilter === card.filterStatus : !card.filterStatus && !hasFilters}
+                  onClick={() => handleStatCardClick(card.filterStatus)}
+                />
+              </Box>
             ))}
           </Box>
 
@@ -934,65 +946,104 @@ export default function AssignedChecklist() {
                     sx={{ border: `1px solid ${hasFilters ? "#084d68" : "#e2e8f0"}`, borderRadius: 2, color: hasFilters ? "#084d68" : "inherit", bgcolor: hasFilters ? alpha("#084d68", 0.06) : "transparent" }}
                   >
                     <FilterListIcon fontSize="small" />
-                    {filtersOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
                   </IconButton>
                 </Stack>
-                <Collapse in={filtersOpen}>
-                  <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} flexWrap="wrap" useFlexGap>
-                    <FormControl size="small" sx={{ minWidth: 130, flex: 1 }}>
-                      <Select value={filters.status} onChange={(e) => handleFilterChange("status", e.target.value)} displayEmpty>
-                        <MenuItem value="">All Status</MenuItem>
-                        {STATUS_FILTER_OPTIONS.map(([k, cfg]) => (
-                          <MenuItem key={k} value={k}>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: cfg.color }} />{cfg.label}
-                            </Box>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    <FormControl size="small" sx={{ minWidth: 120, flex: 1 }}>
-                      <Select value={filters.priority} onChange={(e) => handleFilterChange("priority", e.target.value)} displayEmpty>
-                        <MenuItem value="">All Priority</MenuItem>
-                        {Object.entries(PRIORITY_CFG).map(([k, cfg]) => (
-                          <MenuItem key={k} value={k}>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <Box sx={{ width: 14, height: 14, borderRadius: "50%", bgcolor: cfg.color }} />
-                              {cfg.label}
-                            </Box>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    <TextField
-                      size="small"
-                      type="date"
-                      label="Due From"
-                      value={rawDateFrom}
-                      onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
-                      InputLabelProps={{ shrink: true }}
-                      inputProps={{ max: rawDateTo || undefined }}
-                      InputProps={{ startAdornment: (<InputAdornment position="start"><CalendarMonthIcon sx={{ fontSize: 16, color: "#94a3b8" }} /></InputAdornment>) }}
-                      sx={{ minWidth: 150, flex: 1 }}
+                {filtersOpen && (
+                  <>
+                    <Box
+                      onClick={() => setFiltersOpen(false)}
+                      sx={{
+                        position: "fixed",
+                        inset: 0,
+                        zIndex: (theme) => theme.zIndex.modal,
+                        bgcolor: "rgba(15, 23, 42, 0.36)",
+                        backdropFilter: "blur(2px)",
+                      }}
                     />
-                    <TextField
-                      size="small"
-                      type="date"
-                      label="Due To"
-                      value={rawDateTo}
-                      onChange={(e) => handleFilterChange("dateTo", e.target.value)}
-                      InputLabelProps={{ shrink: true }}
-                      inputProps={{ min: rawDateFrom || undefined }}
-                      InputProps={{ startAdornment: (<InputAdornment position="start"><CalendarMonthIcon sx={{ fontSize: 16, color: "#94a3b8" }} /></InputAdornment>) }}
-                      sx={{ minWidth: 150, flex: 1 }}
-                    />
-                    {hasFilters && (
-                      <Button onClick={clearFilters} startIcon={<ClearIcon />} sx={{ color: "#ef4444" }} size="small">
-                        Clear
-                      </Button>
-                    )}
-                  </Stack>
-                </Collapse>
+                    <Box
+                      sx={{
+                        position: "fixed",
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: (theme) => theme.zIndex.modal + 1,
+                        bgcolor: "background.paper",
+                        borderRadius: "24px 24px 0 0",
+                        boxShadow: "0 -18px 56px rgba(15, 23, 42, 0.28)",
+                        px: 2,
+                        pt: 1.5,
+                        pb: "calc(18px + env(safe-area-inset-bottom))",
+                        maxHeight: "82vh",
+                        overflowY: "auto",
+                      }}
+                    >
+                      <Box sx={{ width: 44, height: 5, borderRadius: 999, bgcolor: "#dbe3ea", mx: "auto", mb: 2 }} />
+                      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <FilterListIcon sx={{ fontSize: 18, color: "#084d68" }} />
+                          <Typography fontWeight={800} color="#084d68">Filters</Typography>
+                        </Stack>
+                        <IconButton size="small" onClick={() => setFiltersOpen(false)}>
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                      <Stack spacing={1.25}>
+                        <FormControl size="small" fullWidth>
+                          <Select value={filters.status} onChange={(e) => handleFilterChange("status", e.target.value)} displayEmpty>
+                            <MenuItem value="">All Status</MenuItem>
+                            {STATUS_FILTER_OPTIONS.map(([k, cfg]) => (
+                              <MenuItem key={k} value={k}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                  <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: cfg.color }} />{cfg.label}
+                                </Box>
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <FormControl size="small" fullWidth>
+                          <Select value={filters.priority} onChange={(e) => handleFilterChange("priority", e.target.value)} displayEmpty>
+                            <MenuItem value="">All Priority</MenuItem>
+                            {Object.entries(PRIORITY_CFG).map(([k, cfg]) => (
+                              <MenuItem key={k} value={k}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                  <Box sx={{ width: 14, height: 14, borderRadius: "50%", bgcolor: cfg.color }} />
+                                  {cfg.label}
+                                </Box>
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <TextField
+                          size="small"
+                          type="date"
+                          label="Due From"
+                          value={rawDateFrom}
+                          onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+                          InputLabelProps={{ shrink: true }}
+                          inputProps={{ max: rawDateTo || undefined }}
+                          InputProps={{ startAdornment: (<InputAdornment position="start"><CalendarMonthIcon sx={{ fontSize: 16, color: "#94a3b8" }} /></InputAdornment>) }}
+                          fullWidth
+                        />
+                        <TextField
+                          size="small"
+                          type="date"
+                          label="Due To"
+                          value={rawDateTo}
+                          onChange={(e) => handleFilterChange("dateTo", e.target.value)}
+                          InputLabelProps={{ shrink: true }}
+                          inputProps={{ min: rawDateFrom || undefined }}
+                          InputProps={{ startAdornment: (<InputAdornment position="start"><CalendarMonthIcon sx={{ fontSize: 16, color: "#94a3b8" }} /></InputAdornment>) }}
+                          fullWidth
+                        />
+                        {hasFilters && (
+                          <Button onClick={clearFilters} startIcon={<ClearIcon />} sx={{ color: "#ef4444", alignSelf: "flex-start" }} size="small">
+                            Clear Filters
+                          </Button>
+                        )}
+                      </Stack>
+                    </Box>
+                  </>
+                )}
               </>
             ) : (
               // Desktop: all filters in one row
@@ -1394,9 +1445,9 @@ export default function AssignedChecklist() {
       <SelectionModal open={modalStates.checklist}      onClose={() => closeModal("checklist")}      title="Select Checklists"    items={checklists}   loading={checklistsLoading} selectedIds={assignForm.checklistIds}     onToggle={(id) => setAssignForm((p) => ({ ...p, checklistIds: p.checklistIds.includes(id) ? p.checklistIds.filter((i) => i !== id) : [...p.checklistIds, id] }))} onDone={() => closeModal("checklist")} />
       <SelectionModal open={modalStates.admin}          onClose={() => closeModal("admin")}          title="Select Admin"         items={admins}       loading={adminsLoading}     selectedIds={assignForm.adminId}         onToggle={(id) => setAssignForm((p) => ({ ...p, adminId: id }))}                                                                                                         onDone={() => closeModal("admin")}      multiSelect={false} />
       <SelectionModal open={modalStates.reassignAdmin}  onClose={() => closeModal("reassignAdmin")}  title="Select New Admin"     items={admins}       loading={adminsLoading}     selectedIds={reassignForm.newAdminId}    onToggle={(id) => setReassignForm((p) => ({ ...p, newAdminId: id }))}                                                                                                    onDone={() => closeModal("reassignAdmin")} multiSelect={false} />
-      <SelectionModal open={modalStates.team}           onClose={() => closeModal("team")}           title="Select Team Members"  items={teamMembers}  loading={teamLoading}       selectedIds={assignForm.teamMemberIds}   onToggle={(id) => setAssignForm((p) => ({ ...p, teamMemberIds: p.teamMemberIds.includes(id) ? p.teamMemberIds.filter((i) => i !== id) : [...p.teamMemberIds, id] }))}  onDone={() => closeModal("team")} />
+      <SelectionModal open={modalStates.team}           onClose={() => closeModal("team")}           title="Select Team Members"  items={activeTeamMembers}  loading={teamLoading}       selectedIds={assignForm.teamMemberIds}   onToggle={(id) => setAssignForm((p) => ({ ...p, teamMemberIds: p.teamMemberIds.includes(id) ? p.teamMemberIds.filter((i) => i !== id) : [...p.teamMemberIds, id] }))}  onDone={() => closeModal("team")} />
       <SelectionModal open={modalStates.asset}          onClose={() => closeModal("asset")}          title="Select Assets"        items={assets}       loading={assetsLoading}     selectedIds={assignForm.assetIds}        onToggle={(id) => setAssignForm((p) => ({ ...p, assetIds: p.assetIds.includes(id) ? p.assetIds.filter((i) => i !== id) : [...p.assetIds, id] }))}                        onDone={() => closeModal("asset")} />
-      <SelectionModal open={modalStates.reassignTeam}   onClose={() => closeModal("reassignTeam")}   title="Select Team Members"  items={teamMembers}  loading={teamLoading}       selectedIds={reassignForm.teamMemberIds} onToggle={(id) => setReassignForm((p) => ({ ...p, teamMemberIds: p.teamMemberIds.includes(id) ? p.teamMemberIds.filter((i) => i !== id) : [...p.teamMemberIds, id] }))} onDone={() => closeModal("reassignTeam")} />
+      <SelectionModal open={modalStates.reassignTeam}   onClose={() => closeModal("reassignTeam")}   title="Select Team Members"  items={activeTeamMembers}  loading={teamLoading}       selectedIds={reassignForm.teamMemberIds} onToggle={(id) => setReassignForm((p) => ({ ...p, teamMemberIds: p.teamMemberIds.includes(id) ? p.teamMemberIds.filter((i) => i !== id) : [...p.teamMemberIds, id] }))} onDone={() => closeModal("reassignTeam")} />
       <SelectionModal open={modalStates.reassignAsset}  onClose={() => closeModal("reassignAsset")}  title="Select Assets"        items={assets}       loading={assetsLoading}     selectedIds={reassignForm.assetIds}      onToggle={(id) => setReassignForm((p) => ({ ...p, assetIds: p.assetIds.includes(id) ? p.assetIds.filter((i) => i !== id) : [...p.assetIds, id] }))}                     onDone={() => closeModal("reassignAsset")} />
 
       {/* ── Snackbar ── */}

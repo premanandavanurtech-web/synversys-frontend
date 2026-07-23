@@ -33,6 +33,8 @@ import {
   alpha,
   Menu,
   MenuItem,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -70,6 +72,8 @@ const ACCENT = "#0d4f63";
 
 // Department Modal Component
 function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -128,8 +132,22 @@ function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
+      sx={{
+        "& .MuiDialog-container": {
+          alignItems: { xs: "flex-end", sm: "center" },
+        },
+      }}
       PaperProps={{
-        sx: { borderRadius: "16px", border: `1px solid ${C.border}` },
+        sx: {
+          borderRadius: { xs: 0, sm: "16px" },
+          border: `1px solid ${C.border}`,
+          m: { xs: 0, sm: 2 },
+          width: { xs: "100%", sm: "calc(100% - 64px)" },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "90vh" },
+          display: "flex",
+          flexDirection: "column",
+        },
       }}
     >
       <DialogTitle
@@ -165,7 +183,7 @@ function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 2 }}>
+      <DialogContent sx={{ pt: 2, flex: 1, overflowY: "auto" }}>
         <Stack spacing={2.5} sx={{ mt: 2 }}>
           <TextField
             fullWidth
@@ -176,7 +194,7 @@ function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
             error={!!errors.name}
             helperText={errors.name || "Enter a unique department name"}
             placeholder="e.g., Human Resources"
-            autoFocus
+            autoFocus={!isMobile}
             sx={{
               "& .MuiOutlinedInput-root": { borderRadius: "10px" },
               "& label": { fontSize: "0.85rem" },
@@ -226,7 +244,7 @@ function DeptModal({ open, onClose, onSubmit, loading, editItem }) {
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+      <DialogActions sx={{ px: 3, pb: { xs: "calc(18px + env(safe-area-inset-bottom))", sm: 2.5 }, gap: 1 }}>
         <Button
           onClick={onClose}
           variant="outlined"
@@ -349,6 +367,8 @@ function DeleteModal({ open, onClose, onConfirm, loading, item }) {
 // Main Component
 export default function DepartmentManagement() {
   const navigate = useNavigate();  // Added for navigation
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const {
     departments,
     loading,
@@ -365,6 +385,7 @@ export default function DepartmentManagement() {
   } = useDepartment();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [departmentStatFilter, setDepartmentStatFilter] = useState("all");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [modalOpen, setModalOpen] = useState(false);
@@ -507,24 +528,42 @@ export default function DepartmentManagement() {
     navigate(-1); // Navigate back to previous page
   };
 
+  const handleStatCardClick = (filter) => {
+    setDepartmentStatFilter(filter);
+    setPage(0);
+  };
+
+  const filteredDepartments = departments.filter((department) => {
+    if (departmentStatFilter === "active") return department.isActive !== false;
+    if (departmentStatFilter === "inactive") return department.isActive === false;
+    return true;
+  });
+  const paginationCount =
+    departmentStatFilter === "all"
+      ? pagination.total || departments.length
+      : filteredDepartments.length;
+
   const statItems = [
     {
       label: "Total Departments",
       value: pagination.total || departments.length,
       color: ACCENT,
       icon: BusinessIcon,
+      filter: "all",
     },
     {
       label: "Active",
       value: departments.filter((d) => d.isActive).length,
       color: C.success,
       icon: CheckCircleIcon,
+      filter: "active",
     },
     {
       label: "Inactive",
       value: departments.filter((d) => !d.isActive).length,
       color: C.text.muted,
       icon: CancelIcon,
+      filter: "inactive",
     },
   ];
 
@@ -633,14 +672,38 @@ export default function DepartmentManagement() {
           {statItems.map((s) => (
             <Card
               key={s.label}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleStatCardClick(s.filter)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleStatCardClick(s.filter);
+                }
+              }}
               elevation={0}
               sx={{
                 borderRadius: "14px",
-                border: `1px solid ${C.border}`,
+                gridColumn: s.filter === "inactive"
+                  ? { xs: "1 / -1", sm: "auto" }
+                  : "auto",
+                border: `1px solid ${
+                  departmentStatFilter === s.filter ? s.color : C.border
+                }`,
+                cursor: "pointer",
+                boxShadow:
+                  departmentStatFilter === s.filter
+                    ? `0 6px 16px ${alpha(s.color, 0.16)}`
+                    : "none",
                 transition: "all 0.2s",
                 "&:hover": {
+                  transform: "translateY(-2px)",
                   borderColor: s.color,
                   boxShadow: `0 4px 12px ${alpha(s.color, 0.1)}`,
+                },
+                "&:focus-visible": {
+                  outline: `2px solid ${s.color}`,
+                  outlineOffset: 2,
                 },
               }}
             >
@@ -742,7 +805,7 @@ export default function DepartmentManagement() {
           <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
             <CircularProgress sx={{ color: ACCENT }} />
           </Box>
-        ) : departments.length === 0 ? (
+        ) : filteredDepartments.length === 0 ? (
           <Paper
             sx={{
               textAlign: "center",
@@ -773,6 +836,114 @@ export default function DepartmentManagement() {
               overflow: "hidden",
             }}
           >
+            {isMobile && (
+              <Box sx={{ p: 1.25, display: "grid", gap: 1.25 }}>
+                {filteredDepartments.map((dept) => (
+                  <Paper
+                    key={dept._id}
+                    elevation={0}
+                    sx={{
+                      p: 1.5,
+                      border: `1px solid ${C.border}`,
+                      borderRadius: "12px",
+                      bgcolor: C.surface,
+                    }}
+                  >
+                    <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1.25}>
+                      <Stack direction="row" spacing={1.25} sx={{ minWidth: 0, flex: 1 }}>
+                        <Box
+                          sx={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: "10px",
+                            bgcolor: alpha(ACCENT, 0.08),
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flex: "0 0 auto",
+                          }}
+                        >
+                          <BusinessIcon sx={{ fontSize: 16, color: ACCENT }} />
+                        </Box>
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: "0.9rem",
+                              color: C.text.primary,
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {dept.name}
+                          </Typography>
+                          <Typography sx={{ fontSize: "0.68rem", color: C.text.muted, mb: 1 }}>
+                            ID: {dept._id?.slice(-6)}
+                          </Typography>
+                          <Stack spacing={0.8}>
+                            <Box>
+                              <Typography sx={{ fontSize: "0.68rem", color: C.text.muted, fontWeight: 700, textTransform: "uppercase" }}>
+                                Description
+                              </Typography>
+                              <Typography sx={{ fontSize: "0.8rem", color: C.text.secondary, wordBreak: "break-word" }}>
+                                {dept.description || "No description"}
+                              </Typography>
+                            </Box>
+                            <Box>
+                              <Typography sx={{ fontSize: "0.68rem", color: C.text.muted, fontWeight: 700, textTransform: "uppercase" }}>
+                                Created
+                              </Typography>
+                              <Typography sx={{ fontSize: "0.8rem", color: C.text.secondary }}>
+                                {new Date(dept.createdAt).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </Box>
+                      </Stack>
+                      <Stack alignItems="flex-end" spacing={1}>
+                        <Chip
+                          label={dept.isActive ? "Active" : "Inactive"}
+                          size="small"
+                          sx={{
+                            bgcolor: dept.isActive ? C.successBg : C.borderLight,
+                            color: dept.isActive ? C.success : C.text.muted,
+                            fontWeight: 600,
+                            fontSize: "0.68rem",
+                            height: 24,
+                            borderRadius: "999px",
+                          }}
+                        />
+                        <Stack direction="row" spacing={0.25}>
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setEditItem(dept);
+                              setModalOpen(true);
+                            }}
+                            disabled={actionLoading}
+                            sx={{ color: C.text.secondary }}
+                          >
+                            <EditIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleMenuOpen(e, dept)}
+                            disabled={actionLoading}
+                            sx={{ color: C.text.secondary }}
+                          >
+                            <MoreVertIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Stack>
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Box>
+            )}
+            {!isMobile && (
             <TableContainer sx={{ overflowX: "auto" }}>
               <Table sx={{ minWidth: 800 }}>
                 <TableHead>
@@ -804,7 +975,7 @@ export default function DepartmentManagement() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {departments.map((dept) => (
+                  {filteredDepartments.map((dept) => (
                     <TableRow
                       key={dept._id}
                       hover
@@ -946,12 +1117,13 @@ export default function DepartmentManagement() {
                 </TableBody>
               </Table>
             </TableContainer>
+            )}
             <Box
               sx={{ borderTop: `1px solid ${C.border}`, bgcolor: C.surface }}
             >
               <TablePagination
                 component="div"
-                count={pagination.total || departments.length}
+                count={paginationCount}
                 page={page}
                 onPageChange={(_, p) => setPage(p)}
                 rowsPerPage={rowsPerPage}

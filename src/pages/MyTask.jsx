@@ -34,6 +34,7 @@ import {
   DialogContent,
   DialogActions,
   FormHelperText,
+  useMediaQuery,
 } from "@mui/material";
 import { createTheme, ThemeProvider, alpha } from "@mui/material/styles";
 import {
@@ -753,6 +754,7 @@ const PoaDialog = ({
   onClose,
   onSubmit,
 }) => {
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const assetName =
     task?.assets?.[0]?.assetName ||
     task?.assetIds?.[0]?.assetName ||
@@ -764,10 +766,34 @@ const PoaDialog = ({
       onClose={submitting ? undefined : onClose}
       fullWidth
       maxWidth="sm"
+      fullScreen={isMobile}
+      sx={{
+        "& .MuiDialog-container": {
+          alignItems: { xs: "stretch", sm: "center" },
+        },
+      }}
       PaperProps={{
         sx: {
-          borderRadius: 2,
+          borderRadius: { xs: 0, sm: 2 },
           boxShadow: "0 24px 60px rgba(15, 23, 42, 0.18)",
+          m: { xs: 0, sm: 2 },
+          width: { xs: "100%", sm: "calc(100% - 32px)" },
+          maxWidth: { xs: "none", sm: 600 },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          "@media (max-width:600px)": {
+            position: "fixed",
+            inset: 0,
+            m: 0,
+            width: "100vw",
+            maxWidth: "100vw",
+            height: "100dvh",
+            maxHeight: "100dvh",
+            borderRadius: 0,
+          },
         },
       }}
     >
@@ -779,7 +805,13 @@ const PoaDialog = ({
           {assetName}
         </Typography>
       </DialogTitle>
-      <DialogContent sx={{ pt: "12px !important" }}>
+      <DialogContent
+        sx={{
+          pt: "12px !important",
+          flex: 1,
+          overflowY: "auto",
+        }}
+      >
         <Stack spacing={2}>
           <TextField
             label="Feedback"
@@ -841,7 +873,14 @@ const PoaDialog = ({
           </Box>
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2.5, pt: 1 }}>
+      <DialogActions
+        sx={{
+          px: 3,
+          pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 },
+          pt: 1.25,
+          borderTop: { xs: "1px solid #e2e8f0", sm: "none" },
+        }}
+      >
         <Button onClick={onClose} disabled={submitting} sx={{ color: "#64748b" }}>
           Cancel
         </Button>
@@ -1529,8 +1568,10 @@ export default function MyTask() {
   const { user } = useAuth();
   const { fetchMyTasks, submitPoa, loading, submitting } = useTeamAssignment();
   const mountedRef = useRef(true);
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [viewMode, setViewMode] = useState("list");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -1960,7 +2001,7 @@ export default function MyTask() {
               sx={{
                 display: "grid",
                 gridTemplateColumns: {
-                  xs: "1fr",
+                  xs: "minmax(0, 1fr) auto",
                   sm: "minmax(220px, 1fr) repeat(3, minmax(130px, auto)) auto",
                 },
                 gap: 1.25,
@@ -1988,10 +2029,31 @@ export default function MyTask() {
                 }}
               />
 
+              {isMobile && (
+                <Tooltip title="Filters">
+                  <IconButton
+                    onClick={() => setMobileFiltersOpen(true)}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 2,
+                      border: "1px solid #e2e8f0",
+                      bgcolor: hasFilters ? "#0d3d52" : "#fff",
+                      color: hasFilters ? "#fff" : "#0d3d52",
+                      "&:hover": {
+                        bgcolor: hasFilters ? "#072535" : "#f8fafc",
+                      },
+                    }}
+                  >
+                    <FilterListIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+
               {/* Status */}
               <FormControl
                 size="small"
-                sx={{ width: "100%", minWidth: 0 }}
+                sx={{ width: "100%", minWidth: 0, display: { xs: "none", sm: "block" } }}
               >
                 <Select
                   value={filters.status}
@@ -2027,7 +2089,7 @@ export default function MyTask() {
               {/* Priority */}
               <FormControl
                 size="small"
-                sx={{ width: "100%", minWidth: 0 }}
+                sx={{ width: "100%", minWidth: 0, display: { xs: "none", sm: "block" } }}
               >
                 <Select
                   value={filters.priority}
@@ -2065,6 +2127,7 @@ export default function MyTask() {
                 onChange={(e) => handleFilterChange("date", e.target.value)}
                 sx={{
                   width: "100%",
+                  display: { xs: "none", sm: "block" },
                   "& .MuiOutlinedInput-root": {
                     fontSize: "0.82rem",
                     bgcolor: "#fff",
@@ -2086,6 +2149,7 @@ export default function MyTask() {
                     "&:hover": { bgcolor: "#fee2e2" },
                     px: 1.5,
                     width: { xs: "100%", sm: "auto" },
+                    display: { xs: "none", sm: "inline-flex" },
                   }}
                 >
                   Clear
@@ -2093,6 +2157,137 @@ export default function MyTask() {
               )}
             </Stack>
           </Paper>
+
+          <Dialog
+            open={mobileFiltersOpen}
+            onClose={() => setMobileFiltersOpen(false)}
+            fullWidth
+            maxWidth="xs"
+            PaperProps={{
+              sx: {
+                position: "fixed",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                m: 0,
+                width: "100%",
+                maxWidth: "none",
+                borderRadius: "22px 22px 0 0",
+                maxHeight: "88dvh",
+              },
+            }}
+          >
+            <Box sx={{ display: "flex", justifyContent: "center", pt: 1.4 }}>
+              <Box sx={{ width: 44, height: 4, borderRadius: 999, bgcolor: "#e2e8f0" }} />
+            </Box>
+            <DialogTitle
+              sx={{
+                px: 2.25,
+                py: 1.5,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center">
+                <FilterListIcon sx={{ fontSize: 18, color: "#0d3d52" }} />
+                <Typography sx={{ fontWeight: 700, fontSize: "1rem", color: "#0f172a" }}>
+                  Filters
+                </Typography>
+              </Stack>
+              <IconButton size="small" onClick={() => setMobileFiltersOpen(false)}>
+                <CloseIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent sx={{ px: 2.25, pb: 1 }}>
+              <Stack spacing={1.25}>
+                <FormControl size="small" fullWidth>
+                  <Select
+                    value={filters.status}
+                    onChange={(e) => handleFilterChange("status", e.target.value)}
+                    displayEmpty
+                    IconComponent={ArrowDownIcon}
+                    sx={{ fontSize: "0.82rem", bgcolor: "#fff" }}
+                  >
+                    <MenuItem value="" sx={{ fontSize: "0.82rem" }}>All Tasks</MenuItem>
+                    <MenuItem value="pending" sx={{ fontSize: "0.82rem" }}>Pending</MenuItem>
+                    <MenuItem value="in_progress" sx={{ fontSize: "0.82rem" }}>In Progress</MenuItem>
+                    <MenuItem value="pending_approval" sx={{ fontSize: "0.82rem" }}>Pending Approval</MenuItem>
+                    <MenuItem value="submitted" sx={{ fontSize: "0.82rem" }}>Submitted</MenuItem>
+                    <MenuItem value="completed" sx={{ fontSize: "0.82rem" }}>Completed</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <FormControl size="small" fullWidth>
+                  <Select
+                    value={filters.priority}
+                    onChange={(e) => handleFilterChange("priority", e.target.value)}
+                    displayEmpty
+                    IconComponent={ArrowDownIcon}
+                    sx={{ fontSize: "0.82rem", bgcolor: "#fff" }}
+                  >
+                    <MenuItem value="" sx={{ fontSize: "0.82rem" }}>Priority</MenuItem>
+                    <MenuItem value="critical" sx={{ fontSize: "0.82rem" }}>Critical</MenuItem>
+                    <MenuItem value="high" sx={{ fontSize: "0.82rem" }}>High</MenuItem>
+                    <MenuItem value="medium" sx={{ fontSize: "0.82rem" }}>Medium</MenuItem>
+                    <MenuItem value="low" sx={{ fontSize: "0.82rem" }}>Low</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <TextField
+                  size="small"
+                  type="date"
+                  value={filters.date || ""}
+                  onChange={(e) => handleFilterChange("date", e.target.value)}
+                  fullWidth
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      fontSize: "0.82rem",
+                      bgcolor: "#fff",
+                    },
+                  }}
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions
+              sx={{
+                px: 2.25,
+                pt: 1,
+                pb: "calc(16px + env(safe-area-inset-bottom))",
+                borderTop: "1px solid #f1f5f9",
+                gap: 1,
+              }}
+            >
+              {hasFilters && (
+                <Button
+                  onClick={clearFilters}
+                  startIcon={<ClearIcon sx={{ fontSize: 15 }} />}
+                  sx={{
+                    mr: "auto",
+                    color: "#ef4444",
+                    textTransform: "none",
+                    fontSize: "0.82rem",
+                  }}
+                >
+                  Clear
+                </Button>
+              )}
+              <Button
+                variant="contained"
+                onClick={() => setMobileFiltersOpen(false)}
+                sx={{
+                  bgcolor: "#0d3d52",
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  px: 3,
+                  "&:hover": { bgcolor: "#072535" },
+                }}
+              >
+                Apply
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           {/* ── Stat Cards ── */}
           <Box

@@ -178,12 +178,13 @@ const StatCard = ({ label, value, sub, icon, accent, loading }) => {
   const theme = useTheme();
   return (
     <Paper elevation={0} sx={{ 
-      p: { xs: 1.5, sm: 2.25 }, 
+      p: { xs: 1.25, sm: 2.25 }, 
       height: "100%", 
+      minHeight: { xs: 104, sm: 132 },
       border: "1px solid", 
-      width: {md:"275px",xs:"310px"},
+      width: "100%",
       borderColor: "divider", 
-      borderRadius: "16px", 
+      borderRadius: { xs: "14px", sm: "16px" }, 
       position: "relative", 
       overflow: "hidden", 
       transition: "all 0.22s", 
@@ -193,20 +194,20 @@ const StatCard = ({ label, value, sub, icon, accent, loading }) => {
         boxShadow: (t) => `0 8px 24px ${alpha(accent || t.palette.primary.main, 0.1)}` 
       } 
     }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: "0.07em", display: "block", mb: 0.75, fontSize: { xs: 9, sm: 10.5 } }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", height: "100%", gap: { xs: 0.75, sm: 1.25 } }}>
+        <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", height: "100%" }}>
+          <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: "0.04em", display: "block", mb: 0.75, fontSize: { xs: 8.5, sm: 10.5 }, lineHeight: 1.2, minHeight: { xs: 20, sm: "auto" } }}>
             {label}
           </Typography>
           {loading ? 
             <Skeleton width={56} height={38} sx={{ mt: 0.25 }} /> : 
-            <Typography fontWeight={800} fontSize={{ xs: 22, sm: 26 }} lineHeight={1} color={accent || "primary.main"} sx={{ mb: 0.5 }}>
+            <Typography fontWeight={800} fontSize={{ xs: 20, sm: 26 }} lineHeight={1} color={accent || "primary.main"} sx={{ mb: 0.5 }}>
               {value}
             </Typography>
           }
-          {sub && (loading ? <Skeleton width={90} height={13} /> : <Typography variant="caption" color="text.disabled" fontSize={{ xs: 9, sm: 11 }}>{sub}</Typography>)}
+          {sub && (loading ? <Skeleton width={90} height={13} /> : <Typography variant="caption" color="text.disabled" fontSize={{ xs: 8.5, sm: 11 }} sx={{ lineHeight: 1.25, mt: "auto" }}>{sub}</Typography>)}
         </Box>
-        <Box sx={{ width: { xs: 36, sm: 42 }, height: { xs: 36, sm: 42 }, borderRadius: "13px", flexShrink: 0, bgcolor: alpha(accent || theme.palette.primary.main, 0.09), color: accent || "primary.main", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Box sx={{ width: { xs: 28, sm: 42 }, height: { xs: 28, sm: 42 }, borderRadius: { xs: "10px", sm: "13px" }, flexShrink: 0, bgcolor: alpha(accent || theme.palette.primary.main, 0.09), color: accent || "primary.main", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {icon}
         </Box>
       </Box>
@@ -339,8 +340,27 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
   }; 
   
   return (
-    <Dialog open={open} onClose={!loading ? onClose : undefined} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: "16px", m: { xs: 1, sm: 2 } } }}>
-      <Box sx={{ bgcolor: "primary.main", px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 3 }, pb: { xs: 1.5, sm: 2.5 }, borderRadius: "16px 16px 0 0" }}>
+    <Dialog
+      open={open}
+      onClose={!loading ? onClose : undefined}
+      maxWidth="xs"
+      fullWidth
+      fullScreen={isMobile}
+      PaperProps={{
+        sx: {
+          borderRadius: { xs: 0, sm: "16px" },
+          m: { xs: 0, sm: 2 },
+          width: { xs: "100%", sm: "calc(100% - 32px)" },
+          maxWidth: { xs: "none", sm: 444 },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        },
+      }}
+    >
+      <Box sx={{ bgcolor: "primary.main", px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 3 }, pb: { xs: 1.5, sm: 2.5 }, borderRadius: { xs: 0, sm: "16px 16px 0 0" } }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <Box>
             <Typography fontWeight={800} fontSize={{ xs: 15, sm: 17 }} color="white">Clone Checklist</Typography>
@@ -351,7 +371,13 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
           </IconButton>
         </Box>
       </Box>
-      <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
+      <DialogContent
+        sx={{
+          p: { xs: 2, sm: 3 },
+          flex: 1,
+          overflowY: "auto",
+        }}
+      >
         <Stack spacing={2.5}>
           <Box sx={{ p: 2, borderRadius: 2, border: "1px solid", borderColor: alpha(theme.palette.primary.main, 0.18), bgcolor: alpha(theme.palette.primary.main, 0.03) }}>
             <Typography variant="caption" fontWeight={700} color="text.disabled" sx={{ textTransform: "uppercase", letterSpacing: "0.07em", display: "block", mb: 1.25, fontSize: { xs: 10, sm: 11 } }}>
@@ -396,7 +422,16 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
           />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 3 }, gap: 1.5, pt: 0 }}>
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 3 },
+          gap: 1.5,
+          pt: { xs: 1.5, sm: 0 },
+          borderTop: { xs: "1px solid", sm: "none" },
+          borderColor: "divider",
+        }}
+      >
         <Button onClick={onClose} disabled={loading} variant="outlined" sx={{ borderColor: "divider", color: "text.secondary", borderRadius: "10px", fontSize: { xs: 12, sm: 13 } }}>
           Cancel
         </Button>
@@ -722,18 +757,29 @@ export default function CloneChecklist() {
         </Box>
 
         <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
-           <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                sm: "repeat(4, minmax(0, 1fr))",
+              },
+              gap: { xs: 1.5, sm: 2 },
+              mb: 3,
+              width: "100%",
+            }}
+          >
             {[
               { label: "Total Cloneable", value: stats.total, sub: "Available to duplicate", icon: <LayersIcon sx={{ fontSize: { xs: 18, sm: 20 } }} /> },
               { label: "Published", value: stats.published, sub: "Active & ready to clone", icon: <CheckCircleIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.success.main },
               { label: "Drafts", value: stats.drafts, sub: "Awaiting publishing", icon: <DescriptionIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.warning.main },
               { label: "Total Fields", value: stats.totalFields, sub: "Across all checklists", icon: <ListAltIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />, accent: appTheme.palette.info.main }
             ].map((s) => (
-              <Grid item xs={6} sm={3} key={s.label}>
+              <Box key={s.label} sx={{ minWidth: 0 }}>
                 <StatCard {...s} loading={listLoading && allRows.length === 0} />
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
           <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2 }, mb: 3, border: "1px solid", borderColor: "divider" }}>
             <AssetSearchField
               placeholder="Search by name, category, or description..."

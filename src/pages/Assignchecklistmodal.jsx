@@ -29,6 +29,8 @@ import {
   Paper,
   Skeleton,
   Stack,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   Close as CloseIcon,
@@ -458,6 +460,8 @@ const AssignmentModal = ({
   preselectedChecklists = [],
   preselectedChecklist,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user, token } = useAuth();
   const {
     assignToAdmin,
@@ -611,22 +615,24 @@ const AssignmentModal = ({
       });
       if (response.data?.success) {
         setRecipients(
-          (response.data.members || []).map((m) => ({
-            _id: m.id,
-            id: m.id,
-            name: `${m.firstName || ""} ${m.lastName || ""}`.trim() || m.email,
-            firstName: m.firstName,
-            lastName: m.lastName,
-            email: m.email,
-            role: m.teamRoleDisplay || m.teamRole || "team",
-            department: m.department,
-            location: m.location,
-            status: m.status,
-            initials:
-              (m.firstName?.[0] || "") + (m.lastName?.[0] || "") ||
-              m.email?.[0]?.toUpperCase() ||
-              "?",
-          })),
+          (response.data.members || [])
+            .filter((m) => String(m?.status || "").toLowerCase() === "active")
+            .map((m) => ({
+              _id: m.id,
+              id: m.id,
+              name: `${m.firstName || ""} ${m.lastName || ""}`.trim() || m.email,
+              firstName: m.firstName,
+              lastName: m.lastName,
+              email: m.email,
+              role: m.teamRoleDisplay || m.teamRole || "team",
+              department: m.department,
+              location: m.location,
+              status: m.status,
+              initials:
+                (m.firstName?.[0] || "") + (m.lastName?.[0] || "") ||
+                m.email?.[0]?.toUpperCase() ||
+                "?",
+            })),
         );
       } else {
         throw new Error(
@@ -1094,10 +1100,15 @@ const AssignmentModal = ({
       onClose={onClose}
       maxWidth="sm"
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
         sx: {
-          borderRadius: 3,
-          maxHeight: "90vh",
+          borderRadius: { xs: 0, sm: 3 },
+          m: { xs: 0, sm: 2 },
+          width: { xs: "100%", sm: "calc(100% - 32px)" },
+          maxWidth: { xs: "none", sm: 600 },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "90vh" },
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -1173,6 +1184,7 @@ const AssignmentModal = ({
           alignItems: "center",
           borderTop: `1px solid ${BORDER}`,
           bgcolor: "#fafafa",
+          pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2 },
         }}
       >
         <Button

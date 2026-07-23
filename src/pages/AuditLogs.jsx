@@ -666,7 +666,7 @@ function FilterBar({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          mb: open ? 1.5 : 0,
+          mb: open && !isMobile ? 1.5 : 0,
           flexWrap: "wrap",
           gap: 1,
         }}
@@ -700,14 +700,75 @@ function FilterBar({
       </Box>
 
       {open && (
+        <>
+        {isMobile && (
+          <Box
+            onClick={onToggle}
+            sx={{
+              position: "fixed",
+              inset: 0,
+              zIndex: (theme) => theme.zIndex.modal,
+              bgcolor: "rgba(15, 23, 42, 0.34)",
+            }}
+          />
+        )}
         <Box
           sx={{
             display: "flex",
             flexWrap: "wrap",
             gap: 1,
             alignItems: "center",
+            ...(isMobile && {
+              position: "fixed",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: (theme) => theme.zIndex.modal + 1,
+              width: "100%",
+              maxHeight: "82vh",
+              overflowY: "auto",
+              bgcolor: T.cardBg,
+              border: 0,
+              borderRadius: "24px 24px 0 0",
+              boxShadow: "0 -18px 56px rgba(15, 23, 42, 0.28)",
+              p: "14px 16px 18px",
+            }),
           }}
         >
+          {isMobile && (
+            <>
+              <Box
+                sx={{
+                  width: 44,
+                  height: 5,
+                  borderRadius: 999,
+                  bgcolor: "#dbe3ea",
+                  mx: "auto",
+                  mb: 2,
+                }}
+              />
+              <Box
+                sx={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  mb: 1,
+                }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <FilterListIcon sx={{ fontSize: 18, color: T.accent }} />
+                  <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.accent }}>
+                    Filters
+                  </Typography>
+                </Stack>
+                <IconButton size="small" onClick={onToggle}>
+                  <CloseIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Box>
+            </>
+          )}
+
           {/* Search */}
           <AssetSearchField
             placeholder={placeholder}
@@ -881,7 +942,10 @@ function FilterBar({
               variant="contained"
               disableElevation
               startIcon={<FilterListIcon sx={{ fontSize: 13 }} />}
-              onClick={onApply}
+              onClick={() => {
+                onApply();
+                if (isMobile) onToggle();
+              }}
               sx={{
                 fontSize: 11,
                 fontWeight: 600,
@@ -918,6 +982,7 @@ function FilterBar({
             </Button>
           </Box>
         </Box>
+        </>
       )}
     </Box>
   );
@@ -2046,7 +2111,9 @@ const AuditLogs = () => {
                   minHeight: 44,
                   px: 1.5,
                   flexWrap: "wrap",
+                  justifyContent: "center",
                 },
+                "& .MuiTablePagination-spacer": { display: "none" },
                 "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
                   {
                     fontSize: 11.5,

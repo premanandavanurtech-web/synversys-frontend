@@ -31,6 +31,7 @@ import {
   FormHelperText,
   ImageList,
   ImageListItem,
+  useMediaQuery,
 } from "@mui/material";
 import {
   createTheme,
@@ -667,6 +668,7 @@ export default function TaskDetails() {
   const openedDraftRef = useRef({ responses: {}, notes: "" });
   const hadDraftOnOpenRef = useRef(false);
   const draftKey = `taskInspectionDraft:${id || "unknown"}`;
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [task, setTask] = useState(null);
   const [responses, setResponses] = useState({});
@@ -1207,7 +1209,36 @@ export default function TaskDetails() {
             onClose={closePoaDialog}
             fullWidth
             maxWidth="sm"
-            PaperProps={{ sx: { borderRadius: 2, border: "1px solid #E5E7EB" } }}
+            fullScreen={isMobile}
+            sx={{
+              "& .MuiDialog-container": {
+                alignItems: { xs: "stretch", sm: "center" },
+              },
+            }}
+            PaperProps={{
+              sx: {
+                borderRadius: { xs: 0, sm: 2 },
+                border: "1px solid #E5E7EB",
+                m: { xs: 0, sm: 2 },
+                width: { xs: "100%", sm: "calc(100% - 32px)" },
+                maxWidth: { xs: "none", sm: 600 },
+                height: { xs: "100dvh", sm: "auto" },
+                maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                "@media (max-width:600px)": {
+                  position: "fixed",
+                  inset: 0,
+                  m: 0,
+                  width: "100vw",
+                  maxWidth: "100vw",
+                  height: "100dvh",
+                  maxHeight: "100dvh",
+                  borderRadius: 0,
+                },
+              },
+            }}
           >
             <DialogTitle sx={{ pb: 1.25 }}>
               <Typography sx={{ fontWeight: 800, color: "#111827", fontSize: "1.05rem" }}>
@@ -1217,7 +1248,7 @@ export default function TaskDetails() {
                 {assetName}
               </Typography>
             </DialogTitle>
-            <DialogContent sx={{ pt: "12px !important" }}>
+            <DialogContent sx={{ pt: "12px !important", flex: 1, overflowY: "auto" }}>
               <Stack spacing={2}>
                 <TextField
                   label="Feedback"
@@ -1282,7 +1313,14 @@ export default function TaskDetails() {
                 </Box>
               </Stack>
             </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 2.5, pt: 1 }}>
+            <DialogActions
+              sx={{
+                px: 3,
+                pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 },
+                pt: 1,
+                borderTop: { xs: "1px solid #E5E7EB", sm: "none" },
+              }}
+            >
               <Button onClick={closePoaDialog} disabled={isSubmitting} sx={{ color: "#6B7280" }}>
                 Cancel
               </Button>

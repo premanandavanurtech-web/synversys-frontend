@@ -162,20 +162,48 @@ const fmtDate = (d) =>
     : "—";
 
 // ─── Stat Card (Responsive) ───────────────────────────────────────────────────
-const StatCard = ({ label, value, icon, bg, delay = 0, isMobile }) => (
+const StatCard = ({
+  label,
+  value,
+  icon,
+  bg,
+  delay = 0,
+  isMobile,
+  active = false,
+  onClick,
+}) => (
   <Box
+    role={onClick ? "button" : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    onClick={onClick}
+    onKeyDown={(e) => {
+      if (!onClick) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onClick();
+      }
+    }}
     sx={{
       p: isMobile ? 1.5 : 2.5,
       borderRadius: T.r.lg,
       bgcolor: T.surface,
-      border: `1px solid ${T.border}`,
-      boxShadow: T.sh.xs,
+      border: `1px solid ${active ? T.brand : T.border}`,
+      boxShadow: active ? T.sh.md : T.sh.xs,
       animation: `${fadeUp} 0.45s ${delay}s ease both`,
       flex: 1,
       minWidth: 0,
+      cursor: onClick ? "pointer" : "default",
+      outline: "none",
       transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
       "&:active": { transform: isMobile ? "scale(0.98)" : "none" },
-      "&:hover": { boxShadow: isMobile ? T.sh.md : T.sh.lg },
+      "&:hover": {
+        boxShadow: isMobile ? T.sh.md : T.sh.lg,
+        borderColor: onClick ? T.brand : T.border,
+      },
+      "&:focus-visible": {
+        boxShadow: `0 0 0 3px ${alpha(T.brand, 0.18)}, ${T.sh.md}`,
+        borderColor: T.brand,
+      },
     }}
   >
     <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -1277,6 +1305,7 @@ export default function AssetCategoryPage() {
   } = useAssetCategory();
 
   const [search, setSearch] = useState("");
+  const [statFilter, setStatFilter] = useState("all");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(isMobile ? 5 : 10);
   const [formOpen, setFormOpen] = useState(false);
@@ -1307,8 +1336,10 @@ export default function AssetCategoryPage() {
         }
       } catch (err) {
         const status = err?.response?.status;
-        if (status === 401 || status === 403) {
+        if (status === 401) {
           setFetchError("Session expired. Please refresh.");
+        } else if (status === 403) {
+          setFetchError(err?.response?.data?.message || "You don't have permission to View");
         } else if (!navigator.onLine) {
           setFetchError("No internet connection.");
         } else {
@@ -1334,6 +1365,11 @@ export default function AssetCategoryPage() {
 
   const clearSearch = () => {
     setSearch("");
+    setPage(0);
+  };
+
+  const handleStatFilter = (filter) => {
+    setStatFilter(filter);
     setPage(0);
   };
 
@@ -1402,9 +1438,16 @@ export default function AssetCategoryPage() {
 
   const busy = loading || fetching;
   const hasSearch = search.trim().length > 0;
-  const noData = !busy && !fetchError && categories.length === 0;
   const totalCount = pagination?.total ?? categories.length;
   const activeCount = categories.filter((c) => c.isActive !== false).length;
+  const visibleCategories = categories.filter((category) => {
+    if (statFilter === "active") return category.isActive !== false;
+    if (statFilter === "inactive") return category.isActive === false;
+    return true;
+  });
+  const paginationCount =
+    statFilter === "all" ? totalCount : visibleCategories.length;
+  const noData = !busy && !fetchError && visibleCategories.length === 0;
 
   const headCell = (label) => (
     <TableCell
@@ -1578,6 +1621,8 @@ export default function AssetCategoryPage() {
             }
             bg={T.brandPale}
             isMobile={isMobile}
+            active={statFilter === "all"}
+            onClick={() => handleStatFilter("all")}
           />
           <StatCard
             label="Active"
@@ -1589,6 +1634,8 @@ export default function AssetCategoryPage() {
             }
             bg={T.greenBg}
             isMobile={isMobile}
+            active={statFilter === "active"}
+            onClick={() => handleStatFilter("active")}
           />
           <StatCard
             label="Inactive"
@@ -1600,6 +1647,8 @@ export default function AssetCategoryPage() {
             }
             bg={T.surfaceAlt}
             isMobile={isMobile}
+            active={statFilter === "inactive"}
+            onClick={() => handleStatFilter("inactive")}
           />
         </Stack>
 
@@ -1699,7 +1748,7 @@ export default function AssetCategoryPage() {
             </Button>
           </Stack>
 
-          {hasSearch && !busy && categories.length > 0 && (
+          {hasSearch && !busy && visibleCategories.length > 0 && (
             <Box
               sx={{
                 mt: 1,
@@ -1722,7 +1771,7 @@ export default function AssetCategoryPage() {
                   fontFamily: typography.fontFamily.primary,
                 }}
               >
-                {totalCount} result{totalCount !== 1 ? "s" : ""} for "
+                {visibleCategories.length} result{visibleCategories.length !== 1 ? "s" : ""} for "
                 <strong>{search}</strong>"
               </Typography>
             </Box>
@@ -1795,12 +1844,12 @@ export default function AssetCategoryPage() {
           )}
 
           {/* Data Display */}
-          {!busy && categories.length > 0 && (
+          {!busy && visibleCategories.length > 0 && (
             <>
               {isMobile ? (
                 // Mobile Card View
                 <Box sx={{ p: isMobile ? 1.5 : 2 }}>
-                  {categories.map((cat, i) => (
+                  {visibleCategories.map((cat, i) => (
                     <CategoryCard
                       key={cat._id}
                       cat={cat}
@@ -1828,7 +1877,7 @@ export default function AssetCategoryPage() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {categories.map((cat, idx) => {
+                      {visibleCategories.map((cat, idx) => {
                         const isActive = cat.isActive !== false;
                         return (
                           <TableRow
@@ -2035,7 +2084,7 @@ export default function AssetCategoryPage() {
                 <TablePagination
                   rowsPerPageOptions={isMobile ? [5, 10] : [5, 10, 25, 50]}
                   component="div"
-                  count={totalCount}
+                  count={paginationCount}
                   rowsPerPage={rowsPerPage}
                   page={page}
                   onPageChange={(_, p) => setPage(p)}
@@ -2049,7 +2098,9 @@ export default function AssetCategoryPage() {
                       fontSize: "0.8rem",
                       flexWrap: "wrap",
                       gap: 1,
+                      justifyContent: "center",
                     },
+                    "& .MuiTablePagination-spacer": { display: "none" },
                     "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
                       {
                         fontFamily: typography.fontFamily.primary,

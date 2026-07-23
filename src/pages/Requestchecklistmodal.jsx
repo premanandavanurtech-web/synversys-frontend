@@ -358,17 +358,26 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
       maxWidth="sm"
       fullWidth
       disableEscapeKeyDown={submitting}
+      sx={{
+        "& .MuiDialog-container": {
+          alignItems: { xs: "flex-end", sm: "center" },
+        },
+      }}
       PaperProps={{
         sx: {
-          borderRadius: { xs: "12px", sm: "14px" },
+          borderRadius: { xs: "24px 24px 0 0", sm: "14px" },
           overflow: "hidden",
-          maxHeight: "90vh",
-          m: { xs: 1, sm: 1.5, md: 3 },
+              height: { xs: "100dvh", sm: "auto" },
+              maxHeight: { xs: "100dvh", sm: "90vh" },
+          m: { xs: 0, sm: 1.5, md: 3 },
           width: {
-            xs: "calc(100% - 16px)",
+            xs: "100%",
             sm: "calc(100% - 24px)",
             md: "auto",
           },
+          maxWidth: { xs: "100%", sm: 600 },
+          display: "flex",
+          flexDirection: "column",
         },
       }}
     >
@@ -377,9 +386,9 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
         value={submitting ? 100 : progressPct}
         sx={{
           height: 3,
-          bgcolor: alpha(PRIMARY, 0.1),
+          bgcolor: alpha("#fbbf24", 0.28),
           "& .MuiLinearProgress-bar": {
-            bgcolor: submitting ? "#2e7d32" : PRIMARY,
+            bgcolor: submitting ? "#22c55e" : "#f59e0b",
             transition: "width 0.4s ease",
           },
         }}
@@ -483,6 +492,8 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
         sx={{
           p: { xs: "16px 18px 8px", sm: "20px 22px 10px" },
           overflowY: "auto",
+          flex: { xs: 1, sm: "initial" },
+          maxHeight: { xs: "none", sm: "none" },
           "&::-webkit-scrollbar": { width: 4 },
           "&::-webkit-scrollbar-thumb": { bgcolor: "#dde6ea", borderRadius: 2 },
         }}
@@ -946,6 +957,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
         sx={{
           px: { xs: 2, sm: 2.75 },
           py: { xs: 1.5, sm: 1.75 },
+          pb: { xs: "calc(12px + env(safe-area-inset-bottom))", sm: 1.75 },
           borderTop: "0.5px solid",
           borderColor: "divider",
           bgcolor: "grey.50",

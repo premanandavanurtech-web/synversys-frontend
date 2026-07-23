@@ -24,6 +24,7 @@ import {
   TablePagination,
   TableSortLabel,
   Tooltip,
+  Checkbox,
   Pagination,
   Skeleton,
   Alert,
@@ -52,6 +53,7 @@ import {
   FileDownload,
   Delete,
   Refresh,
+  FilterList,
   Category,
   Edit,
   ErrorOutline,
@@ -127,7 +129,9 @@ const ASSET_TYPE_FILTER_OPTIONS = [
 ];
 
 const StatusPill = ({ status = "" }) => {
-  const cfg = STATUS_CFG[status] || { bg: "#6b7280", color: "#fff" };
+  const safeStatus = displayText(status, "Unknown");
+  const cfg = STATUS_CFG[safeStatus] || { bg: "#6b7280", color: "#fff" };
+
   return (
     <Box
       sx={{
@@ -144,7 +148,7 @@ const StatusPill = ({ status = "" }) => {
         lineHeight: 1.4,
       }}
     >
-      {status || "Unknown"}
+      {safeStatus}
     </Box>
   );
 };
@@ -152,6 +156,33 @@ const StatusPill = ({ status = "" }) => {
 // ── Helpers for robust, normalized comparisons ───────────────────────────────
 // Lowercase + trim so "Active " / "active" / "ACTIVE" are treated the same.
 const norm = (v) => (v ?? "").toString().trim().toLowerCase();
+
+const displayText = (value, fallback = "—") => {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    const text = value.map((item) => displayText(item, "")).filter(Boolean).join(", ");
+    return text || fallback;
+  }
+  if (typeof value === "object") {
+    return (
+      value.name ||
+      value.assetName ||
+      value.label ||
+      value.title ||
+      value.locationName ||
+      value.email ||
+      value.assetId ||
+      value.tagNumber ||
+      value._id ||
+      value.id ||
+      fallback
+    );
+  }
+  return String(value);
+};
 
 const getAssetCategoryName = (asset) =>
   asset?.assetCategoryId?.name || asset?.assetCategory || "";
@@ -180,6 +211,7 @@ const getSearchText = (asset) =>
     getAssetCategoryName(asset),
     getAssetCategoryId(asset),
   ]
+    .map((value) => displayText(value, ""))
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
@@ -221,10 +253,20 @@ const AssetCard = ({
   onPortfolio,
   isAdmin,
   canViewFinancials,
+  canViewPortfolio,
 }) => {
   const canClone = !asset.isClone && asset.canBeCloned !== false;
   const isChildAsset = isChildAssetRecord(asset);
   const portfolioName = getAssetPortfolioName(asset);
+  asset = {
+    ...asset,
+    assetName: displayText(asset.assetName, "Untitled asset"),
+    assetId: displayText(asset.assetId),
+    tagNumber: displayText(asset.tagNumber),
+    currentLocation: displayText(asset.currentLocation),
+    purchaseCost: displayText(asset.purchaseCost, "0"),
+    status: displayText(asset.status, "Unknown"),
+  };
 
   const formatDate = (d) => {
     if (!d) return "—";
@@ -245,7 +287,7 @@ const AssetCard = ({
         borderRadius: T.radius.card,
         border: `1px solid ${T.border}`,
         boxShadow: T.shadowCard,
-        width: {xs:"356px",md:"366px"},
+        width: "100%",
         cursor: "pointer",
         transition: "box-shadow 0.18s, transform 0.18s",
         overflow: "hidden",
@@ -321,6 +363,7 @@ const AssetCard = ({
         {/* Label-value rows */}
         {[
           { label: "Category:", value: category },
+          { label: "Asset ID:", value: asset.assetId },
           { label: "Tag Number:", value: asset.tagNumber },
           canViewFinancials && { label: "Purchase Cost:", value: asset.purchaseCost },
           { label: "status::", value: asset.status },
@@ -341,7 +384,7 @@ const AssetCard = ({
               fontWeight={600}
               color={highlight ? T.brand : T.text.primary}
             >
-              {value}
+              {displayText(value)}
             </Typography>
           </Stack>
         ))}
@@ -401,7 +444,7 @@ const AssetCard = ({
               <Visibility sx={{ fontSize: 13, color: T.text.secondary }} />
             </IconButton>
           </Tooltip>
-          {portfolioName ? (
+          {canViewPortfolio && (portfolioName ? (
             <Tooltip title={`Portfolio: ${portfolioName}`}>
               <IconButton
                 size="small"
@@ -428,7 +471,7 @@ const AssetCard = ({
                 <AddBusiness sx={{ fontSize: 13, color: T.warning }} />
               </IconButton>
             </Tooltip>
-          )}
+          ))}
           {isAdmin && (
             <Tooltip title="Delete">
               <IconButton
@@ -582,7 +625,9 @@ export default function AssetManagement() {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const isTeam = user?.role === "team";
   const canViewFinancials = user?.role !== "team";
+  const canViewPortfolio = !isTeam;
 
   const { getAllAssets, cloneAsset, deleteAsset, updateAsset, assetStats } = useAsset();
 
@@ -614,6 +659,14 @@ export default function AssetManagement() {
   const [cloneOpen, setCloneOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [portfolioOpen, setPortfolioOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [existingAssetOpen, setExistingAssetOpen] = useState(false);
+  const [existingAssets, setExistingAssets] = useState([]);
+  const [existingAssetLoading, setExistingAssetLoading] = useState(false);
+  const [existingAssetSearch, setExistingAssetSearch] = useState("");
+  const [selectedExistingAssetIds, setSelectedExistingAssetIds] = useState([]);
+  const [portfolioOverrideAssetIds, setPortfolioOverrideAssetIds] = useState([]);
+  const [portfolioChangeConfirm, setPortfolioChangeConfirm] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [cloneName, setCloneName] = useState("");
   const [cloneLocation, setCloneLocation] = useState("");
@@ -653,7 +706,7 @@ export default function AssetManagement() {
       };
       if (debouncedSearch) filters.search = debouncedSearch;
       if (categoryFilter) filters.category = categoryFilter;
-      if (portfolioFilter) filters.portfolioName = portfolioFilter;
+      if (canViewPortfolio && portfolioFilter) filters.portfolioName = portfolioFilter;
       if (statusFilter) filters.status = statusFilter;
 
       const data = await getAllAssets(filters);
@@ -681,7 +734,7 @@ export default function AssetManagement() {
         }
       });
       setCategories([...allCategoriesRef.current.values()]);
-      setPortfolioOptions((prev) => {
+      if (canViewPortfolio) setPortfolioOptions((prev) => {
         const names = new Set(prev);
         (data.assets || []).forEach((a) => {
           const name = getAssetPortfolioName(a);
@@ -707,6 +760,7 @@ export default function AssetManagement() {
     categoryFilter,
     portfolioFilter,
     statusFilter,
+    canViewPortfolio,
   ]);
 
   useEffect(() => {
@@ -714,7 +768,20 @@ export default function AssetManagement() {
   }, [fetchAssets]);
 
   useEffect(() => {
+    if (!canViewPortfolio && portfolioFilter) {
+      setPortfolioFilter("");
+    }
+  }, [canViewPortfolio, portfolioFilter]);
+
+  useEffect(() => {
     let active = true;
+
+    if (!canViewPortfolio) {
+      setPortfolioOptions([]);
+      return () => {
+        active = false;
+      };
+    }
 
     api
       .get("/assets/portfolios")
@@ -734,7 +801,7 @@ export default function AssetManagement() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [canViewPortfolio]);
 
   // ── CLIENT-SIDE SAFETY-NET FILTER ────────────────────────────────────────
   // Always re-applies status/category filtering on whatever the server
@@ -752,7 +819,9 @@ export default function AssetManagement() {
       const categoryOk =
         !categoryFilter || norm(getAssetCategoryName(a)) === norm(categoryFilter);
       const portfolioOk =
-        !portfolioFilter || norm(getAssetPortfolioName(a)) === norm(portfolioFilter);
+        !canViewPortfolio ||
+        !portfolioFilter ||
+        norm(getAssetPortfolioName(a)) === norm(portfolioFilter);
       const assetTypeOk =
         !assetTypeFilter ||
         (assetTypeFilter === "child"
@@ -760,7 +829,7 @@ export default function AssetManagement() {
           : !isChildAssetRecord(a));
       return searchOk && statusOk && categoryOk && portfolioOk && assetTypeOk;
     });
-  }, [assets, debouncedSearch, statusFilter, categoryFilter, portfolioFilter, assetTypeFilter]);
+  }, [assets, debouncedSearch, statusFilter, categoryFilter, portfolioFilter, assetTypeFilter, canViewPortfolio]);
 
   const portfolioDialogOptions = useMemo(() => {
     const names = new Set(portfolioOptions);
@@ -768,6 +837,24 @@ export default function AssetManagement() {
     if (current) names.add(current);
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [portfolioOptions, selectedAsset]);
+
+  const filteredExistingAssets = useMemo(() => {
+    const term = norm(existingAssetSearch);
+    if (!term) return existingAssets;
+    return existingAssets.filter((asset) =>
+      [
+        asset.assetName,
+        asset.tagNumber,
+        asset.serialNumber,
+        asset.assetId,
+        getAssetCategoryName(asset),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(term),
+    );
+  }, [existingAssets, existingAssetSearch]);
 
   const clearFilters = () => {
     setCategoryFilter("");
@@ -790,6 +877,7 @@ export default function AssetManagement() {
     navigate(`/admin/assets/edit/${a.id || a._id}`);
 
   const openPortfolioDialog = (asset) => {
+    if (!canViewPortfolio) return;
     const currentPortfolio = getAssetPortfolioName(asset);
     setSelectedAsset(asset);
     setPortfolioName(currentPortfolio);
@@ -798,7 +886,126 @@ export default function AssetManagement() {
     setPortfolioOpen(true);
   };
 
+  const openExistingAssetDialog = async () => {
+    if (!canViewPortfolio || !portfolioFilter) return;
+    setExistingAssetOpen(true);
+    setExistingAssetLoading(true);
+    setDialogError("");
+    setExistingAssetSearch("");
+    setSelectedExistingAssetIds([]);
+    setPortfolioOverrideAssetIds([]);
+    setPortfolioChangeConfirm(null);
+    try {
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "1000",
+        sortBy: "createdAt",
+        sortOrder: "desc",
+      });
+      const res = await api.get(`/assets?${params.toString()}`);
+      setExistingAssets(
+        (res.data?.assets || []).filter((asset) => {
+          if (isCloneAssetRecord(asset)) return false;
+          const currentPortfolio = getAssetPortfolioName(asset);
+          return !currentPortfolio || norm(currentPortfolio) !== norm(portfolioFilter);
+        }),
+      );
+    } catch (err) {
+      setDialogError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to load existing assets.",
+      );
+      setExistingAssets([]);
+    } finally {
+      setExistingAssetLoading(false);
+    }
+  };
+
+  const closeExistingAssetDialog = (force = false) => {
+    if (actionLoading && !force) return;
+    setExistingAssetOpen(false);
+    setExistingAssets([]);
+    setExistingAssetSearch("");
+    setSelectedExistingAssetIds([]);
+    setPortfolioOverrideAssetIds([]);
+    setPortfolioChangeConfirm(null);
+    setDialogError("");
+  };
+
+  const selectExistingAsset = (asset) => {
+    const assetId = asset.id || asset._id;
+    if (!assetId) return;
+    setSelectedExistingAssetIds((prev) =>
+      prev.includes(assetId)
+        ? prev.filter((id) => id !== assetId)
+        : [...prev, assetId],
+    );
+  };
+
+  const toggleExistingAsset = (asset) => {
+    const assetId = asset.id || asset._id;
+    if (!assetId) return;
+
+    const currentPortfolio = getAssetPortfolioName(asset);
+    const belongsToOtherPortfolio =
+      currentPortfolio && norm(currentPortfolio) !== norm(portfolioFilter);
+    const overrideAllowed = portfolioOverrideAssetIds.includes(assetId);
+
+    if (belongsToOtherPortfolio && !overrideAllowed) {
+      setPortfolioChangeConfirm({ asset, assetId, currentPortfolio });
+      return;
+    }
+
+    selectExistingAsset(asset);
+  };
+
+  const confirmPortfolioChange = () => {
+    if (!portfolioChangeConfirm) return;
+    const { assetId } = portfolioChangeConfirm;
+    setPortfolioOverrideAssetIds((prev) =>
+      prev.includes(assetId) ? prev : [...prev, assetId],
+    );
+    setSelectedExistingAssetIds((prev) =>
+      prev.includes(assetId) ? prev : [...prev, assetId],
+    );
+    setPortfolioChangeConfirm(null);
+  };
+
+  const cancelPortfolioChange = () => {
+    setPortfolioChangeConfirm(null);
+  };
+
+  const handleAddExistingAssets = async () => {
+    if (!portfolioFilter || selectedExistingAssetIds.length === 0) return;
+    setActionLoading(true);
+    setDialogError("");
+    try {
+      await Promise.all(
+        selectedExistingAssetIds.map((assetId) =>
+          updateAsset(assetId, { portfolioName: portfolioFilter }),
+        ),
+      );
+      toast(
+        `${selectedExistingAssetIds.length} asset${
+          selectedExistingAssetIds.length === 1 ? "" : "s"
+        } added to ${portfolioFilter}`,
+      );
+      closeExistingAssetDialog(true);
+      await fetchAssets();
+    } catch (err) {
+      setDialogError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to add selected assets to portfolio.",
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handlePortfolioConfirm = async () => {
+    if (!canViewPortfolio) return;
     const trimmed = portfolioName.trim();
     if (!trimmed) {
       setDialogError("Portfolio name is required.");
@@ -936,7 +1143,7 @@ export default function AssetManagement() {
 
   const hasFilters = !!(
     categoryFilter ||
-    portfolioFilter ||
+    (canViewPortfolio && portfolioFilter) ||
     statusFilter ||
     assetTypeFilter ||
     debouncedSearch
@@ -1021,6 +1228,16 @@ export default function AssetManagement() {
             >
               {!isMobile && "Add Asset"}
             </Button>
+            {canViewPortfolio && portfolioFilter && (
+              <Button
+                variant="contained"
+                onClick={openExistingAssetDialog}
+                startIcon={<AddBusiness sx={{ fontSize: 15 }} />}
+                sx={{ ...primaryBtn, py: 0.9 }}
+              >
+                {!isMobile && "Add Existing Asset"}
+              </Button>
+            )}
           </Stack>
         </Stack>
       </Box>
@@ -1037,11 +1254,7 @@ export default function AssetManagement() {
             boxShadow: T.shadow,
           }}
         >
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={1.25}
-            alignItems={{ md: "center" }}
-          >
+          <Stack direction="row" spacing={1.25} alignItems="center">
             {/* Search */}
             <TextField
               fullWidth
@@ -1071,47 +1284,74 @@ export default function AssetManagement() {
               }}
             />
 
-            {/* Portfolio dropdown */}
-            <FormControl size="small" sx={{ minWidth: 170, flexShrink: 0 }}>
-              <Select
-                value={portfolioFilter}
-                onChange={(e) => {
-                  setPortfolioFilter(e.target.value);
-                  setPage(0);
-                }}
-                displayEmpty
-                sx={{
-                  borderRadius: T.radius.input,
-                  fontSize: "0.85rem",
-                  bgcolor: "#f8fafc",
-                  "& fieldset": { borderColor: T.border },
-                  "&:hover fieldset": { borderColor: "#cbd5e1" },
-                  "& .MuiSelect-select": { py: "8.5px" },
-                }}
-              >
-                <MenuItem
-                  value=""
-                  sx={{ fontSize: "0.85rem", color: T.text.secondary }}
+            {isMobile && (
+              <Tooltip title="Filters">
+                <IconButton
+                  size="small"
+                  onClick={() => setMobileFiltersOpen(true)}
+                  sx={{
+                    borderRadius: "12px",
+                    width: 40,
+                    height: 40,
+                    flexShrink: 0,
+                    bgcolor: hasFilters ? T.brand : "#f8fafc",
+                    color: hasFilters ? "#fff" : T.brand,
+                    border: `1px solid ${hasFilters ? T.brand : T.border}`,
+                    "&:hover": {
+                      bgcolor: hasFilters ? T.brandDark : "#e2e8f0",
+                    },
+                  }}
                 >
-                  Portfolio
-                </MenuItem>
-                {portfolioOptions.length === 0 ? (
-                  <MenuItem disabled sx={{ fontSize: "0.8rem" }}>
-                    No portfolios found
+                  <FilterList sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {!isMobile && (
+              <>
+            {/* Portfolio dropdown */}
+            {canViewPortfolio && (
+              <FormControl size="small" sx={{ minWidth: 170, flexShrink: 0 }}>
+                <Select
+                  value={portfolioFilter}
+                  onChange={(e) => {
+                    setPortfolioFilter(e.target.value);
+                    setPage(0);
+                  }}
+                  displayEmpty
+                  sx={{
+                    borderRadius: T.radius.input,
+                    fontSize: "0.85rem",
+                    bgcolor: "#f8fafc",
+                    "& fieldset": { borderColor: T.border },
+                    "&:hover fieldset": { borderColor: "#cbd5e1" },
+                    "& .MuiSelect-select": { py: "8.5px" },
+                  }}
+                >
+                  <MenuItem
+                    value=""
+                    sx={{ fontSize: "0.85rem", color: T.text.secondary }}
+                  >
+                    Portfolio
                   </MenuItem>
-                ) : (
-                  portfolioOptions.map((name) => (
-                    <MenuItem
-                      key={name}
-                      value={name}
-                      sx={{ fontSize: "0.85rem" }}
-                    >
-                      {name}
+                  {portfolioOptions.length === 0 ? (
+                    <MenuItem disabled sx={{ fontSize: "0.8rem" }}>
+                      No portfolios found
                     </MenuItem>
-                  ))
-                )}
-              </Select>
-            </FormControl>
+                  ) : (
+                    portfolioOptions.map((name) => (
+                      <MenuItem
+                        key={name}
+                        value={name}
+                        sx={{ fontSize: "0.85rem" }}
+                      >
+                        {name}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+            )}
 
             {/* Category dropdown */}
             <FormControl size="small" sx={{ minWidth: 160, flexShrink: 0 }}>
@@ -1297,11 +1537,110 @@ export default function AssetManagement() {
                 Clear
               </Button>
             )}
+              </>
+            )}
           </Stack>
         </Paper>
       </Box>
 
       {/* ── Content ── */}
+      <Dialog
+        open={mobileFiltersOpen}
+        onClose={() => setMobileFiltersOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            display: { xs: "flex", md: "none" },
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            m: 0,
+            width: "100%",
+            maxWidth: "none",
+            borderRadius: "22px 22px 0 0",
+            maxHeight: "88dvh",
+          },
+        }}
+      >
+        <Box sx={{ display: "flex", justifyContent: "center", pt: 1.5 }}>
+          <Box sx={{ width: 44, height: 4, borderRadius: 999, bgcolor: T.border }} />
+        </Box>
+        <DialogTitle sx={{ py: 1.5, px: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <FilterList sx={{ fontSize: 18, color: T.brand }} />
+            <Typography sx={{ fontWeight: 800, color: T.text.primary, fontSize: "1rem" }}>
+              Filters
+            </Typography>
+          </Stack>
+          <IconButton size="small" onClick={() => setMobileFiltersOpen(false)}>
+            <Close sx={{ fontSize: 18 }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ px: 2, pb: 1.5 }}>
+          <Stack spacing={1.2}>
+            {canViewPortfolio && (
+              <FormControl size="small" fullWidth>
+                <Select value={portfolioFilter} onChange={(e) => { setPortfolioFilter(e.target.value); setPage(0); }} displayEmpty sx={{ borderRadius: T.radius.input, fontSize: "0.85rem", bgcolor: "#f8fafc", "& fieldset": { borderColor: T.border }, "& .MuiSelect-select": { py: "10px" } }}>
+                  <MenuItem value="" sx={{ fontSize: "0.85rem", color: T.text.secondary }}>Portfolio</MenuItem>
+                  {portfolioOptions.length === 0 ? (
+                    <MenuItem disabled sx={{ fontSize: "0.8rem" }}>No portfolios found</MenuItem>
+                  ) : (
+                    portfolioOptions.map((name) => <MenuItem key={name} value={name} sx={{ fontSize: "0.85rem" }}>{name}</MenuItem>)
+                  )}
+                </Select>
+              </FormControl>
+            )}
+            <FormControl size="small" fullWidth>
+              <Select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }} displayEmpty sx={{ borderRadius: T.radius.input, fontSize: "0.85rem", bgcolor: "#f8fafc", "& fieldset": { borderColor: T.border }, "& .MuiSelect-select": { py: "10px" } }}>
+                <MenuItem value="" sx={{ fontSize: "0.85rem", color: T.text.secondary }}>Category</MenuItem>
+                {categories.length === 0 ? (
+                  <MenuItem disabled sx={{ fontSize: "0.8rem" }}>No categories found</MenuItem>
+                ) : (
+                  categories.map((c) => <MenuItem key={c._id} value={c.name} sx={{ fontSize: "0.85rem" }}>{c.name}</MenuItem>)
+                )}
+              </Select>
+            </FormControl>
+            <FormControl size="small" fullWidth>
+              <Select value={assetTypeFilter} onChange={(e) => { setAssetTypeFilter(e.target.value); setPage(0); }} displayEmpty sx={{ borderRadius: T.radius.input, fontSize: "0.85rem", bgcolor: "#f8fafc", "& fieldset": { borderColor: T.border }, "& .MuiSelect-select": { py: "10px" } }}>
+                <MenuItem value="" sx={{ fontSize: "0.85rem", color: T.text.secondary }}>Asset Type</MenuItem>
+                {ASSET_TYPE_FILTER_OPTIONS.map((type) => <MenuItem key={type.value} value={type.value} sx={{ fontSize: "0.85rem" }}>{type.label}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <FormControl size="small" fullWidth>
+              <Select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }} displayEmpty sx={{ borderRadius: T.radius.input, fontSize: "0.85rem", bgcolor: "#f8fafc", "& fieldset": { borderColor: T.border }, "& .MuiSelect-select": { py: "10px" } }}>
+                <MenuItem value="" sx={{ fontSize: "0.85rem", color: T.text.secondary }}>Asset Status</MenuItem>
+                {STATUS_FILTER_OPTIONS.map((s) => <MenuItem key={s} value={s} sx={{ fontSize: "0.85rem" }}>{s}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+              {[{ mode: "grid", Icon: GridView }, { mode: "list", Icon: ViewList }].map(({ mode, Icon }) => (
+                <IconButton key={mode} size="small" onClick={() => setViewMode(mode)} sx={{ borderRadius: "10px", width: 38, height: 38, bgcolor: viewMode === mode ? T.brand : "#f1f5f9", color: viewMode === mode ? "#fff" : T.text.secondary, border: `1px solid ${viewMode === mode ? T.brand : T.border}` }}>
+                  <Icon sx={{ fontSize: 16 }} />
+                </IconButton>
+              ))}
+              <IconButton size="small" onClick={fetchAssets} sx={{ borderRadius: "10px", width: 38, height: 38, bgcolor: "#f1f5f9", border: `1px solid ${T.border}` }}>
+                <Refresh sx={{ fontSize: 15 }} />
+              </IconButton>
+              <IconButton size="small" onClick={handleExportAssets} sx={{ borderRadius: "10px", width: 38, height: 38, bgcolor: "#f1f5f9", border: `1px solid ${T.border}` }}>
+                <FileDownload sx={{ fontSize: 15 }} />
+              </IconButton>
+            </Stack>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: "calc(16px + env(safe-area-inset-bottom))", pt: 1 }}>
+          {hasFilters && (
+            <Button onClick={clearFilters} startIcon={<ClearAll sx={{ fontSize: 14 }} />} sx={{ color: T.error, textTransform: "none", mr: "auto" }}>
+              Clear
+            </Button>
+          )}
+          <Button variant="contained" onClick={() => setMobileFiltersOpen(false)} sx={{ bgcolor: T.brand, borderRadius: T.radius.btn, textTransform: "none", fontWeight: 700, px: 3, "&:hover": { bgcolor: T.brandDark } }}>
+            Apply
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Box sx={{ px: { xs: 2, md: 4 }, pb: 4 }}>
         {loading && (
           <LinearProgress
@@ -1346,19 +1685,28 @@ export default function AssetManagement() {
         {!fetchError && viewMode === "grid" && (
           <>
             {loading ? (
-              <Grid container spacing={2.5}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    lg: "repeat(3, minmax(0, 1fr))",
+                  },
+                  gap: 2.5,
+                }}
+              >
                 {Array(6)
                   .fill(null)
                   .map((_, i) => (
-                    <Grid item xs={12} sm={6} md={4} key={i}>
-                      <Skeleton
-                        variant="rounded"
-                        height={280}
-                        sx={{ borderRadius: T.radius.card }}
-                      />
-                    </Grid>
+                    <Skeleton
+                      key={i}
+                      variant="rounded"
+                      height={280}
+                      sx={{ borderRadius: T.radius.card }}
+                    />
                   ))}
-              </Grid>
+              </Box>
             ) : visibleAssets.length === 0 ? (
               <EmptyState
                 hasFilters={hasFilters}
@@ -1366,30 +1714,40 @@ export default function AssetManagement() {
                 onAdd={() => navigate("/admin/assets/add")}
               />
             ) : (
-              <Grid container spacing={2.5}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    lg: "repeat(3, minmax(0, 1fr))",
+                  },
+                  gap: 2.5,
+                }}
+              >
                 {visibleAssets.map((asset) => (
-                  <Grid item xs={12} sm={6} md={4} key={asset.id || asset._id}>
-                    <AssetCard
-                      asset={asset}
-                      onView={handleViewAsset}
-                      onClone={openCloneDialog}
-                      onEdit={handleEditAsset}
-                      onPortfolio={openPortfolioDialog}
-                      onDelete={
-                        isAdmin
-                          ? (a) => {
-                              setSelectedAsset(a);
-                              setDialogError("");
-                              setDeleteOpen(true);
-                            }
-                          : undefined
-                      }
-                      isAdmin={isAdmin}
-                      canViewFinancials={canViewFinancials}
-                    />
-                  </Grid>
+                  <AssetCard
+                    key={asset.id || asset._id}
+                    asset={asset}
+                    onView={handleViewAsset}
+                    onClone={openCloneDialog}
+                    onEdit={handleEditAsset}
+                    onPortfolio={openPortfolioDialog}
+                    onDelete={
+                      isAdmin
+                        ? (a) => {
+                            setSelectedAsset(a);
+                            setDialogError("");
+                            setDeleteOpen(true);
+                          }
+                        : undefined
+                    }
+                    isAdmin={isAdmin}
+                    canViewFinancials={canViewFinancials}
+                    canViewPortfolio={canViewPortfolio}
+                  />
                 ))}
-              </Grid>
+              </Box>
             )}
 
             {pagination.pages > 1 && !loading && visibleAssets.length > 0 && (
@@ -1417,6 +1775,93 @@ export default function AssetManagement() {
 
         {/* List View */}
         {!fetchError && viewMode === "list" && (
+          isMobile ? (
+            <>
+              {loading ? (
+                <Stack spacing={1.5}>
+                  {Array(4)
+                    .fill(null)
+                    .map((_, i) => (
+                      <Skeleton
+                        key={i}
+                        variant="rounded"
+                        height={280}
+                        sx={{ borderRadius: T.radius.card }}
+                      />
+                    ))}
+                </Stack>
+              ) : visibleAssets.length === 0 ? (
+                <EmptyState
+                  hasFilters={hasFilters}
+                  onClear={clearFilters}
+                  onAdd={() => navigate("/admin/assets/add")}
+                />
+              ) : (
+                <>
+                  <Stack spacing={1.5}>
+                    {visibleAssets.map((asset) => (
+                      <AssetCard
+                        key={asset.id || asset._id}
+                        asset={asset}
+                        onView={handleViewAsset}
+                        onClone={openCloneDialog}
+                        onEdit={handleEditAsset}
+                        onPortfolio={openPortfolioDialog}
+                        onDelete={
+                          isAdmin
+                            ? (a) => {
+                                setSelectedAsset(a);
+                                setDialogError("");
+                                setDeleteOpen(true);
+                              }
+                            : undefined
+                        }
+                        isAdmin={isAdmin}
+                        canViewFinancials={canViewFinancials}
+                        canViewPortfolio={canViewPortfolio}
+                      />
+                    ))}
+                  </Stack>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      mt: 1.5,
+                      borderRadius: T.radius.card,
+                      border: `1px solid ${T.border}`,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <TablePagination
+                      rowsPerPageOptions={[6, 12, 24, 48]}
+                      component="div"
+                      count={pagination.total}
+                      rowsPerPage={rowsPerPage}
+                      page={page}
+                      onPageChange={(_, p) => setPage(p)}
+                      onRowsPerPageChange={(e) => {
+                        setRowsPerPage(parseInt(e.target.value, 10));
+                        setPage(0);
+                      }}
+                      sx={{
+                        fontSize: "0.72rem",
+                        "& .MuiTablePagination-toolbar": {
+                          px: 1,
+                          justifyContent: "center",
+                          flexWrap: "wrap",
+                          gap: 0.5,
+                        },
+                        "& .MuiTablePagination-spacer": { display: "none" },
+                        "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
+                          m: 0,
+                          fontSize: "0.72rem",
+                        },
+                      }}
+                    />
+                  </Paper>
+                </>
+              )}
+            </>
+          ) : (
           <Paper
             elevation={0}
             sx={{
@@ -1489,7 +1934,7 @@ export default function AssetManagement() {
                             fontSize="0.82rem"
                             color={T.text.primary}
                           >
-                            {asset.assetName}
+                            {displayText(asset.assetName, "Untitled asset")}
                             {isChildAssetRecord(asset) && (
                               <Box
                                 component="span"
@@ -1676,6 +2121,7 @@ export default function AssetManagement() {
               sx={{ borderTop: `1px solid ${T.border}`, fontSize: "0.78rem" }}
             />
           </Paper>
+          )
         )}
       </Box>
 
@@ -1795,9 +2241,9 @@ export default function AssetManagement() {
 
       {/* ── Delete Dialog ── */}
       <Dialog
-        open={portfolioOpen}
-        onClose={() => !actionLoading && setPortfolioOpen(false)}
-        maxWidth="xs"
+        open={existingAssetOpen}
+        onClose={() => closeExistingAssetDialog()}
+        maxWidth="md"
         fullWidth
         PaperProps={{
           elevation: 0,
@@ -1805,6 +2251,327 @@ export default function AssetManagement() {
             borderRadius: T.radius.dialog,
             border: `1px solid ${T.border}`,
             boxShadow: T.shadowMd,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            fontWeight: 800,
+            fontSize: "1rem",
+            borderBottom: `1px solid #f1f5f9`,
+            pb: 1.5,
+          }}
+        >
+          Add Existing Asset
+        </DialogTitle>
+        <DialogContent sx={{ pt: "20px !important" }}>
+          {dialogError && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: "8px", fontSize: "0.78rem" }}>
+              {dialogError}
+            </Alert>
+          )}
+
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search existing assets..."
+            value={existingAssetSearch}
+            onChange={(e) => setExistingAssetSearch(e.target.value)}
+            sx={{
+              mb: 2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "10px",
+                bgcolor: "#f8fafc",
+                fontSize: "0.85rem",
+                "& fieldset": { borderColor: T.border },
+                "&:hover fieldset": { borderColor: "#cbd5e1" },
+                "&.Mui-focused fieldset": { borderColor: T.brand },
+              },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search sx={{ fontSize: 17, color: T.text.muted }} />
+                </InputAdornment>
+              ),
+              endAdornment: existingAssetSearch && (
+                <IconButton size="small" onClick={() => setExistingAssetSearch("")}>
+                  <Close sx={{ fontSize: 14 }} />
+                </IconButton>
+              ),
+            }}
+          />
+
+          {existingAssetLoading ? (
+            <Stack alignItems="center" justifyContent="center" sx={{ py: 6 }}>
+              <CircularProgress size={28} />
+              <Typography sx={{ mt: 1.5, fontSize: "0.85rem", color: T.text.muted }}>
+                Loading assets...
+              </Typography>
+            </Stack>
+          ) : existingAssets.length === 0 ? (
+            <Alert severity="info" sx={{ borderRadius: "10px" }}>
+              No existing assets found.
+            </Alert>
+          ) : filteredExistingAssets.length === 0 ? (
+            <Alert severity="info" sx={{ borderRadius: "10px" }}>
+              No assets match your search.
+            </Alert>
+          ) : (
+            <TableContainer
+              component={Paper}
+              elevation={0}
+              sx={{
+                border: `1px solid ${T.border}`,
+                borderRadius: "12px",
+                maxHeight: 430,
+              }}
+            >
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ width: 54, ...headCellSx }}>Select</TableCell>
+                    <TableCell sx={headCellSx}>Asset</TableCell>
+                    <TableCell sx={headCellSx}>Category</TableCell>
+                    <TableCell sx={headCellSx}>Portfolio Name</TableCell>
+                    <TableCell sx={{ width: 160, ...headCellSx }}>Action</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredExistingAssets.map((asset) => {
+                    const assetId = asset.id || asset._id;
+                    const currentPortfolio = getAssetPortfolioName(asset);
+                    const inOtherPortfolio =
+                      currentPortfolio && norm(currentPortfolio) !== norm(portfolioFilter);
+                    const overrideAllowed = portfolioOverrideAssetIds.includes(assetId);
+                    const checked = selectedExistingAssetIds.includes(assetId);
+                    const disabled = inOtherPortfolio && !overrideAllowed;
+
+                    return (
+                      <TableRow key={assetId} hover>
+                        <TableCell>
+                          <Checkbox
+                            size="small"
+                            checked={checked}
+                            disabled={disabled || actionLoading}
+                            onChange={() => toggleExistingAsset(asset)}
+                            sx={{ color: T.brand, "&.Mui-checked": { color: T.brand } }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography sx={{ fontWeight: 700, fontSize: "0.86rem" }}>
+                            {asset.assetName || "Untitled asset"}
+                          </Typography>
+                          <Typography sx={{ color: T.text.muted, fontSize: "0.74rem" }}>
+                            ID: {asset.assetId || "-"}
+                          </Typography>
+                          <Typography sx={{ color: T.text.muted, fontSize: "0.74rem" }}>
+                            Tag: {asset.tagNumber || asset.serialNumber || "-"}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ fontSize: "0.82rem", color: T.text.secondary }}>
+                          {getAssetCategoryName(asset) || "-"}
+                        </TableCell>
+                        <TableCell>
+                          <Typography
+                            sx={{
+                              color: currentPortfolio ? T.text.secondary : T.text.muted,
+                              fontSize: "0.82rem",
+                              fontWeight: currentPortfolio ? 700 : 500,
+                            }}
+                          >
+                            {currentPortfolio || "-"}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          {inOtherPortfolio && !overrideAllowed ? (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => toggleExistingAsset(asset)}
+                              disabled={actionLoading}
+                              sx={{
+                                textTransform: "none",
+                                borderRadius: "8px",
+                                fontSize: "0.74rem",
+                                color: T.brand,
+                                borderColor: T.border,
+                              }}
+                            >
+                              Change Portfolio
+                            </Button>
+                          ) : (
+                            <Typography sx={{ color: T.text.muted, fontSize: "0.76rem" }}>
+                              Ready
+                            </Typography>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, pt: 2, borderTop: `1px solid #f1f5f9`, gap: 1 }}>
+          <Typography sx={{ mr: "auto", color: T.text.muted, fontSize: "0.8rem", fontWeight: 600 }}>
+            {selectedExistingAssetIds.length} selected
+          </Typography>
+          <Button
+            onClick={() => closeExistingAssetDialog()}
+            disabled={actionLoading}
+            variant="outlined"
+            sx={{
+              textTransform: "none",
+              borderRadius: "8px",
+              borderColor: T.border,
+              color: T.text.secondary,
+              fontSize: "0.82rem",
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleAddExistingAssets}
+            disabled={actionLoading || existingAssetLoading || selectedExistingAssetIds.length === 0}
+            startIcon={
+              actionLoading ? (
+                <CircularProgress size={13} color="inherit" />
+              ) : (
+                <AddBusiness sx={{ fontSize: 14 }} />
+              )
+            }
+            sx={primaryBtn}
+          >
+            {actionLoading ? "Adding..." : "Add Selected"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(portfolioChangeConfirm)}
+        onClose={cancelPortfolioChange}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          elevation: 0,
+          sx: {
+            borderRadius: "16px",
+            border: `1px solid ${T.border}`,
+            boxShadow: T.shadowMd,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            pb: 1,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.25,
+            fontSize: "1rem",
+            fontWeight: 800,
+          }}
+        >
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: "10px",
+              bgcolor: "#fff7ed",
+              color: T.warning,
+              display: "grid",
+              placeItems: "center",
+              flexShrink: 0,
+            }}
+          >
+            <ErrorOutline sx={{ fontSize: 20 }} />
+          </Box>
+          Change Portfolio Group?
+        </DialogTitle>
+        <DialogContent sx={{ pt: "8px !important" }}>
+          <Typography sx={{ color: T.text.secondary, fontSize: "0.9rem", lineHeight: 1.6 }}>
+            This asset already belongs to another portfolio. Do you want to move it to the selected portfolio?
+          </Typography>
+          {portfolioChangeConfirm && (
+            <Box
+              sx={{
+                mt: 2,
+                p: 1.5,
+                borderRadius: "10px",
+                bgcolor: "#f8fafc",
+                border: `1px solid ${T.border}`,
+              }}
+            >
+              <Typography sx={{ fontWeight: 800, fontSize: "0.86rem", color: T.text.primary }}>
+                {portfolioChangeConfirm.asset?.assetName || "Selected asset"}
+              </Typography>
+              <Typography sx={{ mt: 0.4, color: T.text.muted, fontSize: "0.78rem" }}>
+                From: {portfolioChangeConfirm.currentPortfolio} | To: {portfolioFilter}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, pt: 1.5, gap: 1 }}>
+          <Button
+            onClick={cancelPortfolioChange}
+            variant="outlined"
+            sx={{
+              textTransform: "none",
+              borderRadius: "8px",
+              borderColor: T.border,
+              color: T.text.secondary,
+              fontWeight: 700,
+            }}
+          >
+            No
+          </Button>
+          <Button
+            onClick={confirmPortfolioChange}
+            variant="contained"
+            sx={{ ...primaryBtn, minWidth: 92 }}
+          >
+            Yes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={portfolioOpen}
+        onClose={() => !actionLoading && setPortfolioOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        fullScreen={isMobile}
+        sx={{
+          "& .MuiDialog-container": {
+            alignItems: { xs: "stretch", sm: "center" },
+          },
+        }}
+        PaperProps={{
+          elevation: 0,
+          sx: {
+            borderRadius: { xs: 0, sm: T.radius.dialog },
+            border: `1px solid ${T.border}`,
+            boxShadow: T.shadowMd,
+            m: { xs: 0, sm: 2 },
+            width: { xs: "100%", sm: "calc(100% - 32px)" },
+            maxWidth: { xs: "none", sm: 444 },
+            height: { xs: "100dvh", sm: "auto" },
+            maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            "@media (max-width:600px)": {
+              position: "fixed",
+              inset: 0,
+              m: 0,
+              width: "100vw",
+              maxWidth: "100vw",
+              height: "100dvh",
+              maxHeight: "100dvh",
+              borderRadius: 0,
+            },
           },
         }}
       >
@@ -1826,7 +2593,7 @@ export default function AssetManagement() {
             {selectedAsset?.assetName || "Asset"}
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: "20px !important" }}>
+        <DialogContent sx={{ pt: "20px !important", flex: 1, overflowY: "auto" }}>
           {dialogError && (
             <Alert
               severity="error"
@@ -1956,7 +2723,13 @@ export default function AssetManagement() {
           )}
         </DialogContent>
         <DialogActions
-          sx={{ p: 2.5, pt: 2, borderTop: `1px solid #f1f5f9`, gap: 1 }}
+          sx={{
+            p: 2.5,
+            pb: { xs: "calc(20px + env(safe-area-inset-bottom))", sm: 2.5 },
+            pt: 2,
+            borderTop: `1px solid #f1f5f9`,
+            gap: 1,
+          }}
         >
           <Button
             onClick={() => setPortfolioOpen(false)}

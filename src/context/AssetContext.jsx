@@ -66,13 +66,23 @@ api.interceptors.response.use(
       error?.response?.data,
     );
 
-    if (status === 401 || status === 403) {
+    if (status === 401) {
       console.log("[API] Token expired or invalid, clearing auth data");
       localStorage.removeItem("accessToken");
       localStorage.removeItem("token");
       sessionStorage.removeItem("accessToken");
       // FIX 2: dispatch so AssetProvider (and AuthProvider) can clear React state
       window.dispatchEvent(new CustomEvent("auth:expired"));
+    } else if (status === 403) {
+      window.dispatchEvent(
+        new CustomEvent("access:denied", {
+          detail: {
+            message:
+              error?.response?.data?.message ||
+              "You don't have permission to Action",
+          },
+        }),
+      );
     }
     return Promise.reject(error);
   },

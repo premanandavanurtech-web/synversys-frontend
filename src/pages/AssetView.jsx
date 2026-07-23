@@ -28,6 +28,8 @@ import {
   Autocomplete,
   Slide,
   alpha,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { styled, keyframes } from "@mui/material/styles";
 import { useParams, useNavigate } from "react-router-dom";
@@ -999,6 +1001,8 @@ function CreateRequestDialog({ open, onClose, onSuccess }) {
 
 // ─── Link Asset Dialog ────────────────────────────────────────────────────────
 const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user } = useAuth();
   const { fetchRequests, createChildRequest } = useAssetRequest();
   const canCreateRequests = ["admin", "team"].includes(user?.role);
@@ -1047,10 +1051,12 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
       }
     } catch (err) {
       const status = err?.response?.status;
-      if (status === 401 || status === 403) {
+      if (status === 401) {
         setParentError(
           "Authentication failed. Please refresh the page and log in again.",
         );
+      } else if (status === 403) {
+        setParentError(err?.response?.data?.message || "You don't have permission to View");
       } else {
         setParentError(
           err?.response?.data?.message ||
@@ -1111,8 +1117,10 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
       onClose();
     } catch (err) {
       const status = err?.response?.status;
-      if (status === 401 || status === 403) {
+      if (status === 401) {
         setSnackMsg("Authentication failed. Please refresh the page.");
+      } else if (status === 403) {
+        setSnackMsg(err?.response?.data?.message || "You don't have permission to Create");
       } else {
         setSnackMsg(
           err?.response?.data?.message ||
@@ -1132,24 +1140,33 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
         onClose={onClose}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
           sx: {
-            borderRadius: T.r.lg,
+            borderRadius: { xs: 0, sm: T.r.lg },
             border: `1px solid ${T.border}`,
             bgcolor: T.surface,
             boxShadow: T.sh.xl,
             overflow: "hidden",
             animation: `${popIn} 0.25s ease both`,
+            m: { xs: 0, sm: 2 },
+            width: { xs: "100%", sm: "calc(100% - 32px)" },
+            maxWidth: { xs: "none", sm: 600 },
+            height: { xs: "100dvh", sm: "auto" },
+            maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+            display: "flex",
+            flexDirection: "column",
           },
         }}
       >
         {/* Header */}
         <Box
           sx={{
-            px: 3,
-            pt: 3,
-            pb: 0,
+            px: { xs: 2, sm: 3 },
+            pt: { xs: 2, sm: 3 },
+            pb: { xs: 2, sm: 0 },
             background: `linear-gradient(135deg, ${T.brandLight} 0%, ${T.surface} 70%)`,
+            flexShrink: 0,
           }}
         >
           <Stack
@@ -1211,7 +1228,14 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
           </Stack>
         </Box>
 
-        <DialogContent sx={{ p: 3, maxHeight: "72vh", overflowY: "auto" }}>
+        <DialogContent
+          sx={{
+            p: { xs: 2, sm: 3 },
+            flex: 1,
+            maxHeight: { xs: "none", sm: "72vh" },
+            overflowY: "auto",
+          }}
+        >
           {/* Current Asset Info */}
           <Box
             sx={{
@@ -1411,7 +1435,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                 <>
                   <Stack
                     spacing={1.25}
-                    sx={{ maxHeight: 360, overflowY: "auto", pr: 0.5 }}
+                    sx={{ maxHeight: { xs: "none", sm: 360 }, overflowY: { xs: "visible", sm: "auto" }, pr: { xs: 0, sm: 0.5 } }}
                   >
                     {filteredParents.map((req) => {
                       const isSelected = selectedParent?._id === req._id;
@@ -1736,14 +1760,16 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
         {/* Footer */}
         <Box
           sx={{
-            px: 3,
-            py: 2.5,
+            px: { xs: 2, sm: 3 },
+            py: { xs: 1.5, sm: 2.5 },
+            pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 },
             borderTop: `1px solid ${T.border}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-end",
             gap: 1.5,
             bgcolor: T.surfaceAlt,
+            flexShrink: 0,
           }}
         >
           <Button
@@ -1899,8 +1925,10 @@ export default function AssetView() {
       }
     } catch (e) {
       const status = e?.response?.status;
-      if (status === 401 || status === 403) {
+      if (status === 401) {
         toast("Session expired. Please log in again.", "error");
+      } else if (status === 403) {
+        toast(e?.response?.data?.message || "You don't have permission to View", "error");
       } else {
         toast(e?.response?.data?.message || "Failed to fetch asset", "error");
       }
@@ -2213,7 +2241,16 @@ export default function AssetView() {
             direction="row"
             spacing={1}
             flexWrap="wrap"
-            sx={{ flexShrink: 0, width: { xs: "100%", sm: "auto" } }}
+            sx={{
+              flexShrink: 0,
+              width: { xs: "100%", sm: "auto" },
+              "& .MuiButton-root": {
+                flex: { xs: "1 1 0", sm: "0 0 auto" },
+                minWidth: { xs: 0, sm: "auto" },
+                px: { xs: 1, sm: 2 },
+                whiteSpace: "nowrap",
+              },
+            }}
           >
             {(user?.role === "admin" || user?.role === "team") && (
               <Button
@@ -2282,29 +2319,57 @@ export default function AssetView() {
       {/* FIX #1: removed maxWidth constraint — content now fills full available width */}
       <Box
         sx={{
-          px: { xs: 2, sm: 3, md: 4, xl: 6 },
-          py: 3,
+          px: { xs: 1.5, sm: 3, md: 4, xl: 6 },
+          py: { xs: 1.5, sm: 3 },
           overflowX: "hidden",
           boxSizing: "border-box",
           width: "100%",
         }}
       >
-        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ width: "100%", m: 0 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              md: "minmax(260px, 320px) minmax(0, 1fr)",
+              xl: "minmax(300px, 360px) minmax(0, 1fr)",
+            },
+            gap: { xs: 2, sm: 3 },
+            width: "100%",
+            alignItems: "start",
+          }}
+        >
 
           {/* ── LEFT SIDEBAR ─────────────────────────────────────────────── */}
           {/* FIX #2: narrowed sidebar from md={4} lg={3} → md={3} lg={2.5} */}
-          <Grid item xs={12} md={3} lg={2.5}>
-            <Stack spacing={2.5}>
+          <Box sx={{ width: "100%", minWidth: 0 }}>
+            <Stack
+              spacing={{ xs: 0, md: 2.5 }}
+              sx={{
+                width: "100%",
+                display: { xs: "grid", md: "flex" },
+                gridTemplateColumns: {
+                  xs: "repeat(2, minmax(0, 1fr))",
+                  sm: "repeat(3, minmax(0, 1fr))",
+                  md: "1fr",
+                },
+                gap: { xs: 1.5, sm: 2, md: 0 },
+                "& > .MuiPaper-root": { width: "100%", minWidth: 0 },
+              }}
+            >
 
               {/* Image Panel */}
               <Card
                 elevation={0}
-                sx={{ animation: `${slideIn} 0.4s 0.05s ease both` }}
+                sx={{
+                  animation: `${slideIn} 0.4s 0.05s ease both`,
+                  gridColumn: { xs: "1 / -1", sm: "auto", md: "auto" },
+                }}
               >
                 {/* FIX #7: taller image on large screens */}
                 <Box
                   sx={{
-                    height: { xs: 200, md: 220, lg: 260 },
+                    height: { xs: 210, sm: 170, md: 220, lg: 260 },
                     bgcolor: T.surfaceAlt,
                     display: "flex",
                     alignItems: "center",
@@ -2412,7 +2477,10 @@ export default function AssetView() {
               {/* Health Score */}
               <Card
                 elevation={0}
-                sx={{ p: 2.5, animation: `${slideIn} 0.4s 0.1s ease both` }}
+                sx={{
+                  p: { xs: 1.5, sm: 2, md: 2.5 },
+                  animation: `${slideIn} 0.4s 0.1s ease both`,
+                }}
               >
                 <SectionTitle icon={<Sensors sx={{ fontSize: 15 }} />}>
                   Health Score
@@ -2425,7 +2493,7 @@ export default function AssetView() {
                 >
                   <Typography
                     sx={{
-                      fontSize: "2.75rem",
+                      fontSize: { xs: "2rem", sm: "2.25rem", md: "2.75rem" },
                       fontWeight: 800,
                       color: healthColor,
                       fontFamily: T.font,
@@ -2506,7 +2574,10 @@ export default function AssetView() {
               {/* Quick Info */}
               <Card
                 elevation={0}
-                sx={{ p: 2.5, animation: `${slideIn} 0.4s 0.15s ease both` }}
+                sx={{
+                  p: { xs: 1.5, sm: 2, md: 2.5 },
+                  animation: `${slideIn} 0.4s 0.15s ease both`,
+                }}
               >
                 <SectionTitle icon={<Numbers sx={{ fontSize: 15 }} />}>
                   Quick Info
@@ -2622,11 +2693,11 @@ export default function AssetView() {
                 </Card>
               )}
             </Stack>
-          </Grid>
+          </Box>
 
           {/* ── MAIN CONTENT ─────────────────────────────────────────────── */}
           {/* FIX #2: widened main from md={8} lg={9} → md={9} lg={9.5} */}
-          <Grid item xs={12} md={9} lg={9.5} sx={{ minWidth: 0 }}>
+          <Box sx={{ minWidth: 0, width: "100%" }}>
             <Stack spacing={2.5}>
               <Box
                 sx={{
@@ -3449,8 +3520,8 @@ export default function AssetView() {
                 )}
               </Box>
             </Stack>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Box>
 
       {/* ── LINK ASSET DIALOG ────────────────────────────────────────────── */}

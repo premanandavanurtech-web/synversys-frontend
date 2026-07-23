@@ -19,6 +19,8 @@ import {
   InputLabel,
   FormHelperText,
   Divider,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { Close as CloseIcon } from "@mui/icons-material";
 import PersonIcon from "@mui/icons-material/Person";
@@ -83,7 +85,14 @@ const ADD_NEW_DEPARTMENT = "__add_new_department__";
 // Reusable row wrapper: two equal-width children side by side
 function FormRow({ children }) {
   return (
-    <Box sx={{ display: "flex", gap: 1.5, width: "100%" }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: { xs: "column", sm: "row" },
+        gap: { xs: 1.25, sm: 1.5 },
+        width: "100%",
+      }}
+    >
       <Box sx={{ flex: 1, minWidth: 0 }}>{children[0]}</Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>{children[1]}</Box>
     </Box>
@@ -250,6 +259,8 @@ export default function AddMemberModal({
   loading,
   onValidationError,
 }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { roles, fetchRoles, departments, fetchDepartments } = useTeam();
   const { createRole } = useRoles();
   const { createDepartment } = useDepartment();
@@ -464,6 +475,12 @@ export default function AddMemberModal({
 
   const iconSx = { fontSize: "0.9rem", color: "text.secondary" };
   const fieldSize = "small";
+  const activeRoles = Array.isArray(roles)
+    ? roles.filter((role) => role.isActive !== false)
+    : [];
+  const activeDepartments = Array.isArray(departments)
+    ? departments.filter((department) => department.isActive !== false)
+    : [];
 
   return (
     <>
@@ -472,9 +489,38 @@ export default function AddMemberModal({
         onClose={handleClose}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 2, overflow: "hidden" } }}
+        sx={{
+          "& .MuiDialog-container": {
+            alignItems: { xs: "flex-end", sm: "center" },
+          },
+        }}
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: "24px 24px 0 0", sm: 2 },
+            overflow: "hidden",
+            m: { xs: 0, sm: 2 },
+            width: { xs: "100%", sm: "calc(100% - 64px)" },
+            height: { xs: "100dvh", sm: "auto" },
+            maxHeight: { xs: "100dvh", sm: "90vh" },
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
       >
         {/* ── Header ── */}
+        {isMobile && (
+          <Box sx={{ pt: 1.25, bgcolor: "#fff" }}>
+            <Box
+              sx={{
+                width: 44,
+                height: 5,
+                borderRadius: 999,
+                bgcolor: "#dbe3ea",
+                mx: "auto",
+              }}
+            />
+          </Box>
+        )}
         <DialogTitle sx={{ pb: 1, pt: 2, px: { xs: 2, sm: 2.5 } }}>
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Box>
@@ -492,7 +538,7 @@ export default function AddMemberModal({
         </DialogTitle>
 
         {/* ── Body ── */}
-        <DialogContent sx={{ px: { xs: 2, sm: 2.5 }, py: 2 }}>
+        <DialogContent sx={{ px: { xs: 2, sm: 2.5 }, py: 2, overflowY: "auto", flex: 1 }}>
           {fetchError && (
             <Alert severity="error" sx={{ mb: 2, borderRadius: 1.5 }}>{fetchError}</Alert>
           )}
@@ -566,8 +612,8 @@ export default function AddMemberModal({
                     <MenuItem value="" disabled>
                       <Typography color="text.secondary" fontSize="0.85rem">Select a role</Typography>
                     </MenuItem>
-                    {roles && roles.length > 0 ? (
-                      roles.map((role) => (
+                    {activeRoles.length > 0 ? (
+                      activeRoles.map((role) => (
                         <MenuItem key={role._id || role.id} value={role._id || role.id} sx={{ fontSize: "0.85rem" }}>
                           {role.name}
                         </MenuItem>
@@ -598,8 +644,8 @@ export default function AddMemberModal({
                     <MenuItem value="" disabled>
                       <Typography color="text.secondary" fontSize="0.85rem">Select a department</Typography>
                     </MenuItem>
-                    {departments && departments.length > 0 ? (
-                      departments.map((dept) => (
+                    {activeDepartments.length > 0 ? (
+                      activeDepartments.map((dept) => (
                         <MenuItem key={dept._id || dept.id} value={dept._id || dept.id} sx={{ fontSize: "0.85rem" }}>
                           {dept.name}
                         </MenuItem>
@@ -648,7 +694,7 @@ export default function AddMemberModal({
         </DialogContent>
 
         {/* ── Footer ── */}
-        <DialogActions sx={{ px: { xs: 2, sm: 2.5 }, pb: 2.5, gap: 1.5 }}>
+        <DialogActions sx={{ px: { xs: 2, sm: 2.5 }, pb: { xs: "calc(18px + env(safe-area-inset-bottom))", sm: 2.5 }, gap: 1.5 }}>
           <Button
             onClick={handleClose}
             variant="outlined"
