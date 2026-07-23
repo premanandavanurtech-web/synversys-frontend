@@ -825,7 +825,7 @@ const CategoryDialog = ({
   };
 
   const dialogContent = (
-    <Box sx={{ p: isMobile ? 2 : 3 }}>
+    <Box sx={{ p: isMobile ? 2 : 3, flex: isMobile ? 1 : undefined, overflowY: isMobile ? "auto" : undefined }}>
       <Stack spacing={isMobile ? 2 : 2.5}>
         {/* Name Field */}
         <Box>
@@ -1013,9 +1013,12 @@ const CategoryDialog = ({
         onClose={!loading ? onClose : undefined}
         PaperProps={{
           sx: {
-            borderRadius: `${T.r.xl}px ${T.r.xl}px 0 0`,
-            maxHeight: "90vh",
+            borderRadius: 0,
+            height: "100dvh",
+            maxHeight: "100dvh",
             overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
           },
         }}
       >
