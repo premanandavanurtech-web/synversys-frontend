@@ -468,9 +468,37 @@ const ViewCloneDialog = ({ open, checklist, onClose, onClone }) => {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { borderRadius: "20px", m: { xs: 1, sm: 2 }, maxHeight: "90vh" } }}
+      fullScreen={isMobile}
+      sx={{
+        "& .MuiDialog-container": {
+          alignItems: { xs: "stretch", sm: "center" },
+        },
+      }}
+      PaperProps={{
+        sx: {
+          borderRadius: { xs: 0, sm: "20px" },
+          m: { xs: 0, sm: 2 },
+          width: { xs: "100%", sm: "calc(100% - 32px)" },
+          maxWidth: { xs: "none", sm: 600 },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "90vh" },
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          "@media (max-width:600px)": {
+            position: "fixed",
+            inset: 0,
+            m: 0,
+            width: "100vw",
+            maxWidth: "100vw",
+            height: "100dvh",
+            maxHeight: "100dvh",
+            borderRadius: 0,
+          },
+        },
+      }}
     >
-      <Box sx={{ bgcolor: "primary.main", px: { xs: 2.5, sm: 3 }, py: { xs: 2.5, sm: 3 }, borderRadius: "20px 20px 0 0" }}>
+      <Box sx={{ bgcolor: "primary.main", px: { xs: 2.5, sm: 3 }, py: { xs: 2.5, sm: 3 }, borderRadius: { xs: 0, sm: "20px 20px 0 0" } }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <Box sx={{ pr: 2, minWidth: 0 }}>
             <Typography fontWeight={800} fontSize={{ xs: 16, sm: 19 }} color="white" sx={{ wordBreak: "break-word" }}>
@@ -498,7 +526,7 @@ const ViewCloneDialog = ({ open, checklist, onClose, onClone }) => {
         </Box>
       </Box>
 
-      <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
+      <DialogContent sx={{ p: { xs: 2, sm: 3 }, flex: 1, overflowY: "auto" }}>
         <Stack spacing={3}>
           <Grid container spacing={1.5}>
             {[
@@ -507,8 +535,8 @@ const ViewCloneDialog = ({ open, checklist, onClose, onClone }) => {
               { label: "Category", val: checklist.category || "—" },
               { label: "Created", val: fmt(checklist.createdAt) },
             ].map(({ label, val }) => (
-              <Grid item xs={6} sm={3} key={label}>
-                <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: alpha(theme.palette.primary.main, 0.04), border: "1px solid", borderColor: alpha(theme.palette.primary.main, 0.1),width:{xs:"280px",md:"259px"} }}>
+              <Grid item xs={12} sm={3} key={label}>
+                <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: alpha(theme.palette.primary.main, 0.04), border: "1px solid", borderColor: alpha(theme.palette.primary.main, 0.1), width: "100%" }}>
                   <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mb: 0.25 }}>
                     {label}
                   </Typography>
@@ -566,7 +594,7 @@ const ViewCloneDialog = ({ open, checklist, onClose, onClone }) => {
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ p: { xs: 2, sm: 2.5 }, borderTop: "1px solid", borderColor: "divider", bgcolor: "#fafbfc", borderRadius: "0 0 20px 20px", gap: 1, flexWrap: "wrap" }}>
+      <DialogActions sx={{ p: { xs: 2, sm: 2.5 }, pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 }, borderTop: "1px solid", borderColor: "divider", bgcolor: "#fafbfc", borderRadius: { xs: 0, sm: "0 0 20px 20px" }, gap: 1, flexWrap: "wrap" }}>
         <Button
           onClick={() => {
             onClose();

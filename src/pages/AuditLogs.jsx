@@ -1544,6 +1544,10 @@ const AuditLogs = () => {
       [...(auditLogs || [])].sort((a, b) => {
         let av = a[orderBy],
           bv = b[orderBy];
+        if (orderBy === "actor") {
+          av = a.actor?.email || "";
+          bv = b.actor?.email || "";
+        }
         if (orderBy === "createdAt") {
           av = av ? new Date(av).getTime() : 0;
           bv = bv ? new Date(bv).getTime() : 0;
@@ -1596,6 +1600,24 @@ const AuditLogs = () => {
     setPage(0);
     fetchAuditLogs(1, rowsPerPage, filters);
     fetchAuditStats(filters);
+  };
+
+  const handleUniqueUsersStatClick = () => {
+    setActiveStatFilter((current) =>
+      current === "uniqueUsers" ? null : "uniqueUsers",
+    );
+    setOrderBy("actor");
+    setOrder("asc");
+    setPage(0);
+  };
+
+  const handleActionTypesStatClick = () => {
+    setActiveStatFilter((current) =>
+      current === "actionTypes" ? null : "actionTypes",
+    );
+    setOrderBy("action");
+    setOrder("asc");
+    setPage(0);
   };
 
   /* ── Export (client-side, current page data) ── */
@@ -1808,11 +1830,14 @@ const AuditLogs = () => {
           onClick={handleTodayStatClick}
         />
         <StatCard
-          label={isSuperAdmin ? "Total Events" : "Unique Users"}
+          label="Unique Users"
           value={displayStats?.unique}
           icon={<PeopleIcon sx={{ fontSize: 16 }} />}
           color="#ea580c"
           loading={statsLoading && !stats}
+          subtitle={activeStatFilter === "uniqueUsers" ? "sorted by user" : undefined}
+          active={activeStatFilter === "uniqueUsers"}
+          onClick={handleUniqueUsersStatClick}
         />
         <StatCard
           label="Action Types"
@@ -1820,6 +1845,9 @@ const AuditLogs = () => {
           icon={<CategoryIcon sx={{ fontSize: 16 }} />}
           color="#d97706"
           loading={statsLoading && !stats}
+          subtitle={activeStatFilter === "actionTypes" ? "sorted by action" : undefined}
+          active={activeStatFilter === "actionTypes"}
+          onClick={handleActionTypesStatClick}
         />
       </Box>
 
