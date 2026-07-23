@@ -1998,7 +1998,7 @@ export default function AssetManagement() {
                             color={T.text.muted}
                             fontFamily="monospace"
                           >
-                            {asset.assetId || "—"}
+                            {displayText(asset.assetId)}
                           </Typography>
                         </TableCell>
                         <TableCell sx={cellSx}>
@@ -2016,7 +2016,7 @@ export default function AssetManagement() {
                               sx={{ fontSize: 11, color: T.text.muted }}
                             />
                             <Typography fontSize="0.78rem">
-                              {asset.currentLocation || "—"}
+                              {displayText(asset.currentLocation)}
                             </Typography>
                           </Stack>
                         </TableCell>
@@ -2245,12 +2245,36 @@ export default function AssetManagement() {
         onClose={() => closeExistingAssetDialog()}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
+        sx={{
+          "& .MuiDialog-container": {
+            alignItems: { xs: "stretch", sm: "center" },
+          },
+        }}
         PaperProps={{
           elevation: 0,
           sx: {
-            borderRadius: T.radius.dialog,
+            borderRadius: { xs: 0, sm: T.radius.dialog },
             border: `1px solid ${T.border}`,
             boxShadow: T.shadowMd,
+            m: { xs: 0, sm: 2 },
+            width: { xs: "100%", sm: "calc(100% - 32px)" },
+            maxWidth: { xs: "none", sm: 900 },
+            height: { xs: "100dvh", sm: "auto" },
+            maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            "@media (max-width:600px)": {
+              position: "fixed",
+              inset: 0,
+              m: 0,
+              width: "100vw",
+              maxWidth: "100vw",
+              height: "100dvh",
+              maxHeight: "100dvh",
+              borderRadius: 0,
+            },
           },
         }}
       >
@@ -2264,7 +2288,7 @@ export default function AssetManagement() {
         >
           Add Existing Asset
         </DialogTitle>
-        <DialogContent sx={{ pt: "20px !important" }}>
+        <DialogContent sx={{ pt: "20px !important", flex: 1, overflowY: "auto" }}>
           {dialogError && (
             <Alert severity="error" sx={{ mb: 2, borderRadius: "8px", fontSize: "0.78rem" }}>
               {dialogError}
@@ -2317,6 +2341,106 @@ export default function AssetManagement() {
             <Alert severity="info" sx={{ borderRadius: "10px" }}>
               No assets match your search.
             </Alert>
+          ) : isMobile ? (
+            <Stack spacing={1.25}>
+              {filteredExistingAssets.map((asset) => {
+                const assetId = asset.id || asset._id;
+                const currentPortfolio = displayText(getAssetPortfolioName(asset), "");
+                const inOtherPortfolio =
+                  currentPortfolio && norm(currentPortfolio) !== norm(portfolioFilter);
+                const overrideAllowed = portfolioOverrideAssetIds.includes(assetId);
+                const checked = selectedExistingAssetIds.includes(assetId);
+                const disabled = inOtherPortfolio && !overrideAllowed;
+
+                return (
+                  <Paper
+                    key={assetId}
+                    elevation={0}
+                    sx={{
+                      border: `1px solid ${checked ? T.brand : T.border}`,
+                      borderRadius: "12px",
+                      bgcolor: checked ? "#f0f8fb" : "#fff",
+                      p: 1.5,
+                    }}
+                  >
+                    <Stack direction="row" spacing={1.25} alignItems="flex-start">
+                      <Checkbox
+                        size="small"
+                        checked={checked}
+                        disabled={disabled || actionLoading}
+                        onChange={() => toggleExistingAsset(asset)}
+                        sx={{ color: T.brand, mt: -0.25, "&.Mui-checked": { color: T.brand } }}
+                      />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1}>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography sx={{ fontWeight: 800, fontSize: "0.9rem", color: T.text.primary }} noWrap>
+                              {displayText(asset.assetName, "Untitled asset")}
+                            </Typography>
+                            <Typography sx={{ color: T.text.muted, fontSize: "0.72rem", mt: 0.25 }}>
+                              ID: {displayText(asset.assetId, "-")}
+                            </Typography>
+                            <Typography sx={{ color: T.text.muted, fontSize: "0.72rem" }}>
+                              Tag: {displayText(asset.tagNumber || asset.serialNumber, "-")}
+                            </Typography>
+                          </Box>
+                          <StatusPill status={asset.status} />
+                        </Stack>
+
+                        <Box
+                          sx={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: 1,
+                            mt: 1.25,
+                          }}
+                        >
+                          <Box>
+                            <Typography sx={{ color: T.text.muted, fontSize: "0.66rem", fontWeight: 800, textTransform: "uppercase" }}>
+                              Category
+                            </Typography>
+                            <Typography sx={{ color: T.text.secondary, fontSize: "0.78rem", fontWeight: 600 }}>
+                              {displayText(getAssetCategoryName(asset), "-")}
+                            </Typography>
+                          </Box>
+                          <Box>
+                            <Typography sx={{ color: T.text.muted, fontSize: "0.66rem", fontWeight: 800, textTransform: "uppercase" }}>
+                              Portfolio
+                            </Typography>
+                            <Typography sx={{ color: currentPortfolio ? T.text.secondary : T.text.muted, fontSize: "0.78rem", fontWeight: 600 }}>
+                              {currentPortfolio || "-"}
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        {inOtherPortfolio && !overrideAllowed ? (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => toggleExistingAsset(asset)}
+                            disabled={actionLoading}
+                            sx={{
+                              mt: 1.25,
+                              textTransform: "none",
+                              borderRadius: "8px",
+                              fontSize: "0.74rem",
+                              color: T.brand,
+                              borderColor: T.border,
+                            }}
+                          >
+                            Change Portfolio
+                          </Button>
+                        ) : (
+                          <Typography sx={{ mt: 1.25, color: T.text.muted, fontSize: "0.74rem", fontWeight: 600 }}>
+                            Ready
+                          </Typography>
+                        )}
+                      </Box>
+                    </Stack>
+                  </Paper>
+                );
+              })}
+            </Stack>
           ) : (
             <TableContainer
               component={Paper}
@@ -2360,13 +2484,13 @@ export default function AssetManagement() {
                         </TableCell>
                         <TableCell>
                           <Typography sx={{ fontWeight: 700, fontSize: "0.86rem" }}>
-                            {asset.assetName || "Untitled asset"}
+                            {displayText(asset.assetName, "Untitled asset")}
                           </Typography>
                           <Typography sx={{ color: T.text.muted, fontSize: "0.74rem" }}>
-                            ID: {asset.assetId || "-"}
+                            ID: {displayText(asset.assetId, "-")}
                           </Typography>
                           <Typography sx={{ color: T.text.muted, fontSize: "0.74rem" }}>
-                            Tag: {asset.tagNumber || asset.serialNumber || "-"}
+                            Tag: {displayText(asset.tagNumber || asset.serialNumber, "-")}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ fontSize: "0.82rem", color: T.text.secondary }}>
@@ -2414,7 +2538,15 @@ export default function AssetManagement() {
             </TableContainer>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2.5, pt: 2, borderTop: `1px solid #f1f5f9`, gap: 1 }}>
+        <DialogActions
+          sx={{
+            p: 2.5,
+            pb: { xs: "calc(20px + env(safe-area-inset-bottom))", sm: 2.5 },
+            pt: 2,
+            borderTop: `1px solid #f1f5f9`,
+            gap: 1,
+          }}
+        >
           <Typography sx={{ mr: "auto", color: T.text.muted, fontSize: "0.8rem", fontWeight: 600 }}>
             {selectedExistingAssetIds.length} selected
           </Typography>
