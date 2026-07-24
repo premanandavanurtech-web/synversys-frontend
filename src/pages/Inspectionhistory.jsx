@@ -27,7 +27,6 @@ import {
   MenuItem,
   Select,
   FormControl,
-  Grid,
   Button,
 } from "@mui/material";
 import { createTheme, ThemeProvider, alpha } from "@mui/material/styles";
@@ -97,7 +96,8 @@ const StatCard = ({ title, value, color }) => (
       borderRadius: 1,
       border: "1px solid #e2e8f0",
       height: "100%",
-      width:"285px"
+      minHeight: { xs: 86, sm: 98 },
+      width: "100%",
     }}
   >
     <Typography
@@ -335,28 +335,38 @@ export default function InspectionHistory() {
           </Paper>
 
           {/* Stats Summary */}
-          <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
-            <Grid item xs={6} sm={3}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                md: "repeat(4, minmax(0, 1fr))",
+              },
+              gap: 1.5,
+              mb: 2.5,
+            }}
+          >
+            <Box>
               <StatCard title="Total Submissions" value={summary.total} />
-            </Grid>
-            <Grid item xs={6} sm={3}>
+            </Box>
+            <Box>
               <StatCard
                 title="Approved"
                 value={summary.approved}
                 color="#10b981"
               />
-            </Grid>
-            <Grid item xs={6} sm={3}>
+            </Box>
+            <Box>
               <StatCard
                 title="Under Review"
                 value={summary.pendingReview}
                 color="#ef4444"
               />
-            </Grid>
-            <Grid item xs={6} sm={3}>
+            </Box>
+            <Box>
               <StatCard title="Avg Score" value={avgScore} />
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
 
           {/* Inspections Table */}
           {filteredInspections.length === 0 ? (
@@ -402,6 +412,186 @@ export default function InspectionHistory() {
                 </Box>
               </Fade>
             </Paper>
+          ) : isMobile ? (
+            <>
+              <Stack spacing={1.25}>
+                {filteredInspections.map((insp, idx) => {
+                  const submissionId = insp._id || insp.submissionId;
+                  const inspectionId = insp.inspectionId || "N/A";
+                  const formType =
+                    insp.checklistSummary?.[0]?.checklistName || "N/A";
+                  const reviewStatus = (
+                    insp.reviewStatus || "pending_review"
+                  ).toLowerCase();
+                  const submittedDate = insp.submittedAt
+                    ? new Date(insp.submittedAt)
+                        .toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                        })
+                        .replace(/\//g, "-")
+                    : "N/A";
+                  const score =
+                    insp.performanceRating != null
+                      ? `${Math.round((Number(insp.performanceRating) / 5) * 100)}%`
+                      : "N/A";
+
+                  return (
+                    <Fade in timeout={150 + idx * 30} key={submissionId}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 1,
+                          border: "1px solid #e2e8f0",
+                          bgcolor: "#fff",
+                        }}
+                      >
+                        <Stack spacing={1.25}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              justifyContent: "space-between",
+                              gap: 1,
+                            }}
+                          >
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: "#64748b",
+                                  display: "block",
+                                  fontSize: "0.68rem",
+                                  fontWeight: 700,
+                                  textTransform: "uppercase",
+                                }}
+                              >
+                                Inspection ID
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                fontWeight={800}
+                                sx={{
+                                  color: "#0d3d52",
+                                  fontSize: "0.82rem",
+                                  wordBreak: "break-word",
+                                }}
+                              >
+                                {inspectionId}
+                              </Typography>
+                            </Box>
+                            <ReviewStatusChip status={insp.reviewStatus} />
+                          </Box>
+
+                          <Box
+                            sx={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
+                              gap: 1.25,
+                            }}
+                          >
+                            {[
+                              ["Form Type", formType],
+                              ["Submitted Date", submittedDate],
+                              ["Score", score],
+                            ].map(([label, value]) => (
+                              <Box key={label} sx={{ minWidth: 0 }}>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    color: "#64748b",
+                                    display: "block",
+                                    fontSize: "0.68rem",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {label}
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  fontWeight={label === "Score" ? 800 : 600}
+                                  sx={{
+                                    color:
+                                      label === "Score" && score !== "N/A"
+                                        ? Number(score.replace("%", "")) >= 80
+                                          ? "#10b981"
+                                          : "#dc2626"
+                                        : "#334155",
+                                    fontSize: "0.8rem",
+                                    wordBreak: "break-word",
+                                  }}
+                                >
+                                  {value}
+                                </Typography>
+                              </Box>
+                            ))}
+                          </Box>
+
+                          {reviewStatus === "needs_revision" ? (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              fullWidth
+                              onClick={() =>
+                                navigate(`/team/task/${insp.assignmentId}`)
+                              }
+                              sx={{
+                                bgcolor: "#ef4444",
+                                "&:hover": { bgcolor: "#dc2626" },
+                                fontSize: "0.72rem",
+                                fontWeight: 700,
+                                borderRadius: 1,
+                                boxShadow: "none",
+                              }}
+                            >
+                              Start Remaining Task
+                            </Button>
+                          ) : (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              fullWidth
+                              startIcon={
+                                <VisibilityIcon sx={{ fontSize: 15 }} />
+                              }
+                              onClick={() => handleViewInspection(submissionId)}
+                              sx={{
+                                borderColor: "#e2e8f0",
+                                color: "#0f172a",
+                                fontSize: "0.75rem",
+                                fontWeight: 700,
+                                borderRadius: 1,
+                              }}
+                            >
+                              View
+                            </Button>
+                          )}
+                        </Stack>
+                      </Paper>
+                    </Fade>
+                  );
+                })}
+              </Stack>
+              {pagination.totalPages > 1 && (
+                <Box
+                  sx={{
+                    py: 2,
+                    display: "flex",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Pagination
+                    count={pagination.totalPages}
+                    page={pagination.page}
+                    onChange={(_, p) => loadInspections(p)}
+                    color="primary"
+                    size="small"
+                  />
+                </Box>
+              )}
+            </>
           ) : (
             <Paper
               elevation={0}

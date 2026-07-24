@@ -12,7 +12,6 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
-  Grid,
   Rating,
   ImageList,
   ImageListItem,
@@ -95,7 +94,7 @@ const getScoreLabel = (score) => {
 
 // ─── Field row (label / value pair) ───────────────────────────────────────────
 const FieldRow = ({ label, value, valueColor }) => (
-  <Grid item xs={12} sm={6} md={4}>
+  <Box sx={{ minWidth: 0 }}>
     <Typography sx={{ fontSize: "0.7rem", color: "#94a3b8", mb: 0.3 }}>
       {label}
     </Typography>
@@ -109,7 +108,7 @@ const FieldRow = ({ label, value, valueColor }) => (
     >
       {value || "—"}
     </Typography>
-  </Grid>
+  </Box>
 );
 
 export default function InspectionHistoryDetails() {
@@ -383,7 +382,15 @@ export default function InspectionHistoryDetails() {
                 </Typography>
               </Box>
             </Stack>
-            <Stack direction="row" spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                flexWrap: "wrap",
+                width: { xs: "100%", sm: "auto" },
+                gap: 1,
+              }}
+            >
               <Button
                 size="small"
                 startIcon={<PdfIcon sx={{ fontSize: 16 }} />}
@@ -395,6 +402,7 @@ export default function InspectionHistoryDetails() {
                   color: "#0d3d52",
                   fontSize: "0.7rem",
                   py: 0.5,
+                  flex: { xs: "1 1 145px", sm: "0 0 auto" },
                 }}
               >
                 {exporting ? "Generating..." : "Export in PDF"}
@@ -409,6 +417,7 @@ export default function InspectionHistoryDetails() {
                   color: "#0d3d52",
                   fontSize: "0.7rem",
                   py: 0.5,
+                  flex: { xs: "1 1 145px", sm: "0 0 auto" },
                 }}
               >
                 Print the Data
@@ -431,14 +440,24 @@ export default function InspectionHistoryDetails() {
           </Box>
 
           {/* Printable Content */}
-          <div ref={printRef}>
+          <Box ref={printRef} sx={{ width: "100%", minWidth: 0 }}>
             {/* Top Row: Overall Score + Inspection Summary */}
-            <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-              <Grid item xs={12} sm={4}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  md: "minmax(220px, 0.8fr) minmax(0, 1.2fr)",
+                },
+                gap: 1.5,
+                mb: 1.5,
+              }}
+            >
+              <Box sx={{ minWidth: 0 }}>
                 <SectionCard
                   sx={{
                     height: "100%",
-                    width:"300px",
+                    width: "100%",
                     textAlign: "center",
                     display: "flex",
                     flexDirection: "column",
@@ -466,11 +485,20 @@ export default function InspectionHistoryDetails() {
                     {scoreInfo.label}
                   </Typography>
                 </SectionCard>
-              </Grid>
-              <Grid item xs={12} sm={8}>
-                <SectionCard title="Inspection Summary" sx={{ height: "100%"}}>
-                  <Grid container spacing={1}>
-                    <Grid item xs={4} sx={{  width:"260px" }}>
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <SectionCard title="Inspection Summary" sx={{ height: "100%" }}>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        sm: "repeat(3, minmax(0, 1fr))",
+                      },
+                      gap: 1,
+                    }}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
                       <Box
                         sx={{
                           textAlign: "center",
@@ -497,8 +525,8 @@ export default function InspectionHistoryDetails() {
                           Passed
                         </Typography>
                       </Box>
-                    </Grid>
-                    <Grid item xs={4} sx={{  width:"260px" }}>
+                    </Box>
+                    <Box sx={{ minWidth: 0 }}>
                       <Box
                         sx={{
                           textAlign: "center",
@@ -525,8 +553,8 @@ export default function InspectionHistoryDetails() {
                           Failed
                         </Typography>
                       </Box>
-                    </Grid>
-                    <Grid item xs={4} sx={{  width:"260px" }}>
+                    </Box>
+                    <Box sx={{ minWidth: 0 }}>
                       <Box
                         sx={{
                           textAlign: "center",
@@ -553,15 +581,24 @@ export default function InspectionHistoryDetails() {
                           N/A
                         </Typography>
                       </Box>
-                    </Grid>
-                  </Grid>
+                    </Box>
+                  </Box>
                 </SectionCard>
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
 
             {/* Asset Information */}
             <SectionCard title="Asset Information" sx={{ mb: 1.5 }}>
-              <Grid container spacing={1}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "repeat(2, minmax(0, 1fr))",
+                    sm: "repeat(3, minmax(0, 1fr))",
+                  },
+                  gap: 1,
+                }}
+              >
                 <FieldRow label="Asset Name" value={assetName} />
                 <FieldRow
                   label="Inspection Date"
@@ -571,12 +608,21 @@ export default function InspectionHistoryDetails() {
                       : "—"
                   }
                 />
-              </Grid>
+              </Box>
             </SectionCard>
 
             {/* Inspection Details */}
             <SectionCard title="Inspection Details" sx={{ mb: 1.5 }}>
-              <Grid container spacing={1}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "repeat(2, minmax(0, 1fr))",
+                    sm: "repeat(3, minmax(0, 1fr))",
+                  },
+                  gap: 1,
+                }}
+              >
                 <FieldRow
                   label="Inspector Name"
                   value={inspection.inspectorName}
@@ -598,7 +644,7 @@ export default function InspectionHistoryDetails() {
                   label="Performance Rating"
                   value={`${inspection.performanceRating || 0}/5`}
                 />
-              </Grid>
+              </Box>
             </SectionCard>
 
             {/* Checklist Sections */}
@@ -838,7 +884,7 @@ export default function InspectionHistoryDetails() {
                 </ImageList>
               </SectionCard>
             )}
-          </div>
+          </Box>
         </Container>
 
         {/* Image Dialog */}

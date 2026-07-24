@@ -1530,7 +1530,14 @@ export default function TeamManagement() {
                 onDelete={handleDeleteClick}
               />
             ))}
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                mt: 2,
+                width: "100%",
+              }}
+            >
               <TablePagination
                 component="div"
                 count={pagination?.total || teamMembers.length}
@@ -1542,7 +1549,36 @@ export default function TeamManagement() {
                   setCurrentPage(0);
                 }}
                 rowsPerPageOptions={[5, 10, 20]}
-                sx={{ border: "none" }}
+                sx={{
+                  border: "none",
+                  width: "100%",
+                  overflow: "visible",
+                  "& .MuiTablePagination-toolbar": {
+                    minHeight: 44,
+                    px: 0,
+                    gap: 0.5,
+                    justifyContent: "space-between",
+                  },
+                  "& .MuiTablePagination-spacer": { display: "none" },
+                  "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
+                    {
+                      m: 0,
+                      fontSize: "0.72rem",
+                      color: C.text.secondary,
+                      whiteSpace: "nowrap",
+                    },
+                  "& .MuiTablePagination-select": {
+                    fontSize: "0.75rem",
+                    py: 0.5,
+                  },
+                  "& .MuiTablePagination-actions": {
+                    ml: 0,
+                    flexShrink: 0,
+                  },
+                  "& .MuiIconButton-root": {
+                    p: 0.75,
+                  },
+                }}
               />
             </Box>
           </Box>
