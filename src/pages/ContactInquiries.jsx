@@ -144,23 +144,44 @@ function AgeBadge({ date }) {
 /* ─────────────────────────────────────────────────────
  * Stat card
  * ───────────────────────────────────────────────────── */
-function StatCard({ label, value, icon: Icon, color, loading }) {
+function StatCard({ label, value, icon: Icon, color, loading, active, onClick }) {
   if (loading)
     return <Skeleton variant="rectangular" height={84} sx={{ borderRadius: C.radius, flex: 1 }} />;
   return (
     <Box
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (!onClick) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
       sx={{
         flex: 1,
         minWidth: 140,
         bgcolor: C.surface,
-        border: C.border,
+        border: active ? `1px solid ${color}` : C.border,
         borderRadius: C.radius,
         p: "14px 16px",
         display: "flex",
         alignItems: "center",
         gap: 1.5,
-        transition: "box-shadow 0.15s",
-        "&:hover": { boxShadow: "0 2px 12px rgba(0,0,0,0.06)" },
+        cursor: onClick ? "pointer" : "default",
+        boxShadow: active ? `0 0 0 2px ${alpha(color, 0.14)}` : "none",
+        transition: "box-shadow 0.15s, border-color 0.15s, transform 0.15s",
+        "&:hover": {
+          boxShadow: active
+            ? `0 0 0 2px ${alpha(color, 0.18)}`
+            : "0 2px 12px rgba(0,0,0,0.06)",
+          transform: onClick ? "translateY(-1px)" : "none",
+        },
+        "&:focus-visible": {
+          outline: "none",
+          boxShadow: `0 0 0 3px ${alpha(color, 0.22)}`,
+        },
       }}
     >
       <Box
@@ -757,6 +778,12 @@ export default function ContactInquiries() {
     setPage(0);
   };
 
+  const handleStatClick = (filter) => {
+    setAgeFilter(filter);
+    setPage(0);
+    setSelected(new Set());
+  };
+
   if (!isAuthenticated) {
     return (
       <Box sx={{ p: 4, textAlign: "center" }}>
@@ -797,11 +824,17 @@ export default function ContactInquiries() {
       {/* ── Stats ── */}
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.25, mb: 2 }}>
         {[
-          { label: "Total", value: stats.total, icon: MessageIcon, color: C.accent },
-          { label: "New", value: stats.new, icon: CheckCircleIcon, color: C.green },
-          { label: "Pending", value: stats.pending, icon: ScheduleIcon, color: C.amber },
+          { label: "Total", value: stats.total, icon: MessageIcon, color: C.accent, filter: "all" },
+          { label: "New", value: stats.new, icon: CheckCircleIcon, color: C.green, filter: "new" },
+          { label: "Pending", value: stats.pending, icon: ScheduleIcon, color: C.amber, filter: "pending" },
         ].map((s) => (
-          <StatCard key={s.label} {...s} loading={loading && inquiries.length === 0} />
+          <StatCard
+            key={s.label}
+            {...s}
+            active={ageFilter === s.filter}
+            onClick={() => handleStatClick(s.filter)}
+            loading={loading && inquiries.length === 0}
+          />
         ))}
       </Box>
 

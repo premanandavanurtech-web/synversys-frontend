@@ -2139,13 +2139,25 @@ export default function ChecklistPage() {
           )}
 
           {/* Tabs */}
-          <Paper sx={{ mb: 2.5, p: 0.75, display: "inline-flex" }}>
+          <Paper
+            sx={{
+              mb: 2.5,
+              p: 0.75,
+              display: { xs: "flex", sm: "inline-flex" },
+              width: { xs: "100%", sm: "fit-content" },
+            }}
+          >
             <Tabs
               value={tab}
               onChange={(_, v) => setTab(v)}
               sx={{
+                width: { xs: "100%", sm: "auto" },
                 minHeight: "auto",
                 "& .MuiTabs-indicator": { display: "none" },
+                "& .MuiTabs-flexContainer": {
+                  width: { xs: "100%", sm: "auto" },
+                  gap: { xs: 0.75, sm: 0 },
+                },
               }}
             >
               <StyledTab

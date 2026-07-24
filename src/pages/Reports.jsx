@@ -98,8 +98,6 @@ const ROLE_REPORTS = {
     "checklist-requests",
     "compliance",
     "inspections",
-    "assets",
-    "team",
     "checklists",
     "assignments",
   ],
@@ -676,7 +674,7 @@ const ClientsTable = ({ data }) => {
   const [pg, setPg] = useState(0);
   const [rpp, setRpp] = useState(10);
   const [q, setQ] = useState("");
-  const isMobile = useMediaQuery("(max-width:600px)");
+  const isMobile = useMediaQuery("(max-width:900px)");
 
   const filtered = useMemo(
     () =>
@@ -736,8 +734,47 @@ const ClientsTable = ({ data }) => {
           {filtered.length} clients
         </Typography>
       </Box>
+      {isMobile && (
+        <Stack spacing={1.25}>
+          {paged.map((r, i) => (
+            <ReportMobileCard
+              key={i}
+              title={r.name || r.customerName || "N/A"}
+              subtitle={r.email || "N/A"}
+              badge={<SBadge status={r.status} />}
+              rows={[
+                {
+                  label: "Plan",
+                  node: (
+                    <Chip
+                      label={r.membershipPlan || "No plan"}
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: "0.58rem",
+                        fontWeight: 700,
+                        bgcolor: T.brandLight,
+                        color: T.brand,
+                        textTransform: "capitalize",
+                      }}
+                    />
+                  ),
+                },
+                { label: "Team", value: fmtNum(r.teamMembers) },
+                { label: "Assignments", value: fmtNum(r.totalAssignments) },
+                {
+                  label: "Completion",
+                  node: <ProgressBar value={r.completionRate} />,
+                },
+                { label: "Expires", value: fmtDate(r.subscriptionEndDate) },
+              ]}
+            />
+          ))}
+        </Stack>
+      )}
       <TableContainer
         sx={{
+          display: isMobile ? "none" : "block",
           maxHeight: 420,
           borderRadius: "10px",
           border: `1px solid ${T.border}`,
