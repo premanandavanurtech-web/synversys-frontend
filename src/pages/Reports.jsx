@@ -429,6 +429,104 @@ const ProgressBar = ({ value, color }) => (
   </Box>
 );
 
+const reportLabel = (key = "") =>
+  key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const scalarValue = (value) => {
+  if (value == null || value === "") return "N/A";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (value instanceof Date) return fmtDate(value);
+  if (typeof value === "object") return null;
+  return String(value);
+};
+
+const ReportMobileCard = ({ title, subtitle, badge, rows }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: 1.5,
+      borderRadius: "10px",
+      border: `1px solid ${T.border}`,
+      bgcolor: T.surface,
+    }}
+  >
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        gap: 1,
+        mb: 1.25,
+      }}
+    >
+      <Box sx={{ minWidth: 0 }}>
+        <Typography
+          sx={{
+            fontWeight: 800,
+            fontSize: "0.78rem",
+            color: T.ink,
+            overflowWrap: "anywhere",
+          }}
+        >
+          {title || "N/A"}
+        </Typography>
+        {subtitle && (
+          <Typography
+            sx={{
+              fontSize: "0.62rem",
+              color: T.inkLight,
+              fontFamily: "monospace",
+              overflowWrap: "anywhere",
+            }}
+          >
+            {subtitle}
+          </Typography>
+        )}
+      </Box>
+      {badge}
+    </Box>
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+        gap: 1,
+      }}
+    >
+      {rows.map(({ label, value, node }) => (
+        <Box key={label} sx={{ minWidth: 0 }}>
+          <Typography
+            sx={{
+              fontSize: "0.58rem",
+              color: T.inkLight,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              mb: 0.25,
+            }}
+          >
+            {label}
+          </Typography>
+          {node || (
+            <Typography
+              sx={{
+                fontSize: "0.68rem",
+                color: T.inkMid,
+                fontWeight: 600,
+                overflowWrap: "anywhere",
+              }}
+            >
+              {value ?? "N/A"}
+            </Typography>
+          )}
+        </Box>
+      ))}
+    </Box>
+  </Paper>
+);
+
 const StatCard = ({ label, value, icon: Icon, color, loading }) => {
   if (loading)
     return (
@@ -778,7 +876,7 @@ const TeamTable = ({ data }) => {
   const [pg, setPg] = useState(0);
   const [rpp, setRpp] = useState(10);
   const [roleF, setRoleF] = useState("");
-  const isMobile = useMediaQuery("(max-width:600px)");
+  const isMobile = useMediaQuery("(max-width:900px)");
 
   const filtered = useMemo(
     () => (data || []).filter((r) => !roleF || r.teamRole === roleF),
@@ -840,8 +938,46 @@ const TeamTable = ({ data }) => {
           {filtered.length} members
         </Typography>
       </Box>
+      {isMobile && (
+        <Stack spacing={1.25}>
+          {paged.map((r, i) => (
+            <ReportMobileCard
+              key={i}
+              title={r.name || "N/A"}
+              subtitle={r.email || "N/A"}
+              badge={<SBadge status={r.status} />}
+              rows={[
+                {
+                  label: "Role",
+                  node: (
+                    <Chip
+                      label={(r.teamRole || "inspector").replace(/_/g, " ")}
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: "0.58rem",
+                        fontWeight: 700,
+                        bgcolor: T.purpleBg,
+                        color: T.purple,
+                      }}
+                    />
+                  ),
+                },
+                { label: "Assignments", value: fmtNum(r.totalAssignments) },
+                {
+                  label: "Completion",
+                  node: <ProgressBar value={r.completionRate} />,
+                },
+                { label: "On Time", value: fmtPct(r.onTimeRate) },
+                { label: "Score", value: r.performanceScore ?? 0 },
+              ]}
+            />
+          ))}
+        </Stack>
+      )}
       <TableContainer
         sx={{
+          display: isMobile ? "none" : "block",
           maxHeight: 420,
           borderRadius: "10px",
           border: `1px solid ${T.border}`,
@@ -989,7 +1125,7 @@ const AssetsTable = ({ data }) => {
   const [pg, setPg] = useState(0);
   const [rpp, setRpp] = useState(10);
   const [q, setQ] = useState("");
-  const isMobile = useMediaQuery("(max-width:600px)");
+  const isMobile = useMediaQuery("(max-width:900px)");
 
   const filtered = useMemo(
     () =>
@@ -1048,8 +1184,151 @@ const AssetsTable = ({ data }) => {
           {filtered.length} assets
         </Typography>
       </Box>
+      {isMobile && (
+        <Stack spacing={1.25}>
+          {paged.map((r, i) => (
+            <Paper
+              key={i}
+              elevation={0}
+              sx={{
+                p: 1.5,
+                borderRadius: "10px",
+                border: `1px solid ${T.border}`,
+                bgcolor: T.surface,
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 1,
+                  mb: 1.25,
+                }}
+              >
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: "0.78rem",
+                      color: T.ink,
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {r.assetName || "N/A"}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: "0.62rem",
+                      color: T.inkLight,
+                      fontFamily: "monospace",
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {r.assetId || "N/A"}
+                  </Typography>
+                </Box>
+                <SBadge status={r.status} />
+              </Box>
+
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: 1,
+                }}
+              >
+                {[
+                  ["Tag", r.tagNumber || "N/A"],
+                  ["Serial", r.serialNumber || "N/A"],
+                  [
+                    "Category",
+                    r.category?.name || r.assetCategoryId?.name || "Uncategorized",
+                  ],
+                  ["Location", r.currentLocation || "N/A"],
+                ].map(([label, value]) => (
+                  <Box key={label} sx={{ minWidth: 0 }}>
+                    <Typography
+                      sx={{
+                        fontSize: "0.58rem",
+                        color: T.inkLight,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        mb: 0.25,
+                      }}
+                    >
+                      {label}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: "0.68rem",
+                        color: T.inkMid,
+                        fontWeight: 600,
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {value}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+
+              <Box
+                sx={{
+                  mt: 1.25,
+                  pt: 1,
+                  borderTop: `1px solid ${T.border}`,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
+                <Box>
+                  <Typography
+                    sx={{
+                      fontSize: "0.58rem",
+                      color: T.inkLight,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      mb: 0.35,
+                    }}
+                  >
+                    Condition
+                  </Typography>
+                  <SBadge status={r.assetCondition || r.condition} />
+                </Box>
+                <Box sx={{ minWidth: 92 }}>
+                  <Typography
+                    sx={{
+                      fontSize: "0.58rem",
+                      color: T.inkLight,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      mb: 0.5,
+                    }}
+                  >
+                    Health
+                  </Typography>
+                  <ProgressBar
+                    value={r.healthScore}
+                    color={
+                      r.healthScore >= 70
+                        ? T.green
+                        : r.healthScore >= 40
+                          ? T.amber
+                          : T.red
+                    }
+                  />
+                </Box>
+              </Box>
+            </Paper>
+          ))}
+        </Stack>
+      )}
       <TableContainer
         sx={{
+          display: isMobile ? "none" : "block",
           maxHeight: 420,
           borderRadius: "10px",
           border: `1px solid ${T.border}`,
@@ -1198,7 +1477,7 @@ const AssignmentsTable = ({ data }) => {
   const [pg, setPg] = useState(0);
   const [rpp, setRpp] = useState(10);
   const [statusF, setSt] = useState("");
-  const isMobile = useMediaQuery("(max-width:600px)");
+  const isMobile = useMediaQuery("(max-width:900px)");
 
   const filtered = useMemo(
     () => (data || []).filter((r) => !statusF || r.status === statusF),
@@ -1262,8 +1541,52 @@ const AssignmentsTable = ({ data }) => {
           {filtered.length} assignments
         </Typography>
       </Box>
+      {isMobile && (
+        <Stack spacing={1.25}>
+          {paged.map((r, i) => (
+            <ReportMobileCard
+              key={i}
+              title={r.customer || r.customerName || "N/A"}
+              subtitle={
+                r.checklists?.map((c) => c.name || c).join(", ") ||
+                "No checklist"
+              }
+              badge={<SBadge status={r.status} />}
+              rows={[
+                {
+                  label: "Priority",
+                  node: (
+                    <Chip
+                      label={(r.priority || "low").toUpperCase()}
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: "0.58rem",
+                        fontWeight: 700,
+                        bgcolor: T.amberBg,
+                        color: T.amber,
+                      }}
+                    />
+                  ),
+                },
+                { label: "Due Date", value: fmtDate(r.dueDate) },
+                {
+                  label: "Overdue",
+                  value: r.isOverdue ? `+${r.daysOverdue || 0}d` : "No",
+                },
+                {
+                  label: "Checklists",
+                  value:
+                    r.checklists?.map((c) => c.name || c).join(", ") || "N/A",
+                },
+              ]}
+            />
+          ))}
+        </Stack>
+      )}
       <TableContainer
         sx={{
+          display: isMobile ? "none" : "block",
           maxHeight: 420,
           borderRadius: "10px",
           border: `1px solid ${T.border}`,
@@ -1384,7 +1707,7 @@ const AssignmentsTable = ({ data }) => {
 const GenericTable = ({ data }) => {
   const [pg, setPg] = useState(0);
   const [rpp, setRpp] = useState(10);
-  const isMobile = useMediaQuery("(max-width:600px)");
+  const isMobile = useMediaQuery("(max-width:900px)");
 
   const cols = useMemo(
     () =>
@@ -1409,8 +1732,51 @@ const GenericTable = ({ data }) => {
 
   return (
     <>
+      {isMobile && (
+        <Stack spacing={1.25}>
+          {paged.map((row, i) => {
+            const scalarEntries = Object.entries(row)
+              .map(([key, value]) => [key, scalarValue(value)])
+              .filter(([, value]) => value !== null);
+            const titleEntry =
+              scalarEntries.find(([key]) =>
+                ["name", "title", "requestType", "submittedByName", "action"].includes(key),
+              ) || scalarEntries[0];
+            const subtitleEntry =
+              scalarEntries.find(([key]) =>
+                ["id", "_id", "assetId", "requestId", "inspectionId"].includes(key),
+              ) || scalarEntries.find(([key]) => key !== titleEntry?.[0]);
+            const statusEntry = scalarEntries.find(([key]) =>
+              key.toLowerCase().includes("status"),
+            );
+            const rows = scalarEntries
+              .filter(
+                ([key]) =>
+                  key !== titleEntry?.[0] &&
+                  key !== subtitleEntry?.[0] &&
+                  key !== statusEntry?.[0],
+              )
+              .slice(0, 6)
+              .map(([key, value]) => ({
+                label: reportLabel(key),
+                value: fmtShort(value, 42),
+              }));
+
+            return (
+              <ReportMobileCard
+                key={i}
+                title={titleEntry?.[1] || "Record"}
+                subtitle={subtitleEntry?.[1]}
+                badge={statusEntry ? <SBadge status={statusEntry[1]} /> : null}
+                rows={rows.length ? rows : [{ label: "Details", value: "N/A" }]}
+              />
+            );
+          })}
+        </Stack>
+      )}
       <TableContainer
         sx={{
+          display: isMobile ? "none" : "block",
           maxHeight: 420,
           borderRadius: "10px",
           border: `1px solid ${T.border}`,

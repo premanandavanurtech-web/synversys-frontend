@@ -1318,16 +1318,28 @@ export default function AssignedChecklist() {
         maxWidth="sm"
         fullWidth
         fullScreen={isXs}
-        PaperProps={{ sx: { borderRadius: isXs ? 0 : 3 } }}
+        PaperProps={{
+          sx: {
+            borderRadius: isXs ? 0 : 3,
+            m: isXs ? 0 : 2,
+            width: isXs ? "100vw" : undefined,
+            maxWidth: isXs ? "100vw" : undefined,
+            height: isXs ? "100dvh" : undefined,
+            maxHeight: isXs ? "100dvh" : undefined,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          },
+        }}
       >
-        <Box sx={{ background: "linear-gradient(135deg, #084d68 0%, #0b3a4c 100%)", p: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Box sx={{ background: "linear-gradient(135deg, #084d68 0%, #0b3a4c 100%)", p: { xs: 2, md: 3 }, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             {isSuperAdmin ? <PersonSearchIcon sx={{ color: "white" }} /> : <GroupAddIcon sx={{ color: "white" }} />}
             <Typography color="white" fontWeight={800} variant="h6">{isSuperAdmin ? "Assign to Admin" : "Assign to Team"}</Typography>
           </Box>
           <IconButton onClick={closeAssignModal} size="small" sx={{ color: "white", bgcolor: alpha("#fff", 0.15) }}><CloseIcon /></IconButton>
         </Box>
-        <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
+        <DialogContent sx={{ p: { xs: 2, md: 3 }, flex: 1, overflowY: "auto" }}>
           <Stack spacing={2.5}>
             <Box>
               <Button
@@ -1369,7 +1381,16 @@ export default function AssignedChecklist() {
             <TextField fullWidth multiline rows={3} label="Notes" value={assignForm.notes} onChange={(e) => setAssignForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Add instructions or context..." />
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ p: { xs: 2, md: 3 }, pt: 0, gap: 1 }}>
+        <DialogActions
+          sx={{
+            p: { xs: 2, md: 3 },
+            pt: { xs: 1, md: 0 },
+            gap: 1,
+            flexShrink: 0,
+            borderTop: { xs: "1px solid #e2e8f0", md: "none" },
+            pb: { xs: "calc(16px + env(safe-area-inset-bottom))", md: 3 },
+          }}
+        >
           <Button onClick={closeAssignModal} variant="outlined">Cancel</Button>
           <Button onClick={handleAssign} variant="contained" disabled={submitting || assignLoading} startIcon={submitting ? <CircularProgress size={15} /> : <SendIcon />} sx={{ background: "linear-gradient(135deg, #1e5f79 0%, #175f7b 100%)" }}>
             {submitting ? "Assigning..." : "Assign"}
@@ -1384,16 +1405,28 @@ export default function AssignedChecklist() {
         maxWidth="sm"
         fullWidth
         fullScreen={isXs}
-        PaperProps={{ sx: { borderRadius: isXs ? 0 : 3 } }}
+        PaperProps={{
+          sx: {
+            borderRadius: isXs ? 0 : 3,
+            m: isXs ? 0 : 2,
+            width: isXs ? "100vw" : undefined,
+            maxWidth: isXs ? "100vw" : undefined,
+            height: isXs ? "100dvh" : undefined,
+            maxHeight: isXs ? "100dvh" : undefined,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          },
+        }}
       >
-        <Box sx={{ background: "linear-gradient(135deg, #084d68 0%, #165f7c 100%)", p: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Box sx={{ background: "linear-gradient(135deg, #084d68 0%, #165f7c 100%)", p: { xs: 2, md: 3 }, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <SwapHorizIcon sx={{ color: "white" }} />
             <Typography color="white" fontWeight={800} variant="h6">Re-assign Assignment</Typography>
           </Box>
           <IconButton onClick={closeReassignModal} size="small" sx={{ color: "white", bgcolor: alpha("#fff", 0.15) }}><CloseIcon /></IconButton>
         </Box>
-        <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
+        <DialogContent sx={{ p: { xs: 2, md: 3 }, flex: 1, overflowY: "auto" }}>
           <Stack spacing={2.5}>
             <TextField
               fullWidth multiline rows={2} label="Reason *" value={reassignForm.reason}
@@ -1433,7 +1466,16 @@ export default function AssignedChecklist() {
             <TextField fullWidth multiline rows={2} label="Additional Notes" value={reassignForm.notes} onChange={(e) => setReassignForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Extra instructions..." />
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ p: { xs: 2, md: 3 }, pt: 0, gap: 1 }}>
+        <DialogActions
+          sx={{
+            p: { xs: 2, md: 3 },
+            pt: { xs: 1, md: 0 },
+            gap: 1,
+            flexShrink: 0,
+            borderTop: { xs: "1px solid #e2e8f0", md: "none" },
+            pb: { xs: "calc(16px + env(safe-area-inset-bottom))", md: 3 },
+          }}
+        >
           <Button onClick={closeReassignModal} variant="outlined">Cancel</Button>
           <Button onClick={handleReassign} variant="contained" disabled={submitting || assignLoading} startIcon={submitting ? <CircularProgress size={15} /> : <SwapHorizIcon />} sx={{ background: "#084d68" }}>
             {submitting ? "Re-assigning..." : "Re-assign"}

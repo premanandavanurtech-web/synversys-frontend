@@ -496,6 +496,126 @@ function ResourceChip({ resource }) {
 }
 
 /* ─── RoleHeader ─── */
+function MobileLogCard({ log, onView }) {
+  const actorInitial = (log.actor?.email?.[0] || "U").toUpperCase();
+
+  return (
+    <Box
+      onClick={onView}
+      sx={{
+        p: 1.5,
+        border: T.border,
+        borderColor: T.borderColor,
+        borderRadius: T.radius,
+        bgcolor: "#fff",
+        cursor: "pointer",
+        boxShadow: "0 1px 4px rgba(15, 23, 42, 0.04)",
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 1,
+          mb: 1.25,
+        }}
+      >
+        <Box>
+          <Typography fontSize={12} fontWeight={700} color={T.textPrimary}>
+            {fmtDisplay(log.createdAt)}
+          </Typography>
+          <Typography fontSize={10.5} color={T.textMuted} fontFamily={T.fontMono}>
+            {fmtTime(log.createdAt)}
+          </Typography>
+        </Box>
+        <StatusChip status={log.status} />
+      </Box>
+
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          mb: 1.25,
+          minWidth: 0,
+        }}
+      >
+        <Box
+          sx={{
+            width: 30,
+            height: 30,
+            borderRadius: "50%",
+            bgcolor: alpha(T.accent, 0.1),
+            color: T.accent,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 12,
+            fontWeight: 800,
+            flexShrink: 0,
+          }}
+        >
+          {actorInitial}
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            fontSize={12}
+            fontWeight={600}
+            color={T.textPrimary}
+            sx={{ overflowWrap: "anywhere", lineHeight: 1.35 }}
+          >
+            {log.actor?.email || "Unknown"}
+          </Typography>
+          <RoleChip role={log.actorRole} />
+        </Box>
+      </Box>
+
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 1 }}>
+        <ActionChip action={log.action} />
+        <ResourceChip resource={log.resource} />
+      </Box>
+
+      <Typography
+        fontSize={11.5}
+        color={T.textSecondary}
+        sx={{
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+          lineHeight: 1.45,
+          overflowWrap: "anywhere",
+          mb: 1.25,
+        }}
+      >
+        {log.description || "No description"}
+      </Typography>
+
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<VisibilityIcon sx={{ fontSize: 14 }} />}
+        onClick={(e) => {
+          e.stopPropagation();
+          onView();
+        }}
+        sx={{
+          borderColor: alpha(T.accent, 0.18),
+          color: T.accent,
+          fontSize: 11,
+          fontWeight: 700,
+          borderRadius: "8px",
+          minHeight: 30,
+          px: 1.25,
+        }}
+      >
+        View Details
+      </Button>
+    </Box>
+  );
+}
+
 function RoleHeader({ isSuperAdmin, isAdmin }) {
   if (isSuperAdmin)
     return (
@@ -990,6 +1110,9 @@ function FilterBar({
 
 /* ─── DetailDialog ─── */
 function DetailDialog({ open, onClose, log, onExportSingle }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   if (!log) return null;
 
   const beforeChanges = log.oldData || log.changes?.old;
@@ -1017,26 +1140,35 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
         elevation: 0,
         sx: {
-          borderRadius: T.radiusLg,
+          borderRadius: { xs: 0, sm: T.radiusLg },
           border: T.border,
           borderColor: T.borderColor,
           overflow: "hidden",
+          m: { xs: 0, sm: 2 },
+          width: { xs: "100vw", sm: "calc(100% - 32px)" },
+          maxWidth: { xs: "100vw", sm: 600 },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "90vh" },
+          display: "flex",
+          flexDirection: "column",
         },
       }}
     >
       {/* Header */}
       <Box
         sx={{
-          px: 2.5,
-          py: 2,
+          px: { xs: 2, sm: 2.5 },
+          py: { xs: 1.75, sm: 2 },
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           borderBottom: T.border,
           borderColor: T.borderColor,
+          flexShrink: 0,
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
@@ -1071,10 +1203,22 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
         </IconButton>
       </Box>
 
-      <DialogContent sx={{ p: 2.5 }}>
+      <DialogContent
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          flex: 1,
+          overflowY: "auto",
+        }}
+      >
         <Stack spacing={2.5}>
           {/* Timestamp / Action / Status */}
-          <Box sx={{ display: "flex", gap: 2.5, flexWrap: "wrap" }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(3, auto)" },
+              gap: { xs: 1.5, sm: 2.5 },
+            }}
+          >
             <Field label="Timestamp">
               <Typography
                 fontSize={12.5}
@@ -1099,7 +1243,13 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
           <Divider sx={{ borderColor: T.borderColor }} />
 
           {/* User / Resource */}
-          <Box sx={{ display: "flex", gap: 2.5, flexWrap: "wrap" }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+              gap: { xs: 1.5, sm: 2.5 },
+            }}
+          >
             <Field label="User">
               <Typography
                 fontSize={12.5}
@@ -1274,14 +1424,16 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
       {/* Footer */}
       <Box
         sx={{
-          px: 2.5,
-          py: 1.75,
+          px: { xs: 2, sm: 2.5 },
+          py: { xs: 1.5, sm: 1.75 },
           borderTop: T.border,
           borderColor: T.borderColor,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           gap: 1,
+          flexShrink: 0,
+          pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 1.75 },
         }}
       >
         <ExportButton
@@ -1909,14 +2061,50 @@ const AuditLogs = () => {
       >
         {loading && <LinearProgress sx={{ height: 2 }} />}
 
-        <TableContainer sx={{ overflowX: "auto" }}>
-          <Table
-            sx={{
-              width: "100%",
-              minWidth: isMobile ? 360 : 720,
-              tableLayout: "fixed",
-            }}
-          >
+        {isMobile ? (
+          <Box sx={{ p: 1.25 }}>
+            {sortedLogs.length === 0 ? (
+              <Box sx={{ py: 6, textAlign: "center" }}>
+                <HistoryIcon
+                  sx={{
+                    fontSize: 32,
+                    color: "#d1d5db",
+                    mb: 1,
+                    display: "block",
+                    mx: "auto",
+                  }}
+                />
+                <Typography fontSize={13} color={T.textMuted}>
+                  No logs found
+                </Typography>
+                <Typography fontSize={11.5} color={T.textMuted} mt={0.4}>
+                  Try adjusting your filters
+                </Typography>
+              </Box>
+            ) : (
+              <Stack spacing={1.25}>
+                {sortedLogs.map((log) => (
+                  <MobileLogCard
+                    key={log._id}
+                    log={log}
+                    onView={() => {
+                      setSelectedLog(log);
+                      setDetailsOpen(true);
+                    }}
+                  />
+                ))}
+              </Stack>
+            )}
+          </Box>
+        ) : (
+          <TableContainer sx={{ overflowX: "auto" }}>
+            <Table
+              sx={{
+                width: "100%",
+                minWidth: 720,
+                tableLayout: "fixed",
+              }}
+            >
             <TableHead>
               <TableRow>
                 {visibleCols.map((col) => (
@@ -2117,8 +2305,9 @@ const AuditLogs = () => {
                 ))
               )}
             </TableBody>
-          </Table>
-        </TableContainer>
+            </Table>
+          </TableContainer>
+        )}
 
         {/* Pagination */}
         {pagination && pagination.total > 0 && (

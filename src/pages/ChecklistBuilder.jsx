@@ -144,6 +144,12 @@ const StyledTab = styled(Tab)(({ theme }) => ({
   color: theme.palette.text.secondary,
   transition: "all 0.2s ease",
   padding: "8px 22px",
+  [theme.breakpoints.down("sm")]: {
+    flex: 1,
+    minWidth: 0,
+    padding: "8px 10px",
+    fontSize: 12,
+  },
   "&.Mui-selected": {
     backgroundColor: theme.palette.primary.main,
     color: "#fff",
