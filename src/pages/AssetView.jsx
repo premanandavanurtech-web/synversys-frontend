@@ -1015,21 +1015,17 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
   const [linking, setLinking] = useState(false);
   const [snackMsg, setSnackMsg] = useState("");
   const [createRequestOpen, setCreateRequestOpen] = useState(false);
-  const [addParentAssetOpen, setAddParentAssetOpen] = useState(false);
+  // const [addParentAssetOpen, setAddParentAssetOpen] = useState(false);
   const [addChildAssetOpen, setAddChildAssetOpen] = useState(false);
   const [assetFormSerial, setAssetFormSerial] = useState("");
 
   const makeSerialNumber = (type) =>
     `${type === "child" ? "CA" : "PA"}_${Date.now().toString().slice(-8)}`;
 
-  const openAssetForm = (type) => {
-    setAssetFormSerial(makeSerialNumber(type));
-    if (type === "child") {
-      setAddChildAssetOpen(true);
-      return;
-    }
-    setAddParentAssetOpen(true);
-  };
+ const openAssetForm = () => {
+  setAssetFormSerial(makeSerialNumber("child"));
+  setAddChildAssetOpen(true);
+};
 
   const loadParentRequests = useCallback(async () => {
     setLoadingParents(true);
@@ -1079,7 +1075,20 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
     }
   }, [open, loadParentRequests]);
 
-  const filteredParents = parentRequests.filter((req) => {
+const filteredParents = parentRequests
+  .filter((req) => {
+    const serial =
+      req.assetId?.serialNumber ||
+      req.proposedAssetData?.serialNumber ||
+      "";
+    const code = req.assetId?.assetId || "";
+    return (
+      serial.toUpperCase().startsWith("CA_") ||
+      code.toUpperCase().startsWith("CA-") ||
+      code.toUpperCase().startsWith("CA_")
+    );
+  })
+  .filter((req) => {
     const searchLower = searchParent.toLowerCase();
     const assetName = (
       req.assetId?.assetName ||
@@ -1400,11 +1409,11 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                           "&:hover": { bgcolor: T.brandAccent },
                         }}
                       >
-                        {searchParent.trim()
-                          ? "Add New Child Asset"
-                          : "Add Child Asset"}
+                       
+                        Add New Child Asset
+                         
                       </Button>
-                      {!searchParent.trim() && (
+                      {/* {!searchParent.trim() && (
                         <Button
                           variant="outlined"
                           startIcon={<Add sx={{ fontSize: 16 }} />}
@@ -1427,7 +1436,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                         >
                           Add Asset
                         </Button>
-                      )}
+                      )} */}
                     </Stack>
                   )}
                 </Box>
@@ -1437,23 +1446,19 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                     spacing={1.25}
                     sx={{ maxHeight: { xs: "none", sm: 360 }, overflowY: { xs: "visible", sm: "auto" }, pr: { xs: 0, sm: 0.5 } }}
                   >
-                    {filteredParents.map((req) => {
-                      const isSelected = selectedParent?._id === req._id;
-                      const sCfg = REQ_STATUS_CFG[req.status] || {};
-                      const isChildAsset =
-                        req.assetType === "child" ||
-                        req.isChildRequest ||
-                        req.assetId?.assetType === "child";
-                      const linkedCount = req.childRequests?.length || 0;
-                      const assetSerial =
-                        req.assetId?.serialNumber ||
-                        req.proposedAssetData?.serialNumber ||
-                        "Not set";
-                      const assetCode =
-                        req.assetId?.assetId ||
-                        req.assetId?._id?.slice(-8) ||
-                        req._id?.slice(-8);
-                      return (
+                   {filteredParents.map((req) => {
+  const isSelected = selectedParent?._id === req._id;
+  const sCfg = REQ_STATUS_CFG[req.status] || {};
+  const linkedCount = req.childRequests?.length || 0;
+  const assetSerial =
+    req.assetId?.serialNumber ||
+    req.proposedAssetData?.serialNumber ||
+    "Not set";
+  const assetCode =
+    req.assetId?.assetId ||
+    req.assetId?._id?.slice(-8) ||
+    req._id?.slice(-8);
+  return (
                         <Box
                           key={req._id}
                           onClick={() => setSelectedParent(req)}
@@ -1532,50 +1537,27 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                                   Serial: {assetSerial}
                                 </Typography>
                                 <Stack
-                                  direction="row"
-                                  spacing={0.75}
-                                  alignItems="center"
-                                  flexWrap="wrap"
-                                  sx={{ mt: 0.75 }}
-                                >
-                                  <Chip
-                                    label={
-                                      isChildAsset
-                                        ? "CHILD ASSET"
-                                        : "PARENT ASSET"
-                                    }
-                                    size="small"
-                                    sx={{
-                                      height: 24,
-                                      fontSize: "0.68rem",
-                                      fontWeight: 800,
-                                      letterSpacing: "0.02em",
-                                      bgcolor: isChildAsset
-                                        ? T.tealLight
-                                        : T.brandLight,
-                                      color: isChildAsset ? T.teal : T.brand,
-                                      border: `1px solid ${alpha(
-                                        isChildAsset ? T.teal : T.brand,
-                                        0.25,
-                                      )}`,
-                                      fontFamily: T.font,
-                                    }}
-                                  />
-                                  {linkedCount > 0 && (
-                                    <Chip
-                                      label={`LINKED ASSETS ${linkedCount}`}
-                                      size="small"
-                                      sx={{
-                                        height: 24,
-                                        fontSize: "0.68rem",
-                                        fontWeight: 700,
-                                        bgcolor: T.violetLight,
-                                        color: T.violet,
-                                        fontFamily: T.font,
-                                      }}
-                                    />
-                                  )}
-                                </Stack>
+  direction="row"
+  spacing={0.75}
+  alignItems="center"
+  flexWrap="wrap"
+  sx={{ mt: 0.75 }}
+>
+  {linkedCount > 0 && (
+    <Chip
+      label={`LINKED ASSETS ${linkedCount}`}
+      size="small"
+      sx={{
+        height: 24,
+        fontSize: "0.68rem",
+        fontWeight: 700,
+        bgcolor: T.violetLight,
+        color: T.violet,
+        fontFamily: T.font,
+      }}
+    />
+  )}
+</Stack>
                                 <Typography
                                   sx={{
                                     fontSize: "0.7rem",
@@ -1673,7 +1655,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                       >
                         Add Child Asset
                       </Button>
-                      <Button
+                      {/* <Button
                         fullWidth
                         variant="outlined"
                         startIcon={<Add sx={{ fontSize: 16 }} />}
@@ -1694,7 +1676,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
                         }}
                       >
                         Add Asset
-                      </Button>
+                      </Button> */}
                     </Stack>
                   )}
 
@@ -1827,7 +1809,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
         }}
       />
 
-      <AddAssetModal
+      {/* <AddAssetModal
         open={addParentAssetOpen}
         onClose={() => setAddParentAssetOpen(false)}
         defaultAssetType="parent"
@@ -1838,7 +1820,7 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
           setAddParentAssetOpen(false);
           loadParentRequests();
         }}
-      />
+      /> */}
 
       <AddAssetModal
         open={addChildAssetOpen}
