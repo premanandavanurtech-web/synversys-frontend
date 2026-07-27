@@ -1000,16 +1000,18 @@ function CreateRequestDialog({ open, onClose, onSuccess }) {
 }
 
 // ─── Link Asset Dialog ────────────────────────────────────────────────────────
-const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
+const LinkAssetDialog = ({ open, onClose, assetId, currentAsset, onSuccess }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user } = useAuth();
-  const { fetchRequests, createChildRequest } = useAssetRequest();
+  const { fetchRequests, linkAsset } = useAssetRequest();
+  const { getAllAssets, assets, loading: assetsLoading } = useAsset();
   const canCreateRequests = ["admin", "team"].includes(user?.role);
   const [parentRequests, setParentRequests] = useState([]);
   const [loadingParents, setLoadingParents] = useState(false);
   const [parentError, setParentError] = useState("");
   const [selectedParent, setSelectedParent] = useState(null);
+  const [selectedChildAsset, setSelectedChildAsset] = useState(null);
   const [relationshipType, setRelationshipType] = useState("accessory");
   const [searchParent, setSearchParent] = useState("");
   const [linking, setLinking] = useState(false);
@@ -1026,6 +1028,16 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
   setAssetFormSerial(makeSerialNumber("child"));
   setAddChildAssetOpen(true);
 };
+
+  const text = (value) => String(value || "").trim().toLowerCase();
+  const currentAssetIsChild =
+    text(currentAsset?.assetType) === "child" ||
+    !!currentAsset?.parentAssetId ||
+    text(currentAsset?.assetId).startsWith("ca-") ||
+    text(currentAsset?.assetId).startsWith("ca_") ||
+    text(currentAsset?.serialNumber).startsWith("ca-") ||
+    text(currentAsset?.serialNumber).startsWith("ca_");
+  const showingChildAssets = true;
 
   const loadParentRequests = useCallback(async () => {
     setLoadingParents(true);
@@ -1068,24 +1080,35 @@ const LinkAssetDialog = ({ open, onClose, assetId, onSuccess }) => {
   useEffect(() => {
     if (open) {
       setSelectedParent(null);
+      setSelectedChildAsset(null);
       setSearchParent("");
       setParentError("");
       setRelationshipType("accessory");
       loadParentRequests();
+      getAllAssets?.({ limit: 200 });
     }
-  }, [open, loadParentRequests]);
+  }, [open, loadParentRequests, getAllAssets]);
 
 const filteredParents = parentRequests
   .filter((req) => {
-    const serial =
+    const serial = (
       req.assetId?.serialNumber ||
       req.proposedAssetData?.serialNumber ||
-      "";
-    const code = req.assetId?.assetId || "";
+      ""
+    ).toUpperCase();
+    const code = (req.assetId?.assetId || "").toUpperCase();
+    const assetType = (req.assetId?.assetType || req.assetType || "").toLowerCase();
+
     return (
-      serial.toUpperCase().startsWith("CA_") ||
-      code.toUpperCase().startsWith("CA-") ||
-      code.toUpperCase().startsWith("CA_")
+      !req.isChildRequest &&
+      !req.parentRequestId &&
+      assetType !== "child" &&
+      !req.assetId?.parentAssetId &&
+      !serial.startsWith("CA_") &&
+      !serial.startsWith("CA-") &&
+      !code.startsWith("CA_") &&
+      !code.startsWith("CA-") &&
+      (req.assetId?._id || req.assetId?.id || req.assetId) !== assetId
     );
   })
   .filter((req) => {
@@ -1108,20 +1131,78 @@ const filteredParents = parentRequests
     );
   });
 
+  const alreadyLinkedChildAssetIds = new Set();
+  parentRequests.forEach((req) => {
+    const reqAssetId = req.assetId?._id || req.assetId?.id || req.assetId;
+    if (String(reqAssetId) !== String(assetId)) return;
+
+    (req.metadata?.childAssets || []).forEach((entry) => {
+      const linkedAsset = entry.assetId || entry.asset || entry;
+      const linkedAssetId =
+        typeof linkedAsset === "string"
+          ? linkedAsset
+          : linkedAsset?._id || linkedAsset?.id;
+      if (linkedAssetId) alreadyLinkedChildAssetIds.add(String(linkedAssetId));
+    });
+  });
+
+  const filteredChildAssets = (Array.isArray(assets) ? assets : [])
+    .filter((asset) => {
+      const candidateId = asset._id || asset.id;
+      const assetIdCode = text(asset.assetId);
+      const serial = text(asset.serialNumber);
+      const assetName = text(asset.assetName || asset.name);
+
+      return (
+        String(candidateId) !== String(assetId) &&
+        !alreadyLinkedChildAssetIds.has(String(candidateId)) &&
+        (text(asset.assetType) === "child" ||
+          !!asset.parentAssetId ||
+          assetIdCode.startsWith("ca-") ||
+          assetIdCode.startsWith("ca_") ||
+          serial.startsWith("ca-") ||
+          serial.startsWith("ca_") ||
+          assetName.includes("child"))
+      );
+    })
+    .filter((asset) => {
+      const searchLower = searchParent.toLowerCase();
+      const fields = [
+        asset.assetName,
+        asset.name,
+        asset.assetId,
+        asset._id,
+        asset.id,
+        asset.serialNumber,
+        asset.tagNumber,
+      ]
+        .map((value) => String(value || "").toLowerCase())
+        .join(" ");
+      return fields.includes(searchLower);
+    });
+
   const handleLink = async () => {
-    if (!selectedParent) {
+    if (showingChildAssets && !selectedChildAsset) {
+      setSnackMsg("Please select a child asset");
+      return;
+    }
+    if (!showingChildAssets && !selectedParent) {
       setSnackMsg("Please select a parent request");
       return;
     }
     setLinking(true);
     try {
-      await createChildRequest(selectedParent._id, {
-        assetId: assetId,
-        relationshipType: relationshipType,
-        description: `Linked as ${relationshipType} from asset view`,
-        urgency: selectedParent.urgency || "medium",
-        requestType: "maintenance",
+      const targetRequest = parentRequests.find((req) => {
+        const reqAssetId = req.assetId?._id || req.assetId?.id || req.assetId;
+        return String(reqAssetId) === String(assetId);
       });
+
+      if (!targetRequest?._id) {
+        throw new Error("Create or approve a request for this asset before linking a child asset.");
+      }
+
+      const childAssetId = selectedChildAsset._id || selectedChildAsset.id;
+      await linkAsset(targetRequest._id, childAssetId, relationshipType);
       onSuccess?.();
       onClose();
     } catch (err) {
@@ -1218,7 +1299,9 @@ const filteredParents = parentRequests
                     fontFamily: T.font,
                   }}
                 >
-                  Select an approved parent or child request to link this asset
+                  {showingChildAssets
+                    ? "Select a child asset to link to this parent"
+                    : "Select an approved parent request to link this asset"}
                 </Typography>
               </Box>
             </Stack>
@@ -1294,8 +1377,9 @@ const filteredParents = parentRequests
               lineHeight: 1.6,
             }}
           >
-            Choose an approved parent or child request to link this asset to.
-            The asset will become a child of the selected request.
+            {showingChildAssets
+              ? "Choose a child asset to link under this parent asset."
+              : "Choose an approved parent request to link this asset to. The asset will become a child of the selected request."}
           </Typography>
 
           {parentError ? (
@@ -1305,7 +1389,11 @@ const filteredParents = parentRequests
               <TextField
                 fullWidth
                 size="small"
-                placeholder="Search by asset name, ID, or request type…"
+                placeholder={
+                  showingChildAssets
+                    ? "Search by child asset name, ID, or serial..."
+                    : "Search by asset name, ID, or request type..."
+                }
                 value={searchParent}
                 onChange={(e) => setSearchParent(e.target.value)}
                 InputProps={{
@@ -1331,7 +1419,7 @@ const filteredParents = parentRequests
                 }}
               />
 
-              {loadingParents ? (
+              {loadingParents || (showingChildAssets && assetsLoading) ? (
                 <Stack spacing={1.5}>
                   {[1, 2, 3].map((i) => (
                     <Skeleton
@@ -1342,7 +1430,7 @@ const filteredParents = parentRequests
                     />
                   ))}
                 </Stack>
-              ) : filteredParents.length === 0 ? (
+              ) : (showingChildAssets ? filteredChildAssets.length : filteredParents.length) === 0 ? (
                 <Box sx={{ py: 6, textAlign: "center" }}>
                   <Box
                     sx={{
@@ -1371,7 +1459,9 @@ const filteredParents = parentRequests
                   >
                     {searchParent.trim()
                       ? `${searchParent.trim()} child asset is not created yet`
-                      : "No requests yet"}
+                      : showingChildAssets
+                        ? "No child assets yet"
+                        : "No requests yet"}
                   </Typography>
                   <Typography
                     sx={{
@@ -1382,8 +1472,10 @@ const filteredParents = parentRequests
                     }}
                   >
                     {searchParent.trim()
-                      ? "Create a new child asset request for this name."
-                      : "No approved parent or child requests are available to link yet."}
+                      ? "Create a new child asset for this name."
+                      : showingChildAssets
+                        ? "No child assets are available to link yet."
+                        : "No approved parent requests are available to link yet."}
                   </Typography>
 
                   {canCreateRequests && (
@@ -1446,22 +1538,35 @@ const filteredParents = parentRequests
                     spacing={1.25}
                     sx={{ maxHeight: { xs: "none", sm: 360 }, overflowY: { xs: "visible", sm: "auto" }, pr: { xs: 0, sm: 0.5 } }}
                   >
-                   {filteredParents.map((req) => {
-  const isSelected = selectedParent?._id === req._id;
-  const sCfg = REQ_STATUS_CFG[req.status] || {};
-  const linkedCount = req.childRequests?.length || 0;
-  const assetSerial =
-    req.assetId?.serialNumber ||
-    req.proposedAssetData?.serialNumber ||
-    "Not set";
-  const assetCode =
-    req.assetId?.assetId ||
-    req.assetId?._id?.slice(-8) ||
-    req._id?.slice(-8);
+                   {(showingChildAssets ? filteredChildAssets : filteredParents).map((item) => {
+  const req = item;
+  const childAssetId = item._id || item.id;
+  const isSelected = showingChildAssets
+    ? (selectedChildAsset?._id || selectedChildAsset?.id) === childAssetId
+    : selectedParent?._id === req._id;
+  const sCfg = REQ_STATUS_CFG[showingChildAssets ? "approved" : req.status] || {};
+  const linkedCount = showingChildAssets ? 0 : req.childRequests?.length || 0;
+  const assetSerial = showingChildAssets
+    ? item.serialNumber || "Not set"
+    : req.assetId?.serialNumber ||
+      req.proposedAssetData?.serialNumber ||
+      "Not set";
+  const assetCode = showingChildAssets
+    ? item.assetId || childAssetId?.slice(-8)
+    : req.assetId?.assetId ||
+      req.assetId?._id?.slice(-8) ||
+      req._id?.slice(-8);
+  const itemTitle = showingChildAssets
+    ? item.assetName || item.name || "Unnamed Child Asset"
+    : req.assetId?.assetName || req.assetId?.name || "Unnamed Asset";
   return (
                         <Box
-                          key={req._id}
-                          onClick={() => setSelectedParent(req)}
+                          key={showingChildAssets ? childAssetId : req._id}
+                          onClick={() =>
+                            showingChildAssets
+                              ? setSelectedChildAsset(item)
+                              : setSelectedParent(req)
+                          }
                           sx={{
                             p: 2,
                             borderRadius: T.r.md,
@@ -1522,9 +1627,7 @@ const filteredParents = parentRequests
                                     whiteSpace: "nowrap",
                                   }}
                                 >
-                                  {req.assetId?.assetName ||
-                                    req.assetId?.name ||
-                                    "Unnamed Asset"}
+                                  {itemTitle}
                                 </Typography>
                                 <Typography
                                   sx={{
@@ -1566,9 +1669,7 @@ const filteredParents = parentRequests
                                     mt: 0.2,
                                   }}
                                 >
-                                  {req.assetId?.assetId ||
-                                    req.assetId?._id?.slice(-8) ||
-                                    req._id?.slice(-8)}{" "}
+                                  {assetCode || "Not set"}{" "}
                                   · {req.requestType || "transfer"}
                                 </Typography>
                                 <Stack
@@ -1773,7 +1874,10 @@ const filteredParents = parentRequests
           <Button
             variant="contained"
             onClick={handleLink}
-            disabled={!selectedParent || linking}
+            disabled={
+              linking ||
+              (showingChildAssets ? !selectedChildAsset : !selectedParent)
+            }
             startIcon={
               linking ? (
                 <CircularProgress size={16} color="inherit" />
@@ -1833,6 +1937,7 @@ const filteredParents = parentRequests
         onAssetCreated={() => {
           setAddChildAssetOpen(false);
           loadParentRequests();
+          getAllAssets?.({ limit: 200 });
         }}
       />
 
@@ -1939,6 +2044,29 @@ export default function AssetView() {
   useEffect(() => {
     if (asset) loadLinkedRequests();
   }, [asset, loadLinkedRequests]);
+
+  const linkedAssets = linkedRequests.reduce((items, req) => {
+    const childAssets = req.metadata?.childAssets || [];
+    childAssets.forEach((entry) => {
+      const linkedAsset = entry.assetId || entry.asset || entry;
+      const linkedAssetId =
+        typeof linkedAsset === "string"
+          ? linkedAsset
+          : linkedAsset?._id || linkedAsset?.id;
+      if (!linkedAssetId || items.some((item) => item.id === linkedAssetId)) {
+        return;
+      }
+
+      items.push({
+        id: linkedAssetId,
+        asset: linkedAsset,
+        relationshipType: entry.relationshipType,
+        linkedAt: entry.linkedAt,
+        requestId: req._id,
+      });
+    });
+    return items;
+  }, []);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -2738,6 +2866,25 @@ export default function AssetView() {
                       </Stack>
                     }
                   />
+                  <Tab
+                    label={
+                      <Stack direction="row" alignItems="center" spacing={0.75}>
+                        <span>Linked Assets</span>
+                        <Chip
+                          label={linkedAssets.length}
+                          size="small"
+                          sx={{
+                            height: 18,
+                            fontSize: "0.6rem",
+                            fontWeight: 700,
+                            bgcolor: linkedAssets.length ? T.brand : T.border,
+                            color: linkedAssets.length ? "#fff" : T.inkMuted,
+                            minWidth: 22,
+                          }}
+                        />
+                      </Stack>
+                    }
+                  />
                   <Tab label="History" />
                 </Tabs>
 
@@ -3378,6 +3525,235 @@ export default function AssetView() {
                 {/* ── TAB 3: HISTORY ───────────────────────────────────── */}
                 {activeTab === 3 && (
                   <Box sx={{ p: { xs: 2, sm: 3 } }}>
+                    {linkedAssets.length === 0 ? (
+                      <Box sx={{ py: 7, textAlign: "center" }}>
+                        <Box
+                          sx={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: "50%",
+                            bgcolor: T.surfaceAlt,
+                            border: `1px solid ${T.border}`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            mx: "auto",
+                            mb: 2,
+                          }}
+                        >
+                          <LinkIcon sx={{ fontSize: 30, color: T.inkMuted }} />
+                        </Box>
+                        <Typography
+                          sx={{
+                            fontSize: "1rem",
+                            fontWeight: 700,
+                            color: T.ink,
+                            fontFamily: T.font,
+                            mb: 0.75,
+                          }}
+                        >
+                          No linked assets
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontSize: "0.85rem",
+                            color: T.inkMuted,
+                            fontFamily: T.font,
+                            mb: 2.5,
+                          }}
+                        >
+                          Link a child asset to see it here.
+                        </Typography>
+                        {(user?.role === "admin" || user?.role === "team") && (
+                          <Button
+                            onClick={() => setLinkOpen(true)}
+                            variant="contained"
+                            startIcon={<AddLink />}
+                            sx={{
+                              textTransform: "none",
+                              borderRadius: T.r.sm,
+                              bgcolor: T.brand,
+                              fontFamily: T.font,
+                              fontWeight: 700,
+                              px: 3,
+                              boxShadow: `0 2px 8px ${T.brandGlow}`,
+                              "&:hover": { bgcolor: T.brandAccent },
+                            }}
+                          >
+                            Link Asset
+                          </Button>
+                        )}
+                      </Box>
+                    ) : (
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: {
+                            xs: "1fr",
+                            md: "repeat(2, minmax(0, 1fr))",
+                          },
+                          gap: 2,
+                        }}
+                      >
+                        {linkedAssets.map(
+                          ({ id, asset: linkedAsset, relationshipType, linkedAt }) => {
+                            const assetName =
+                              linkedAsset?.assetName ||
+                              linkedAsset?.name ||
+                              "Unnamed Child Asset";
+                            const assetCode =
+                              linkedAsset?.assetId || id?.slice(-10) || "Not set";
+                            const serial = linkedAsset?.serialNumber || "Not set";
+                            const status = linkedAsset?.status || "Active";
+                            const statusCfg =
+                              STATUS_CFG[status] || STATUS_CFG.Active || {};
+
+                            return (
+                              <Box
+                                key={id}
+                                sx={{
+                                  p: 2.5,
+                                  borderRadius: T.r.md,
+                                  border: `1px solid ${T.border}`,
+                                  bgcolor: T.surfaceAlt,
+                                }}
+                              >
+                                <Stack
+                                  direction="row"
+                                  alignItems="flex-start"
+                                  justifyContent="space-between"
+                                  spacing={1.5}
+                                >
+                                  <Stack
+                                    direction="row"
+                                    alignItems="center"
+                                    spacing={1.5}
+                                    sx={{ minWidth: 0 }}
+                                  >
+                                    <Box
+                                      sx={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: T.r.sm,
+                                        bgcolor: T.brandLight,
+                                        color: T.brand,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      <Inventory2 sx={{ fontSize: 18 }} />
+                                    </Box>
+                                    <Box sx={{ minWidth: 0 }}>
+                                      <Typography
+                                        sx={{
+                                          fontSize: "0.95rem",
+                                          fontWeight: 700,
+                                          color: T.ink,
+                                          fontFamily: T.font,
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        {assetName}
+                                      </Typography>
+                                      <Typography
+                                        sx={{
+                                          fontSize: "0.72rem",
+                                          color: T.inkMuted,
+                                          fontFamily: T.fontMono,
+                                        }}
+                                      >
+                                        {assetCode} · Serial: {serial}
+                                      </Typography>
+                                    </Box>
+                                  </Stack>
+                                  <Chip
+                                    label={status}
+                                    size="small"
+                                    sx={{
+                                      height: 24,
+                                      fontSize: "0.68rem",
+                                      fontWeight: 700,
+                                      bgcolor: statusCfg.bg || T.brandLight,
+                                      color: statusCfg.color || T.brand,
+                                      fontFamily: T.font,
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                </Stack>
+                                <Stack
+                                  direction="row"
+                                  spacing={1}
+                                  alignItems="center"
+                                  flexWrap="wrap"
+                                  sx={{ mt: 2 }}
+                                >
+                                  {relationshipType && (
+                                    <Chip
+                                      label={relationshipType}
+                                      size="small"
+                                      sx={{
+                                        height: 22,
+                                        fontSize: "0.66rem",
+                                        fontWeight: 700,
+                                        bgcolor: T.brandLight,
+                                        color: T.brand,
+                                        fontFamily: T.font,
+                                        textTransform: "capitalize",
+                                      }}
+                                    />
+                                  )}
+                                  {linkedAt && (
+                                    <Typography
+                                      sx={{
+                                        fontSize: "0.72rem",
+                                        color: T.inkMuted,
+                                        fontFamily: T.font,
+                                      }}
+                                    >
+                                      Linked{" "}
+                                      {new Date(linkedAt).toLocaleDateString(
+                                        "en-IN",
+                                        {
+                                          day: "2-digit",
+                                          month: "short",
+                                          year: "numeric",
+                                        },
+                                      )}
+                                    </Typography>
+                                  )}
+                                </Stack>
+                                <Button
+                                  fullWidth
+                                  onClick={() => navigate(`/admin/assets/view/${id}`)}
+                                  sx={{
+                                    mt: 2,
+                                    textTransform: "none",
+                                    borderRadius: T.r.sm,
+                                    border: `1px solid ${T.border}`,
+                                    color: T.ink,
+                                    fontFamily: T.font,
+                                    fontWeight: 700,
+                                    bgcolor: T.surface,
+                                    "&:hover": { bgcolor: T.surfaceHover },
+                                  }}
+                                >
+                                  View Asset
+                                </Button>
+                              </Box>
+                            );
+                          },
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+                )}
+
+                {activeTab === 4 && (
+                  <Box sx={{ p: { xs: 2, sm: 3 } }}>
                     {!asset.statusHistory?.length ? (
                       <Box sx={{ py: 6, textAlign: "center" }}>
                         <History
@@ -3511,6 +3887,7 @@ export default function AssetView() {
         open={linkOpen}
         onClose={() => setLinkOpen(false)}
         assetId={id}
+        currentAsset={asset}
         onSuccess={() => {
           loadLinkedRequests();
           toast("Asset linked successfully!");
