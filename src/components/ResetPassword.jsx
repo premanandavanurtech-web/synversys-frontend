@@ -118,34 +118,39 @@ const C = {
 };
 
 // ─── Input styles ─────────────────────────────────────────────────────────────
-const inputSx = (hasError) => ({
+const inputSx = (hasError, palette) => ({
   "& .MuiOutlinedInput-root": {
-    bgcolor: C.bg,
+    bgcolor: palette.inputBg,
     borderRadius: "10px",
     fontFamily: C.font,
     fontSize: "0.875rem",
+    color: palette.text,
     transition: "box-shadow 0.2s, border-color 0.2s",
     "& fieldset": {
-      borderColor: hasError ? C.red : C.border,
+      borderColor: hasError ? C.red : palette.border,
       transition: "border-color 0.2s",
     },
     "&:hover fieldset": {
-      borderColor: hasError ? C.red : alpha(C.brand, 0.45),
+      borderColor: hasError ? C.red : alpha(palette.focus, 0.65),
     },
     "&.Mui-focused fieldset": {
-      borderColor: hasError ? C.red : C.brand,
+      borderColor: hasError ? C.red : palette.focus,
       borderWidth: "1.5px",
     },
     "&.Mui-focused": {
-      boxShadow: `0 0 0 3px ${hasError ? alpha(C.red, 0.1) : alpha(C.brand, 0.1)}`,
+      boxShadow: `0 0 0 3px ${hasError ? alpha(C.red, 0.1) : alpha(palette.focus, 0.14)}`,
+    },
+    "& .MuiSvgIcon-root": {
+      color: palette.muted,
     },
   },
   "& .MuiInputBase-input": {
     py: { xs: 1.2, sm: 1.35 },
     fontFamily: C.font,
     fontSize: { xs: "0.8rem", sm: "0.875rem" },
+    color: palette.text,
     "&::placeholder": {
-      color: C.inkMut,
+      color: palette.muted,
       opacity: 1,
       fontSize: { xs: "0.75rem", sm: "0.8rem" },
     },
@@ -387,6 +392,25 @@ const ResetPassword = () => {
     animation: shakeField === fieldName ? `${shake} 0.5s ease` : "none",
   });
 
+  const isDark = theme.palette.mode === "dark";
+  const pageBg = isDark ? "#07111f" : C.bg;
+  const cardBg = isDark ? "#0c1726" : C.surface;
+  const inputBg = isDark ? "#111c2b" : C.bg;
+  const textPrimary = isDark ? "#f8fafc" : C.ink;
+  const textSecondary = isDark ? "#cbd5e1" : C.inkSec;
+  const textMuted = isDark ? "#94a3b8" : C.inkMut;
+  const borderColor = isDark ? "rgba(148, 163, 184, 0.24)" : C.border;
+  const focusColor = isDark ? "#38bdf8" : C.brand;
+  const inputPalette = {
+    inputBg,
+    text: textPrimary,
+    muted: textMuted,
+    border: borderColor,
+    focus: focusColor,
+  };
+  const cardShadow = isDark ? "0 24px 64px rgba(0,0,0,0.38)" : C.shadowMd;
+  const cardHoverShadow = isDark ? "0 28px 72px rgba(0,0,0,0.45)" : C.shadowLg;
+
   // Check if password meets individual requirements
   const passwordChecks = {
     length: formData.password.length >= 8,
@@ -406,7 +430,7 @@ const ResetPassword = () => {
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
-          bgcolor: C.bg,
+          bgcolor: pageBg,
         }}
       >
         <Navbar />
@@ -432,7 +456,7 @@ const ResetPassword = () => {
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
-          bgcolor: C.bg,
+          bgcolor: pageBg,
           fontFamily: C.font,
         }}
       >
@@ -457,8 +481,9 @@ const ResetPassword = () => {
                 borderRadius: { xs: "16px", sm: "20px", md: "24px" },
                 p: { xs: 2.5, sm: 3.5, md: 4 },
                 textAlign: "center",
-                border: `1px solid ${C.border}`,
-                boxShadow: C.shadowMd,
+                bgcolor: cardBg,
+                border: `1px solid ${borderColor}`,
+                boxShadow: cardShadow,
               }}
             >
               <Zoom in={true}>
@@ -484,7 +509,7 @@ const ResetPassword = () => {
                 sx={{
                   fontSize: { xs: "1.2rem", sm: "1.4rem" },
                   fontWeight: 800,
-                  color: C.ink,
+                  color: textPrimary,
                   mb: 1.5,
                   fontFamily: C.font,
                 }}
@@ -494,7 +519,7 @@ const ResetPassword = () => {
               <Typography
                 sx={{
                   fontSize: { xs: "0.8rem", sm: "0.85rem" },
-                  color: C.inkSec,
+                  color: textSecondary,
                   mb: 3,
                   fontFamily: C.font,
                   lineHeight: 1.5,
@@ -534,7 +559,7 @@ const ResetPassword = () => {
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
-        bgcolor: C.bg,
+        bgcolor: pageBg,
         fontFamily: C.font,
         overflowX: "hidden",
       }}
@@ -561,18 +586,19 @@ const ResetPassword = () => {
               width: "100%",
               borderRadius: { xs: "16px", sm: "20px", md: "24px" },
               overflow: "hidden",
-              boxShadow: C.shadowMd,
-              border: `1px solid ${C.border}`,
+              bgcolor: cardBg,
+              boxShadow: cardShadow,
+              border: `1px solid ${borderColor}`,
               transition: "transform 0.2s ease, box-shadow 0.2s ease",
               "&:hover": {
-                boxShadow: C.shadowLg,
+                boxShadow: cardHoverShadow,
               },
             }}
           >
             <Box
               sx={{
                 p: { xs: 2.5, sm: 3.5, md: 4 },
-                bgcolor: C.surface,
+                bgcolor: cardBg,
               }}
             >
               {/* Header Section */}
@@ -586,7 +612,9 @@ const ResetPassword = () => {
                 <Zoom in={true} timeout={500}>
                   <Avatar
                     sx={{
-                      bgcolor: alpha(C.brand, 0.1),
+                      bgcolor: isDark
+                        ? "rgba(56, 189, 248, 0.14)"
+                        : alpha(C.brand, 0.1),
                       width: { xs: 56, sm: 64, md: 72 },
                       height: { xs: 56, sm: 64, md: 72 },
                       mx: "auto",
@@ -600,7 +628,7 @@ const ResetPassword = () => {
                     <VpnKeyIcon
                       sx={{
                         fontSize: { xs: 28, sm: 32, md: 36 },
-                        color: C.brand,
+                        color: isDark ? "#7dd3fc" : C.brand,
                       }}
                     />
                   </Avatar>
@@ -610,7 +638,7 @@ const ResetPassword = () => {
                   sx={{
                     fontSize: { xs: "1.3rem", sm: "1.5rem", md: "1.65rem" },
                     fontWeight: 800,
-                    color: C.ink,
+                    color: textPrimary,
                     fontFamily: C.font,
                     letterSpacing: "-0.025em",
                     mb: 1,
@@ -621,7 +649,7 @@ const ResetPassword = () => {
                 <Typography
                   sx={{
                     fontSize: { xs: "0.78rem", sm: "0.83rem", md: "0.88rem" },
-                    color: C.inkSec,
+                    color: textSecondary,
                     fontFamily: C.font,
                     maxWidth: "320px",
                     mx: "auto",
@@ -648,7 +676,7 @@ const ResetPassword = () => {
                             fontSize: { xs: "0.65rem", sm: "0.67rem" },
                             fontWeight: 700,
                             letterSpacing: "0.08em",
-                            color: C.inkSec,
+                            color: textSecondary,
                             textTransform: "uppercase",
                             display: "block",
                             mb: 0.75,
@@ -684,7 +712,7 @@ const ResetPassword = () => {
                                     color:
                                       errors.password && fieldTouched.password
                                         ? C.red
-                                        : C.inkMut,
+                                        : textMuted,
                                   }}
                                 />
                               </InputAdornment>
@@ -713,6 +741,7 @@ const ResetPassword = () => {
                           }}
                           sx={inputSx(
                             !!errors.password && fieldTouched.password,
+                            inputPalette,
                           )}
                         />
 
@@ -734,7 +763,9 @@ const ResetPassword = () => {
                                     sx={{
                                       flex: 1,
                                       height: 4,
-                                      bgcolor: alpha(C.border, 0.5),
+                                      bgcolor: isDark
+                                        ? "rgba(148, 163, 184, 0.22)"
+                                        : alpha(C.border, 0.5),
                                       borderRadius: "2px",
                                       overflow: "hidden",
                                     }}
@@ -781,7 +812,7 @@ const ResetPassword = () => {
                                     />
                                   ) : (
                                     <CloseIcon
-                                      sx={{ fontSize: 14, color: C.inkMut }}
+                                      sx={{ fontSize: 14, color: textMuted }}
                                     />
                                   )}
                                   <Typography
@@ -789,7 +820,7 @@ const ResetPassword = () => {
                                       fontSize: { xs: "0.7rem", sm: "0.75rem" },
                                       color: passwordChecks.length
                                         ? C.green
-                                        : C.inkSec,
+                                        : textSecondary,
                                       fontFamily: C.font,
                                     }}
                                   >
@@ -809,7 +840,7 @@ const ResetPassword = () => {
                                     />
                                   ) : (
                                     <CloseIcon
-                                      sx={{ fontSize: 14, color: C.inkMut }}
+                                      sx={{ fontSize: 14, color: textMuted }}
                                     />
                                   )}
                                   <Typography
@@ -817,7 +848,7 @@ const ResetPassword = () => {
                                       fontSize: { xs: "0.7rem", sm: "0.75rem" },
                                       color: passwordChecks.uppercase
                                         ? C.green
-                                        : C.inkSec,
+                                        : textSecondary,
                                       fontFamily: C.font,
                                     }}
                                   >
@@ -837,7 +868,7 @@ const ResetPassword = () => {
                                     />
                                   ) : (
                                     <CloseIcon
-                                      sx={{ fontSize: 14, color: C.inkMut }}
+                                      sx={{ fontSize: 14, color: textMuted }}
                                     />
                                   )}
                                   <Typography
@@ -845,7 +876,7 @@ const ResetPassword = () => {
                                       fontSize: { xs: "0.7rem", sm: "0.75rem" },
                                       color: passwordChecks.lowercase
                                         ? C.green
-                                        : C.inkSec,
+                                        : textSecondary,
                                       fontFamily: C.font,
                                     }}
                                   >
@@ -865,7 +896,7 @@ const ResetPassword = () => {
                                     />
                                   ) : (
                                     <CloseIcon
-                                      sx={{ fontSize: 14, color: C.inkMut }}
+                                      sx={{ fontSize: 14, color: textMuted }}
                                     />
                                   )}
                                   <Typography
@@ -873,7 +904,7 @@ const ResetPassword = () => {
                                       fontSize: { xs: "0.7rem", sm: "0.75rem" },
                                       color: passwordChecks.number
                                         ? C.green
-                                        : C.inkSec,
+                                        : textSecondary,
                                       fontFamily: C.font,
                                     }}
                                   >
@@ -893,7 +924,7 @@ const ResetPassword = () => {
                                     />
                                   ) : (
                                     <CloseIcon
-                                      sx={{ fontSize: 14, color: C.inkMut }}
+                                      sx={{ fontSize: 14, color: textMuted }}
                                     />
                                   )}
                                   <Typography
@@ -901,7 +932,7 @@ const ResetPassword = () => {
                                       fontSize: { xs: "0.7rem", sm: "0.75rem" },
                                       color: passwordChecks.special
                                         ? C.green
-                                        : C.inkSec,
+                                        : textSecondary,
                                       fontFamily: C.font,
                                     }}
                                   >
@@ -921,7 +952,7 @@ const ResetPassword = () => {
                                     />
                                   ) : (
                                     <CloseIcon
-                                      sx={{ fontSize: 14, color: C.inkMut }}
+                                      sx={{ fontSize: 14, color: textMuted }}
                                     />
                                   )}
                                   <Typography
@@ -929,7 +960,7 @@ const ResetPassword = () => {
                                       fontSize: { xs: "0.7rem", sm: "0.75rem" },
                                       color: passwordChecks.validChars
                                         ? C.green
-                                        : C.inkSec,
+                                        : textSecondary,
                                       fontFamily: C.font,
                                     }}
                                   >
@@ -954,7 +985,7 @@ const ResetPassword = () => {
                             fontSize: { xs: "0.65rem", sm: "0.67rem" },
                             fontWeight: 700,
                             letterSpacing: "0.08em",
-                            color: C.inkSec,
+                            color: textSecondary,
                             textTransform: "uppercase",
                             display: "block",
                             mb: 0.75,
@@ -998,7 +1029,7 @@ const ResetPassword = () => {
                                       errors.confirmPassword &&
                                       fieldTouched.confirmPassword
                                         ? C.red
-                                        : C.inkMut,
+                                        : textMuted,
                                   }}
                                 />
                               </InputAdornment>
@@ -1030,6 +1061,7 @@ const ResetPassword = () => {
                           sx={inputSx(
                             !!errors.confirmPassword &&
                               fieldTouched.confirmPassword,
+                            inputPalette,
                           )}
                         />
                       </Box>
@@ -1121,12 +1153,20 @@ const ResetPassword = () => {
                       sx={{
                         mb: 3,
                         borderRadius: "12px",
+                        border: isDark
+                          ? "1px solid rgba(16, 185, 129, 0.34)"
+                          : "none",
                         "& .MuiAlert-message": {
                           fontSize: { xs: "0.75rem", sm: "0.8rem" },
                           fontFamily: C.font,
                         },
-                        bgcolor: C.greenBg,
-                        color: C.green,
+                        "& .MuiAlert-icon": {
+                          color: isDark ? "#34d399" : C.green,
+                        },
+                        bgcolor: isDark
+                          ? "rgba(6, 78, 59, 0.34)"
+                          : C.greenBg,
+                        color: isDark ? "#bbf7d0" : C.green,
                       }}
                     >
                       Password reset successful!
@@ -1135,7 +1175,7 @@ const ResetPassword = () => {
                     <Typography
                       sx={{
                         fontSize: { xs: "0.8rem", sm: "0.85rem" },
-                        color: C.inkSec,
+                        color: textSecondary,
                         mb: 3,
                         fontFamily: C.font,
                         lineHeight: 1.5,
@@ -1179,7 +1219,7 @@ const ResetPassword = () => {
                   <Typography
                     sx={{
                       fontSize: { xs: "0.7rem", sm: "0.75rem" },
-                      color: C.inkMut,
+                      color: textMuted,
                       fontFamily: C.font,
                     }}
                   >
@@ -1187,7 +1227,7 @@ const ResetPassword = () => {
                     <Link
                       href="#"
                       sx={{
-                        color: C.brand,
+                        color: isDark ? "#7dd3fc" : C.brand,
                         fontWeight: 700,
                         textDecoration: "none",
                         fontSize: { xs: "0.7rem", sm: "0.75rem" },
@@ -1212,9 +1252,9 @@ const ResetPassword = () => {
         open={snackbarOpen}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+
         TransitionComponent={Slide}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={handleCloseSnackbar}
           severity="error"
@@ -1227,10 +1267,11 @@ const ResetPassword = () => {
             fontFamily: C.font,
             fontWeight: 500,
             boxShadow: C.shadowLg,
-            bgcolor: C.redBg,
-            color: C.red,
+            border: isDark ? "1px solid rgba(248, 113, 113, 0.34)" : "none",
+            bgcolor: isDark ? "rgba(127, 29, 29, 0.36)" : C.redBg,
+            color: isDark ? "#fecaca" : C.red,
             "& .MuiAlert-icon": {
-              color: C.red,
+              color: isDark ? "#f87171" : C.red,
             },
           }}
         >

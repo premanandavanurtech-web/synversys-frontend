@@ -80,37 +80,51 @@ const C = {
 };
 
 // ─── Styled Components ────────────────────────────────────────
-const PageRoot = styled(Box)({
+const PageRoot = styled(Box)(({ theme }) => ({
   minHeight: "100vh",
   fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif",
-});
+  background: theme.palette.mode === "dark" ? "#08111f" : C.bg,
+}));
 
-const TopBar = styled(Box)({
+const loadingSkeletonSx = {
+  bgcolor: (theme) =>
+    theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.14)" : undefined,
+  "&::after": {
+    background: (theme) =>
+      theme.palette.mode === "dark"
+        ? "linear-gradient(90deg, transparent, rgba(248, 250, 252, 0.08), transparent)"
+        : undefined,
+  },
+};
+
+const TopBar = styled(Box)(({ theme }) => ({
+  "--edit-asset-text": theme.palette.mode === "dark" ? "#f8fafc" : C.dark,
+  "--edit-asset-muted": theme.palette.mode === "dark" ? "#94a3b8" : C.mutedDark,
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   padding: "20px 36px",
-  borderBottom: `1px solid ${C.border}`,
-  background: C.white,
+  borderBottom: `1px solid ${theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.24)" : C.border}`,
+  background: theme.palette.mode === "dark" ? "#0f1c2e" : C.white,
   width:"1160px",
   marginLeft:"32px",
   flexWrap: "wrap",
   gap: 14,
   animation: `${fadeUp} 0.35s ease both`,
   "@media (max-width: 600px)": { padding: "16px 20px" },
-});
+}));
 
-const BackBtn = styled(IconButton)({
+const BackBtn = styled(IconButton)(({ theme }) => ({
   width: 36,
   height: 36,
-  border: `1.5px solid ${C.border}`,
+  border: `1.5px solid ${theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.24)" : C.border}`,
   borderRadius: 8,
-  background: C.white,
-  color: C.dark,
+  background: theme.palette.mode === "dark" ? "#0b1626" : C.white,
+  color: theme.palette.mode === "dark" ? "#f8fafc" : C.dark,
   flexShrink: 0,
   "&:hover": { background: C.dark, color: C.white, borderColor: C.dark },
   transition: "all 0.16s ease",
-});
+}));
 
 const SaveBtn = styled(Button)({
   borderRadius: 8,
@@ -131,18 +145,21 @@ const SaveBtn = styled(Button)({
   transition: "all 0.16s ease",
 });
 
-const CancelBtn = styled(Button)({
+const CancelBtn = styled(Button)(({ theme }) => ({
   borderRadius: 8,
   textTransform: "none",
   fontWeight: 600,
   fontSize: 13,
   padding: "8px 20px",
   background: "transparent",
-  color: C.dark,
-  border: `1.5px solid ${C.border}`,
-  "&:hover": { background: "#f0ede6", borderColor: "#ccc9c0" },
+  color: theme.palette.mode === "dark" ? "#f8fafc" : C.dark,
+  border: `1.5px solid ${theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.24)" : C.border}`,
+  "&:hover": {
+    background: theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.1)" : "#f0ede6",
+    borderColor: theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.4)" : "#ccc9c0",
+  },
   transition: "all 0.16s ease",
-});
+}));
 
 const BodyLayout = styled(Box)({
   display: "grid",
@@ -226,13 +243,13 @@ const UploadZone = styled(Box)({
   },
 });
 
-const StatusCard = styled(Box)({
-  background: C.white,
+const StatusCard = styled(Box)(({ theme }) => ({
+  background: theme.palette.mode === "dark" ? "#0f1c2e" : C.white,
   borderRadius: 14,
-  border: `1px solid ${C.border}`,
+  border: `1px solid ${theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.24)" : C.border}`,
   padding: "18px 20px",
   "@media (max-width: 960px)": { flex: "1 1 220px" },
-});
+}));
 
 // ─── Main form area ───────────────────────────────────────────
 const MainContent = styled(Box)({
@@ -242,13 +259,16 @@ const MainContent = styled(Box)({
   animation: `${fadeUp} 0.4s 0.08s ease both`,
 });
 
-const FormCard = styled(Box)({
-  background: C.white,
+const FormCard = styled(Box)(({ theme }) => ({
+  background: theme.palette.mode === "dark" ? "#0f1c2e" : C.white,
+  "--edit-asset-text": theme.palette.mode === "dark" ? "#f8fafc" : C.dark,
+  "--edit-asset-muted": theme.palette.mode === "dark" ? "#94a3b8" : C.mutedDark,
   borderRadius: 16,
-  border: `1px solid ${C.border}`,
+  border: `1px solid ${theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.24)" : C.border}`,
   padding: "26px 28px",
+  color: "var(--edit-asset-text)",
   "@media (max-width: 600px)": { padding: "18px 16px" },
-});
+}));
 
 const SectionLabel = styled(Typography)({
   fontSize: 10,
@@ -289,32 +309,38 @@ const FieldRequired = styled("span")({
   marginLeft: 2,
 });
 
-const StyledInput = styled("input")({
+const StyledInput = styled("input")(({ theme }) => ({
+  colorScheme: theme.palette.mode,
   width: "100%",
   padding: "9px 13px",
   fontSize: 13,
   fontWeight: 500,
-  color: C.dark,
-  background: "#fafaf8",
-  border: `1.5px solid ${C.border}`,
+  color: theme.palette.mode === "dark" ? "#f8fafc" : C.dark,
+  background: theme.palette.mode === "dark" ? "#0b1626" : "#fafaf8",
+  border: `1.5px solid ${theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.24)" : C.border}`,
   borderRadius: 9,
   outline: "none",
   fontFamily: "'DM Sans', sans-serif",
   boxSizing: "border-box",
   transition: "border-color 0.14s, background 0.14s",
-  "&:focus": { borderColor: C.teal, background: C.white },
+  "&:focus": { borderColor: C.teal, background: theme.palette.mode === "dark" ? "#0d1a2b" : C.white },
   "&::placeholder": { color: "#c8c5bc" },
-  "&:disabled": { background: "#f3f2ee", color: "#aaa", cursor: "not-allowed" },
-});
+  "&:disabled": {
+    background: theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.08)" : "#f3f2ee",
+    color: theme.palette.mode === "dark" ? "#64748b" : "#aaa",
+    cursor: "not-allowed",
+  },
+}));
 
-const StyledSelect = styled("select")({
+const StyledSelect = styled("select")(({ theme }) => ({
+  colorScheme: theme.palette.mode,
   width: "100%",
   padding: "9px 13px",
   fontSize: 13,
   fontWeight: 500,
-  color: C.dark,
-  background: "#fafaf8",
-  border: `1.5px solid ${C.border}`,
+  color: theme.palette.mode === "dark" ? "#f8fafc" : C.dark,
+  background: theme.palette.mode === "dark" ? "#0b1626" : "#fafaf8",
+  border: `1.5px solid ${theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.24)" : C.border}`,
   borderRadius: 9,
   outline: "none",
   fontFamily: "'DM Sans', sans-serif",
@@ -326,18 +352,22 @@ const StyledSelect = styled("select")({
   backgroundPosition: "right 12px center",
   paddingRight: 34,
   transition: "border-color 0.14s, background 0.14s",
-  "&:focus": { borderColor: C.teal, background: C.white },
-  "&:disabled": { background: "#f3f2ee", color: "#aaa", cursor: "not-allowed" },
-});
+  "&:focus": { borderColor: C.teal, background: theme.palette.mode === "dark" ? "#0d1a2b" : C.white },
+  "&:disabled": {
+    background: theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.08)" : "#f3f2ee",
+    color: theme.palette.mode === "dark" ? "#64748b" : "#aaa",
+    cursor: "not-allowed",
+  },
+}));
 
-const StyledTextarea = styled("textarea")({
+const StyledTextarea = styled("textarea")(({ theme }) => ({
   width: "100%",
   padding: "9px 13px",
   fontSize: 13,
   fontWeight: 500,
-  color: C.dark,
-  background: "#fafaf8",
-  border: `1.5px solid ${C.border}`,
+  color: theme.palette.mode === "dark" ? "#f8fafc" : C.dark,
+  background: theme.palette.mode === "dark" ? "#0b1626" : "#fafaf8",
+  border: `1.5px solid ${theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.24)" : C.border}`,
   borderRadius: 9,
   outline: "none",
   fontFamily: "'DM Sans', sans-serif",
@@ -346,9 +376,9 @@ const StyledTextarea = styled("textarea")({
   minHeight: 80,
   lineHeight: 1.55,
   transition: "border-color 0.14s, background 0.14s",
-  "&:focus": { borderColor: C.teal, background: C.white },
+  "&:focus": { borderColor: C.teal, background: theme.palette.mode === "dark" ? "#0d1a2b" : C.white },
   "&::placeholder": { color: "#c8c5bc" },
-});
+}));
 
 const VisuallyHidden = styled("input")({
   position: "absolute",
@@ -1028,17 +1058,43 @@ export default function EditAsset() {
     return (
       <PageRoot>
         <TopBar>
-          <Skeleton variant="rounded" width={160} height={36} />
-          <Skeleton variant="rounded" width={180} height={36} />
+          <Skeleton
+            variant="rounded"
+            width={160}
+            height={36}
+            sx={loadingSkeletonSx}
+          />
+          <Skeleton
+            variant="rounded"
+            width={180}
+            height={36}
+            sx={loadingSkeletonSx}
+          />
         </TopBar>
         <BodyLayout>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Skeleton variant="rounded" height={260} sx={{ borderRadius: 3 }} />
-            <Skeleton variant="rounded" height={100} sx={{ borderRadius: 3 }} />
+            <Skeleton
+              variant="rounded"
+              height={260}
+              sx={{ ...loadingSkeletonSx, borderRadius: 3 }}
+            />
+            <Skeleton
+              variant="rounded"
+              height={100}
+              sx={{ ...loadingSkeletonSx, borderRadius: 3 }}
+            />
           </Box>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Skeleton variant="rounded" height={300} sx={{ borderRadius: 3 }} />
-            <Skeleton variant="rounded" height={200} sx={{ borderRadius: 3 }} />
+            <Skeleton
+              variant="rounded"
+              height={300}
+              sx={{ ...loadingSkeletonSx, borderRadius: 3 }}
+            />
+            <Skeleton
+              variant="rounded"
+              height={200}
+              sx={{ ...loadingSkeletonSx, borderRadius: 3 }}
+            />
           </Box>
         </BodyLayout>
       </PageRoot>
@@ -1065,7 +1121,7 @@ export default function EditAsset() {
               sx={{
                 fontSize: 17,
                 fontWeight: 700,
-                color: C.dark,
+                color: "var(--edit-asset-text)",
                 letterSpacing: "-0.02em",
                 lineHeight: 1.2,
               }}
@@ -1075,7 +1131,7 @@ export default function EditAsset() {
             <Typography
               sx={{
                 fontSize: 11,
-                color: C.muted,
+                color: "var(--edit-asset-muted)",
                 fontFamily: "'DM Mono', monospace",
                 mt: 0.2,
               }}
@@ -1861,8 +1917,7 @@ export default function EditAsset() {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity={snackbar.severity}
           onClose={() => setSnackbar((p) => ({ ...p, open: false }))}

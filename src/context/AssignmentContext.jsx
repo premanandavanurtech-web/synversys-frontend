@@ -83,11 +83,11 @@ export const AssignmentProvider = ({ children }) => {
       }
       const msg = res?.message || "Assignment failed";
       assignOp.setError(msg);
-      return { success: false, error: msg };
+      return { success: false, error: msg, message: msg };
     } catch (err) {
       const msg = extractError(err, "Failed to assign to admin");
       assignOp.setError(msg);
-      return { success: false, error: msg };
+      return { success: false, error: msg, message: msg };
     } finally {
       assignOp.setLoading(false);
     }
@@ -124,11 +124,11 @@ export const AssignmentProvider = ({ children }) => {
       }
       const msg = res?.message || "Assignment failed";
       assignOp.setError(msg);
-      return { success: false, error: msg };
+      return { success: false, error: msg, message: msg };
     } catch (err) {
       const msg = extractError(err, "Failed to assign to team");
       assignOp.setError(msg);
-      return { success: false, error: msg };
+      return { success: false, error: msg, message: msg };
     } finally {
       assignOp.setLoading(false);
     }
@@ -376,11 +376,14 @@ export const AssignmentProvider = ({ children }) => {
   }, [authRequest]);
 
   // ── 12. Bulk restore from trash ─────────────────────────────────────────────
-  const approveAssignment = useCallback(async (assignmentId) => {
+  const approveAssignment = useCallback(async (assignmentId, approvalNotes = "") => {
     detailOp.setLoading(true);
     detailOp.setError(null);
     try {
-      const res = await authRequest("PATCH", `/assignments/${assignmentId}/approve`);
+      const payload = approvalNotes?.trim()
+        ? { approvalNotes: approvalNotes.trim() }
+        : {};
+      const res = await authRequest("PATCH", `/assignments/${assignmentId}/approve`, payload);
       if (res?.success) {
         return { success: true, data: res.assignment || res.data || res, message: res.message };
       }

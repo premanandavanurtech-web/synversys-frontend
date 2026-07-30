@@ -5,6 +5,12 @@ import { useAuth } from './AuthContexts';
 
 const AnalyticsContext = createContext();
 
+const getAccessToken = () =>
+  localStorage.getItem('accessToken') ||
+  localStorage.getItem('token') ||
+  sessionStorage.getItem('accessToken') ||
+  sessionStorage.getItem('token');
+
 export const AnalyticsProvider = ({ children }) => {
   const { user } = useAuth();
   const [data, setData] = useState(null);
@@ -34,7 +40,7 @@ export const AnalyticsProvider = ({ children }) => {
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = getAccessToken();
       const response = await axios.get(
         'https://synversys-backend.onrender.com/api/v1/dashboard/Analytics',
         {
@@ -79,7 +85,7 @@ export const AnalyticsProvider = ({ children }) => {
 
   const exportData = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = getAccessToken();
       const response = await axios.get(
         'https://synversys-backend.onrender.com/api/v1/dashboard/Analytics/export',
         {

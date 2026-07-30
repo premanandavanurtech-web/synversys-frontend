@@ -337,6 +337,12 @@ function NotificationPanel({
   formatTime,
 }) {
   const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const panelBg = isDark ? "#0f1e29" : "#ffffff";
+  const panelBorder = isDark ? "rgba(148, 163, 184, 0.18)" : "#f1f5f9";
+  const panelHeaderBg = isDark ? "#0b1724" : "#ffffff";
+  const panelText = isDark ? "#e7eef2" : "#0f172a";
+  const panelMuted = isDark ? "#8ca0ac" : "#64748b";
 
   return (
     <Box
@@ -346,6 +352,8 @@ function NotificationPanel({
         display: "flex",
         flexDirection: "column",
         fontFamily: "'DM Sans', sans-serif",
+        bgcolor: panelBg,
+        color: panelText,
       }}
     >
       {/* Header - mobile optimized */}
@@ -356,8 +364,8 @@ function NotificationPanel({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderBottom: "1px solid #f1f5f9",
-          bgcolor: "#fff",
+          borderBottom: `1px solid ${panelBorder}`,
+          bgcolor: panelHeaderBg,
           position: "sticky",
           top: 0,
           zIndex: 1,
@@ -388,7 +396,7 @@ function NotificationPanel({
           <Typography
             fontWeight={700}
             fontSize={{ xs: 14, sm: 15 }}
-            color="#0f172a"
+            color={panelText}
             fontFamily="'DM Sans', sans-serif"
           >
             Notifications
@@ -417,7 +425,7 @@ function NotificationPanel({
               size="small"
               onClick={onRefresh}
               sx={{
-                color: "#94a3b8",
+                color: panelMuted,
                 p: { xs: 0.75, sm: 0.5 },
                 "&:active": { transform: "scale(0.95)" },
               }}
@@ -431,7 +439,7 @@ function NotificationPanel({
                 size="small"
                 onClick={onMarkAll}
                 sx={{
-                  color: "#94a3b8",
+                  color: panelMuted,
                   p: { xs: 0.75, sm: 0.5 },
                   "&:active": { transform: "scale(0.95)" },
                 }}
@@ -445,7 +453,7 @@ function NotificationPanel({
               size="small"
               onClick={onClose}
               sx={{
-                color: "#94a3b8",
+                color: panelMuted,
                 p: { xs: 0.75, sm: 0.5 },
                 "&:active": { transform: "scale(0.95)" },
               }}
@@ -462,8 +470,10 @@ function NotificationPanel({
           sx={{
             px: { xs: 2, sm: 2.5 },
             py: { xs: 0.6, sm: 0.75 },
-            background: "linear-gradient(90deg, #f0f0ff 0%, #fafafa 100%)",
-            borderBottom: "1px solid #f1f5f9",
+            background: isDark
+              ? "rgba(31, 182, 207, 0.08)"
+              : "linear-gradient(90deg, #f0f0ff 0%, #fafafa 100%)",
+            borderBottom: `1px solid ${panelBorder}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -511,7 +521,8 @@ function NotificationPanel({
                 width: { xs: 56, sm: 64 },
                 height: { xs: 56, sm: 64 },
                 borderRadius: "20px",
-                bgcolor: "#f8fafc",
+                bgcolor: isDark ? "rgba(148, 163, 184, 0.12)" : "#f8fafc",
+                border: isDark ? "1px solid rgba(148, 163, 184, 0.18)" : "none",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -520,17 +531,20 @@ function NotificationPanel({
               }}
             >
               <NotificationsActiveIcon
-                sx={{ fontSize: { xs: 24, sm: 28 }, color: "#cbd5e1" }}
+                sx={{
+                  fontSize: { xs: 24, sm: 28 },
+                  color: isDark ? "#8ca0ac" : "#cbd5e1",
+                }}
               />
             </Box>
             <Typography
               fontSize={{ xs: 13, sm: 14 }}
               fontWeight={600}
-              color="#64748b"
+              color={panelText}
             >
               You're all caught up!
             </Typography>
-            <Typography fontSize={{ xs: 11, sm: 12 }} color="#94a3b8" mt={0.5}>
+            <Typography fontSize={{ xs: 11, sm: 12 }} color={panelMuted} mt={0.5}>
               No new notifications right now.
             </Typography>
           </Box>
@@ -545,7 +559,7 @@ function NotificationPanel({
                   formatTime={formatTime}
                 />
                 {idx < notifications.length - 1 && (
-                  <Box sx={{ mx: 2, borderBottom: "1px solid #f8fafc" }} />
+                  <Box sx={{ mx: 2, borderBottom: `1px solid ${panelBorder}` }} />
                 )}
               </React.Fragment>
             ))}
@@ -727,6 +741,8 @@ function MobileUserMenu({
 
 /* ─── Main TopHeader (Fully Responsive) ─── */
 export default function TopHeader({ onMenuToggle }) {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === "dark";
   const { user, logout } = useAuth();
   const { profile } = useTeam();
   const {
@@ -741,7 +757,6 @@ export default function TopHeader({ onMenuToggle }) {
     fetchUnreadCount,
   } = useNotifications();
 
-  const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
@@ -868,6 +883,7 @@ export default function TopHeader({ onMenuToggle }) {
     setMobileUserMenuOpen(false);
     try {
       await logout();
+      sessionStorage.setItem("logoutToastMessage", "Logged out successfully");
     } catch (err) {
       console.error("Logout failed:", err);
     }
@@ -907,10 +923,16 @@ export default function TopHeader({ onMenuToggle }) {
         component="header"
         sx={{
           height: { xs: 56, sm: 60, md: 64, lg: 68 },
-          bgcolor: scrolled ? "rgba(255,255,255,0.92)" : "#ffffff",
-          backdropFilter: scrolled ? "blur(12px)" : "none",
+          bgcolor: isDarkMode
+            ? scrolled
+              ? "rgba(7, 17, 31, 0.9)"
+              : "rgba(7, 17, 31, 0.96)"
+            : scrolled
+              ? "rgba(255,255,255,0.92)"
+              : "#ffffff",
+          backdropFilter: scrolled || isDarkMode ? "blur(12px)" : "none",
           borderBottom: "1px solid",
-          borderColor: scrolled ? alpha("#1a5c6b", 0.08) : "#f1f5f9",
+          borderColor: isDarkMode ? "rgba(148, 163, 184, 0.16)" : scrolled ? alpha("#1a5c6b", 0.08) : "#f1f5f9",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -921,7 +943,7 @@ export default function TopHeader({ onMenuToggle }) {
           width: "100%",
           boxSizing: "border-box",
           transition: "all 0.25s ease",
-          boxShadow: scrolled ? "0 1px 20px rgba(99,102,241,0.06)" : "none",
+          boxShadow: scrolled ? (isDarkMode ? "0 1px 24px rgba(0,0,0,0.28)" : "0 1px 20px rgba(99,102,241,0.06)") : "none",
         }}
       >
         {/* Left: Menu toggle - visible on mobile and tablet */}
@@ -1078,8 +1100,13 @@ export default function TopHeader({ onMenuToggle }) {
             width: 280,
             mt: 1,
             borderRadius: "18px",
-            boxShadow: "0 12px 40px rgba(15,23,42,0.12)",
-            border: "1px solid #f1f5f9",
+            bgcolor: isDarkMode ? "#0f1e29" : "#ffffff",
+            boxShadow: isDarkMode
+              ? "0 16px 48px rgba(0,0,0,0.45)"
+              : "0 12px 40px rgba(15,23,42,0.12)",
+            border: `1px solid ${
+              isDarkMode ? "rgba(148, 163, 184, 0.18)" : "#f1f5f9"
+            }`,
             overflow: "hidden",
           },
         }}
@@ -1091,8 +1118,12 @@ export default function TopHeader({ onMenuToggle }) {
           sx={{
             px: 2.5,
             py: 2.5,
-            background: "linear-gradient(135deg, #f8f8ff 0%, #f0f0ff 100%)",
-            borderBottom: "1px solid #ededff",
+            background: isDarkMode
+              ? "linear-gradient(135deg, #0f1e29 0%, #132433 100%)"
+              : "linear-gradient(135deg, #f8f8ff 0%, #f0f0ff 100%)",
+            borderBottom: `1px solid ${
+              isDarkMode ? "rgba(148, 163, 184, 0.18)" : "#ededff"
+            }`,
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
@@ -1113,14 +1144,14 @@ export default function TopHeader({ onMenuToggle }) {
               <Typography
                 fontWeight={700}
                 fontSize={14}
-                color="#0f172a"
+                color={isDarkMode ? "#e7eef2" : "#0f172a"}
                 fontFamily="'DM Sans', sans-serif"
               >
                 {getUserDisplayName()}
               </Typography>
               <Typography
                 fontSize={11.5}
-                color="#64748b"
+                color={isDarkMode ? "#8ca0ac" : "#64748b"}
                 fontFamily="'DM Sans', sans-serif"
                 display="block"
                 mt={0.2}
@@ -1152,7 +1183,7 @@ export default function TopHeader({ onMenuToggle }) {
             py: 1.5,
             px: 2.5,
             gap: 1.5,
-            "&:hover": { bgcolor: alpha("#ef4444", 0.04) },
+            "&:hover": { bgcolor: alpha("#ef4444", isDarkMode ? 0.1 : 0.04) },
           }}
         >
           <ListItemIcon sx={{ minWidth: "unset" }}>
@@ -1194,8 +1225,13 @@ export default function TopHeader({ onMenuToggle }) {
             sx: {
               mt: 1.5,
               borderRadius: "20px",
-              boxShadow: "0 16px 48px rgba(15,23,42,0.12)",
-              border: "1px solid #f1f5f9",
+              bgcolor: isDarkMode ? "#0f1e29" : "#ffffff",
+              boxShadow: isDarkMode
+                ? "0 16px 48px rgba(0,0,0,0.45)"
+                : "0 16px 48px rgba(15,23,42,0.12)",
+              border: `1px solid ${
+                isDarkMode ? "rgba(148, 163, 184, 0.18)" : "#f1f5f9"
+              }`,
               overflow: "hidden",
             },
           }}
@@ -1217,7 +1253,7 @@ export default function TopHeader({ onMenuToggle }) {
             sx: {
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
-              bgcolor: "#fff",
+              bgcolor: isDarkMode ? "#0f1e29" : "#fff",
               maxHeight: "85vh",
             },
           }}

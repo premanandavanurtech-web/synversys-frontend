@@ -123,6 +123,13 @@ const SearchableMultiSelect = ({
   multiple = true,
 }) => {
   const [query, setQuery] = useState("");
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const panelBg = isDark ? "#0f1c2e" : "#fff";
+  const softBg = isDark ? "rgba(148, 163, 184, 0.08)" : BG_LIGHT;
+  const selectedBg = isDark ? "rgba(20, 76, 92, 0.34)" : "#e3f0f5";
+  const selectedHoverBg = isDark ? "rgba(20, 76, 92, 0.48)" : "#d4e9f0";
+  const allSelectedBg = isDark ? "rgba(16, 185, 129, 0.14)" : "#e8f5e9";
 
   const filtered = useMemo(() => {
     if (!query.trim()) return items;
@@ -215,10 +222,11 @@ const SearchableMultiSelect = ({
           border: `1.5px solid ${BORDER}`,
           borderRadius: 2,
           overflow: "hidden",
+          bgcolor: panelBg,
         }}
       >
         <Box
-          sx={{ p: 1, borderBottom: `1px solid ${BORDER}`, bgcolor: BG_LIGHT }}
+          sx={{ p: 1, borderBottom: `1px solid ${BORDER}`, bgcolor: softBg }}
         >
           <TextField
             fullWidth
@@ -235,7 +243,7 @@ const SearchableMultiSelect = ({
             }}
             sx={{
               "& .MuiOutlinedInput-root": {
-                bgcolor: "#fff",
+                bgcolor: isDark ? "rgba(8, 17, 31, 0.78)" : "#fff",
                 borderRadius: 1.5,
                 fontSize: 13,
               },
@@ -252,9 +260,9 @@ const SearchableMultiSelect = ({
               px: 1.5,
               py: 0.8,
               cursor: "pointer",
-              bgcolor: allSelected ? "#e8f5e9" : "transparent",
+              bgcolor: allSelected ? allSelectedBg : "transparent",
               borderBottom: `1px solid ${BORDER}`,
-              "&:hover": { bgcolor: BG_LIGHT },
+              "&:hover": { bgcolor: softBg },
             }}
           >
             <Checkbox
@@ -302,10 +310,10 @@ const SearchableMultiSelect = ({
                   onClick={() => onToggle(id)}
                   sx={{
                     px: 1.5,
-                    bgcolor: checked ? "#e3f0f5" : "transparent",
+                    bgcolor: checked ? selectedBg : "transparent",
                     borderBottom: `1px solid ${BORDER}`,
                     "&:last-child": { borderBottom: "none" },
-                    "&:hover": { bgcolor: checked ? "#d4e9f0" : BG_LIGHT },
+                    "&:hover": { bgcolor: checked ? selectedHoverBg : softBg },
                     transition: "background 0.15s",
                   }}
                 >
@@ -462,6 +470,11 @@ const AssignmentModal = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isDark = theme.palette.mode === "dark";
+  const modalSurface = isDark ? "#0f1c2e" : "#fff";
+  const modalSoftSurface = isDark ? "#08111f" : BG_LIGHT;
+  const modalFooter = isDark ? "#0b1626" : "#fafafa";
+  const selectedSummaryBg = isDark ? "rgba(20, 76, 92, 0.2)" : BG_LIGHT;
   const { user, token } = useAuth();
   const {
     assignToAdmin,
@@ -852,7 +865,7 @@ const AssignmentModal = ({
       )}
 
       {(selChecklists.length > 0 || selAssets.length > 0) && (
-        <Paper sx={{ p: 1.5, bgcolor: BG_LIGHT, borderRadius: 2 }}>
+        <Paper sx={{ p: 1.5, bgcolor: selectedSummaryBg, borderRadius: 2, boxShadow: "none" }}>
           <Typography variant="caption" color={PRIMARY} fontWeight={600}>
             Selected items
           </Typography>
@@ -915,7 +928,7 @@ const AssignmentModal = ({
       )}
 
       {selRecips.length > 0 && (
-        <Paper sx={{ p: 1.5, bgcolor: BG_LIGHT, borderRadius: 2 }}>
+        <Paper sx={{ p: 1.5, bgcolor: selectedSummaryBg, borderRadius: 2, boxShadow: "none" }}>
           <Typography variant="caption" color={PRIMARY} fontWeight={600}>
             Selected {isSuperAdmin ? "admin" : "team members"}
           </Typography>
@@ -976,7 +989,7 @@ const AssignmentModal = ({
                 borderRadius: 2,
                 cursor: "pointer",
                 border: `2px solid ${priority === p.value ? p.color : BORDER}`,
-                bgcolor: priority === p.value ? `${p.color}18` : "#fff",
+                bgcolor: priority === p.value ? `${p.color}18` : modalSurface,
                 display: "flex",
                 alignItems: "center",
                 gap: 0.5,
@@ -1112,6 +1125,7 @@ const AssignmentModal = ({
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
+          bgcolor: modalSurface,
         },
       }}
     >
@@ -1151,14 +1165,14 @@ const AssignmentModal = ({
           pt: 2,
           pb: 1,
           flexShrink: 0,
-          bgcolor: BG_LIGHT,
+          bgcolor: modalSoftSurface,
           borderBottom: `1px solid ${BORDER}`,
         }}
       >
         <StepIndicator steps={steps} step={step} onStepClick={setStep} />
       </Box>
 
-      <DialogContent sx={{ flex: 1, overflowY: "auto", px: 3, py: 2.5 }}>
+      <DialogContent sx={{ flex: 1, overflowY: "auto", px: 3, py: 2.5, bgcolor: modalSurface }}>
         {(submitError || assignError) && (
           <Alert
             severity="error"
@@ -1183,7 +1197,7 @@ const AssignmentModal = ({
           justifyContent: "space-between",
           alignItems: "center",
           borderTop: `1px solid ${BORDER}`,
-          bgcolor: "#fafafa",
+          bgcolor: modalFooter,
           pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2 },
         }}
       >

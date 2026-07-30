@@ -33,6 +33,7 @@ import {
   DialogActions,
   Paper,
   useMediaQuery,
+  useTheme,
   Collapse,
 } from "@mui/material";
 import {
@@ -63,31 +64,94 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
-// ─── Design tokens ─────────────────────────────────────────────────────────────
-const T = {
-  page: "#f5f6f8",
+// ─── Design tokens (dark theme — matches AuditLogs.jsx) ─────────────────────
+const DARK_REPORT_TOKENS = {
+  page: "#0a1620",
+  surface: "#0f1e29",
+  surfaceAlt: "#132430",
+  border: "#1c2e3a",
+  ink: "#e7eef2",
+  inkMid: "#c3d0d8",
+  inkSub: "#8ca0ac",
+  inkLight: "#5c7280",
+  brand: "#1fb6cf",
+  brandDark: "#0d8ba1",
+  brandMid: "#1a6680",
+  brandLight: alpha("#1fb6cf", 0.16),
+  brandFaint: alpha("#1fb6cf", 0.08),
+  brandContrast: "#04141a",
+  green: "#4ade80",
+  greenBg: alpha("#4ade80", 0.16),
+  amber: "#fb923c",
+  amberBg: alpha("#fb923c", 0.16),
+  red: "#f87171",
+  redBg: alpha("#f87171", 0.16),
+  purple: "#c084fc",
+  purpleBg: alpha("#c084fc", 0.16),
+  cyan: "#5cd3e6",
+  cyanBg: alpha("#5cd3e6", 0.16),
+};
+
+const LIGHT_REPORT_TOKENS = {
+  page: "#f7fafc",
   surface: "#ffffff",
-  surfaceAlt: "#f8f9fa",
-  border: "rgba(13,43,53,0.08)",
-  ink: "#0d2b35",
-  inkMid: "#1a3d4a",
-  inkSub: "#4a6a78",
-  inkLight: "#8a9aa5",
-  brand: "#083b4b",
-  brandDark: "#081b22",
-  brandMid: "#1a3d4a",
-  brandLight: "#e8edef",
-  brandFaint: "#f2f5f6",
-  green: "#0f7b4a",
-  greenBg: "#e6f3ed",
-  amber: "#b8651a",
-  amberBg: "#f5ede6",
-  red: "#b92b2b",
-  redBg: "#f5e6e6",
-  purple: "#5b2b8a",
-  purpleBg: "#efe6f5",
-  cyan: "#0a6b7a",
-  cyanBg: "#e6f0f2",
+  surfaceAlt: "#f1f6f8",
+  border: "#d8e2e8",
+  ink: "#102a36",
+  inkMid: "#2f4654",
+  inkSub: "#526575",
+  inkLight: "#7a8a99",
+  brand: "#0f6f86",
+  brandDark: "#0b5265",
+  brandMid: "#12849f",
+  brandLight: alpha("#0f6f86", 0.12),
+  brandFaint: alpha("#0f6f86", 0.07),
+  brandContrast: "#ffffff",
+  green: "#0f766e",
+  greenBg: alpha("#0f766e", 0.12),
+  amber: "#d97706",
+  amberBg: alpha("#d97706", 0.12),
+  red: "#dc2626",
+  redBg: alpha("#dc2626", 0.1),
+  purple: "#7c3aed",
+  purpleBg: alpha("#7c3aed", 0.1),
+  cyan: "#0f6f86",
+  cyanBg: alpha("#0f6f86", 0.12),
+};
+
+const T = { ...DARK_REPORT_TOKENS };
+
+const applyReportThemeTokens = (mode) => {
+  Object.assign(T, mode === "light" ? LIGHT_REPORT_TOKENS : DARK_REPORT_TOKENS);
+};
+
+// ─── Shared dark-mode overrides for MUI form controls ───────────────────────
+// MUI's outlined Select/TextField pull border/label/text colors from the
+// active theme palette, which may not match our dark tokens. These sx blocks
+// pin them explicitly so they render correctly regardless of the app theme.
+const darkFieldSx = {
+  "& .MuiOutlinedInput-root": {
+    color: T.ink,
+    bgcolor: T.surface,
+    "& fieldset": { borderColor: T.border },
+    "&:hover fieldset": { borderColor: T.brand },
+    "&.Mui-focused fieldset": { borderColor: T.brand },
+  },
+  "& .MuiInputLabel-root": { color: T.inkLight },
+  "& .MuiInputLabel-root.Mui-focused": { color: T.brand },
+  "& .MuiSvgIcon-root": { color: T.inkLight },
+};
+
+const darkMenuProps = {
+  PaperProps: {
+    sx: {
+      bgcolor: T.surface,
+      border: `1px solid ${T.border}`,
+      "& .MuiMenuItem-root": { color: T.ink, fontSize: 13 },
+      "& .MuiMenuItem-root:hover": { bgcolor: alpha("#1fb6cf", 0.1) },
+      "& .MuiMenuItem-root.Mui-selected": { bgcolor: alpha("#1fb6cf", 0.16) },
+    },
+  },
 };
 
 // ─── Role configuration ────────────────────────────────────────────────────────
@@ -168,7 +232,7 @@ const fmtCur = (n) =>
 const fmtShort = (s, max = 30) =>
   s ? (s.length > max ? s.substring(0, max) + "..." : s) : "—";
 
-// ─── Export Functions ──────────────────────────────────────────────────────────
+// ─── Export Functions (unchanged — exported PDF/Excel stay light/print-friendly) ─
 const exportPDF = async (reportData, reportType) => {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const W = 297;
@@ -209,10 +273,7 @@ const exportPDF = async (reportData, reportType) => {
       doc.setFontSize(5.5);
       doc.setFont("helvetica", "normal");
       doc.text(
-        k
-          .replace(/([A-Z])/g, " $1")
-          .trim()
-          .toUpperCase(),
+        reportLabel(k),
         bx + 3,
         by + 4,
       );
@@ -230,7 +291,7 @@ const exportPDF = async (reportData, reportType) => {
       .slice(0, 12);
 
     autoTable(doc,{
-      head: [cols.map((c) => c.replace(/([A-Z])/g, " $1").trim())],
+      head: [cols.map((c) => reportLabel(c))],
       body: data.map((r) =>
         cols.map((c) => {
           let val = r[c];
@@ -287,7 +348,7 @@ const exportExcel = (reportData, reportType) => {
     const flat = Object.entries(summary)
       .filter(([, v]) => typeof v !== "object")
       .map(([k, v]) => ({
-        Metric: k.replace(/([A-Z])/g, " $1").trim(),
+        Metric: reportLabel(k),
         Value: v,
       }));
     if (flat.length) {
@@ -306,8 +367,8 @@ const ColHead = ({ children, align = "left" }) => (
     sx={{
       fontWeight: 700,
       fontSize: { xs: "0.6rem", sm: "0.65rem" },
-      color: T.inkSub,
-      bgcolor: T.surfaceAlt,
+      color: T.inkLight,
+      bgcolor: alpha("#000", 0.18),
       borderBottom: `1px solid ${T.border}`,
       whiteSpace: "nowrap",
       py: { xs: 1, sm: 1.2 },
@@ -586,7 +647,7 @@ const StatCard = ({ label, value, icon: Icon, color, loading }) => {
               height: { xs: 22, sm: 26 },
               flexShrink: 0,
               borderRadius: "7px",
-              bgcolor: alpha(color || T.brand, 0.1),
+              bgcolor: alpha(color || T.brand, 0.16),
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -632,7 +693,7 @@ const EmptyState = ({ icon: Icon = ReportIcon, title, desc, action }) => (
         height: { xs: 50, sm: 60 },
         borderRadius: "16px",
         bgcolor: T.brandFaint,
-        border: `1px dashed ${T.brandLight}`,
+        border: `1px dashed ${alpha(T.brand, 0.4)}`,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -640,7 +701,7 @@ const EmptyState = ({ icon: Icon = ReportIcon, title, desc, action }) => (
       }}
     >
       <Icon
-        sx={{ fontSize: { xs: 22, sm: 26 }, color: T.brand, opacity: 0.45 }}
+        sx={{ fontSize: { xs: 22, sm: 26 }, color: T.brand, opacity: 0.6 }}
       />
     </Box>
     <Box sx={{ textAlign: "center" }}>
@@ -796,7 +857,7 @@ const ClientsTable = ({ data }) => {
           </TableHead>
           <TableBody>
             {paged.map((r, i) => (
-              <TableRow key={i} hover>
+              <TableRow key={i} hover sx={{ "&:hover": { bgcolor: alpha(T.brand, 0.06) } }}>
                 <DataCell bold>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Avatar
@@ -804,6 +865,7 @@ const ClientsTable = ({ data }) => {
                         width: { xs: 24, sm: 28 },
                         height: { xs: 24, sm: 28 },
                         bgcolor: T.brand,
+                        color: T.brandContrast,
                         fontSize: "0.6rem",
                         fontWeight: 700,
                         flexShrink: 0,
@@ -884,8 +946,9 @@ const ClientsTable = ({ data }) => {
         }}
         rowsPerPageOptions={[5, 10, 25]}
         sx={{
+          color: T.inkSub,
           "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
-            { fontSize: { xs: "0.6rem", sm: "0.71rem" } },
+            { fontSize: { xs: "0.6rem", sm: "0.71rem" }, color: T.inkLight },
           "& .MuiTablePagination-toolbar": {
             flexWrap: "wrap",
             justifyContent: { xs: "center", sm: "flex-end" },
@@ -902,6 +965,7 @@ const ClientsTable = ({ data }) => {
             width: { xs: "100%", sm: "auto" },
             display: "flex",
             justifyContent: { xs: "center", sm: "flex-start" },
+            "& .MuiIconButton-root": { color: T.inkSub },
           },
         }}
       />
@@ -941,7 +1005,7 @@ const TeamTable = ({ data }) => {
           alignItems: { xs: "stretch", sm: "center" },
         }}
       >
-        <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 155 } }}>
+        <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 155 }, ...darkFieldSx }}>
           <InputLabel sx={{ fontSize: "0.8rem" }}>Role</InputLabel>
           <Select
             value={roleF}
@@ -950,6 +1014,7 @@ const TeamTable = ({ data }) => {
               setPg(0);
             }}
             label="Role"
+            MenuProps={darkMenuProps}
           >
             <MenuItem value="">All roles</MenuItem>
             {[
@@ -1036,7 +1101,7 @@ const TeamTable = ({ data }) => {
           </TableHead>
           <TableBody>
             {paged.map((r, i) => (
-              <TableRow key={i} hover>
+              <TableRow key={i} hover sx={{ "&:hover": { bgcolor: alpha(T.brand, 0.06) } }}>
                 <DataCell bold>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Avatar
@@ -1044,6 +1109,7 @@ const TeamTable = ({ data }) => {
                         width: { xs: 24, sm: 28 },
                         height: { xs: 24, sm: 28 },
                         bgcolor: T.purple,
+                        color: T.brandContrast,
                         fontSize: "0.6rem",
                         fontWeight: 700,
                         flexShrink: 0,
@@ -1133,8 +1199,9 @@ const TeamTable = ({ data }) => {
         }}
         rowsPerPageOptions={[5, 10, 25]}
         sx={{
+          color: T.inkSub,
           "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
-            { fontSize: { xs: "0.6rem", sm: "0.71rem" } },
+            { fontSize: { xs: "0.6rem", sm: "0.71rem" }, color: T.inkLight },
           "& .MuiTablePagination-toolbar": {
             flexWrap: "wrap",
             justifyContent: { xs: "center", sm: "flex-end" },
@@ -1151,6 +1218,7 @@ const TeamTable = ({ data }) => {
             width: { xs: "100%", sm: "auto" },
             display: "flex",
             justifyContent: { xs: "center", sm: "flex-start" },
+            "& .MuiIconButton-root": { color: T.inkSub },
           },
         }}
       />
@@ -1387,7 +1455,7 @@ const AssetsTable = ({ data }) => {
           </TableHead>
           <TableBody>
             {paged.map((r, i) => (
-              <TableRow key={i} hover>
+              <TableRow key={i} hover sx={{ "&:hover": { bgcolor: alpha(T.brand, 0.06) } }}>
                 <DataCell bold>
                   <Typography
                     sx={{
@@ -1485,8 +1553,9 @@ const AssetsTable = ({ data }) => {
         }}
         rowsPerPageOptions={[5, 10, 25]}
         sx={{
+          color: T.inkSub,
           "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
-            { fontSize: { xs: "0.6rem", sm: "0.71rem" } },
+            { fontSize: { xs: "0.6rem", sm: "0.71rem" }, color: T.inkLight },
           "& .MuiTablePagination-toolbar": {
             flexWrap: "wrap",
             justifyContent: { xs: "center", sm: "flex-end" },
@@ -1503,6 +1572,7 @@ const AssetsTable = ({ data }) => {
             width: { xs: "100%", sm: "auto" },
             display: "flex",
             justifyContent: { xs: "center", sm: "flex-start" },
+            "& .MuiIconButton-root": { color: T.inkSub },
           },
         }}
       />
@@ -1542,7 +1612,7 @@ const AssignmentsTable = ({ data }) => {
           alignItems: { xs: "stretch", sm: "center" },
         }}
       >
-        <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 130 } }}>
+        <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 130 }, ...darkFieldSx }}>
           <InputLabel sx={{ fontSize: "0.8rem" }}>Status</InputLabel>
           <Select
             value={statusF}
@@ -1551,6 +1621,7 @@ const AssignmentsTable = ({ data }) => {
               setPg(0);
             }}
             label="Status"
+            MenuProps={darkMenuProps}
           >
             <MenuItem value="">All</MenuItem>
             {[
@@ -1644,7 +1715,7 @@ const AssignmentsTable = ({ data }) => {
           </TableHead>
           <TableBody>
             {paged.map((r, i) => (
-              <TableRow key={i} hover>
+              <TableRow key={i} hover sx={{ "&:hover": { bgcolor: alpha(T.brand, 0.06) } }}>
                 <DataCell bold>
                   {fmtShort(r.customer || r.customerName || "—", 12)}
                 </DataCell>
@@ -1716,8 +1787,9 @@ const AssignmentsTable = ({ data }) => {
         }}
         rowsPerPageOptions={[5, 10, 25]}
         sx={{
+          color: T.inkSub,
           "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
-            { fontSize: { xs: "0.6rem", sm: "0.71rem" } },
+            { fontSize: { xs: "0.6rem", sm: "0.71rem" }, color: T.inkLight },
           "& .MuiTablePagination-toolbar": {
             flexWrap: "wrap",
             justifyContent: { xs: "center", sm: "flex-end" },
@@ -1734,6 +1806,7 @@ const AssignmentsTable = ({ data }) => {
             width: { xs: "100%", sm: "auto" },
             display: "flex",
             justifyContent: { xs: "center", sm: "flex-start" },
+            "& .MuiIconButton-root": { color: T.inkSub },
           },
         }}
       />
@@ -1831,7 +1904,7 @@ const GenericTable = ({ data }) => {
           </TableHead>
           <TableBody>
             {paged.map((row, i) => (
-              <TableRow key={i} hover>
+              <TableRow key={i} hover sx={{ "&:hover": { bgcolor: alpha(T.brand, 0.06) } }}>
                 {cols.map((c, j) => {
                   let val = row[c];
                   if (typeof val === "object") val = "—";
@@ -1860,8 +1933,9 @@ const GenericTable = ({ data }) => {
         }}
         rowsPerPageOptions={[5, 10, 25]}
         sx={{
+          color: T.inkSub,
           "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
-            { fontSize: { xs: "0.6rem", sm: "0.71rem" } },
+            { fontSize: { xs: "0.6rem", sm: "0.71rem" }, color: T.inkLight },
           "& .MuiTablePagination-toolbar": {
             flexWrap: "wrap",
             justifyContent: { xs: "center", sm: "flex-end" },
@@ -1878,6 +1952,7 @@ const GenericTable = ({ data }) => {
             width: { xs: "100%", sm: "auto" },
             display: "flex",
             justifyContent: { xs: "center", sm: "flex-start" },
+            "& .MuiIconButton-root": { color: T.inkSub },
           },
         }}
       />
@@ -1888,6 +1963,8 @@ const GenericTable = ({ data }) => {
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 const ReportsDashboard = () => {
   const { user } = useAuth();
+  const theme = useTheme();
+  applyReportThemeTokens(theme.palette.mode);
   const {
     loading,
     error,
@@ -2111,6 +2188,7 @@ const ReportsDashboard = () => {
         minHeight: "100vh",
         p: { xs: 2, sm: 2.25, md: 3 },
         overflowX: "hidden",
+        bgcolor: T.page,
       }}
     >
       {/* Header */}
@@ -2134,11 +2212,11 @@ const ReportsDashboard = () => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: `0 4px 14px ${alpha(T.brand, 0.3)}`,
+              boxShadow: `0 4px 14px ${alpha(T.brand, 0.4)}`,
               flexShrink: 0,
             }}
           >
-            <ReportIcon sx={{ color: "#fff", fontSize: { xs: 18, sm: 22 } }} />
+            <ReportIcon sx={{ color: T.brandContrast, fontSize: { xs: 18, sm: 22 } }} />
           </Box>
           <Box sx={{ minWidth: 0 }}>
             <Typography
@@ -2200,7 +2278,7 @@ const ReportsDashboard = () => {
                   textAlign: "center",
                   transition: "all 0.15s",
                   bgcolor: datePreset === p.value ? T.brand : T.surface,
-                  color: datePreset === p.value ? "#fff" : T.inkSub,
+                  color: datePreset === p.value ? T.brandContrast : T.inkSub,
                   border: `1px solid ${datePreset === p.value ? T.brand : T.border}`,
                   whiteSpace: "nowrap",
                   "&:hover": {
@@ -2218,7 +2296,7 @@ const ReportsDashboard = () => {
             startIcon={<FilterIcon sx={{ fontSize: { xs: 12, sm: 14 } }} />}
             onClick={() => setFilterOpen(true)}
             sx={{
-              bgcolor: T.surface,
+              bgcolor: `${T.surface} !important`,
               border: `1px solid ${T.border}`,
               color: T.inkMid,
               borderRadius: "10px",
@@ -2229,6 +2307,7 @@ const ReportsDashboard = () => {
               height: { xs: 42, sm: 34 },
               width: { xs: "100%", sm: "auto" },
               flexShrink: 0,
+              "&:hover": { bgcolor: `${alpha(T.brand, 0.1)} !important` },
             }}
           >
             Filters
@@ -2238,7 +2317,7 @@ const ReportsDashboard = () => {
             variant="contained"
             startIcon={
               generating ? (
-                <CircularProgress size={13} color="inherit" />
+                <CircularProgress size={13} sx={{ color: T.brandContrast }} />
               ) : (
                 <RunIcon sx={{ fontSize: { xs: 12, sm: 14 } }} />
               )
@@ -2247,6 +2326,7 @@ const ReportsDashboard = () => {
             disabled={generating}
             sx={{
               background: `linear-gradient(135deg, ${T.brand} 0%, ${T.brandDark} 100%)`,
+              color: T.brandContrast,
               borderRadius: "10px",
               textTransform: "none",
               fontSize: { xs: "0.65rem", sm: "0.74rem" },
@@ -2255,7 +2335,7 @@ const ReportsDashboard = () => {
               height: { xs: 44, sm: 34 },
               width: { xs: "100%", sm: "auto" },
               flexShrink: 0,
-              boxShadow: `0 2px 10px ${alpha(T.brand, 0.3)}`,
+              boxShadow: `0 2px 10px ${alpha(T.brand, 0.4)}`,
               "&:hover": {
                 background: `linear-gradient(135deg, ${T.brandDark} 0%, ${T.brand} 100%)`,
               },
@@ -2274,7 +2354,7 @@ const ReportsDashboard = () => {
             p: { xs: 1, sm: 1.5 },
             mb: 2,
             borderRadius: "12px",
-            border: `1px solid ${T.brandLight}`,
+            border: `1px solid ${alpha(T.brand, 0.35)}`,
             bgcolor: T.brandFaint,
             display: "flex",
             alignItems: { xs: "stretch", sm: "center" },
@@ -2304,8 +2384,8 @@ const ReportsDashboard = () => {
             InputLabelProps={{ shrink: true }}
             sx={{
               width: { xs: "100%", sm: 148 },
-              bgcolor: T.surface,
-              borderRadius: "8px",
+              ...darkFieldSx,
+              "& input": { color: T.ink },
             }}
           />
           <TextField
@@ -2317,8 +2397,8 @@ const ReportsDashboard = () => {
             InputLabelProps={{ shrink: true }}
             sx={{
               width: { xs: "100%", sm: 148 },
-              bgcolor: T.surface,
-              borderRadius: "8px",
+              ...darkFieldSx,
+              "& input": { color: T.ink },
             }}
           />
         </Paper>
@@ -2387,12 +2467,12 @@ const ReportsDashboard = () => {
                   borderRadius: "10px",
                   cursor: "pointer",
                   border: `1.5px solid ${sel ? m.color : T.border}`,
-                  bgcolor: sel ? alpha(m.color, 0.07) : T.surface,
+                  bgcolor: sel ? alpha(m.color, 0.14) : T.surface,
                   transition: "all 0.15s",
                   minHeight: { xs: 44, sm: 40 },
                   minWidth: 0,
                   "&:hover": {
-                    bgcolor: alpha(m.color, 0.06),
+                    bgcolor: alpha(m.color, 0.1),
                     borderColor: m.color,
                   },
                 }}
@@ -2451,7 +2531,7 @@ const ReportsDashboard = () => {
                 width: { xs: 30, sm: 36 },
                 height: { xs: 30, sm: 36 },
                 borderRadius: "10px",
-                bgcolor: alpha(meta.color || T.brand, 0.1),
+                bgcolor: alpha(meta.color || T.brand, 0.16),
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2504,10 +2584,10 @@ const ReportsDashboard = () => {
                   disabled={exporting}
                   size="small"
                   sx={{
-                    bgcolor: T.redBg,
+                    bgcolor: `${T.redBg} !important`,
                     borderRadius: "8px",
                     p: { xs: 0.5, sm: 0.75 },
-                    "&:hover": { bgcolor: alpha(T.red, 0.18) },
+                    "&:hover": { bgcolor: `${alpha(T.red, 0.28)} !important` },
                   }}
                 >
                   {exporting ? (
@@ -2525,10 +2605,10 @@ const ReportsDashboard = () => {
                   disabled={exporting}
                   size="small"
                   sx={{
-                    bgcolor: T.greenBg,
+                    bgcolor: `${T.greenBg} !important`,
                     borderRadius: "8px",
                     p: { xs: 0.5, sm: 0.75 },
-                    "&:hover": { bgcolor: alpha(T.green, 0.18) },
+                    "&:hover": { bgcolor: `${alpha(T.green, 0.28)} !important` },
                   }}
                 >
                   <ExcelIcon
@@ -2543,7 +2623,7 @@ const ReportsDashboard = () => {
         <Box sx={{ p: { xs: 1.25, sm: 2.5 } }}>
           {loading && !reportData ? (
             <Box sx={{ py: 4, display: "flex", justifyContent: "center" }}>
-              <CircularProgress />
+              <CircularProgress sx={{ color: T.brand }} />
             </Box>
           ) : !reportData ? (
             <EmptyState
@@ -2573,7 +2653,7 @@ const ReportsDashboard = () => {
   .map(([k, v]) => (
                       <Box key={k}>
                         <StatCard
-                          label={k.replace(/([A-Z])/g, " $1").trim()}
+                          label={reportLabel(k)}
                           value={String(v)}
                           loading={false}
                           small
@@ -2599,6 +2679,7 @@ const ReportsDashboard = () => {
           sx: {
             borderRadius: isMobile ? 0 : "18px",
             border: `1px solid ${T.border}`,
+            bgcolor: T.surface,
           },
         }}
       >
@@ -2632,7 +2713,7 @@ const ReportsDashboard = () => {
             <IconButton
               size="small"
               onClick={() => setFilterOpen(false)}
-              sx={{ borderRadius: "8px", flexShrink: 0 }}
+              sx={{ borderRadius: "8px", flexShrink: 0, color: `${T.inkLight} !important` }}
             >
               <CloseIcon sx={{ fontSize: 17 }} />
             </IconButton>
@@ -2641,12 +2722,13 @@ const ReportsDashboard = () => {
 
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2}>
-            <FormControl size="small" fullWidth sx={{ mt: 1.5 }}>
+            <FormControl size="small" fullWidth sx={{ mt: 1.5, ...darkFieldSx }}>
               <InputLabel sx={{ fontSize: "0.82rem" }}>Report type</InputLabel>
               <Select
                 value={reportType}
                 onChange={(e) => setReportType(e.target.value)}
                 label="Report type"
+                MenuProps={darkMenuProps}
               >
                 {allowed.map((rt) => (
                   <MenuItem key={rt} value={rt}>
@@ -2656,12 +2738,13 @@ const ReportsDashboard = () => {
               </Select>
             </FormControl>
 
-            <FormControl size="small" fullWidth>
+            <FormControl size="small" fullWidth sx={darkFieldSx}>
               <InputLabel sx={{ fontSize: "0.82rem" }}>Date range</InputLabel>
               <Select
                 value={datePreset}
                 onChange={(e) => setDatePreset(e.target.value)}
                 label="Date range"
+                MenuProps={darkMenuProps}
               >
                 {DATE_PRESETS.map((p) => (
                   <MenuItem key={p.value} value={p.value}>
@@ -2681,6 +2764,17 @@ const ReportsDashboard = () => {
                   value={customStart}
                   onChange={(e) => setCustomStart(e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                  sx={{
+                    ...darkFieldSx,
+                    "& input": {
+                      color: T.ink,
+                      colorScheme: theme.palette.mode,
+                    },
+                    "& input::-webkit-calendar-picker-indicator": {
+                      cursor: "pointer",
+                      filter: theme.palette.mode === "dark" ? "invert(1)" : "none",
+                    },
+                  }}
                 />
                 <TextField
                   size="small"
@@ -2690,6 +2784,17 @@ const ReportsDashboard = () => {
                   value={customEnd}
                   onChange={(e) => setCustomEnd(e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                  sx={{
+                    ...darkFieldSx,
+                    "& input": {
+                      color: T.ink,
+                      colorScheme: theme.palette.mode,
+                    },
+                    "& input::-webkit-calendar-picker-indicator": {
+                      cursor: "pointer",
+                      filter: theme.palette.mode === "dark" ? "invert(1)" : "none",
+                    },
+                  }}
                 />
               </>
             )}
@@ -2697,7 +2802,7 @@ const ReportsDashboard = () => {
             {/* Conditional filters */}
             {reportType === "clients" && isSuperAdmin && (
               <>
-                <FormControl size="small" fullWidth>
+                <FormControl size="small" fullWidth sx={darkFieldSx}>
                   <InputLabel sx={{ fontSize: "0.82rem" }}>Plan</InputLabel>
                   <Select
                     value={filters.membershipPlan || ""}
@@ -2708,6 +2813,7 @@ const ReportsDashboard = () => {
                       }))
                     }
                     label="Plan"
+                    MenuProps={darkMenuProps}
                   >
                     <MenuItem value="">All</MenuItem>
                     {["free", "standard", "premium", "enterprise"].map((p) => (
@@ -2721,7 +2827,7 @@ const ReportsDashboard = () => {
                     ))}
                   </Select>
                 </FormControl>
-                <FormControl size="small" fullWidth>
+                <FormControl size="small" fullWidth sx={darkFieldSx}>
                   <InputLabel sx={{ fontSize: "0.82rem" }}>Status</InputLabel>
                   <Select
                     value={filters.status || ""}
@@ -2729,6 +2835,7 @@ const ReportsDashboard = () => {
                       setFilters((p) => ({ ...p, status: e.target.value }))
                     }
                     label="Status"
+                    MenuProps={darkMenuProps}
                   >
                     <MenuItem value="">All</MenuItem>
                     {["active", "inactive", "suspended"].map((s) => (
@@ -2747,7 +2854,7 @@ const ReportsDashboard = () => {
 
             {reportType === "assets" && (
               <>
-                <FormControl size="small" fullWidth>
+                <FormControl size="small" fullWidth sx={darkFieldSx}>
                   <InputLabel sx={{ fontSize: "0.82rem" }}>Status</InputLabel>
                   <Select
                     value={filters.status || ""}
@@ -2755,6 +2862,7 @@ const ReportsDashboard = () => {
                       setFilters((p) => ({ ...p, status: e.target.value }))
                     }
                     label="Status"
+                    MenuProps={darkMenuProps}
                   >
                     <MenuItem value="">All</MenuItem>
                     {["Active", "Maintenance", "Decommissioned", "Retired"].map(
@@ -2780,7 +2888,7 @@ const ReportsDashboard = () => {
 
             {reportType === "team" && (
               <>
-                <FormControl size="small" fullWidth>
+                <FormControl size="small" fullWidth sx={darkFieldSx}>
                   <InputLabel sx={{ fontSize: "0.82rem" }}>Role</InputLabel>
                   <Select
                     value={filters.teamRole || ""}
@@ -2788,6 +2896,7 @@ const ReportsDashboard = () => {
                       setFilters((p) => ({ ...p, teamRole: e.target.value }))
                     }
                     label="Role"
+                    MenuProps={darkMenuProps}
                   >
                     <MenuItem value="">All</MenuItem>
                     {[
@@ -2802,7 +2911,7 @@ const ReportsDashboard = () => {
                     ))}
                   </Select>
                 </FormControl>
-                <FormControl size="small" fullWidth>
+                <FormControl size="small" fullWidth sx={darkFieldSx}>
                   <InputLabel sx={{ fontSize: "0.82rem" }}>Status</InputLabel>
                   <Select
                     value={filters.status || ""}
@@ -2810,6 +2919,7 @@ const ReportsDashboard = () => {
                       setFilters((p) => ({ ...p, status: e.target.value }))
                     }
                     label="Status"
+                    MenuProps={darkMenuProps}
                   >
                     <MenuItem value="">All</MenuItem>
                     {["active", "inactive", "on_leave"].map((s) => (
@@ -2824,7 +2934,7 @@ const ReportsDashboard = () => {
 
             {(reportType === "assignments" || reportType === "inspections") && (
               <>
-                <FormControl size="small" fullWidth>
+                <FormControl size="small" fullWidth sx={darkFieldSx}>
                   <InputLabel sx={{ fontSize: "0.82rem" }}>Status</InputLabel>
                   <Select
                     value={filters.status || ""}
@@ -2832,6 +2942,7 @@ const ReportsDashboard = () => {
                       setFilters((p) => ({ ...p, status: e.target.value }))
                     }
                     label="Status"
+                    MenuProps={darkMenuProps}
                   >
                     <MenuItem value="">All</MenuItem>
                     {[
@@ -2848,7 +2959,7 @@ const ReportsDashboard = () => {
                     ))}
                   </Select>
                 </FormControl>
-                <FormControl size="small" fullWidth>
+                <FormControl size="small" fullWidth sx={darkFieldSx}>
                   <InputLabel sx={{ fontSize: "0.82rem" }}>Priority</InputLabel>
                   <Select
                     value={filters.priority || ""}
@@ -2856,6 +2967,7 @@ const ReportsDashboard = () => {
                       setFilters((p) => ({ ...p, priority: e.target.value }))
                     }
                     label="Priority"
+                    MenuProps={darkMenuProps}
                   >
                     <MenuItem value="">All</MenuItem>
                     {["low", "medium", "high", "critical"].map((p) => (
@@ -2910,6 +3022,7 @@ const ReportsDashboard = () => {
             variant="contained"
             sx={{
               background: `linear-gradient(135deg, ${T.brand}, ${T.brandDark})`,
+              color: T.brandContrast,
               borderRadius: "10px",
               textTransform: "none",
               fontSize: { xs: "0.7rem", sm: "0.77rem" },
@@ -2919,7 +3032,7 @@ const ReportsDashboard = () => {
             }}
           >
             {generating ? (
-              <CircularProgress size={14} color="inherit" />
+              <CircularProgress size={14} sx={{ color: T.brandContrast }} />
             ) : (
               "Generate"
             )}
@@ -2932,8 +3045,7 @@ const ReportsDashboard = () => {
         open={toast.open}
         autoHideDuration={4000}
         onClose={() => setToast((p) => ({ ...p, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity={toast.sev}
           variant="filled"

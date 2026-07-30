@@ -1166,8 +1166,7 @@ export default function TeamMemberDetails() {
           open={toast.open}
           autoHideDuration={5000}
           onClose={closeToast}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert
             onClose={closeToast}
             severity={toast.severity}

@@ -77,32 +77,62 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
 /* ─────────────────────────────────────────────────────
- * Design tokens
+ * Design tokens (dark theme — matches AuditLogs.jsx)
  * ───────────────────────────────────────────────────── */
-const C = {
-  ink: "#0d1117",
-  inkMid: "#374151",
-  inkSoft: "#6b7280",
-  inkMuted: "#9ca3af",
-  line: "#e5e7eb",
-  lineSoft: "#f3f4f6",
-  surface: "#ffffff",
-  canvas: "#f9fafb",
-  accent: "#0f4c61",
-  accentMid: "#1a6680",
-  accentGlow: "rgba(15,76,97,0.08)",
-  green: "#059669",
-  greenBg: "#ecfdf5",
-  amber: "#d97706",
-  amberBg: "#fffbeb",
-  red: "#dc2626",
-  redBg: "#fef2f2",
-  blue: "#2563eb",
-  blueBg: "#eff6ff",
+const DARK_CONTACT_TOKENS = {
   radius: "10px",
   radiusLg: "14px",
-  border: "0.5px solid #e5e7eb",
-  mono: "'JetBrains Mono','Fira Code',monospace",
+  border: "1px solid",
+  borderColor: "#1c2e3a",
+  cardBg: "#0f1e29",
+  pageBg: "#0a1620",
+  textPrimary: "#e7eef2",
+  textSecondary: "#8ca0ac",
+  textMuted: "#5c7280",
+  accent: "#1fb6cf",
+  accentDark: "#0d8ba1",
+  accentContrast: "#04141a",
+  hoverRow: alpha("#1fb6cf", 0.06),
+  fontMono: "'JetBrains Mono','Fira Code',monospace",
+  green: "#4ade80",
+  greenBg: alpha("#4ade80", 0.16),
+  amber: "#fb923c",
+  amberBg: alpha("#fb923c", 0.16),
+  red: "#f87171",
+  redBg: alpha("#f87171", 0.16),
+  blue: "#60a5fa",
+  blueBg: alpha("#60a5fa", 0.16),
+};
+
+const LIGHT_CONTACT_TOKENS = {
+  radius: "10px",
+  radiusLg: "14px",
+  border: "1px solid",
+  borderColor: "#d8e2e8",
+  cardBg: "#ffffff",
+  pageBg: "#f7fafc",
+  textPrimary: "#102a36",
+  textSecondary: "#526575",
+  textMuted: "#7a8a99",
+  accent: "#0f6f86",
+  accentDark: "#0b5265",
+  accentContrast: "#ffffff",
+  hoverRow: alpha("#0f6f86", 0.06),
+  fontMono: "'JetBrains Mono','Fira Code',monospace",
+  green: "#0f766e",
+  greenBg: alpha("#0f766e", 0.12),
+  amber: "#d97706",
+  amberBg: alpha("#d97706", 0.12),
+  red: "#dc2626",
+  redBg: alpha("#dc2626", 0.1),
+  blue: "#2563eb",
+  blueBg: alpha("#2563eb", 0.1),
+};
+
+const T = { ...DARK_CONTACT_TOKENS };
+
+const applyContactThemeTokens = (mode) => {
+  Object.assign(T, mode === "light" ? LIGHT_CONTACT_TOKENS : DARK_CONTACT_TOKENS);
 };
 
 /* ─────────────────────────────────────────────────────
@@ -111,10 +141,10 @@ const C = {
 function inquiryAge(dateStr) {
   const days = Math.floor((Date.now() - new Date(dateStr)) / 86_400_000);
   if (days <= 7)
-    return { label: "New", days, color: C.green, bg: C.greenBg, Icon: CheckCircleIcon };
+    return { label: "New", days, color: T.green, bg: T.greenBg, Icon: CheckCircleIcon };
   if (days <= 30)
-    return { label: "Pending", days, color: C.amber, bg: C.amberBg, Icon: ScheduleIcon };
-  return { label: "Archived", days, color: C.inkMuted, bg: C.lineSoft, Icon: ArchiveIcon };
+    return { label: "Pending", days, color: T.amber, bg: T.amberBg, Icon: ScheduleIcon };
+  return { label: "Archived", days, color: T.textMuted, bg: alpha(T.textSecondary, 0.14), Icon: ArchiveIcon };
 }
 
 function AgeBadge({ date }) {
@@ -146,7 +176,7 @@ function AgeBadge({ date }) {
  * ───────────────────────────────────────────────────── */
 function StatCard({ label, value, icon: Icon, color, loading, active, onClick }) {
   if (loading)
-    return <Skeleton variant="rectangular" height={84} sx={{ borderRadius: C.radius, flex: 1 }} />;
+    return <Skeleton variant="rectangular" height={84} sx={{ borderRadius: T.radius, flex: 1 }} />;
   return (
     <Box
       onClick={onClick}
@@ -162,25 +192,30 @@ function StatCard({ label, value, icon: Icon, color, loading, active, onClick })
       sx={{
         flex: 1,
         minWidth: 140,
-        bgcolor: C.surface,
-        border: active ? `1px solid ${color}` : C.border,
-        borderRadius: C.radius,
+        position: "relative",
+        overflow: "hidden",
+        border: T.border,
+        borderColor: active ? `${color} !important` : T.borderColor,
+        bgcolor: active ? `${alpha(color, 0.14)} !important` : T.cardBg,
+        borderRadius: T.radius,
         p: "14px 16px",
         display: "flex",
         alignItems: "center",
         gap: 1.5,
         cursor: onClick ? "pointer" : "default",
-        boxShadow: active ? `0 0 0 2px ${alpha(color, 0.14)}` : "none",
+        boxShadow: active
+          ? `0 0 0 3px ${alpha(color, 0.42)}, 0 18px 40px ${alpha(color, 0.22)} !important`
+          : "none",
         transition: "box-shadow 0.15s, border-color 0.15s, transform 0.15s",
         "&:hover": {
           boxShadow: active
-            ? `0 0 0 2px ${alpha(color, 0.18)}`
-            : "0 2px 12px rgba(0,0,0,0.06)",
+            ? `0 0 0 3px ${alpha(color, 0.48)}, 0 20px 44px ${alpha(color, 0.24)} !important`
+            : `0 12px 28px ${alpha(color, 0.16)}`,
           transform: onClick ? "translateY(-1px)" : "none",
         },
         "&:focus-visible": {
           outline: "none",
-          boxShadow: `0 0 0 3px ${alpha(color, 0.22)}`,
+          boxShadow: `0 0 0 3px ${alpha(color, 0.3)}`,
         },
       }}
     >
@@ -189,7 +224,7 @@ function StatCard({ label, value, icon: Icon, color, loading, active, onClick })
           width: 38,
           height: 38,
           borderRadius: "9px",
-          bgcolor: alpha(color, 0.1),
+          bgcolor: alpha(color, 0.16),
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -200,10 +235,10 @@ function StatCard({ label, value, icon: Icon, color, loading, active, onClick })
         <Icon sx={{ fontSize: 18 }} />
       </Box>
       <Box>
-        <Typography fontSize={10.5} color={C.inkMuted} fontWeight={500} lineHeight={1.2} mb={0.25}>
+        <Typography fontSize={10.5} color={T.textMuted} fontWeight={500} lineHeight={1.2} mb={0.25}>
           {label}
         </Typography>
-        <Typography fontSize={22} fontWeight={700} color={C.ink} lineHeight={1.2}>
+        <Typography fontSize={22} fontWeight={700} color={T.textPrimary} lineHeight={1.2}>
           {(value ?? 0).toLocaleString()}
         </Typography>
       </Box>
@@ -212,7 +247,7 @@ function StatCard({ label, value, icon: Icon, color, loading, active, onClick })
 }
 
 /* ─────────────────────────────────────────────────────
- * Export helpers
+ * Export helpers (unchanged logic — export files stay light/print-friendly)
  * ───────────────────────────────────────────────────── */
 function buildExportRows(list) {
   const header = ["#", "Full Name", "Email", "Phone", "Message", "Status", "Submitted At"];
@@ -269,7 +304,7 @@ function downloadPDF(list, filename) {
     body: rows,
     startY: 74,
     styles: { fontSize: 8, cellPadding: 5, overflow: "linebreak", textColor: [30, 30, 30] },
-    headStyles: { fillColor: [15, 76, 97], textColor: 255, fontStyle: "bold", fontSize: 8 },
+    headStyles: { fillColor: [31, 182, 207], textColor: 255, fontStyle: "bold", fontSize: 8 },
     alternateRowStyles: { fillColor: [249, 250, 251] },
     columnStyles: { 0: { cellWidth: 22 }, 4: { cellWidth: 200 }, 6: { cellWidth: 90 } },
   });
@@ -305,18 +340,28 @@ function ExportButton({ list, disabled }) {
         anchorEl={anchor}
         open={Boolean(anchor)}
         onClose={() => setAnchor(null)}
-        PaperProps={{ elevation: 0, sx: { border: C.border, borderRadius: C.radius, mt: 0.5, minWidth: 170 } }}
+        PaperProps={{
+          elevation: 0,
+          sx: {
+            border: T.border,
+            borderColor: T.borderColor,
+            borderRadius: T.radius,
+            mt: 0.5,
+            minWidth: 170,
+            bgcolor: T.cardBg,
+          },
+        }}
       >
         {[
-          { label: "Export CSV", Icon: CsvIcon, color: C.green, action: () => run(downloadCSV, `inquiries-${date}.csv`) },
-          { label: "Export Excel", Icon: ExcelIcon, color: C.blue, action: () => run(downloadExcel, `inquiries-${date}.xlsx`) },
-          { label: "Export PDF", Icon: PdfIcon, color: C.red, action: () => run(downloadPDF, `inquiries-${date}.pdf`) },
+          { label: "Export CSV", Icon: CsvIcon, color: T.green, action: () => run(downloadCSV, `inquiries-${date}.csv`) },
+          { label: "Export Excel", Icon: ExcelIcon, color: T.blue, action: () => run(downloadExcel, `inquiries-${date}.xlsx`) },
+          { label: "Export PDF", Icon: PdfIcon, color: T.red, action: () => run(downloadPDF, `inquiries-${date}.pdf`) },
         ].map(({ label, Icon, color, action }) => (
-          <MenuItem key={label} onClick={action} sx={{ fontSize: 12, py: "8px" }}>
+          <MenuItem key={label} onClick={action} sx={{ fontSize: 12, py: "8px", color: T.textPrimary }}>
             <ListItemIcon sx={{ minWidth: 30 }}>
               <Icon sx={{ fontSize: 16, color }} />
             </ListItemIcon>
-            <ListItemText primaryTypographyProps={{ fontSize: 12 }}>{label}</ListItemText>
+            <ListItemText primaryTypographyProps={{ fontSize: 12, color: T.textPrimary }}>{label}</ListItemText>
           </MenuItem>
         ))}
       </Menu>
@@ -333,14 +378,14 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
 
   const Field = ({ icon: Icon, label, value }) => (
     <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-      <Box sx={{ mt: "1px", color: C.inkMuted, flexShrink: 0 }}>
+      <Box sx={{ mt: "1px", color: T.textMuted, flexShrink: 0 }}>
         <Icon sx={{ fontSize: 15 }} />
       </Box>
       <Box>
-        <Typography fontSize={10.5} color={C.inkMuted} fontWeight={500} textTransform="uppercase" letterSpacing={0.5} mb={0.25}>
+        <Typography fontSize={10.5} color={T.textMuted} fontWeight={500} textTransform="uppercase" letterSpacing={0.5} mb={0.25}>
           {label}
         </Typography>
-        <Typography fontSize={13} color={C.ink}>{value || "—"}</Typography>
+        <Typography fontSize={13} color={T.textPrimary}>{value || "—"}</Typography>
       </Box>
     </Box>
   );
@@ -351,26 +396,35 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ elevation: 0, sx: { borderRadius: C.radiusLg, border: C.border, overflow: "hidden" } }}
+      PaperProps={{
+        elevation: 0,
+        sx: {
+          borderRadius: T.radiusLg,
+          border: T.border,
+          borderColor: T.borderColor,
+          bgcolor: T.cardBg,
+          overflow: "hidden",
+        },
+      }}
     >
-      <Box sx={{ px: 3, pt: 3, pb: 2.5, borderBottom: C.border, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
+      <Box sx={{ px: 3, pt: 3, pb: 2.5, borderBottom: T.border, borderColor: T.borderColor, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.75 }}>
-          <Avatar sx={{ width: 44, height: 44, bgcolor: alpha(C.accent, 0.1), color: C.accent, fontSize: 16, fontWeight: 700 }}>
+          <Avatar sx={{ width: 44, height: 44, bgcolor: alpha(T.accent, 0.16), color: T.accent, fontSize: 16, fontWeight: 700 }}>
             {(inquiry.fullName?.[0] || "U").toUpperCase()}
           </Avatar>
           <Box>
-            <Typography fontSize={15} fontWeight={700} color={C.ink} lineHeight={1.2}>{inquiry.fullName}</Typography>
+            <Typography fontSize={15} fontWeight={700} color={T.textPrimary} lineHeight={1.2}>{inquiry.fullName}</Typography>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
               <AgeBadge date={inquiry.createdAt} />
               {inquiry._id && (
-                <Typography fontSize={10.5} color={C.inkMuted} fontFamily={C.mono}>
+                <Typography fontSize={10.5} color={T.textMuted} fontFamily={T.fontMono}>
                   #{inquiry._id.slice(-8).toUpperCase()}
                 </Typography>
               )}
             </Box>
           </Box>
         </Box>
-        <IconButton size="small" onClick={onClose} sx={{ color: C.inkMuted, mt: "-4px" }}>
+        <IconButton size="small" onClick={onClose} sx={{ color: `${T.textMuted} !important`, mt: "-4px" }}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
@@ -385,13 +439,13 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
               <Field icon={ScheduleIcon} label="Updated" value={new Date(inquiry.updatedAt).toLocaleString()} />
             )}
           </Box>
-          <Divider sx={{ borderColor: C.lineSoft }} />
+          <Divider sx={{ borderColor: T.borderColor }} />
           <Box>
-            <Typography fontSize={10.5} color={C.inkMuted} fontWeight={500} textTransform="uppercase" letterSpacing={0.5} mb={1}>
+            <Typography fontSize={10.5} color={T.textMuted} fontWeight={500} textTransform="uppercase" letterSpacing={0.5} mb={1}>
               Message
             </Typography>
-            <Box sx={{ bgcolor: C.canvas, border: C.border, borderRadius: "8px", p: "12px 14px" }}>
-              <Typography fontSize={13} color={C.inkMid} lineHeight={1.7}>
+            <Box sx={{ bgcolor: T.pageBg, border: T.border, borderColor: T.borderColor, borderRadius: "8px", p: "12px 14px" }}>
+              <Typography fontSize={13} color={T.textSecondary} lineHeight={1.7}>
                 {inquiry.message || "No message provided."}
               </Typography>
             </Box>
@@ -399,12 +453,12 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
         </Stack>
       </DialogContent>
 
-      <Box sx={{ px: 3, py: 2, borderTop: C.border, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+      <Box sx={{ px: 3, py: 2, borderTop: T.border, borderColor: T.borderColor, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
         <Button size="small" color="error" startIcon={<DeleteIcon sx={{ fontSize: 14 }} />} onClick={onDelete} sx={{ fontSize: 12, textTransform: "none" }}>
           Delete
         </Button>
         <Box sx={{ display: "flex", gap: 1 }}>
-          <Button size="small" variant="outlined" onClick={onClose} sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px" }}>
+          <Button size="small" variant="outlined" onClick={onClose} sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px", color: T.textSecondary, borderColor: T.borderColor }}>
             Close
           </Button>
           <Button
@@ -413,7 +467,7 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
             disableElevation
             startIcon={<ReplyIcon sx={{ fontSize: 14 }} />}
             href={`mailto:${inquiry.email}`}
-            sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px", bgcolor: C.accent, "&:hover": { bgcolor: C.accentMid } }}
+            sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px", bgcolor: T.accent, color: T.accentContrast, "&:hover": { bgcolor: T.accentDark } }}
           >
             Reply
           </Button>
@@ -433,23 +487,32 @@ function DeleteDialog({ open, onClose, onConfirm, name, bulk, count, loading }) 
       onClose={loading ? undefined : onClose}
       maxWidth="xs"
       fullWidth
-      PaperProps={{ elevation: 0, sx: { borderRadius: C.radiusLg, border: C.border, overflow: "hidden" } }}
+      PaperProps={{
+        elevation: 0,
+        sx: {
+          borderRadius: T.radiusLg,
+          border: T.border,
+          borderColor: T.borderColor,
+          bgcolor: T.cardBg,
+          overflow: "hidden",
+        },
+      }}
     >
       <Box sx={{ px: 3, pt: 3, pb: 0 }}>
-        <Box sx={{ width: 44, height: 44, borderRadius: "11px", bgcolor: alpha(C.red, 0.1), display: "flex", alignItems: "center", justifyContent: "center", mb: 2 }}>
-          <WarningIcon sx={{ fontSize: 22, color: C.red }} />
+        <Box sx={{ width: 44, height: 44, borderRadius: "11px", bgcolor: alpha(T.red, 0.16), display: "flex", alignItems: "center", justifyContent: "center", mb: 2 }}>
+          <WarningIcon sx={{ fontSize: 22, color: T.red }} />
         </Box>
-        <Typography fontSize={15} fontWeight={700} color={C.ink} mb={1}>
+        <Typography fontSize={15} fontWeight={700} color={T.textPrimary} mb={1}>
           {bulk ? `Delete ${count} inquiries?` : "Delete inquiry?"}
         </Typography>
-        <Typography fontSize={13} color={C.inkSoft} mb={2.5} lineHeight={1.6}>
+        <Typography fontSize={13} color={T.textSecondary} mb={2.5} lineHeight={1.6}>
           {bulk
             ? `This will permanently remove ${count} selected inquiries. This action cannot be undone.`
             : `You're about to permanently delete the inquiry from "${name}". This cannot be undone.`}
         </Typography>
       </Box>
       <Box sx={{ px: 3, pb: 3, display: "flex", justifyContent: "flex-end", gap: 1 }}>
-        <Button size="small" variant="outlined" onClick={onClose} disabled={loading} sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px" }}>
+        <Button size="small" variant="outlined" onClick={onClose} disabled={loading} sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px", color: T.textSecondary, borderColor: T.borderColor }}>
           Cancel
         </Button>
         <Button
@@ -480,11 +543,12 @@ function InquiryCard({ inq, selected, onToggle, onView, onDelete, actionLoading 
       sx={{
         mb: 1.25,
         borderRadius: "12px",
-        border: `0.5px solid ${isSelected ? C.accent : C.line}`,
-        bgcolor: isSelected ? alpha(C.accent, 0.025) : C.surface,
+        border: T.border,
+        borderColor: isSelected ? T.accent : T.borderColor,
+        bgcolor: isSelected ? alpha(T.accent, 0.06) : T.cardBg,
         boxShadow: isSelected
-          ? `0 0 0 2px ${alpha(C.accent, 0.15)}`
-          : "0 1px 3px rgba(0,0,0,0.05)",
+          ? `0 0 0 2px ${alpha(T.accent, 0.28)}`
+          : "0 1px 4px rgba(0,0,0,0.3)",
         transition: "box-shadow 0.15s, border-color 0.15s",
       }}
     >
@@ -495,7 +559,7 @@ function InquiryCard({ inq, selected, onToggle, onView, onDelete, actionLoading 
             size="small"
             checked={isSelected}
             onChange={() => onToggle(inq._id)}
-            sx={{ p: 0, flexShrink: 0, color: C.inkMuted, "&.Mui-checked": { color: C.accent } }}
+            sx={{ p: 0, flexShrink: 0, color: T.textMuted, "&.Mui-checked": { color: T.accent } }}
           />
           <Avatar
             sx={{
@@ -503,15 +567,15 @@ function InquiryCard({ inq, selected, onToggle, onView, onDelete, actionLoading 
               height: 32,
               fontSize: 13,
               fontWeight: 700,
-              bgcolor: alpha(C.accent, 0.1),
-              color: C.accent,
+              bgcolor: alpha(T.accent, 0.16),
+              color: T.accent,
               flexShrink: 0,
             }}
           >
             {(inq.fullName?.[0] || "U").toUpperCase()}
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography fontSize={13} fontWeight={700} color={C.ink} noWrap>
+            <Typography fontSize={13} fontWeight={700} color={T.textPrimary} noWrap>
               {inq.fullName}
             </Typography>
             <AgeBadge date={inq.createdAt} />
@@ -522,7 +586,7 @@ function InquiryCard({ inq, selected, onToggle, onView, onDelete, actionLoading 
               <IconButton
                 size="small"
                 onClick={() => onView(inq._id)}
-                sx={{ width: 28, height: 28, borderRadius: "7px", bgcolor: alpha(C.accent, 0.07), color: C.accent }}
+                sx={{ width: 28, height: 28, borderRadius: "7px", bgcolor: `${alpha(T.accent, 0.16)} !important`, color: `${T.accent} !important` }}
               >
                 <VisibilityIcon sx={{ fontSize: 13 }} />
               </IconButton>
@@ -531,7 +595,7 @@ function InquiryCard({ inq, selected, onToggle, onView, onDelete, actionLoading 
               <IconButton
                 size="small"
                 onClick={() => onDelete(inq._id, inq.fullName)}
-                sx={{ width: 28, height: 28, borderRadius: "7px", bgcolor: alpha(C.red, 0.07), color: C.red }}
+                sx={{ width: 28, height: 28, borderRadius: "7px", bgcolor: `${alpha(T.red, 0.16)} !important`, color: `${T.red} !important` }}
               >
                 <DeleteIcon sx={{ fontSize: 13 }} />
               </IconButton>
@@ -539,22 +603,22 @@ function InquiryCard({ inq, selected, onToggle, onView, onDelete, actionLoading 
           </Box>
         </Box>
 
-        <Divider sx={{ borderColor: C.lineSoft, mb: 1.25 }} />
+        <Divider sx={{ borderColor: T.borderColor, mb: 1.25 }} />
 
         {/* Detail rows */}
         <Stack spacing={0.75}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <EmailIcon sx={{ fontSize: 12, color: C.inkMuted, flexShrink: 0 }} />
-            <Typography fontSize={12} color={C.inkSoft} noWrap>{inq.email || "—"}</Typography>
+            <EmailIcon sx={{ fontSize: 12, color: T.textMuted, flexShrink: 0 }} />
+            <Typography fontSize={12} color={T.textSecondary} noWrap>{inq.email || "—"}</Typography>
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <PhoneIcon sx={{ fontSize: 12, color: C.inkMuted, flexShrink: 0 }} />
-            <Typography fontSize={12} color={C.inkSoft}>{inq.phone || "—"}</Typography>
+            <PhoneIcon sx={{ fontSize: 12, color: T.textMuted, flexShrink: 0 }} />
+            <Typography fontSize={12} color={T.textSecondary}>{inq.phone || "—"}</Typography>
           </Box>
           {inq.message && (
             <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-              <MessageIcon sx={{ fontSize: 12, color: C.inkMuted, flexShrink: 0, mt: "2px" }} />
-              <Typography fontSize={12} color={C.inkSoft} sx={{
+              <MessageIcon sx={{ fontSize: 12, color: T.textMuted, flexShrink: 0, mt: "2px" }} />
+              <Typography fontSize={12} color={T.textSecondary} sx={{
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
@@ -565,8 +629,8 @@ function InquiryCard({ inq, selected, onToggle, onView, onDelete, actionLoading 
             </Box>
           )}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <CalendarIcon sx={{ fontSize: 12, color: C.inkMuted, flexShrink: 0 }} />
-            <Typography fontSize={11.5} color={C.inkMuted} fontFamily={C.mono}>
+            <CalendarIcon sx={{ fontSize: 12, color: T.textMuted, flexShrink: 0 }} />
+            <Typography fontSize={11.5} color={T.textMuted} fontFamily={T.fontMono}>
               {inq.createdAt
                 ? new Date(inq.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                 : "—"}
@@ -583,7 +647,7 @@ function InquiryCard({ inq, selected, onToggle, onView, onDelete, actionLoading 
  * ───────────────────────────────────────────────────── */
 function SkeletonCards({ count = 5 }) {
   return Array.from({ length: count }).map((_, i) => (
-    <Card key={i} sx={{ mb: 1.25, borderRadius: "12px", border: `0.5px solid ${C.line}` }}>
+    <Card key={i} sx={{ mb: 1.25, borderRadius: "12px", border: T.border, borderColor: T.borderColor, bgcolor: T.cardBg }}>
       <CardContent sx={{ p: "12px 14px !important" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.25 }}>
           <Skeleton variant="circular" width={32} height={32} />
@@ -620,23 +684,24 @@ const cellSx = {
   fontSize: 12,
   py: "11px",
   px: "14px",
-  color: C.ink,
-  borderBottom: `0.5px solid ${C.lineSoft}`,
+  color: T.textPrimary,
+  borderBottom: `1px solid ${T.borderColor}`,
 };
 const headCellSx = {
   ...cellSx,
   fontSize: 11,
-  fontWeight: 600,
-  color: C.inkMuted,
+  fontWeight: 700,
+  color: T.textMuted,
   textTransform: "uppercase",
   letterSpacing: "0.5px",
-  bgcolor: C.canvas,
+  bgcolor: alpha("#000", 0.18),
   py: "9px",
-  borderBottom: `0.5px solid ${C.line}`,
+  borderBottom: `1px solid ${T.borderColor}`,
 };
 
 export default function ContactInquiries() {
   const theme = useTheme();
+  applyContactThemeTokens(theme.palette.mode);
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { isAuthenticated } = useAuth();
 
@@ -787,7 +852,7 @@ export default function ContactInquiries() {
   if (!isAuthenticated) {
     return (
       <Box sx={{ p: 4, textAlign: "center" }}>
-        <Typography color={C.inkSoft}>Please log in to access this page.</Typography>
+        <Typography color={T.textSecondary}>Please log in to access this page.</Typography>
       </Box>
     );
   }
@@ -795,15 +860,15 @@ export default function ContactInquiries() {
   const curSearchField = SEARCH_FIELDS.find((f) => f.value === searchField);
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 2.5, md: 3 }, bgcolor: C.canvas, minHeight: "100vh" }}>
+    <Box sx={{ p: { xs: 2, sm: 2.5, md: 3 }, bgcolor: T.pageBg, minHeight: "100vh" }}>
 
       {/* ── Page header ── */}
       <Box sx={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 1.5, mb: 2.5 }}>
         <Box>
-          <Typography fontSize={{ xs: 18, sm: 20, md: 22 }} fontWeight={800} color={C.ink} letterSpacing="-0.02em" lineHeight={1.2}>
+          <Typography fontSize={{ xs: 18, sm: 20, md: 22 }} fontWeight={800} color={T.textPrimary} letterSpacing="-0.02em" lineHeight={1.2}>
             Contact Inquiries
           </Typography>
-          <Typography fontSize={12} color={C.inkMuted} mt={0.4}>
+          <Typography fontSize={12} color={T.textMuted} mt={0.4}>
             Manage and respond to customer messages
           </Typography>
         </Box>
@@ -813,9 +878,15 @@ export default function ContactInquiries() {
             <IconButton
               onClick={() => { fetchInquiries(1, 50); toast("Refreshed"); }}
               disabled={loading}
-              sx={{ border: C.border, borderRadius: "9px", bgcolor: C.surface, "&:hover": { bgcolor: alpha(C.accent, 0.06) } }}
+              sx={{
+                border: T.border,
+                borderColor: T.borderColor,
+                borderRadius: "9px",
+                bgcolor: `${T.cardBg} !important`,
+                "&:hover": { bgcolor: `${alpha(T.accent, 0.12)} !important` },
+              }}
             >
-              <RefreshIcon sx={{ fontSize: 17, color: C.inkSoft }} />
+              <RefreshIcon sx={{ fontSize: 17, color: T.textSecondary }} />
             </IconButton>
           </Tooltip>
         </Box>
@@ -824,9 +895,9 @@ export default function ContactInquiries() {
       {/* ── Stats ── */}
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.25, mb: 2 }}>
         {[
-          { label: "Total", value: stats.total, icon: MessageIcon, color: C.accent, filter: "all" },
-          { label: "New", value: stats.new, icon: CheckCircleIcon, color: C.green, filter: "new" },
-          { label: "Pending", value: stats.pending, icon: ScheduleIcon, color: C.amber, filter: "pending" },
+          { label: "Total", value: stats.total, icon: MessageIcon, color: T.accent, filter: "all" },
+          { label: "New", value: stats.new, icon: CheckCircleIcon, color: T.green, filter: "new" },
+          { label: "Pending", value: stats.pending, icon: ScheduleIcon, color: T.amber, filter: "pending" },
         ].map((s) => (
           <StatCard
             key={s.label}
@@ -839,19 +910,35 @@ export default function ContactInquiries() {
       </Box>
 
       {/* ── Toolbar ── */}
-      <Box sx={{ bgcolor: C.surface, border: C.border, borderRadius: C.radius, p: { xs: "10px 12px", sm: "12px 16px" }, mb: 1.5 }}>
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, alignItems: "center" }}>
+      <Box sx={{ bgcolor: T.cardBg, border: T.border, borderColor: T.borderColor, borderRadius: T.radius, p: { xs: "10px 12px", sm: "12px 16px" }, mb: 1.5 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: { xs: "wrap", md: "nowrap" },
+            gap: 1,
+            alignItems: "center",
+          }}
+        >
           {/* Search field selector + input */}
-          <Box sx={{ display: "flex", gap: 1, flexGrow: 1, maxWidth: "100%", alignItems: "center" }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              flex: "1 1 auto",
+              minWidth: 0,
+              alignItems: "center",
+            }}
+          >
             <Button
               size="small"
               onClick={(e) => setSfAnchor(e.currentTarget)}
               endIcon={<ArrowDownIcon sx={{ fontSize: 12 }} />}
               sx={{
                 px: 3.25, py: 0.75, fontSize: 11, fontWeight: 600, textTransform: "none",
-                color: C.inkSoft, border: C.border, borderRadius: "10px", bgcolor: "#f8fafc",
+                color: T.textSecondary, border: T.border, borderColor: T.borderColor,
+                borderRadius: "10px", bgcolor: `${T.pageBg} !important`,
                 whiteSpace: "nowrap", gap: 0.5, minWidth: 0,
-                "&:hover": { bgcolor: alpha(C.accent, 0.06) },
+                "&:hover": { bgcolor: `${alpha(T.accent, 0.12)} !important` },
               }}
             >
               {curSearchField && <curSearchField.Icon sx={{ fontSize: 13 }} />}
@@ -862,7 +949,7 @@ export default function ContactInquiries() {
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               onClear={() => { setSearch(""); setPage(0); }}
-              sx={{ width: { xs: "100%", md: "780px" } }}
+              sx={{ flex: 1, minWidth: { xs: 0, sm: 280 } }}
               inputSx={{ fontSize: 12 }}
             />
           </Box>
@@ -872,23 +959,26 @@ export default function ContactInquiries() {
             anchorEl={sfAnchor}
             open={Boolean(sfAnchor)}
             onClose={() => setSfAnchor(null)}
-            PaperProps={{ elevation: 0, sx: { border: C.border, borderRadius: C.radius, mt: 0.5, minWidth: 150 } }}
+            PaperProps={{
+              elevation: 0,
+              sx: { border: T.border, borderColor: T.borderColor, borderRadius: T.radius, mt: 0.5, minWidth: 150, bgcolor: T.cardBg },
+            }}
           >
             {SEARCH_FIELDS.map(({ value, label, Icon }) => (
               <MenuItem
                 key={value}
                 selected={searchField === value}
                 onClick={() => { setSearchField(value); setSfAnchor(null); }}
-                sx={{ fontSize: 12, py: "7px", gap: 1 }}
+                sx={{ fontSize: 12, py: "7px", gap: 1, color: T.textPrimary }}
               >
-                <Icon sx={{ fontSize: 14, color: searchField === value ? C.accent : C.inkMuted }} />
+                <Icon sx={{ fontSize: 14, color: searchField === value ? T.accent : T.textMuted }} />
                 {label}
               </MenuItem>
             ))}
           </Menu>
 
           {/* Age filter chips */}
-          <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+          <Box sx={{ display: "flex", gap: 0.5, flexWrap: "nowrap", flexShrink: 0 }}>
             {AGE_FILTERS.map((f) => (
               <Box
                 key={f.value}
@@ -896,11 +986,12 @@ export default function ContactInquiries() {
                 sx={{
                   px: "10px", py: "4px", borderRadius: "7px", fontSize: 11, fontWeight: 600,
                   cursor: "pointer",
-                  bgcolor: ageFilter === f.value ? C.accent : C.canvas,
-                  color: ageFilter === f.value ? "#fff" : C.inkSoft,
-                  border: ageFilter === f.value ? `0.5px solid ${C.accent}` : C.border,
+                  bgcolor: ageFilter === f.value ? T.accent : "transparent",
+                  color: ageFilter === f.value ? T.accentContrast : T.textSecondary,
+                  border: T.border,
+                  borderColor: ageFilter === f.value ? T.accent : T.borderColor,
                   transition: "all 0.12s",
-                  "&:hover": { bgcolor: ageFilter === f.value ? C.accentMid : alpha(C.accent, 0.07) },
+                  "&:hover": { bgcolor: ageFilter === f.value ? T.accentDark : alpha(T.accent, 0.12) },
                 }}
               >
                 {f.label}
@@ -928,7 +1019,7 @@ export default function ContactInquiries() {
               size="small"
               startIcon={<ClearIcon sx={{ fontSize: 12 }} />}
               onClick={resetFilters}
-              sx={{ fontSize: 11, textTransform: "none", color: C.inkMuted, ml: selected.size > 0 ? 0 : "auto" }}
+              sx={{ fontSize: 11, textTransform: "none", color: T.textMuted, ml: selected.size > 0 ? 0 : "auto" }}
             >
               Clear
             </Button>
@@ -937,17 +1028,17 @@ export default function ContactInquiries() {
       </Box>
 
       {/* ── Result count ── */}
-      <Typography fontSize={11.5} color={C.inkMuted} mb={1.25}>
-        Showing <b style={{ color: C.ink }}>{filtered.length.toLocaleString()}</b>{" "}
+      <Typography fontSize={11.5} color={T.textMuted} mb={1.25}>
+        Showing <b style={{ color: T.textPrimary }}>{filtered.length.toLocaleString()}</b>{" "}
         {filtered.length !== inquiries.length && (
-          <>of <b style={{ color: C.ink }}>{inquiries.length.toLocaleString()}</b>{" "}</>
+          <>of <b style={{ color: T.textPrimary }}>{inquiries.length.toLocaleString()}</b>{" "}</>
         )}
         {filtered.length === 1 ? "inquiry" : "inquiries"}
       </Typography>
 
       {/* ── Error alert ── */}
       {error && (
-        <Alert severity="error" onClose={clearError} sx={{ mb: 1.5, borderRadius: C.radius, fontSize: 12 }}>
+        <Alert severity="error" onClose={clearError} sx={{ mb: 1.5, borderRadius: T.radius, fontSize: 12 }}>
           {error}
         </Alert>
       )}
@@ -969,8 +1060,9 @@ export default function ContactInquiries() {
                 px: 1,
                 py: 0.75,
                 mb: 1,
-                bgcolor: C.surface,
-                border: C.border,
+                bgcolor: T.cardBg,
+                border: T.border,
+                borderColor: T.borderColor,
                 borderRadius: "8px",
               }}
             >
@@ -979,9 +1071,9 @@ export default function ContactInquiries() {
                 indeterminate={selected.size > 0 && !allSelected}
                 checked={allSelected}
                 onChange={toggleAll}
-                sx={{ p: 0, color: C.inkMuted, "&.Mui-checked": { color: C.accent } }}
+                sx={{ p: 0, color: T.textMuted, "&.Mui-checked": { color: T.accent } }}
               />
-              <Typography fontSize={11.5} color={C.inkMuted}>
+              <Typography fontSize={11.5} color={T.textMuted}>
                 {allSelected ? "Deselect all" : "Select all on this page"}
               </Typography>
             </Box>
@@ -991,12 +1083,12 @@ export default function ContactInquiries() {
             <SkeletonCards />
           ) : pageSlice.length === 0 ? (
             <Box sx={{ textAlign: "center", py: 7 }}>
-              <MessageIcon sx={{ fontSize: 36, color: C.line, mb: 1, display: "block", mx: "auto" }} />
-              <Typography fontSize={13} color={C.inkSoft} fontWeight={500}>
+              <MessageIcon sx={{ fontSize: 36, color: alpha(T.textSecondary, 0.4), mb: 1, display: "block", mx: "auto" }} />
+              <Typography fontSize={13} color={T.textMuted} fontWeight={500}>
                 {search || ageFilter !== "all" ? "No inquiries match your filters" : "No inquiries yet"}
               </Typography>
               {(search || ageFilter !== "all") && (
-                <Button size="small" onClick={resetFilters} sx={{ mt: 1, fontSize: 11, textTransform: "none", color: C.accent }}>
+                <Button size="small" onClick={resetFilters} sx={{ mt: 1, fontSize: 11, textTransform: "none", color: T.accent }}>
                   Clear filters
                 </Button>
               )}
@@ -1017,7 +1109,7 @@ export default function ContactInquiries() {
 
           {/* Mobile pagination */}
           {filtered.length > 0 && (
-            <Box sx={{ bgcolor: C.surface, border: C.border, borderRadius: C.radius, mt: 1, overflow: "hidden" }}>
+            <Box sx={{ bgcolor: T.cardBg, border: T.border, borderColor: T.borderColor, borderRadius: T.radius, mt: 1, overflow: "hidden" }}>
               <TablePagination
                 rowsPerPageOptions={[5, 10, 25]}
                 component="div"
@@ -1027,8 +1119,9 @@ export default function ContactInquiries() {
                 onPageChange={(_, p) => setPage(p)}
                 onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
                 sx={{
+                  color: T.textSecondary,
                   "& .MuiTablePagination-toolbar": { minHeight: 44, px: 1.5 },
-                  "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontSize: 11.5, color: C.inkMuted },
+                  "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontSize: 11.5, color: T.textMuted },
                 }}
               />
             </Box>
@@ -1038,7 +1131,7 @@ export default function ContactInquiries() {
         /* ══════════════════════════════════════════════
             DESKTOP — Table
            ══════════════════════════════════════════════ */
-        <Box sx={{ bgcolor: C.surface, border: C.border, borderRadius: C.radius, overflow: "hidden" }}>
+        <Box sx={{ bgcolor: T.cardBg, border: T.border, borderColor: T.borderColor, borderRadius: T.radius, overflow: "hidden" }}>
           {(loading || actionLoading) && <LinearProgress sx={{ height: 2 }} />}
 
           {loading && inquiries.length === 0 ? (
@@ -1058,7 +1151,7 @@ export default function ContactInquiries() {
                         indeterminate={selected.size > 0 && !allSelected}
                         checked={allSelected}
                         onChange={toggleAll}
-                        sx={{ p: 0, color: C.inkMuted, "&.Mui-checked": { color: C.accent } }}
+                        sx={{ p: 0, color: T.textMuted, "&.Mui-checked": { color: T.accent } }}
                       />
                     </TableCell>
                     {[
@@ -1089,12 +1182,12 @@ export default function ContactInquiries() {
                   {pageSlice.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} sx={{ py: 8, textAlign: "center" }}>
-                        <MessageIcon sx={{ fontSize: 36, color: C.line, mb: 1, display: "block", mx: "auto" }} />
-                        <Typography fontSize={13} color={C.inkSoft} fontWeight={500}>
+                        <MessageIcon sx={{ fontSize: 36, color: alpha(T.textSecondary, 0.4), mb: 1, display: "block", mx: "auto" }} />
+                        <Typography fontSize={13} color={T.textMuted} fontWeight={500}>
                           {search || ageFilter !== "all" ? "No inquiries match your filters" : "No inquiries yet"}
                         </Typography>
                         {(search || ageFilter !== "all") && (
-                          <Button size="small" onClick={resetFilters} sx={{ mt: 1, fontSize: 11, textTransform: "none", color: C.accent }}>
+                          <Button size="small" onClick={resetFilters} sx={{ mt: 1, fontSize: 11, textTransform: "none", color: T.accent }}>
                             Clear filters
                           </Button>
                         )}
@@ -1106,9 +1199,9 @@ export default function ContactInquiries() {
                         key={inq._id}
                         hover
                         sx={{
-                          "&:hover": { bgcolor: alpha(C.accent, 0.02) },
+                          "&:hover": { bgcolor: T.hoverRow },
                           "&:last-child td": { borderBottom: "none" },
-                          bgcolor: selected.has(inq._id) ? alpha(C.accent, 0.03) : undefined,
+                          bgcolor: selected.has(inq._id) ? alpha(T.accent, 0.06) : undefined,
                           cursor: "pointer",
                         }}
                         onClick={() => handleView(inq._id)}
@@ -1118,37 +1211,37 @@ export default function ContactInquiries() {
                             size="small"
                             checked={selected.has(inq._id)}
                             onChange={() => toggleOne(inq._id)}
-                            sx={{ p: 0, color: C.inkMuted, "&.Mui-checked": { color: C.accent } }}
+                            sx={{ p: 0, color: T.textMuted, "&.Mui-checked": { color: T.accent } }}
                           />
                         </TableCell>
                         <TableCell sx={cellSx}>
                           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-                            <Avatar sx={{ width: 30, height: 30, fontSize: 12, fontWeight: 700, bgcolor: alpha(C.accent, 0.1), color: C.accent, flexShrink: 0 }}>
+                            <Avatar sx={{ width: 30, height: 30, fontSize: 12, fontWeight: 700, bgcolor: alpha(T.accent, 0.16), color: T.accent, flexShrink: 0 }}>
                               {(inq.fullName?.[0] || "U").toUpperCase()}
                             </Avatar>
-                            <Typography fontSize={12.5} fontWeight={600} color={C.ink} noWrap sx={{ maxWidth: 130 }}>
+                            <Typography fontSize={12.5} fontWeight={600} color={T.textPrimary} noWrap sx={{ maxWidth: 130 }}>
                               {inq.fullName}
                             </Typography>
                           </Box>
                         </TableCell>
                         <TableCell sx={cellSx}>
                           <Stack spacing={0.25}>
-                            <Typography fontSize={11.5} color={C.inkSoft} noWrap sx={{ maxWidth: 160, display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <Typography fontSize={11.5} color={T.textSecondary} noWrap sx={{ maxWidth: 160, display: "flex", alignItems: "center", gap: 0.5 }}>
                               <EmailIcon sx={{ fontSize: 11 }} />{inq.email}
                             </Typography>
-                            <Typography fontSize={11.5} color={C.inkSoft} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <Typography fontSize={11.5} color={T.textSecondary} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                               <PhoneIcon sx={{ fontSize: 11 }} />{inq.phone}
                             </Typography>
                           </Stack>
                         </TableCell>
                         <TableCell sx={{ ...cellSx, maxWidth: 220 }}>
-                          <Typography fontSize={11.5} color={C.inkSoft} noWrap title={inq.message}>{inq.message}</Typography>
+                          <Typography fontSize={11.5} color={T.textSecondary} noWrap title={inq.message}>{inq.message}</Typography>
                         </TableCell>
                         <TableCell sx={cellSx}>
-                          <Typography fontSize={11.5} color={C.ink} whiteSpace="nowrap">
+                          <Typography fontSize={11.5} color={T.textPrimary} whiteSpace="nowrap">
                             {inq.createdAt ? new Date(inq.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
                           </Typography>
-                          <Typography fontSize={10.5} color={C.inkMuted} fontFamily={C.mono}>
+                          <Typography fontSize={10.5} color={T.textMuted} fontFamily={T.fontMono}>
                             {inq.createdAt ? new Date(inq.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : ""}
                           </Typography>
                         </TableCell>
@@ -1159,7 +1252,7 @@ export default function ContactInquiries() {
                               <IconButton
                                 size="small"
                                 onClick={() => handleView(inq._id)}
-                                sx={{ width: 28, height: 28, borderRadius: "7px", bgcolor: alpha(C.accent, 0.07), color: C.accent }}
+                                sx={{ width: 28, height: 28, borderRadius: "7px", bgcolor: `${alpha(T.accent, 0.16)} !important`, color: `${T.accent} !important` }}
                                 aria-label="View inquiry"
                               >
                                 <VisibilityIcon sx={{ fontSize: 13 }} />
@@ -1169,7 +1262,7 @@ export default function ContactInquiries() {
                               <IconButton
                                 size="small"
                                 onClick={() => promptDelete(inq._id, inq.fullName)}
-                                sx={{ width: 28, height: 28, borderRadius: "7px", bgcolor: alpha(C.red, 0.07), color: C.red }}
+                                sx={{ width: 28, height: 28, borderRadius: "7px", bgcolor: `${alpha(T.red, 0.16)} !important`, color: `${T.red} !important` }}
                                 aria-label="Delete inquiry"
                               >
                                 <DeleteIcon sx={{ fontSize: 13 }} />
@@ -1186,7 +1279,7 @@ export default function ContactInquiries() {
           )}
 
           {filtered.length > 0 && (
-            <Box sx={{ borderTop: `0.5px solid ${C.lineSoft}` }}>
+            <Box sx={{ borderTop: `1px solid ${T.borderColor}` }}>
               <TablePagination
                 rowsPerPageOptions={[5, 10, 25, 50]}
                 component="div"
@@ -1196,8 +1289,9 @@ export default function ContactInquiries() {
                 onPageChange={(_, p) => setPage(p)}
                 onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
                 sx={{
+                  color: T.textSecondary,
                   "& .MuiTablePagination-toolbar": { minHeight: 44, px: 2 },
-                  "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontSize: 11.5, color: C.inkMuted },
+                  "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontSize: 11.5, color: T.textMuted },
                 }}
               />
             </Box>
@@ -1227,9 +1321,8 @@ export default function ContactInquiries() {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar((s) => ({ ...s, open: false }))} sx={{ borderRadius: C.radius, fontSize: 12 }}>
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar((s) => ({ ...s, open: false }))} sx={{ borderRadius: T.radius, fontSize: 12 }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

@@ -1,11 +1,14 @@
 // layout/Layout.jsx - Updated with NotificationProvider
 import { Box, useMediaQuery, useTheme } from "@mui/material";
 import { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useLocation } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
 
 export default function DashboardLayout({ children }) {
   const theme = useTheme();
+  const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -19,8 +22,13 @@ export default function DashboardLayout({ children }) {
     }
   }, [isMobile, mobileOpen]);
 
+  const isDark = theme.palette.mode === "dark";
+  const shellBackground = isDark
+    ? "radial-gradient(circle at 88% 0%, rgba(18, 88, 112, 0.2) 0%, transparent 32%), #07111f"
+    : "#f8fafc";
+
   return (
-    <Box sx={{ display: "flex", height: "100vh", overflow: "hidden", bgcolor: "#f8fafc" }}>
+    <Box sx={{ display: "flex", height: "100vh", overflow: "hidden", bgcolor: theme.palette.background.default }}>
       <Sidebar mobileOpen={mobileOpen} onDrawerToggle={handleDrawerToggle} />
       
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
@@ -31,7 +39,7 @@ export default function DashboardLayout({ children }) {
           sx={{
             flex: 1,
             overflow: "auto",
-            bgcolor: "#f8fafc",
+            bgcolor: shellBackground,
             p: { xs: 1.5, sm: 2, md: 2.5, lg: 3, xl: 3.5 },
             pb: {
               xs: "calc(128px + env(safe-area-inset-bottom))",
@@ -101,7 +109,19 @@ export default function DashboardLayout({ children }) {
             },
           }}
         >
-          {children}
+          <AnimatePresence mode="wait">
+            <Box
+              key={location.pathname}
+              component={motion.div}
+              initial={{ opacity: 0, y: 10, filter: "blur(2px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -6, filter: "blur(1px)" }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              sx={{ minHeight: "100%" }}
+            >
+              {children}
+            </Box>
+          </AnimatePresence>
         </Box>
       </Box>
     </Box>

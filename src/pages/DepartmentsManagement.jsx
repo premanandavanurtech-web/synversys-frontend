@@ -368,6 +368,7 @@ function DeleteModal({ open, onClose, onConfirm, loading, item }) {
 export default function DepartmentManagement() {
   const navigate = useNavigate();  // Added for navigation
   const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const {
     departments,
@@ -732,13 +733,29 @@ export default function DepartmentManagement() {
                       width: 32,
                       height: 32,
                       borderRadius: "10px",
-                      bgcolor: alpha(s.color, 0.1),
+                      bgcolor: isDark
+                        ? alpha(s.color === C.text.muted ? "#cbd5e1" : s.color, 0.18)
+                        : alpha(s.color, 0.1),
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
+                      border: `1px solid ${
+                        isDark
+                          ? alpha(s.color === C.text.muted ? "#cbd5e1" : s.color, 0.28)
+                          : "transparent"
+                      }`,
                     }}
                   >
-                    <s.icon sx={{ fontSize: 16, color: s.color }} />
+                    <s.icon
+                      sx={{
+                        fontSize: 16,
+                        color: isDark
+                          ? s.color === C.text.muted
+                            ? "#cbd5e1"
+                            : s.color
+                          : s.color,
+                      }}
+                    />
                   </Box>
                 </Box>
                 <Typography
@@ -1222,8 +1239,7 @@ export default function DepartmentManagement() {
         open={toast.open}
         autoHideDuration={4000}
         onClose={closeToast}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={closeToast}
           severity={toast.severity}
@@ -1240,8 +1256,7 @@ export default function DepartmentManagement() {
           open={!!error}
           autoHideDuration={6000}
           onClose={clearError}
-          anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert onClose={clearError} severity="error" sx={{ borderRadius: 2 }}>
             {error}
           </Alert>

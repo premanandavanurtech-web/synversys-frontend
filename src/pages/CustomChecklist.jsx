@@ -1982,13 +1982,9 @@ export default function CustomChecklist({ checklistId }) {
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
-        onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: isMobile ? "center" : "right",
-        }}
+        onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
         sx={{ bottom: { xs: 16, sm: 24 } }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity={snackbar.severity}
           onClose={() => setSnackbar((p) => ({ ...p, open: false }))}

@@ -1151,8 +1151,7 @@ const InspectionReportPage = ({ report, onBack, token }) => {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={handleCloseSnackbar}
           severity={snackbar.severity}

@@ -1435,14 +1435,14 @@ export default function RecycleBin() {
                     height: 44,
                     flexShrink: 0,
                     borderRadius: 2.5,
-                    background: "linear-gradient(135deg, #fef5ec 0%, #fde8d0 100%)",
+                    background: alpha("#d35400", 0.14),
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    boxShadow: `0 0 0 1px ${alpha("#d35400", 0.18)}`,
+                    boxShadow: `0 0 0 1px ${alpha("#d35400", 0.34)}`,
                   }}
                 >
-                  <RestoreFromTrashOutlinedIcon sx={{ color: "#d35400", fontSize: 18 }} />
+                  <RestoreFromTrashOutlinedIcon sx={{ color: "#fb923c", fontSize: 18 }} />
                 </Box>
                 <Box>
                   <Typography variant="h6" fontWeight={700} color="text.primary" sx={{ letterSpacing: "-0.02em" }}>

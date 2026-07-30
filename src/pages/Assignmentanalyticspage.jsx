@@ -30,6 +30,7 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
 } from "@mui/icons-material";
+import { alpha } from "@mui/material/styles";
 import {
   LineChart,
   Line,
@@ -52,6 +53,19 @@ import { useAssignment } from "../context/AssignmentContext";
 const BRAND = "#0d4f63";
 const BRAND_DARK = "#0b4457";
 const BRAND_LIGHT = "#e1f5ee";
+
+const statIconBg = (theme, color) => {
+  if (theme.palette.mode !== "dark") return color;
+  const accent =
+    color === "#faeeda"
+      ? "#f59e0b"
+      : color === "#fcebeb"
+        ? "#ef4444"
+        : color === "#eeedfe"
+          ? "#8b5cf6"
+          : BRAND_LIGHT;
+  return alpha(accent, 0.16);
+};
 
 const STATUS_COLORS = {
   approved: "#1d9e75",
@@ -161,8 +175,20 @@ const StatCard = ({ icon: Icon, iconBg, value, label, sub, trend }) => (
           mb: 1.5,
         }}
       >
-        <Box sx={{ p: 1.25, borderRadius: 2, bgcolor: iconBg, flexShrink: 0 }}>
-          <Icon sx={{ fontSize: 20, color: BRAND }} />
+        <Box
+          sx={(theme) => ({
+            p: 1.25,
+            borderRadius: 2,
+            bgcolor: statIconBg(theme, iconBg),
+            flexShrink: 0,
+          })}
+        >
+          <Icon
+            sx={(theme) => ({
+              fontSize: 20,
+              color: theme.palette.mode === "dark" ? "#67e8f9" : BRAND,
+            })}
+          />
         </Box>
         {trend !== undefined && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -322,6 +348,13 @@ const AssignmentAnalyticsPage = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isMd = useMediaQuery(theme.breakpoints.down("md"));
+  const isDark = theme.palette.mode === "dark";
+  const nestedSurfaceBg = isDark ? "rgba(15, 28, 46, 0.74)" : "#f0f6f8";
+  const rowSurfaceBg = isDark ? "rgba(17, 32, 51, 0.82)" : "#f8fafc";
+  const rowAltSurfaceBg = isDark ? "rgba(17, 32, 51, 0.56)" : "grey.50";
+  const subtleTrackBg = isDark ? "rgba(148, 163, 184, 0.16)" : "#f1efe8";
+  const brandTrackBg = isDark ? "rgba(26, 166, 196, 0.18)" : "#e1f5ee";
+  const chartGridStroke = isDark ? "rgba(148, 163, 184, 0.16)" : "#f1f5f9";
 
   const { getAssignmentAnalytics, getTeamProgress } = useAssignment();
 
@@ -691,7 +724,7 @@ const AssignmentAnalyticsPage = () => {
                 height={chartHeight}
               >
                 <LineChart data={derived?.trendData || []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartGridStroke} />
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 9, fill: "#94a3b8" }}
@@ -778,7 +811,7 @@ const AssignmentAnalyticsPage = () => {
                 height={chartHeight}
               >
                 <BarChart data={derived?.checklistBar || []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartGridStroke} />
                   <XAxis
                     dataKey="name"
                     tick={{ fontSize: 9, fill: "#94a3b8" }}
@@ -849,7 +882,7 @@ const AssignmentAnalyticsPage = () => {
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      stroke="#f1f5f9"
+                      stroke={chartGridStroke}
                       horizontal={false}
                     />
                     <XAxis
@@ -914,7 +947,7 @@ const AssignmentAnalyticsPage = () => {
                     width: "350px",
                     boxShadow: "none",
                     p: 2,
-                    bgcolor: "#f0f6f8",
+                    bgcolor: nestedSurfaceBg,
                   }}
                 >
                   <Box
@@ -1018,7 +1051,7 @@ const AssignmentAnalyticsPage = () => {
                     boxShadow: "none",
                               width:"350px",
                     p: 2,
-                    bgcolor: "#f0f6f8",
+                    bgcolor: nestedSurfaceBg,
                   }}
                 >
                   <Box
@@ -1119,7 +1152,7 @@ const AssignmentAnalyticsPage = () => {
                               width:"350px",
                     boxShadow: "none",
                     p: 2,
-                    bgcolor: "#f0f6f8",
+                    bgcolor: nestedSurfaceBg,
                   }}
                 >
                   <Box
@@ -1236,7 +1269,7 @@ const AssignmentAnalyticsPage = () => {
                   gridTemplateColumns: "2fr 1.2fr 1fr 1.4fr 1fr",
                   px: 1.5,
                   py: 1,
-                  bgcolor: "grey.50",
+                  bgcolor: rowSurfaceBg,
                   borderRadius: 1.5,
                   mb: 0.5,
                   minWidth: 480,
@@ -1403,7 +1436,7 @@ const AssignmentAnalyticsPage = () => {
                             flex: 1,
                             height: 5,
                             borderRadius: 3,
-                            bgcolor: "#f1efe8",
+                            bgcolor: subtleTrackBg,
                             "& .MuiLinearProgress-bar": {
                               bgcolor: rateColor,
                               borderRadius: 3,
@@ -1428,7 +1461,7 @@ const AssignmentAnalyticsPage = () => {
                         flexDirection: "column",
                         gap: 1,
                         p: 1.5,
-                        bgcolor: i % 2 === 0 ? "transparent" : "grey.50",
+                        bgcolor: i % 2 === 0 ? "transparent" : rowAltSurfaceBg,
                         borderRadius: 2,
                         mb: 1,
                       }}
@@ -1519,7 +1552,7 @@ const AssignmentAnalyticsPage = () => {
                             flex: 1,
                             height: 5,
                             borderRadius: 3,
-                            bgcolor: "#f1efe8",
+                            bgcolor: subtleTrackBg,
                             "& .MuiLinearProgress-bar": {
                               bgcolor: rateColor,
                               borderRadius: 3,
@@ -1579,7 +1612,7 @@ const AssignmentAnalyticsPage = () => {
                   key={i}
                   sx={{
                     p: { xs: 1.25, md: 2 },
-                    bgcolor: "#f8fafc",
+                    bgcolor: rowSurfaceBg,
                     borderRadius: 2,
                     border: "0.5px solid",
                     borderColor: "divider",
@@ -1626,7 +1659,7 @@ const AssignmentAnalyticsPage = () => {
                     sx={{
                       height: 6,
                       borderRadius: 3,
-                      bgcolor: "#e1f5ee",
+                      bgcolor: brandTrackBg,
                       "& .MuiLinearProgress-bar": {
                         bgcolor: BRAND,
                         borderRadius: 3,

@@ -40,6 +40,7 @@ import {
   DialogActions,
   Fade,
   LinearProgress,
+  alpha,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -63,8 +64,6 @@ import {
   Save as SaveIcon,
   Visibility,
   VisibilityOff,
-  Add,
-  Remove,
   Lock as LockIcon,
   Email as EmailIcon,
   Phone as PhoneIcon,
@@ -144,7 +143,7 @@ const getAccountCopy = (role) => {
       `${singular} ${status === "active" ? "activated" : "deactivated"} successfully!`,
     totalStat: `Total ${plural}`,
     activeStat: `Active ${plural}`,
-    deactiveStat: `Deactive ${singular}`,
+    deactiveStat: `Inactive ${singular}`,
     searchPlaceholder: `Search ${plural}...`,
     noYet: `No ${plural} yet`,
     emptyHint: `Add your first ${singularLower} to get started`,
@@ -239,57 +238,6 @@ const AccessDenied = () => {
   );
 };
 
-// Stepper Component
-const Stepper = ({ value, onChange, min = 1, max = 1000, label, disabled = false }) => (
-  <Box>
-    <Typography sx={{ fontSize: "0.72rem", color: C.text.secondary, mb: 0.75 }}>
-      {label}
-    </Typography>
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        border: `1px solid ${C.border}`,
-        borderRadius: "8px",
-        px: 1,
-        py: 0.5,
-        width: "fit-content",
-        bgcolor: disabled ? "#f8fafc" : "transparent",
-        opacity: disabled ? 0.72 : 1,
-      }}
-    >
-      <IconButton
-        size="small"
-        onClick={() => onChange(Math.max(min, value - 1))}
-        disabled={disabled || value <= min}
-        sx={{ width: 24, height: 24 }}
-      >
-        <Remove sx={{ fontSize: "0.85rem" }} />
-      </IconButton>
-      <Typography
-        sx={{
-          fontSize: "0.85rem",
-          fontWeight: 600,
-          minWidth: 36,
-          textAlign: "center",
-          color: C.text.primary,
-        }}
-      >
-        {value}
-      </Typography>
-      <IconButton
-        size="small"
-        onClick={() => onChange(Math.min(max, value + 1))}
-        disabled={disabled || value >= max}
-        sx={{ width: 24, height: 24 }}
-      >
-        <Add sx={{ fontSize: "0.85rem" }} />
-      </IconButton>
-    </Box>
-  </Box>
-);
-
 // Password Rule Component
 const PwRule = ({ ok, label }) => (
   <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
@@ -321,6 +269,7 @@ const StatCard = ({
   loading,
   active = false,
   onClick,
+  palette = C,
 }) => {
   if (loading)
     return (
@@ -331,7 +280,7 @@ const StatCard = ({
           height: "100%",
           minHeight: { xs: 132, sm: 146 },
           width: "100%",
-          border: `1px solid ${C.border}`,
+          border: `1px solid ${palette.border}`,
         }}
       >
         <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
@@ -363,11 +312,33 @@ const StatCard = ({
         height: "100%",
         width: "100%",
         cursor: onClick ? "pointer" : "default",
-        border: `1px solid ${active ? color : C.border}`,
-        boxShadow: active ? `0 12px 30px ${color}18` : "none",
+        position: "relative",
+        overflow: "hidden",
+        border: active
+          ? `2px solid ${color} !important`
+          : `1px solid ${palette.border}`,
+        bgcolor: active ? `${alpha(color, 0.14)} !important` : palette.card,
+        boxShadow: active
+          ? `0 0 0 3px ${alpha(color, 0.42)}, 0 18px 40px ${alpha(color, 0.22)} !important`
+          : "none",
         transition: "all 0.2s",
+        "&::before": active
+          ? {
+              content: '""',
+              position: "absolute",
+              inset: "0 auto 0 0",
+              width: 5,
+              bgcolor: color,
+            }
+          : undefined,
         "&:hover": onClick
-          ? { transform: "translateY(-2px)", boxShadow: 2 }
+          ? {
+              transform: "translateY(-2px)",
+              borderColor: `${color} !important`,
+              boxShadow: active
+                ? `0 0 0 3px ${alpha(color, 0.48)}, 0 20px 44px ${alpha(color, 0.24)} !important`
+                : `0 12px 28px ${alpha(color, 0.16)}`,
+            }
           : undefined,
         "&:focus-visible": {
           outline: `2px solid ${color}`,
@@ -376,7 +347,7 @@ const StatCard = ({
       }}
       elevation={0}
     >
-      <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+      <CardContent sx={{ p: { xs: 1.5, sm: 1.75, lg: 2 } }}>
         <Box
           sx={{
             display: "flex",
@@ -403,10 +374,11 @@ const StatCard = ({
           sx={{
             fontSize: "0.65rem",
             fontWeight: 500,
-            color: C.text.muted,
+            color: palette.text.muted,
             textTransform: "uppercase",
             letterSpacing: "0.06em",
             mb: 0.5,
+            overflowWrap: "anywhere",
           }}
         >
           {label}
@@ -415,7 +387,7 @@ const StatCard = ({
           sx={{
             fontSize: { xs: "1.4rem", sm: "1.6rem" },
             fontWeight: 700,
-            color: C.text.primary,
+            color: palette.text.primary,
           }}
         >
           {value ?? 0}
@@ -554,7 +526,7 @@ const ClientManagementSkeleton = () => (
 );
 
 // Client Card Component
-const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
+const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true, palette = C }) => {
   const [anchor, setAnchor] = useState(null);
   const plan = PLAN_META[client.membershipPlan] || PLAN_META.free;
   const isActive = client.status === "active";
@@ -571,8 +543,8 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
     <Card
       sx={{
         borderRadius: 2,
-        width: "370px",
-        border: `1px solid ${C.border}`,
+        width: "100%",
+        border: `1px solid ${palette.border}`,
         transition: "all 0.2s",
         position: "relative",
         "&:hover": {
@@ -614,7 +586,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
               sx={{
                 fontWeight: 700,
                 fontSize: "0.85rem",
-                color: C.text.primary,
+                color: palette.text.primary,
                 mb: 0.25,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -626,7 +598,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
             <Typography
               sx={{
                 fontSize: "0.65rem",
-                color: C.text.secondary,
+                color: palette.text.secondary,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
@@ -638,7 +610,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
           <IconButton
             size="small"
             onClick={(e) => setAnchor(e.currentTarget)}
-            sx={{ color: C.text.muted, flexShrink: 0 }}
+            sx={{ color: palette.text.muted, flexShrink: 0 }}
           >
             <MoreVertIcon sx={{ fontSize: "1rem" }} />
           </IconButton>
@@ -654,7 +626,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
         >
           <Box>
             <Typography
-              sx={{ fontSize: "0.6rem", color: C.text.muted, mb: 0.25 }}
+              sx={{ fontSize: "0.6rem", color: palette.text.muted, mb: 0.25 }}
             >
               Membership
             </Typography>
@@ -680,7 +652,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
                   fontSize: "0.6rem",
                   fontWeight: 700,
                   bgcolor: client.accessType === "read_only" ? "#f1f5f9" : C.primaryLight,
-                  color: client.accessType === "read_only" ? C.text.secondary : C.primary,
+                  color: client.accessType === "read_only" ? palette.text.secondary : C.primary,
                   border: "none",
                 }}
               />
@@ -688,7 +660,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
           </Box>
           <Box sx={{ textAlign: "right" }}>
             <Typography
-              sx={{ fontSize: "0.6rem", color: C.text.muted, mb: 0.25 }}
+              sx={{ fontSize: "0.6rem", color: palette.text.muted, mb: 0.25 }}
             >
               Duration
             </Typography>
@@ -696,7 +668,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
               sx={{
                 fontSize: "0.72rem",
                 fontWeight: 700,
-                color: expiring ? C.warning : C.text.secondary,
+                color: expiring ? C.warning : palette.text.secondary,
               }}
             >
               {daysLeft > 0 ? `${daysLeft} days left` : "Expired"}
@@ -708,14 +680,14 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
           <Box
             sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}
           >
-            <Typography sx={{ fontSize: "0.6rem", color: C.text.muted }}>
+            <Typography sx={{ fontSize: "0.6rem", color: palette.text.muted }}>
               Usage
             </Typography>
             <Typography
               sx={{
                 fontSize: "0.65rem",
                 fontWeight: 600,
-                color: pct > 85 ? C.error : C.text.secondary,
+                color: pct > 85 ? C.error : palette.text.secondary,
               }}
             >
               {pct}%
@@ -724,7 +696,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
           <Box
             sx={{
               height: 5,
-              bgcolor: "#f1f5f9",
+              bgcolor: palette.progressTrack || "#f1f5f9",
               borderRadius: 3,
               overflow: "hidden",
             }}
@@ -773,7 +745,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
                     onClick={() => onEdit(client)}
                     sx={{
                       p: 0.5,
-                      color: C.text.muted,
+                      color: palette.text.muted,
                       "&:hover": { color: C.primary, bgcolor: C.primaryLight },
                     }}
                   >
@@ -786,7 +758,7 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true }) => {
                     onClick={() => onDelete(client)}
                     sx={{
                       p: 0.5,
-                      color: C.text.muted,
+                      color: palette.text.muted,
                       "&:hover": { color: C.error, bgcolor: "#fef2f2" },
                     }}
                   >
@@ -848,6 +820,26 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isDark = theme.palette.mode === "dark";
+  const modalColors = isDark
+    ? {
+        surface: "#0c1726",
+        header: "#111c2b",
+        border: "rgba(148, 163, 184, 0.22)",
+        primaryLight: "rgba(26, 166, 196, 0.12)",
+        text: {
+          primary: "#f8fafc",
+          secondary: "#d9e2ef",
+          muted: "#aeb8c8",
+        },
+      }
+    : {
+        surface: C.surface,
+        header: "white",
+        border: C.border,
+        primaryLight: C.primaryLight,
+        text: C.text,
+      };
   const isEdit = !!client;
   const isAdminActor = currentUser?.role === "admin";
   const copy = getAccountCopy(currentUser?.role);
@@ -884,7 +876,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
       const inheritedPlanLimits = isAdminActor
         ? {
             membershipPlan: currentUser?.membershipPlan || "standard",
-            licenseLimit: Math.max(0, Number(currentUser?.licenseLimit ?? 10) - 1),
+            licenseLimit: Math.max(0, Number(currentUser?.licenseLimit ?? 10)),
             assetLimit: Math.max(0, Number(currentUser?.assetLimit ?? 100)),
           }
         : {};
@@ -930,6 +922,12 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
     if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
   };
 
+  const handleNumberChange = (name, value, min, max) => {
+    const nextValue = value === "" ? "" : Math.min(max, Math.max(min, Number(value)));
+    setForm((p) => ({ ...p, [name]: nextValue }));
+    if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
+  };
+
   const validate = () => {
     const e = {};
     if (!form.customerName?.trim()) e.customerName = "Required";
@@ -949,6 +947,14 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
     if (isAdminActor && !ACCESS_TYPES.some((option) => option.value === form.accessType)) {
       e.accessType = "Access type is required";
     }
+    if (!isAdminActor) {
+      if ((Number(form.licenseLimit) || 0) < 1) e.licenseLimit = "Min 1";
+      if ((Number(form.licenseLimit) || 0) > 1000) e.licenseLimit = "Max 1000";
+      if ((Number(form.assetLimit) || 0) < 1) e.assetLimit = "Min 1";
+      if ((Number(form.assetLimit) || 0) > 10000) e.assetLimit = "Max 10000";
+    }
+    if ((Number(form.duration) || 0) < 1) e.duration = "Min 1";
+    if ((Number(form.duration) || 0) > 365) e.duration = "Max 365";
     setErrors(e);
     return e;
   };
@@ -1004,7 +1010,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
         errors.website ||
         errors.accessType
       );
-    return false;
+    return !!(errors.licenseLimit || errors.assetLimit || errors.duration);
   };
   const limitUnavailable =
     !isEdit &&
@@ -1025,6 +1031,17 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
     "& .MuiInputLabel-root": { fontSize: "0.8rem" },
     "& .MuiInputBase-input": { py: 1.3 },
     "& .MuiFormHelperText-root": { fontSize: "0.68rem", ml: 0, mt: 0.5 },
+  });
+
+  const numberFieldSx = (hasError = false) => ({
+    ...inputSx(hasError),
+    "& input[type=number]": {
+      MozAppearance: "textfield",
+    },
+    "& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button": {
+      WebkitAppearance: "none",
+      margin: 0,
+    },
   });
 
   const TabAccountInfo = (
@@ -1190,38 +1207,58 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
         </Box>
       </Box>
       <Divider />
-      <Grid container spacing={3}>
+      <Grid container spacing={2}>
         <Grid item xs={12} sm={4}>
-          <Stepper
+          <TextField
+            name="licenseLimit"
             label="License limit"
-            value={form.licenseLimit || 10}
-            onChange={(v) => setForm((f) => ({ ...f, licenseLimit: v }))}
-            min={1}
-            max={1000}
+            type="number"
+            value={form.licenseLimit ?? ""}
+            onChange={(e) => handleNumberChange("licenseLimit", e.target.value, 1, 1000)}
+            fullWidth
+            size="small"
             disabled={isAdminActor}
+            error={!!errors.licenseLimit}
+            helperText={errors.licenseLimit}
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ min: 1, max: 1000, inputMode: "numeric" }}
+            sx={numberFieldSx(!!errors.licenseLimit)}
           />
         </Grid>
         <Grid item xs={12} sm={4}>
-          <Stepper
+          <TextField
+            name="assetLimit"
             label="Asset limit"
-            value={form.assetLimit || 100}
-            onChange={(v) => setForm((f) => ({ ...f, assetLimit: v }))}
-            min={1}
-            max={10000}
+            type="number"
+            value={form.assetLimit ?? ""}
+            onChange={(e) => handleNumberChange("assetLimit", e.target.value, 1, 10000)}
+            fullWidth
+            size="small"
             disabled={isAdminActor}
+            error={!!errors.assetLimit}
+            helperText={errors.assetLimit}
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ min: 1, max: 10000, inputMode: "numeric" }}
+            sx={numberFieldSx(!!errors.assetLimit)}
           />
         </Grid>
-        {!isEdit && (
-          <Grid item xs={12} sm={4}>
-            <Stepper
-              label="Duration (days)"
-              value={form.duration || 30}
-              onChange={(v) => setForm((f) => ({ ...f, duration: v }))}
-              min={1}
-              max={365}
-            />
-          </Grid>
-        )}
+        <Grid item xs={12} sm={4}>
+          <TextField
+            name="duration"
+            label="Duration (days)"
+            type="number"
+            value={form.duration ?? ""}
+            onChange={(e) => handleNumberChange("duration", e.target.value, 1, 365)}
+            fullWidth
+            size="small"
+            disabled={isAdminActor}
+            error={!!errors.duration}
+            helperText={errors.duration}
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ min: 1, max: 365, inputMode: "numeric" }}
+            sx={numberFieldSx(!!errors.duration)}
+          />
+        </Grid>
       </Grid>
     </Stack>
   );
@@ -1239,6 +1276,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
           borderRadius: fullScreen ? 0 : { xs: "12px", sm: "16px" },
           overflow: "hidden",
           margin: { xs: 0, sm: 2 },
+          bgcolor: modalColors.surface,
         },
       }}
     >
@@ -1250,8 +1288,8 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
             justifyContent: "space-between",
             px: { xs: 2, sm: 2.5 },
             py: { xs: 1.5, sm: 1.75 },
-            borderBottom: `1px solid ${C.border}`,
-            bgcolor: "white",
+            borderBottom: `1px solid ${modalColors.border}`,
+            bgcolor: modalColors.header,
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
@@ -1260,7 +1298,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
                 width: { xs: 30, sm: 34 },
                 height: { xs: 30, sm: 34 },
                 borderRadius: "8px",
-                bgcolor: C.primaryLight,
+                bgcolor: modalColors.primaryLight,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1278,7 +1316,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
                 sx={{
                   fontWeight: 600,
                   fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                  color: C.text.primary,
+                  color: modalColors.text.primary,
                 }}
               >
                 {isEdit ? copy.editTitle : copy.addTitle}
@@ -1286,7 +1324,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
               <Typography
                 sx={{
                   fontSize: "0.7rem",
-                  color: C.text.secondary,
+                  color: modalColors.text.secondary,
                   display: { xs: "none", sm: "block" },
                 }}
               >
@@ -1300,7 +1338,8 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
             size="small"
             onClick={handleClose}
             sx={{
-              border: `1px solid ${C.border}`,
+              border: `1px solid ${modalColors.border}`,
+              color: modalColors.text.secondary,
               borderRadius: "8px",
               width: { xs: 26, sm: 28 },
               height: { xs: 26, sm: 28 },
@@ -1312,9 +1351,9 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
         <Box
           sx={{
             display: "flex",
-            borderBottom: `1px solid ${C.border}`,
+            borderBottom: `1px solid ${modalColors.border}`,
             px: { xs: 1.5, sm: 2.5 },
-            bgcolor: C.surface,
+            bgcolor: modalColors.header,
             overflowX: "auto",
             "&::-webkit-scrollbar": { height: "2px" },
           }}
@@ -1329,7 +1368,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
                 cursor: "pointer",
                 fontSize: { xs: "0.75rem", sm: "0.8rem" },
                 fontWeight: tab === i ? 700 : 500,
-                color: tab === i ? C.primary : C.text.secondary,
+                color: tab === i ? C.primary : modalColors.text.secondary,
                 borderBottom: "2px solid",
                 borderColor: tab === i ? C.primary : "transparent",
                 transition: "all 0.15s",
@@ -1360,6 +1399,7 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
         sx={{
           px: { xs: 2, sm: 2.5 },
           py: { xs: 2, sm: 2.5 },
+          bgcolor: modalColors.surface,
           maxHeight: { xs: "calc(100vh - 180px)", sm: "60vh" },
           overflowY: "auto",
           "&::-webkit-scrollbar": { width: "4px" },
@@ -1377,16 +1417,16 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
         sx={{
           px: { xs: 2, sm: 2.5 },
           py: 1.5,
-          borderTop: `1px solid ${C.border}`,
+          borderTop: `1px solid ${modalColors.border}`,
           justifyContent: "space-between",
           flexWrap: "wrap",
           gap: 1,
-          bgcolor: "white",
+          bgcolor: modalColors.header,
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-          <ShieldIcon sx={{ fontSize: "0.9rem", color: C.text.muted }} />
-          <Typography sx={{ fontSize: "0.7rem", color: C.text.muted }}>
+          <ShieldIcon sx={{ fontSize: "0.9rem", color: modalColors.text.muted }} />
+          <Typography sx={{ fontSize: "0.7rem", color: modalColors.text.muted }}>
             {copy.singular} receives a secure Set Password email
           </Typography>
         </Box>
@@ -1398,8 +1438,8 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
               textTransform: "none",
               fontSize: "0.8rem",
               borderRadius: "8px",
-              border: `1px solid ${C.border}`,
-              color: C.text.secondary,
+              border: `1px solid ${modalColors.border}`,
+              color: modalColors.text.secondary,
               px: 2.5,
             }}
           >
@@ -1604,6 +1644,26 @@ const StatusDialog = ({ open, client, onClose, onConfirm, loading, copy = getAcc
 export default function ClientManagement() {
   const theme = useTheme();
   const nav = useNavigate();
+  const isDark = theme.palette.mode === "dark";
+  const pageColors = useMemo(
+    () =>
+      isDark
+        ? {
+            ...C,
+            surface: "transparent",
+            card: "rgba(12, 23, 38, 0.92)",
+            border: "rgba(148, 163, 184, 0.18)",
+            primaryLight: "rgba(26, 166, 196, 0.12)",
+            progressTrack: "rgba(148, 163, 184, 0.22)",
+            text: {
+              primary: "#f8fafc",
+              secondary: "#d9e2ef",
+              muted: "#aeb8c8",
+            },
+          }
+        : C,
+    [isDark],
+  );
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user, isAuthenticated, updateCurrentUser } = useAuth();
 
@@ -1685,15 +1745,18 @@ export default function ClientManagement() {
   const getStatFilterParams = useCallback(
     (nextFilter = statFilter) => {
       if (nextFilter === "active") {
-        return { status: "active", membershipPlan: "all", expiringSoon: false };
+        return { status: "active", membershipPlan: "all", expiringSoon: false, expired: false };
       }
       if (nextFilter === "inactive") {
-        return { status: "inactive", membershipPlan: "all", expiringSoon: false };
+        return { status: "inactive", membershipPlan: "all", expiringSoon: false, expired: false };
       }
       if (nextFilter === "expiringSoon") {
-        return { status: "all", membershipPlan: "all", expiringSoon: true };
+        return { status: "all", membershipPlan: "all", expiringSoon: true, expired: false };
       }
-      return { status: "all", membershipPlan: "all", expiringSoon: false };
+      if (nextFilter === "expired") {
+        return { status: "all", membershipPlan: "all", expiringSoon: false, expired: true };
+      }
+      return { status: "all", membershipPlan: "all", expiringSoon: false, expired: false };
     },
     [statFilter],
   );
@@ -1776,6 +1839,7 @@ export default function ClientManagement() {
           membershipPlan: formData.membershipPlan,
           licenseLimit: parseInt(formData.licenseLimit),
           assetLimit: parseInt(formData.assetLimit),
+          extendDays: parseInt(formData.duration),
         };
     await editClient(editingClient._id, {
       customerName: formData.customerName,
@@ -1818,7 +1882,7 @@ export default function ClientManagement() {
     (type, value) => {
       setStatFilter("all");
       updateFilters({ [type]: value });
-      fetchClients({ [type]: value, page: 1, expiringSoon: false });
+      fetchClients({ [type]: value, page: 1, expiringSoon: false, expired: false });
     },
     [updateFilters, fetchClients],
   );
@@ -1833,6 +1897,7 @@ export default function ClientManagement() {
       status: "all",
       membershipPlan: "all",
       expiringSoon: false,
+      expired: false,
       page: 1,
     });
   }, [resetFilters, fetchClients]);
@@ -1895,6 +1960,13 @@ export default function ClientManagement() {
         color: C.warning,
         filterKey: "expiringSoon",
       },
+      {
+        icon: WarningIcon,
+        label: `Expired ${copy.plural}`,
+        value: stats?.expiredCustomers || 0,
+        color: C.error,
+        filterKey: "expired",
+      },
     ],
     [stats, copy],
   );
@@ -1923,7 +1995,7 @@ export default function ClientManagement() {
   console.log("Error====>>",error)
 
   return (
-    <Box sx={{ bgcolor: C.surface, minHeight: "100vh", p: { xs: 2, sm: 3 } }}>
+    <Box sx={{ bgcolor: pageColors.surface, minHeight: "100vh", p: { xs: 2, sm: 3 } }}>
       {(loading || actionLoading) && !initialLoading && (
         <LinearProgress sx={{ mb: 2, borderRadius: 2, height: 3 }} />
       )}
@@ -1943,7 +2015,7 @@ export default function ClientManagement() {
             sx={{
               fontWeight: 800,
               fontSize: { xs: "1.25rem", sm: "1.4rem" },
-              color: C.text.primary,
+              color: pageColors.text.primary,
               mb: 0.25,
             }}
           >
@@ -1952,7 +2024,7 @@ export default function ClientManagement() {
           <Typography
             sx={{
               fontSize: { xs: "0.7rem", sm: "0.75rem" },
-              color: C.text.secondary,
+              color: pageColors.text.secondary,
             }}
           >
             {copy.managementSubtitle}
@@ -1997,7 +2069,7 @@ export default function ClientManagement() {
           gridTemplateColumns: {
             xs: "repeat(2, minmax(0, 1fr))",
             sm: "repeat(2, minmax(0, 1fr))",
-            md: "repeat(4, minmax(0, 1fr))",
+            md: "repeat(5, minmax(0, 1fr))",
           },
           gap: { xs: 1.5, sm: 2 },
           mb: 3,
@@ -2011,6 +2083,7 @@ export default function ClientManagement() {
               loading={initialLoading}
               active={statFilter === s.filterKey}
               onClick={() => handleStatCardClick(s.filterKey)}
+              palette={pageColors}
             />
           </Box>
         ))}
@@ -2021,7 +2094,8 @@ export default function ClientManagement() {
           p: { xs: 1.5, sm: 2 },
           mb: 3,
           borderRadius: 2,
-          border: `1px solid ${C.border}`,
+          border: `1px solid ${pageColors.border}`,
+          bgcolor: pageColors.card,
         }}
         elevation={0}
       >
@@ -2108,7 +2182,7 @@ export default function ClientManagement() {
               size="small"
               onClick={handleRefresh}
               disabled={loading}
-              sx={{ border: `1px solid ${C.border}`, borderRadius: "8px" }}
+              sx={{ border: `1px solid ${pageColors.border}`, borderRadius: "8px" }}
             >
               <RefreshIcon
                 sx={{
@@ -2129,7 +2203,7 @@ export default function ClientManagement() {
           mb: 2,
         }}
       >
-        <Typography sx={{ fontSize: "0.7rem", color: C.text.muted }}>
+        <Typography sx={{ fontSize: "0.7rem", color: pageColors.text.muted }}>
           Showing <strong>{clients?.length || 0}</strong> of{" "}
           <strong>{pagination?.total || 0}</strong> {copy.pluralLower}
         </Typography>
@@ -2157,14 +2231,14 @@ export default function ClientManagement() {
             sx={{
               fontWeight: 700,
               fontSize: "1rem",
-              color: C.text.primary,
+              color: pageColors.text.primary,
               mb: 0.5,
             }}
           >
             {search ? "No results found" : copy.noYet}
           </Typography>
           <Typography
-            sx={{ fontSize: "0.75rem", color: C.text.secondary, mb: 2 }}
+            sx={{ fontSize: "0.75rem", color: pageColors.text.secondary, mb: 2 }}
           >
             {search
               ? "Try adjusting your search"
@@ -2191,32 +2265,43 @@ export default function ClientManagement() {
           )}
         </Box>
       ) : (
-        <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "repeat(2, minmax(0, 1fr))",
+              lg: "repeat(3, minmax(0, 1fr))",
+            },
+            gap: { xs: 1.5, sm: 2 },
+            width: "100%",
+          }}
+        >
           {clients?.map((c) => (
-            <Grid key={c._id} item xs={12} sm={6} lg={4} xl={3}>
-              <ClientCard
-                client={c}
-                onEdit={(cl) => {
-                  if (!canEditAdmins) {
-                    showPermissionToast("Edit");
-                    return;
-                  }
-                  setEditingClient(cl);
-                  setModalOpen(true);
-                }}
-                onDelete={(cl) => {
-                  if (!canDeleteAdmins) {
-                    showPermissionToast("Delete");
-                    return;
-                  }
-                  setSelectedClient(cl);
-                  setDeleteOpen(true);
-                }}
-                onView={(id) => nav(`/admin/clients-details/${id}`)}
-              />
-            </Grid>
+            <ClientCard
+              key={c._id}
+              client={c}
+              onEdit={(cl) => {
+                if (!canEditAdmins) {
+                  showPermissionToast("Edit");
+                  return;
+                }
+                setEditingClient(cl);
+                setModalOpen(true);
+              }}
+              onDelete={(cl) => {
+                if (!canDeleteAdmins) {
+                  showPermissionToast("Delete");
+                  return;
+                }
+                setSelectedClient(cl);
+                setDeleteOpen(true);
+              }}
+              onView={(id) => nav(`/admin/clients-details/${id}`)}
+              palette={pageColors}
+            />
           ))}
-        </Grid>
+        </Box>
       )}
 
       {pagination?.pages > 1 && (
@@ -2236,8 +2321,8 @@ export default function ClientManagement() {
             sx={{
               textTransform: "none",
               borderRadius: "8px",
-              border: `1px solid ${C.border}`,
-              color: C.text.secondary,
+              border: `1px solid ${pageColors.border}`,
+              color: pageColors.text.secondary,
             }}
           >
             Previous
@@ -2330,8 +2415,7 @@ export default function ClientManagement() {
         open={toast.open}
         autoHideDuration={5000}
         onClose={closeToast}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={closeToast}
           severity={toast.severity}

@@ -84,61 +84,149 @@ const shake = keyframes`
   75% { transform: translateX(4px); }
 `;
 
-const C = {
-  brand: "#1C3F5E",
-  brandDark: "#0F2A40",
-  brandMid: "#2A5880",
-  brandLight: "#E8F1F8",
-  brandPale: "#F0F6FB",
-  accent: "#0EA5E9",
-  accentPale: "#E0F2FE",
-  ink: "#0D1B2A",
-  inkSec: "#475569",
-  inkMut: "#94A3B8",
-  border: "#E2E8F0",
-  borderFoc: "#1C3F5E",
-  surface: "#FFFFFF",
-  bg: "#F8FAFC",
-  green: "#059669",
-  greenBg: "#ECFDF5",
-  red: "#DC2626",
-  redBg: "#FEF2F2",
-  orange: "#EA580C",
-  orangeBg: "#FFF7ED",
-  shadow: "0 1px 3px rgba(15,42,64,0.08), 0 1px 2px rgba(15,42,64,0.04)",
-  shadowMd: "0 8px 24px rgba(15,42,64,0.10), 0 3px 8px rgba(15,42,64,0.06)",
-  shadowLg: "0 20px 48px rgba(15,42,64,0.14), 0 6px 16px rgba(15,42,64,0.07)",
+/* ─── Dark theme tokens — matches the AuditLogs palette ─── */
+const DARK_LOGIN_TOKENS = {
+  brand: "#1fb6cf",
+  brandDark: "#0d8ba1",
+  brandMid: "#17a0b8",
+  brandLight: alpha("#1fb6cf", 0.14),
+  brandPale: alpha("#1fb6cf", 0.08),
+  accent: "#1fb6cf",
+  accentPale: alpha("#1fb6cf", 0.14),
+  accentContrast: "#04141a",
+  panelFrom: "#0f2530",
+  panelTo: "#050d12",
+  panelInk: "#e7eef2",
+  panelOrb: alpha("#1fb6cf", 0.06),
+  ink: "#e7eef2",
+  inkSec: "#8ca0ac",
+  inkMut: "#5c7280",
+  border: "#1c2e3a",
+  borderFoc: "#1fb6cf",
+  surface: "#0f1e29",
+  bg: "#0a1620",
+  green: "#4ade80",
+  greenBg: alpha("#4ade80", 0.14),
+  red: "#f87171",
+  redBg: alpha("#f87171", 0.14),
+  orange: "#fb923c",
+  orangeBg: alpha("#fb923c", 0.14),
+  shadow: "0 1px 3px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.3)",
+  shadowMd: "0 8px 24px rgba(0,0,0,0.5), 0 3px 8px rgba(0,0,0,0.35)",
+  shadowLg: "0 20px 48px rgba(0,0,0,0.6), 0 6px 16px rgba(0,0,0,0.4)",
   font: "'Sora', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
 };
 
-const inputSx = (hasError) => ({
-  "& .MuiOutlinedInput-root": {
-    bgcolor: C.bg,
+const LIGHT_LOGIN_TOKENS = {
+  brand: "#214b6b",
+  brandDark: "#163a55",
+  brandMid: "#1a405e",
+  brandLight: alpha("#214b6b", 0.12),
+  brandPale: alpha("#214b6b", 0.08),
+  accent: "#1fb6cf",
+  accentPale: alpha("#1fb6cf", 0.12),
+  accentContrast: "#ffffff",
+  panelFrom: "#16354F",
+  panelTo: "#16354F",
+  panelInk: "#ffffff",
+  panelOrb: alpha("#ffffff", 0.08),
+  ink: "#102a36",
+  inkSec: "#526575",
+  inkMut: "#8ca0b3",
+  border: "#d8e2e8",
+  borderFoc: "#214b6b",
+  surface: "#ffffff",
+  bg: "#f4f7fb",
+  green: "#0f766e",
+  greenBg: alpha("#0f766e", 0.12),
+  red: "#dc2626",
+  redBg: alpha("#dc2626", 0.1),
+  orange: "#d97706",
+  orangeBg: alpha("#d97706", 0.12),
+  shadow: "0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.06)",
+  shadowMd: "0 16px 40px rgba(15,23,42,0.10), 0 6px 16px rgba(15,23,42,0.08)",
+  shadowLg: "0 24px 56px rgba(15,23,42,0.14), 0 8px 20px rgba(15,23,42,0.08)",
+  font: "'Sora', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+};
+
+const C = DARK_LOGIN_TOKENS;
+
+const getLoginTokens = (mode) =>
+  mode === "light" ? LIGHT_LOGIN_TOKENS : DARK_LOGIN_TOKENS;
+
+const authToastSx = (colors, severity = "success") => {
+  const isDark = colors === DARK_LOGIN_TOKENS;
+  const isSuccess = severity === "success";
+  const tone = isSuccess ? colors.green : colors.red;
+
+  return {
+    width: "100%",
+    minWidth: { xs: "auto", sm: 320 },
+    maxWidth: { xs: "calc(100vw - 32px)", sm: 420 },
     borderRadius: "10px",
-    fontFamily: C.font,
+    fontFamily: colors.font,
+    fontSize: { xs: "0.8rem", sm: "0.84rem" },
+    fontWeight: 700,
+    letterSpacing: 0,
+    alignItems: "center",
+    color: isDark ? (isSuccess ? "#bbf7d0" : "#fecaca") : isSuccess ? "#14532d" : "#7f1d1d",
+    bgcolor: isDark ? (isSuccess ? "#10281f" : "#351616") : isSuccess ? "#ecfdf5" : "#fef2f2",
+    border: `1px solid ${alpha(tone, isDark ? 0.42 : 0.28)}`,
+    boxShadow: isDark
+      ? "0 18px 40px rgba(0,0,0,0.45)"
+      : "0 18px 40px rgba(15,23,42,0.14)",
+    "& .MuiAlert-icon": {
+      color: tone,
+      opacity: 1,
+      mr: 1.25,
+    },
+    "& .MuiAlert-message": {
+      py: 0.2,
+    },
+    "& .MuiAlert-action": {
+      color: isDark ? (isSuccess ? "#bbf7d0" : "#fecaca") : isSuccess ? "#14532d" : "#7f1d1d",
+      pl: 1,
+      mr: -0.75,
+    },
+    "& .MuiAlert-action .MuiIconButton-root": {
+      color: isDark ? (isSuccess ? "#bbf7d0" : "#fecaca") : isSuccess ? "#14532d" : "#7f1d1d",
+    },
+  };
+};
+
+const inputSx = (hasError, colors = C) => ({
+  "& .MuiOutlinedInput-root": {
+    bgcolor: colors.bg,
+    borderRadius: "10px",
+    fontFamily: colors.font,
     fontSize: "0.875rem",
+    color: colors.ink,
     transition: "box-shadow 0.2s, border-color 0.2s",
     "& fieldset": {
-      borderColor: hasError ? C.red : C.border,
+      borderColor: hasError ? colors.red : colors.border,
       transition: "border-color 0.2s",
     },
     "&:hover fieldset": {
-      borderColor: hasError ? C.red : alpha(C.brand, 0.45),
+      borderColor: hasError ? colors.red : alpha(colors.brand, 0.55),
     },
     "&.Mui-focused fieldset": {
-      borderColor: hasError ? C.red : C.brand,
+      borderColor: hasError ? colors.red : colors.brand,
       borderWidth: "1.5px",
     },
     "&.Mui-focused": {
-      boxShadow: `0 0 0 3px ${hasError ? alpha(C.red, 0.1) : alpha(C.brand, 0.1)}`,
+      boxShadow: `0 0 0 3px ${hasError ? alpha(colors.red, 0.15) : alpha(colors.brand, 0.15)}`,
+    },
+    "&.Mui-disabled": {
+      "-webkit-text-fill-color": colors.inkMut,
     },
   },
   "& .MuiInputBase-input": {
     py: 1.35,
-    fontFamily: C.font,
+    fontFamily: colors.font,
     fontSize: { xs: "0.8rem", sm: "0.875rem" },
+    color: colors.ink,
     "&::placeholder": {
-      color: C.inkMut,
+      color: colors.inkMut,
       opacity: 1,
       fontSize: { xs: "0.75rem", sm: "0.8rem" },
     },
@@ -147,8 +235,8 @@ const inputSx = (hasError) => ({
     fontSize: { xs: "0.68rem", sm: "0.72rem" },
     marginLeft: 0,
     mt: 0.6,
-    fontFamily: C.font,
-    color: C.red,
+    fontFamily: colors.font,
+    color: colors.red,
   },
 });
 
@@ -180,6 +268,8 @@ const validatePassword = (v) => {
 };
 
 function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
+  const theme = useTheme();
+  const C = React.useMemo(() => getLoginTokens(theme.palette.mode), [theme.palette.mode]);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -235,6 +325,8 @@ function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
           maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
           display: "flex",
           flexDirection: "column",
+          bgcolor: C.surface,
+          border: `1px solid ${C.border}`,
         },
       }}
     >
@@ -374,7 +466,7 @@ function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
                     />
                   ),
                 }}
-                sx={inputSx(hasError)}
+                sx={inputSx(hasError, C)}
               />
 
               <Fade in={hasError}>
@@ -466,7 +558,7 @@ function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
                 color: C.inkSec,
                 px: 2,
                 borderRadius: "8px",
-                "&:hover": { bgcolor: C.bg },
+                "&:hover": { bgcolor: alpha(C.inkSec, 0.08) },
               }}
             >
               Cancel
@@ -482,22 +574,23 @@ function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
                 fontSize: "0.85rem",
                 fontWeight: 700,
                 bgcolor: C.brand,
+                color: C.accentContrast,
                 borderRadius: "8px",
                 px: 3,
                 py: 1,
-                boxShadow: `0 4px 14px ${alpha(C.brand, 0.25)}`,
+                boxShadow: `0 4px 14px ${alpha(C.brand, 0.3)}`,
                 "&:hover": {
                   bgcolor: C.brandDark,
-                  boxShadow: `0 6px 18px ${alpha(C.brand, 0.3)}`,
+                  boxShadow: `0 6px 18px ${alpha(C.brand, 0.35)}`,
                 },
                 "&.Mui-disabled": {
-                  bgcolor: alpha(C.brand, 0.4),
-                  color: "#fff",
+                  bgcolor: alpha(C.brand, 0.35),
+                  color: alpha(C.accentContrast, 0.6),
                 },
               }}
             >
               {loading ? (
-                <CircularProgress size={18} thickness={3} sx={{ color: "#fff" }} />
+                <CircularProgress size={18} thickness={3} sx={{ color: C.accentContrast }} />
               ) : (
                 "Send reset link"
               )}
@@ -511,6 +604,7 @@ function ForgotPasswordModal({ open, onClose, onForgotPassword, loading }) {
 
 export default function LoginPage() {
   const theme = useTheme();
+  const C = React.useMemo(() => getLoginTokens(theme.palette.mode), [theme.palette.mode]);
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isLgUp = useMediaQuery(theme.breakpoints.up("lg"));
@@ -521,6 +615,7 @@ export default function LoginPage() {
 
   const {
     login,
+    verifyLoginOtp,
     forgotPassword,
     loading: authLoading,
     user,
@@ -535,6 +630,10 @@ export default function LoginPage() {
   const [okOpen, setOkOpen] = useState(false);
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpError, setOtpError] = useState("");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -566,6 +665,13 @@ export default function LoginPage() {
       sessionStorage.removeItem("authExpiredMessage");
       setErrorMsg(expiredMessage);
       setErrOpen(true);
+    }
+
+    const logoutMessage = sessionStorage.getItem("logoutToastMessage");
+    if (logoutMessage) {
+      sessionStorage.removeItem("logoutToastMessage");
+      setSuccessMsg(logoutMessage);
+      setOkOpen(true);
     }
   }, []);
 
@@ -621,6 +727,12 @@ export default function LoginPage() {
     (e) => {
       const { name, value } = e.target;
       setFormData((p) => ({ ...p, [name]: value }));
+      if (otpStep) {
+        setOtpStep(false);
+        setOtp("");
+        setOtpError("");
+        setOtpEmail("");
+      }
       if (fieldTouched[name]) {
         setFieldErrors((p) => ({
           ...p,
@@ -631,7 +743,7 @@ export default function LoginPage() {
       if (errorMsg) setErrorMsg("");
       if (shakeField === name) setShakeField(null);
     },
-    [fieldTouched, errorMsg, shakeField],
+    [fieldTouched, errorMsg, shakeField, otpStep],
   );
 
   const handleBlur = useCallback((e) => {
@@ -676,9 +788,32 @@ export default function LoginPage() {
     setErrorMsg("");
 
     try {
-      const result = await login(formData.email, formData.password);
+      const result = await login(
+        formData.email,
+        formData.password,
+        formData.remember,
+      );
 
       if (result.success) {
+        if (result.otpRequired) {
+          if (formData.remember) {
+            localStorage.setItem("rememberMe", "true");
+            localStorage.setItem("rememberedEmail", formData.email);
+          } else {
+            localStorage.removeItem("rememberMe");
+            localStorage.removeItem("rememberedEmail");
+          }
+
+          setOtpStep(true);
+          setOtpEmail(result.email || formData.email);
+          setOtp("");
+          setOtpError("");
+          setSuccessMsg(result.message || "Verification code sent to your email.");
+          setOkOpen(true);
+          setSubmitting(false);
+          return;
+        }
+
         if (formData.remember) {
           localStorage.setItem("rememberMe", "true");
           localStorage.setItem("rememberedEmail", formData.email);
@@ -724,6 +859,87 @@ export default function LoginPage() {
         setSubmitting(false);
       }
     }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    const cleanOtp = otp.trim();
+
+    if (!/^\d{6}$/.test(cleanOtp)) {
+      setOtpError("Enter the 6 digit code from your email");
+      setShakeField("otp");
+      setTimeout(() => setShakeField(null), 500);
+      return;
+    }
+
+    setSubmitting(true);
+    setOtpError("");
+    setErrorMsg("");
+
+    try {
+      const result = await verifyLoginOtp(
+        otpEmail || formData.email,
+        cleanOtp,
+        formData.remember,
+      );
+
+      if (result.success) {
+        const role = result.role || result.user?.role || result.userType;
+        const path = getRedirectPath(role);
+
+        setSuccessMsg(result.message || "Login verified! Redirecting...");
+        setOkOpen(true);
+        redirectInProgress.current = true;
+
+        if (redirectTimerRef.current) {
+          clearTimeout(redirectTimerRef.current);
+        }
+
+        redirectTimerRef.current = setTimeout(() => {
+          if (isMounted.current) {
+            setOkOpen(false);
+            setSubmitting(false);
+            navigate(path, { replace: true });
+          }
+        }, 1000);
+      } else if (isMounted.current) {
+        setOtpError(result.error || "Invalid or expired verification code");
+        setErrOpen(true);
+        setErrorMsg(result.error || "Invalid or expired verification code");
+        setSubmitting(false);
+        setShakeField("otp");
+        setTimeout(() => setShakeField(null), 500);
+      }
+    } catch (err) {
+      if (isMounted.current) {
+        console.error("[Login] OTP verification error:", err);
+        setErrorMsg("Unable to verify code. Please try again.");
+        setErrOpen(true);
+        setSubmitting(false);
+      }
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setSubmitting(true);
+    setOtpError("");
+    setErrorMsg("");
+
+    const result = await login(
+      formData.email,
+      formData.password,
+      formData.remember,
+    );
+    if (result.success && result.otpRequired) {
+      setOtpEmail(result.email || formData.email);
+      setOtp("");
+      setSuccessMsg(result.message || "New verification code sent.");
+      setOkOpen(true);
+    } else {
+      setErrorMsg(result.error || "Unable to resend code. Please try again.");
+      setErrOpen(true);
+    }
+    setSubmitting(false);
   };
 
   const getAnimationStyle = (fieldName) => ({
@@ -774,7 +990,7 @@ export default function LoginPage() {
         <Box
           sx={{
             width: "100%",
-            maxWidth: { xs: "100%", sm: 500, md: 720, lg: 1020, xl: 1100 },
+            maxWidth: { xs: "100%", sm: 500, md: 760, lg: 1100 },
             transition: "box-shadow 0.3s ease",
             borderRadius: { xs: "16px", sm: "20px", md: "24px" },
           }}
@@ -789,6 +1005,7 @@ export default function LoginPage() {
               overflow: "hidden",
               boxShadow: C.shadowMd,
               border: `1px solid ${C.border}`,
+              bgcolor: C.surface,
             }}
           >
             {/* Left panel */}
@@ -797,23 +1014,24 @@ export default function LoginPage() {
                 display: { xs: "none", lg: "flex" },
                 flexDirection: "column",
                 justifyContent: "space-between",
-                p: { lg: 4, xl: 4.5 },
-                background: `linear-gradient(150deg, ${C.brand} 0%, ${C.brandDark} 100%)`,
-                color: "#fff",
+                p: { lg: 4, xl: 4 },
+                background: `linear-gradient(150deg, ${C.panelFrom} 0%, ${C.panelTo} 100%)`,
+                color: C.panelInk,
                 position: "relative",
                 overflow: "hidden",
                 minHeight: 500,
+                borderRight: `1px solid ${C.border}`,
               }}
             >
               <Box
                 sx={{
                   position: "absolute",
-                  top: -60,
-                  right: -60,
-                  width: 220,
-                  height: 220,
+                  top: -62,
+                  right: -48,
+                  width: 250,
+                  height: 250,
                   borderRadius: "50%",
-                  bgcolor: alpha("#fff", 0.04),
+                  bgcolor: C.panelOrb,
                   pointerEvents: "none",
                 }}
               />
@@ -825,7 +1043,7 @@ export default function LoginPage() {
                   width: 280,
                   height: 280,
                   borderRadius: "50%",
-                  bgcolor: alpha(C.accent, 0.08),
+                  bgcolor: alpha(C.accent, 0.1),
                   filter: "blur(40px)",
                   pointerEvents: "none",
                 }}
@@ -838,7 +1056,7 @@ export default function LoginPage() {
                   width: 120,
                   height: 120,
                   borderRadius: "50%",
-                  bgcolor: alpha(C.accent, 0.1),
+                  bgcolor: alpha(C.accent, 0.12),
                   filter: "blur(24px)",
                   pointerEvents: "none",
                 }}
@@ -860,8 +1078,8 @@ export default function LoginPage() {
                     px: 1.5,
                     py: 0.75,
                     borderRadius: "8px",
-                    bgcolor: alpha("#fff", 0.08),
-                    border: `1px solid ${alpha("#fff", 0.12)}`,
+                    bgcolor: alpha(C.panelInk, 0.08),
+                    border: `1px solid ${alpha(C.panelInk, 0.14)}`,
                   }}
                 >
                   <ShieldOutlined sx={{ fontSize: 16, color: C.accent }} />
@@ -872,7 +1090,7 @@ export default function LoginPage() {
                       letterSpacing: "0.1em",
                       textTransform: "uppercase",
                       fontFamily: C.font,
-                      color: alpha("#fff", 0.9),
+                      color: alpha(C.panelInk, 0.92),
                     }}
                   >
                     AMS Blue Ledger
@@ -887,6 +1105,7 @@ export default function LoginPage() {
                     letterSpacing: "-0.03em",
                     fontFamily: C.font,
                     mb: 1.5,
+                    color: C.panelInk,
                   }}
                 >
                   Precision in
@@ -905,7 +1124,7 @@ export default function LoginPage() {
                 />
                 <Typography
                   sx={{
-                    color: alpha("#fff", 0.72),
+                    color: alpha(C.panelInk, 0.74),
                     fontSize: "0.82rem",
                     maxWidth: "270px",
                     lineHeight: 1.65,
@@ -938,7 +1157,7 @@ export default function LoginPage() {
                       <Typography
                         sx={{
                           fontSize: "0.78rem",
-                          color: alpha("#fff", 0.8),
+                          color: alpha(C.panelInk, 0.82),
                           fontFamily: C.font,
                           lineHeight: 1.5,
                         }}
@@ -955,11 +1174,11 @@ export default function LoginPage() {
                   position: "relative",
                   zIndex: 2,
                   mt: 3,
-                  bgcolor: alpha("#fff", 0.05),
+                  bgcolor: alpha(C.panelInk, 0.08),
                   backdropFilter: "blur(12px)",
                   borderRadius: "14px",
                   p: 2.5,
-                  border: `1px solid ${alpha("#fff", 0.1)}`,
+                  border: `1px solid ${alpha(C.panelInk, 0.14)}`,
                   animation: `${fadeUp} 0.6s 0.3s ease both`,
                 }}
               >
@@ -967,7 +1186,7 @@ export default function LoginPage() {
                   sx={{
                     fontSize: "0.75rem",
                     fontStyle: "italic",
-                    color: alpha("#fff", 0.88),
+                    color: alpha(C.panelInk, 0.9),
                     mb: 1.75,
                     lineHeight: 1.6,
                     fontFamily: C.font,
@@ -982,7 +1201,7 @@ export default function LoginPage() {
                     sx={{
                       width: 34,
                       height: 34,
-                      border: `1.5px solid ${alpha("#fff", 0.2)}`,
+                      border: `1.5px solid ${alpha(C.panelInk, 0.18)}`,
                     }}
                   />
                   <Box>
@@ -991,7 +1210,7 @@ export default function LoginPage() {
                         fontSize: "0.68rem",
                         fontWeight: 700,
                         letterSpacing: "0.04em",
-                        color: "#fff",
+                        color: C.panelInk,
                         fontFamily: C.font,
                       }}
                     >
@@ -1000,7 +1219,7 @@ export default function LoginPage() {
                     <Typography
                       sx={{
                         fontSize: "0.62rem",
-                        color: alpha("#fff", 0.65),
+                        color: alpha(C.panelInk, 0.66),
                         fontFamily: C.font,
                       }}
                     >
@@ -1014,7 +1233,7 @@ export default function LoginPage() {
             {/* Right panel - Login form */}
             <Box
               sx={{
-                p: { xs: 2.5, sm: 3.5, md: 4, lg: 4.5 },
+                p: { xs: 2.5, sm: 3.5, md: 4, lg: 4, xl: 4 },
                 bgcolor: C.surface,
                 display: "flex",
                 flexDirection: "column",
@@ -1044,7 +1263,7 @@ export default function LoginPage() {
                         py: 0.6,
                         borderRadius: "7px",
                         bgcolor: C.brandPale,
-                        border: `1px solid ${alpha(C.brand, 0.15)}`,
+                        border: `1px solid ${alpha(C.brand, 0.25)}`,
                       }}
                     >
                       <ShieldOutlined sx={{ fontSize: 14, color: C.brand }} />
@@ -1073,7 +1292,7 @@ export default function LoginPage() {
                       mb: 0.75,
                     }}
                   >
-                    Welcome back
+                    {otpStep ? "Verify your email" : "Welcome back"}
                   </Typography>
                   <Typography
                     sx={{
@@ -1082,12 +1301,16 @@ export default function LoginPage() {
                       fontFamily: C.font,
                     }}
                   >
-                    Sign in to access your dashboard
+                    {otpStep
+                      ? `Enter the 6 digit code sent to ${otpEmail || formData.email}`
+                      : "Sign in to access your dashboard"}
                   </Typography>
                 </Box>
 
-                <Box component="form" onSubmit={handleSubmit} noValidate>
+                <Box component="form" onSubmit={otpStep ? handleVerifyOtp : handleSubmit} noValidate>
                   <Stack spacing={2.5}>
+                    {!otpStep ? (
+                      <>
                     <Box sx={{ animation: `${fadeUp} 0.45s 0.08s ease both` }}>
                       <Typography
                         sx={{
@@ -1112,7 +1335,7 @@ export default function LoginPage() {
                         onChange={handleChange}
                         onBlur={handleBlur}
                         required
-                        autoComplete="email"
+                        autoComplete={formData.remember ? "email" : "off"}
                         error={!!(fieldTouched.email && fieldErrors.email)}
                         helperText={fieldTouched.email ? fieldErrors.email : ""}
                         disabled={isDisabled}
@@ -1132,7 +1355,7 @@ export default function LoginPage() {
                           ),
                         }}
                         sx={{
-                          ...inputSx(fieldTouched.email && !!fieldErrors.email),
+                          ...inputSx(fieldTouched.email && !!fieldErrors.email, C),
                           ...getAnimationStyle("email"),
                         }}
                       />
@@ -1175,7 +1398,7 @@ export default function LoginPage() {
                             background: "none",
                             border: "none",
                             p: 0,
-                            "&:hover": { color: C.brandDark },
+                            "&:hover": { color: C.brandMid },
                           }}
                         >
                           Forgot password
@@ -1190,7 +1413,9 @@ export default function LoginPage() {
                         onChange={handleChange}
                         onBlur={handleBlur}
                         required
-                        autoComplete="current-password"
+                        autoComplete={
+                          formData.remember ? "current-password" : "new-password"
+                        }
                         error={
                           !!(fieldTouched.password && fieldErrors.password)
                         }
@@ -1249,6 +1474,7 @@ export default function LoginPage() {
                         sx={{
                           ...inputSx(
                             fieldTouched.password && !!fieldErrors.password,
+                            C,
                           ),
                           ...getAnimationStyle("password"),
                         }}
@@ -1312,23 +1538,24 @@ export default function LoginPage() {
                         sx={{
                           py: { xs: "10px", sm: "11px" },
                           bgcolor: C.brand,
+                          color: C.accentContrast,
                           borderRadius: "10px",
                           fontWeight: 700,
                           fontFamily: C.font,
                           fontSize: { xs: "0.85rem", sm: "0.9rem" },
                           textTransform: "none",
                           letterSpacing: "-0.01em",
-                          boxShadow: `0 4px 14px ${alpha(C.brand, 0.25)}`,
+                          boxShadow: `0 4px 14px ${alpha(C.brand, 0.3)}`,
                           "&:hover": {
                             bgcolor: C.brandMid,
-                            boxShadow: `0 6px 18px ${alpha(C.brand, 0.3)}`,
+                            boxShadow: `0 6px 18px ${alpha(C.brand, 0.35)}`,
                           },
                           "&:active": {
                             transform: "scale(0.98)",
                           },
                           "&.Mui-disabled": {
-                            bgcolor: alpha(C.brand, 0.55),
-                            color: "#fff",
+                            bgcolor: alpha(C.brand, 0.35),
+                            color: alpha(C.accentContrast, 0.6),
                           },
                           transition: "all 0.22s ease",
                         }}
@@ -1337,13 +1564,177 @@ export default function LoginPage() {
                           <CircularProgress
                             size={20}
                             thickness={2.5}
-                            sx={{ color: "rgba(255,255,255,0.85)" }}
+                            sx={{ color: C.accentContrast }}
                           />
                         ) : (
                           "Sign In"
                         )}
                       </Button>
                     </Box>
+                      </>
+                    ) : (
+                      <>
+                        <Box sx={{ animation: `${fadeUp} 0.45s 0.08s ease both` }}>
+                          <Typography
+                            sx={{
+                              fontSize: { xs: "0.65rem", sm: "0.67rem" },
+                              fontWeight: 700,
+                              letterSpacing: "0.08em",
+                              color: C.inkSec,
+                              textTransform: "uppercase",
+                              display: "block",
+                              mb: 0.75,
+                              fontFamily: C.font,
+                            }}
+                          >
+                            Verification Code
+                          </Typography>
+                          <TextField
+                            fullWidth
+                            name="otp"
+                            type="text"
+                            placeholder="Enter 6 digit code"
+                            value={otp}
+                            onChange={(e) => {
+                              const nextOtp = e.target.value.replace(/\D/g, "").slice(0, 6);
+                              setOtp(nextOtp);
+                              if (otpError) setOtpError("");
+                            }}
+                            required
+                            autoComplete="one-time-code"
+                            error={!!otpError}
+                            helperText={otpError}
+                            disabled={isDisabled}
+                            inputProps={{
+                              inputMode: "numeric",
+                              maxLength: 6,
+                              pattern: "\\d{6}",
+                            }}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <ShieldOutlined
+                                    sx={{
+                                      fontSize: { xs: 16, sm: 17 },
+                                      color: otpError ? C.red : C.inkMut,
+                                    }}
+                                  />
+                                </InputAdornment>
+                              ),
+                            }}
+                            sx={{
+                              ...inputSx(!!otpError, C),
+                              ...getAnimationStyle("otp"),
+                              "& .MuiInputBase-input": {
+                                letterSpacing: "0.28em",
+                                fontWeight: 800,
+                              },
+                            }}
+                          />
+                        </Box>
+
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                          justifyContent="space-between"
+                          sx={{ animation: `${fadeUp} 0.45s 0.13s ease both` }}
+                        >
+                          <Link
+                            component="button"
+                            type="button"
+                            onClick={() => {
+                              setOtpStep(false);
+                              setOtp("");
+                              setOtpError("");
+                            }}
+                            underline="hover"
+                            disabled={isDisabled}
+                            sx={{
+                              fontSize: { xs: "0.72rem", sm: "0.78rem" },
+                              color: C.inkSec,
+                              fontWeight: 600,
+                              fontFamily: C.font,
+                              cursor: isDisabled ? "default" : "pointer",
+                              background: "none",
+                              border: "none",
+                              p: 0,
+                            }}
+                          >
+                            Change email
+                          </Link>
+                          <Link
+                            component="button"
+                            type="button"
+                            onClick={handleResendOtp}
+                            underline="hover"
+                            disabled={isDisabled}
+                            sx={{
+                              fontSize: { xs: "0.72rem", sm: "0.78rem" },
+                              color: C.brand,
+                              fontWeight: 700,
+                              fontFamily: C.font,
+                              cursor: isDisabled ? "default" : "pointer",
+                              background: "none",
+                              border: "none",
+                              p: 0,
+                            }}
+                          >
+                            Resend code
+                          </Link>
+                        </Stack>
+
+                        <Box sx={{ animation: `${fadeUp} 0.45s 0.18s ease both` }}>
+                          <Button
+                            type="submit"
+                            fullWidth
+                            variant="contained"
+                            disabled={isDisabled || otp.length !== 6}
+                            endIcon={
+                              !isDisabled && (
+                                <ArrowForward
+                                  sx={{ fontSize: { xs: 15, sm: 16 } }}
+                                />
+                              )
+                            }
+                            sx={{
+                              py: { xs: "10px", sm: "11px" },
+                              bgcolor: C.brand,
+                              color: C.accentContrast,
+                              borderRadius: "10px",
+                              fontWeight: 700,
+                              fontFamily: C.font,
+                              fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                              textTransform: "none",
+                              letterSpacing: "-0.01em",
+                              boxShadow: `0 4px 14px ${alpha(C.brand, 0.3)}`,
+                              "&:hover": {
+                                bgcolor: C.brandMid,
+                                boxShadow: `0 6px 18px ${alpha(C.brand, 0.35)}`,
+                              },
+                              "&:active": {
+                                transform: "scale(0.98)",
+                              },
+                              "&.Mui-disabled": {
+                                bgcolor: alpha(C.brand, 0.35),
+                                color: alpha(C.accentContrast, 0.6),
+                              },
+                              transition: "all 0.22s ease",
+                            }}
+                          >
+                            {isDisabled ? (
+                              <CircularProgress
+                                size={20}
+                                thickness={2.5}
+                                sx={{ color: C.accentContrast }}
+                              />
+                            ) : (
+                              "Verify & Continue"
+                            )}
+                          </Button>
+                        </Box>
+                      </>
+                    )}
                   </Stack>
                 </Box>
               </Box>
@@ -1357,22 +1748,16 @@ export default function LoginPage() {
         open={errOpen}
         autoHideDuration={5000}
         onClose={() => setErrOpen(false)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+
         TransitionComponent={Slide}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity="error"
           onClose={() => setErrOpen(false)}
           icon={<ErrorIcon />}
           elevation={6}
           sx={{
-            width: "100%",
-            maxWidth: { xs: "calc(100vw - 32px)", sm: 420 },
-            borderRadius: "12px",
-            fontFamily: C.font,
-            fontSize: { xs: "0.78rem", sm: "0.82rem" },
-            fontWeight: 500,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.14)",
+            ...authToastSx(C, "error"),
           }}
         >
           {errorMsg}
@@ -1384,26 +1769,15 @@ export default function LoginPage() {
         open={okOpen}
         autoHideDuration={3000}
         onClose={() => setOkOpen(false)}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
         TransitionComponent={Slide}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity="success"
           onClose={() => setOkOpen(false)}
           icon={<CheckCircle fontSize="inherit" />}
           elevation={6}
           sx={{
-            width: "100%",
-            maxWidth: { xs: "calc(100vw - 32px)", sm: 380 },
-            bgcolor: "#10B981",
-            color: "#fff",
-            fontWeight: 600,
-            fontFamily: C.font,
-            fontSize: { xs: "0.78rem", sm: "0.82rem" },
-            borderRadius: "12px",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.14)",
-            "& .MuiAlert-icon": { color: "#fff" },
-            "& .MuiAlert-action": { color: "#fff" },
+            ...authToastSx(C, "success"),
           }}
         >
           {successMsg}

@@ -1170,8 +1170,7 @@ export default function ImportChecklistFields() {
         open={snackbarOpen}
         autoHideDuration={5000}
         onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={handleSnackbarClose}
           severity={snackbarSeverity}

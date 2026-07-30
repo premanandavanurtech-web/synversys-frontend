@@ -1151,8 +1151,7 @@ export default function ChecklistAnalytics() {
           open={snackbar.open}
           autoHideDuration={4000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert severity={snackbar.severity} sx={{ borderRadius: 2 }}>
             {snackbar.message}
           </Alert>

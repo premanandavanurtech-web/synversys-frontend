@@ -56,33 +56,60 @@ const theme = createTheme({
   },
 });
 
+const D = {
+  page: "#07111f",
+  surface: "#0c1726",
+  surfaceAlt: "#101d2e",
+  surfaceSoft: "#132033",
+  border: "rgba(148, 163, 184, 0.18)",
+  borderStrong: "rgba(148, 163, 184, 0.32)",
+  text: "#f8fafc",
+  textSecondary: "#cbd5e1",
+  muted: "#94a3b8",
+  brand: "#22d3ee",
+  success: "#10b981",
+  successBg: "rgba(16, 185, 129, 0.12)",
+  danger: "#ef4444",
+  dangerBg: "rgba(239, 68, 68, 0.12)",
+  warning: "#f59e0b",
+  neutralBg: "rgba(148, 163, 184, 0.12)",
+};
+
 // ─── Styled section card ──────────────────────────────────────────────────────
-const SectionCard = ({ title, children, sx }) => (
-  <Paper
-    elevation={0}
-    sx={{
-      p: { xs: 1.5, sm: 2 },
-      borderRadius: 2,
-      border: "1px solid #e2e8f0",
-      backgroundColor: "#ffffff",
-      ...sx,
-    }}
-  >
-    {title && (
-      <Typography
-        sx={{
-          fontWeight: 700,
-          color: "#0d3d52",
-          fontSize: { xs: "0.85rem", sm: "0.9rem" },
-          mb: 1.5,
-        }}
-      >
-        {title}
-      </Typography>
-    )}
-    {children}
-  </Paper>
-);
+const SectionCard = ({ title, children, sx }) => {
+  const flushContent = sx?.p === 0 || sx?.padding === 0;
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        p: { xs: 1.5, sm: 2 },
+        borderRadius: 2,
+        border: `1px solid ${D.border}`,
+        backgroundColor: `${D.surface} !important`,
+        ...sx,
+      }}
+    >
+      {title && (
+        <Typography
+          sx={{
+            fontWeight: 700,
+            color: `${D.text} !important`,
+            fontSize: { xs: "0.85rem", sm: "0.9rem" },
+            lineHeight: 1.25,
+            mb: 1.5,
+            px: flushContent ? { xs: 1.5, sm: 2 } : 0,
+            pt: flushContent ? { xs: 1.5, sm: 2 } : 0,
+            overflowWrap: "anywhere",
+          }}
+        >
+          {title}
+        </Typography>
+      )}
+      {children}
+    </Paper>
+  );
+};
 
 // ─── Score interpretation ─────────────────────────────────────────────────────
 const getScoreLabel = (score) => {
@@ -95,14 +122,14 @@ const getScoreLabel = (score) => {
 // ─── Field row (label / value pair) ───────────────────────────────────────────
 const FieldRow = ({ label, value, valueColor }) => (
   <Box sx={{ minWidth: 0 }}>
-    <Typography sx={{ fontSize: "0.7rem", color: "#94a3b8", mb: 0.3 }}>
+    <Typography sx={{ fontSize: "0.7rem", color: `${D.muted} !important`, mb: 0.3 }}>
       {label}
     </Typography>
     <Typography
       sx={{
         fontSize: "0.8rem",
         fontWeight: 600,
-        color: valueColor || "#0f172a",
+        color: `${valueColor || D.text} !important`,
         wordBreak: "break-word",
       }}
     >
@@ -288,10 +315,40 @@ export default function InspectionHistoryDetails() {
     setImageDialogOpen(true);
   };
 
-  const getImageUrl = (filePath) => {
-    if (!filePath) return "/placeholder-image.png";
-    const normalizedPath = filePath.replace(/\\/g, "/");
+  const getMediaUrl = (filePath) => {
+    if (!filePath) return "";
+    const raw =
+      typeof filePath === "object"
+        ? filePath.url || filePath.secure_url || filePath.filePath || filePath.path
+        : filePath;
+    if (typeof raw !== "string" || !raw.trim()) return "";
+
+    const value = raw.trim();
+    if (/^(data:|https?:\/\/|blob:)/i.test(value)) return value;
+    const normalizedPath = value.replace(/\\/g, "/").replace(/^\/+/, "");
     return `https://synversys-backend.onrender.com/${normalizedPath}`;
+  };
+
+  const getImageUrl = (filePath) => getMediaUrl(filePath) || "/placeholder-image.png";
+
+  const getSignatureUrl = (signature) => {
+    if (!signature) return "";
+    const raw =
+      typeof signature === "object"
+        ? signature.url ||
+          signature.secure_url ||
+          signature.filePath ||
+          signature.path ||
+          signature.value
+        : signature;
+    if (typeof raw !== "string" || !raw.trim()) return "";
+
+    const value = raw.trim();
+    if (/^(data:|https?:\/\/|blob:)/i.test(value)) return value;
+    if (/^[A-Za-z0-9+/=]+$/.test(value) && value.length > 100) {
+      return `data:image/png;base64,${value}`;
+    }
+    return getMediaUrl(value);
   };
 
   if (loading && !inspection) {
@@ -339,7 +396,7 @@ export default function InspectionHistoryDetails() {
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ minHeight: "100vh", bgcolor: "#f8fafc" }}>
+      <Box sx={{ minHeight: "100vh", bgcolor: D.page }}>
         <Container maxWidth="lg" sx={{ py: { xs: 1.5, sm: 2, md: 3 } }}>
           {/* Header - No Print */}
           <Box
@@ -357,24 +414,29 @@ export default function InspectionHistoryDetails() {
               <IconButton
                 onClick={() => navigate("/team/history")}
                 sx={{
-                  border: "1px solid #e2e8f0",
+                  border: `1px solid ${D.borderStrong}`,
                   borderRadius: 1.5,
-                  bgcolor: "#fff",
+                  bgcolor: D.surfaceAlt,
+                  color: D.text,
+                  "&:hover": {
+                    bgcolor: D.surfaceSoft,
+                    borderColor: D.brand,
+                  },
                 }}
               >
-                <ArrowBackIcon sx={{ fontSize: 18 }} />
+                <ArrowBackIcon sx={{ fontSize: 18, color: "inherit" }} />
               </IconButton>
               <Box>
                 <Typography
                   sx={{
                     fontWeight: 800,
-                    color: "#0f172a",
+                    color: `${D.text} !important`,
                     fontSize: { xs: "1rem", sm: "1.1rem" },
                   }}
                 >
                   {inspection.inspectionId || "Inspection Details"}
                 </Typography>
-                <Typography sx={{ fontSize: "0.7rem", color: "#94a3b8" }}>
+                <Typography sx={{ fontSize: "0.7rem", color: `${D.textSecondary} !important` }}>
                   Submitted:{" "}
                   {inspection.submittedAt
                     ? new Date(inspection.submittedAt).toLocaleString()
@@ -393,31 +455,45 @@ export default function InspectionHistoryDetails() {
             >
               <Button
                 size="small"
-                startIcon={<PdfIcon sx={{ fontSize: 16 }} />}
+                startIcon={<PdfIcon sx={{ fontSize: 16, color: "inherit" }} />}
                 onClick={handleExportPDF}
                 disabled={exporting}
                 variant="outlined"
                 sx={{
-                  borderColor: "#e2e8f0",
-                  color: "#0d3d52",
+                  borderColor: D.borderStrong,
+                  color: D.text,
+                  bgcolor: D.surface,
                   fontSize: "0.7rem",
                   py: 0.5,
                   flex: { xs: "1 1 145px", sm: "0 0 auto" },
+                  "&:hover": {
+                    bgcolor: D.surfaceSoft,
+                    borderColor: D.brand,
+                  },
+                  "&.Mui-disabled": {
+                    color: D.muted,
+                    borderColor: D.border,
+                  },
                 }}
               >
                 {exporting ? "Generating..." : "Export in PDF"}
               </Button>
               <Button
                 size="small"
-                startIcon={<PrintIcon sx={{ fontSize: 16 }} />}
+                startIcon={<PrintIcon sx={{ fontSize: 16, color: "inherit" }} />}
                 onClick={handlePrint}
                 variant="outlined"
                 sx={{
-                  borderColor: "#e2e8f0",
-                  color: "#0d3d52",
+                  borderColor: D.borderStrong,
+                  color: D.text,
+                  bgcolor: D.surface,
                   fontSize: "0.7rem",
                   py: 0.5,
                   flex: { xs: "1 1 145px", sm: "0 0 auto" },
+                  "&:hover": {
+                    bgcolor: D.surfaceSoft,
+                    borderColor: D.brand,
+                  },
                 }}
               >
                 Print the Data
@@ -465,7 +541,7 @@ export default function InspectionHistoryDetails() {
                   }}
                 >
                   <Typography
-                    sx={{ fontSize: "0.7rem", color: "#94a3b8", mb: 0.5 }}
+                    sx={{ fontSize: "0.7rem", color: `${D.muted} !important`, mb: 0.5 }}
                   >
                     Overall Score
                   </Typography>
@@ -473,14 +549,14 @@ export default function InspectionHistoryDetails() {
                     sx={{
                       fontWeight: 800,
                       fontSize: { xs: "1.8rem", sm: "2rem" },
-                      color: scoreInfo.color,
+                      color: `${scoreInfo.color} !important`,
                       lineHeight: 1,
                     }}
                   >
                     {overallScore}%
                   </Typography>
                   <Typography
-                    sx={{ fontSize: "0.7rem", color: "#94a3b8", mt: 0.5 }}
+                    sx={{ fontSize: "0.7rem", color: `${D.textSecondary} !important`, mt: 0.5 }}
                   >
                     {scoreInfo.label}
                   </Typography>
@@ -504,23 +580,24 @@ export default function InspectionHistoryDetails() {
                           textAlign: "center",
                           p: 1,
                           borderRadius: 1.5,
-                          bgcolor: "#f0fdf9",
+                          bgcolor: D.successBg,
+                          border: `1px solid ${alpha(D.success, 0.28)}`,
                         }}
                       >
                         <CheckCircleIcon
-                          sx={{ fontSize: 20, color: "#10b981", mb: 0.3 }}
+                          sx={{ fontSize: 20, color: `${D.success} !important`, mb: 0.3 }}
                         />
                         <Typography
                           sx={{
                             fontWeight: 800,
                             fontSize: { xs: "1.2rem", sm: "1.3rem" },
-                            color: "#10b981",
+                            color: `${D.success} !important`,
                           }}
                         >
                           {inspection.itemsPassed || 0}
                         </Typography>
                         <Typography
-                          sx={{ fontSize: "0.65rem", color: "#94a3b8" }}
+                          sx={{ fontSize: "0.65rem", color: `${D.textSecondary} !important` }}
                         >
                           Passed
                         </Typography>
@@ -532,23 +609,24 @@ export default function InspectionHistoryDetails() {
                           textAlign: "center",
                           p: 1,
                           borderRadius: 1.5,
-                          bgcolor: "#fef2f2",
+                          bgcolor: D.dangerBg,
+                          border: `1px solid ${alpha(D.danger, 0.28)}`,
                         }}
                       >
                         <CancelIcon
-                          sx={{ fontSize: 20, color: "#ef4444", mb: 0.3 }}
+                          sx={{ fontSize: 20, color: `${D.danger} !important`, mb: 0.3 }}
                         />
                         <Typography
                           sx={{
                             fontWeight: 800,
                             fontSize: { xs: "1.2rem", sm: "1.3rem" },
-                            color: "#ef4444",
+                            color: `${D.danger} !important`,
                           }}
                         >
                           {inspection.itemsFailed || 0}
                         </Typography>
                         <Typography
-                          sx={{ fontSize: "0.65rem", color: "#94a3b8" }}
+                          sx={{ fontSize: "0.65rem", color: `${D.textSecondary} !important` }}
                         >
                           Failed
                         </Typography>
@@ -560,23 +638,24 @@ export default function InspectionHistoryDetails() {
                           textAlign: "center",
                           p: 1,
                           borderRadius: 1.5,
-                          bgcolor: "#f1f5f9",
+                          bgcolor: D.neutralBg,
+                          border: `1px solid ${D.border}`,
                         }}
                       >
                         <WarningAmberIcon
-                          sx={{ fontSize: 20, color: "#64748b", mb: 0.3 }}
+                          sx={{ fontSize: 20, color: `${D.muted} !important`, mb: 0.3 }}
                         />
                         <Typography
                           sx={{
                             fontWeight: 800,
                             fontSize: { xs: "1.2rem", sm: "1.3rem" },
-                            color: "#64748b",
+                            color: `${D.textSecondary} !important`,
                           }}
                         >
                           {inspection.itemsNA || 0}
                         </Typography>
                         <Typography
-                          sx={{ fontSize: "0.65rem", color: "#94a3b8" }}
+                          sx={{ fontSize: "0.65rem", color: `${D.textSecondary} !important` }}
                         >
                           N/A
                         </Typography>
@@ -670,6 +749,10 @@ export default function InspectionHistoryDetails() {
                           (v.toLowerCase() === "yes" ||
                             v.toLowerCase() === "true");
                         const hasIssue = isYesNo && !isYes;
+                        const signatureUrl =
+                          response.fieldType === "signature"
+                            ? getSignatureUrl(v)
+                            : "";
 
                         return (
                           <Box
@@ -679,9 +762,9 @@ export default function InspectionHistoryDetails() {
                               py: 1,
                               borderBottom:
                                 respIdx !== responses.length - 1
-                                  ? "1px solid #f1f5f9"
+                                  ? `1px solid ${D.border}`
                                   : "none",
-                              bgcolor: hasIssue ? "#fef2f2" : "transparent",
+                              bgcolor: hasIssue ? D.dangerBg : "transparent",
                               display: "flex",
                               justifyContent: "space-between",
                               alignItems: "flex-start",
@@ -693,7 +776,7 @@ export default function InspectionHistoryDetails() {
                                 sx={{
                                   fontSize: "0.8rem",
                                   fontWeight: 600,
-                                  color: "#0f172a",
+                                  color: `${D.text} !important`,
                                 }}
                               >
                                 {response.fieldLabel}
@@ -708,12 +791,12 @@ export default function InspectionHistoryDetails() {
                                   }}
                                 >
                                   <ErrorOutlineIcon
-                                    sx={{ fontSize: 12, color: "#94a3b8" }}
+                                    sx={{ fontSize: 12, color: `${D.muted} !important` }}
                                   />
                                   <Typography
                                     sx={{
                                       fontSize: "0.7rem",
-                                      color: "#94a3b8",
+                                      color: `${D.textSecondary} !important`,
                                     }}
                                   >
                                     {response.note}
@@ -749,8 +832,8 @@ export default function InspectionHistoryDetails() {
                                           sx={{
                                             fontSize: "0.65rem",
                                             height: 18,
-                                            bgcolor: "#f1f5f9",
-                                            color: "#475569",
+                                            bgcolor: D.surfaceSoft,
+                                            color: `${D.textSecondary} !important`,
                                           }}
                                         />
                                       ))}
@@ -766,26 +849,54 @@ export default function InspectionHistoryDetails() {
                                   <Typography
                                     sx={{
                                       fontSize: "0.75rem",
-                                      color: "#475569",
+                                      color: `${D.textSecondary} !important`,
                                       mt: 0.3,
                                     }}
                                   >
                                     {v || "—"}
                                   </Typography>
                                 )}
-                              {response.fieldType === "signature" && v && (
+                              {response.fieldType === "signature" && signatureUrl && (
                                 <Box
-                                  component="img"
-                                  src={v}
-                                  alt="Signature"
                                   sx={{
-                                    maxWidth: 150,
-                                    maxHeight: 40,
-                                    border: "1px solid #e2e8f0",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: "min(220px, 100%)",
+                                    minHeight: 56,
+                                    p: 0.75,
+                                    bgcolor: "#fff",
+                                    border: `1px solid ${D.borderStrong}`,
                                     borderRadius: 1,
                                     mt: 0.5,
                                   }}
-                                />
+                                >
+                                  <Box
+                                    component="img"
+                                    src={signatureUrl}
+                                    alt="Signature"
+                                    sx={{
+                                      display: "block",
+                                      maxWidth: "100%",
+                                      maxHeight: 48,
+                                      objectFit: "contain",
+                                    }}
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = "none";
+                                    }}
+                                  />
+                                </Box>
+                              )}
+                              {response.fieldType === "signature" && !signatureUrl && (
+                                <Typography
+                                  sx={{
+                                    fontSize: "0.75rem",
+                                    color: `${D.muted} !important`,
+                                    mt: 0.3,
+                                  }}
+                                >
+                                  —
+                                </Typography>
                               )}
                             </Box>
                             {isYesNo && (
@@ -794,7 +905,7 @@ export default function InspectionHistoryDetails() {
                                 size="small"
                                 sx={{
                                   bgcolor: isYes ? "#10b981" : "#ef4444",
-                                  color: "#fff",
+                                  color: "#fff !important",
                                   fontWeight: 700,
                                   fontSize: "0.7rem",
                                   height: 20,
@@ -811,7 +922,7 @@ export default function InspectionHistoryDetails() {
               })
             ) : (
               <SectionCard sx={{ mb: 1.5, textAlign: "center", py: 3 }}>
-                <Typography sx={{ color: "#94a3b8", fontSize: "0.8rem" }}>
+                <Typography sx={{ color: `${D.muted} !important`, fontSize: "0.8rem" }}>
                   No responses available
                 </Typography>
               </SectionCard>
@@ -823,7 +934,7 @@ export default function InspectionHistoryDetails() {
                 <Typography
                   sx={{
                     fontSize: "0.8rem",
-                    color: "#475569",
+                    color: `${D.textSecondary} !important`,
                     whiteSpace: "pre-wrap",
                   }}
                 >
@@ -929,8 +1040,7 @@ export default function InspectionHistoryDetails() {
           open={snack.open}
           autoHideDuration={4000}
           onClose={() => setSnack({ ...snack, open: false })}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert
             severity={snack.severity}
             onClose={() => setSnack({ ...snack, open: false })}

@@ -88,16 +88,52 @@ const ReviewStatusChip = ({ status }) => {
 };
 
 // ─── Stat Card ───────────────────────────────────────────────────────────────
-const StatCard = ({ title, value, color }) => (
+const StatCard = ({ title, value, color = "#22d3ee", active = false, onClick }) => (
   <Paper
     elevation={0}
+    role={onClick ? "button" : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    onClick={onClick}
+    onKeyDown={(event) => {
+      if (!onClick) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onClick();
+      }
+    }}
     sx={{
+      position: "relative",
+      overflow: "hidden",
       p: { xs: 1.5, sm: 2 },
       borderRadius: 1,
-      border: "1px solid #e2e8f0",
+      border: active ? `1px solid ${color}` : "1px solid #e2e8f0",
+      outline: active ? `3px solid ${alpha(color, 0.55)}` : "none",
+      outlineOffset: active ? "-3px" : 0,
+      boxShadow: active ? `0 12px 28px ${alpha(color, 0.16)}` : "none",
+      cursor: onClick ? "pointer" : "default",
+      transition: "border-color 0.18s ease, box-shadow 0.18s ease, outline-color 0.18s ease",
       height: "100%",
       minHeight: { xs: 86, sm: 98 },
       width: "100%",
+      "&::before": active
+        ? {
+            content: '""',
+            position: "absolute",
+            inset: "0 auto 0 0",
+            width: 4,
+            bgcolor: color,
+          }
+        : {},
+      "&:hover": onClick
+        ? {
+            borderColor: color,
+            boxShadow: `0 8px 20px ${alpha(color, 0.12)}`,
+          }
+        : {},
+      "&:focus-visible": {
+        outline: `3px solid ${alpha(color, 0.35)}`,
+        outlineOffset: 2,
+      },
     }}
   >
     <Typography
@@ -144,6 +180,7 @@ export default function InspectionHistory() {
   });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [activeStatTile, setActiveStatTile] = useState("total");
   const [snack, setSnack] = useState({
     open: false,
     msg: "",
@@ -201,6 +238,24 @@ export default function InspectionHistory() {
     } else {
       toast(result.error || "Export failed", "error");
     }
+  };
+
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    if (!value) {
+      setActiveStatTile("total");
+    } else if (value === "approved") {
+      setActiveStatTile("approved");
+    } else if (value === "pending_review") {
+      setActiveStatTile("pending_review");
+    } else {
+      setActiveStatTile("");
+    }
+  };
+
+  const handleStatTileClick = (tile, status = "") => {
+    setActiveStatTile(tile);
+    setStatusFilter(status);
   };
 
   const filteredInspections = inspections.filter((insp) => {
@@ -317,7 +372,7 @@ export default function InspectionHistory() {
               >
                 <Select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => handleStatusFilterChange(e.target.value)}
                   displayEmpty
                   sx={{ fontSize: "0.85rem" }}
                 >
@@ -347,13 +402,20 @@ export default function InspectionHistory() {
             }}
           >
             <Box>
-              <StatCard title="Total Submissions" value={summary.total} />
+              <StatCard
+                title="Total Submissions"
+                value={summary.total}
+                active={activeStatTile === "total"}
+                onClick={() => handleStatTileClick("total", "")}
+              />
             </Box>
             <Box>
               <StatCard
                 title="Approved"
                 value={summary.approved}
                 color="#10b981"
+                active={activeStatTile === "approved"}
+                onClick={() => handleStatTileClick("approved", "approved")}
               />
             </Box>
             <Box>
@@ -361,10 +423,17 @@ export default function InspectionHistory() {
                 title="Under Review"
                 value={summary.pendingReview}
                 color="#ef4444"
+                active={activeStatTile === "pending_review"}
+                onClick={() => handleStatTileClick("pending_review", "pending_review")}
               />
             </Box>
             <Box>
-              <StatCard title="Avg Score" value={avgScore} />
+              <StatCard
+                title="Avg Score"
+                value={avgScore}
+                active={activeStatTile === "avg_score"}
+                onClick={() => handleStatTileClick("avg_score", "")}
+              />
             </Box>
           </Box>
 
@@ -821,8 +890,7 @@ export default function InspectionHistory() {
           open={snack.open}
           autoHideDuration={4000}
           onClose={() => setSnack({ ...snack, open: false })}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert
             severity={snack.severity}
             onClose={() => setSnack({ ...snack, open: false })}

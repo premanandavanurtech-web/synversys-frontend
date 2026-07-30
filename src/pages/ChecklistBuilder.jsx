@@ -31,6 +31,7 @@ import {
   FormControl,
   InputLabel,
   useMediaQuery,
+  useTheme,
   Stack,
   Avatar,
   InputAdornment,
@@ -88,23 +89,34 @@ import AssignmentModal from "./Assignchecklistmodal";
 import AssetSearchField from "../components/AssetSearchField";
 import PageHeading from "../components/PageHeading";
 
-// ─── Theme ────────────────────────────────────────────────────────────────────
-const theme = createTheme({
+// ─── Theme (Dark) ──────────────────────────────────────────────────────────────
+const createChecklistTheme = (mode = "dark") => {
+  const isLight = mode === "light";
+  const primaryMain = isLight ? "#16354F" : "#1fb6cf";
+  const primaryDark = isLight ? "#0F2A40" : "#0d8ba1";
+  const primaryLight = isLight ? "#244F70" : "#5cd3e6";
+
+  return createTheme({
   palette: {
+    mode,
     primary: {
-      main: "#0d4258",
-      dark: "#175667",
-      light: "#e3f0f4",
-      contrastText: "#fff",
+      main: primaryMain,
+      dark: primaryDark,
+      light: primaryLight,
+      contrastText: "#ffffff",
     },
-    secondary: { main: "#1a7a9a" },
-    error: { main: "#d32f2f" },
-    warning: { main: "#ed6c02" },
-    info: { main: "#0288d1" },
-    success: { main: "#2e7d32" },
-    text: { primary: "#0d1f26", secondary: "#4a6572", disabled: "#90a4ae" },
-    background: { default: "#f0f4f6", paper: "#ffffff" },
-    divider: "#dde6ea",
+    secondary: { main: "#3fc6e0" },
+    error: { main: isLight ? "#d94b4b" : "#f16a6a" },
+    warning: { main: isLight ? "#c97919" : "#f0a54a" },
+    info: { main: "#4fb2e8" },
+    success: { main: isLight ? "#0f9d66" : "#3ecf8e" },
+    text: isLight
+      ? { primary: "#071d2b", secondary: "#3f5669", disabled: "#8295a5" }
+      : { primary: "#e7eef2", secondary: "#8ca0ac", disabled: "#5c7280" },
+    background: isLight
+      ? { default: "#f4f7fa", paper: "#ffffff" }
+      : { default: "#0a1620", paper: "#0f1e29" },
+    divider: isLight ? "#d7e2ea" : "#1c2e3a",
   },
   typography: {
     fontFamily: "'Plus Jakarta Sans', 'DM Sans', system-ui, sans-serif",
@@ -120,20 +132,44 @@ const theme = createTheme({
           boxShadow: "none",
           "&:hover": { boxShadow: "none" },
         },
+        containedPrimary: {
+          backgroundColor: primaryMain,
+          color: "#ffffff",
+          "&:hover": { backgroundColor: primaryDark },
+        },
+        outlinedPrimary: {
+          borderColor: isLight ? "#6f8798" : primaryMain,
+          color: primaryMain,
+          "&:hover": {
+            borderColor: primaryMain,
+            backgroundColor: alpha(primaryMain, 0.06),
+          },
+        },
         sizeSmall: { padding: "4px 12px", fontSize: 12 },
       },
     },
     MuiPaper: {
       styleOverrides: {
-        root: { borderRadius: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" },
+        root: {
+          borderRadius: 14,
+          boxShadow: isLight
+            ? "0 1px 3px rgba(15,37,48,0.08)"
+            : "0 1px 4px rgba(0,0,0,0.35)",
+          backgroundImage: "none",
+        },
       },
     },
     MuiChip: { styleOverrides: { root: { fontWeight: 600, fontSize: 11 } } },
-    MuiTableCell: { styleOverrides: { root: { borderColor: "#e8edf0" } } },
+    MuiTableCell: {
+      styleOverrides: { root: { borderColor: isLight ? "#dce5eb" : "#1c2e3a" } },
+    },
     MuiTextField: { defaultProps: { size: "small" } },
     MuiSelect: { defaultProps: { size: "small" } },
   },
-});
+  });
+};
+
+let theme = createChecklistTheme("dark");
 
 // ─── Styled Components ────────────────────────────────────────────────────────
 const StyledTab = styled(Tab)(({ theme }) => ({
@@ -152,7 +188,7 @@ const StyledTab = styled(Tab)(({ theme }) => ({
   },
   "&.Mui-selected": {
     backgroundColor: theme.palette.primary.main,
-    color: "#fff",
+    color: theme.palette.primary.contrastText,
     boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.35)}`,
   },
 }));
@@ -162,7 +198,10 @@ const TH = styled(TableCell)(({ theme }) => ({
   fontSize: "11px",
   fontWeight: 700,
   color: theme.palette.text.disabled,
-  backgroundColor: "#f7f9fa",
+  backgroundColor:
+    theme.palette.mode === "light"
+      ? "#f7fafc"
+      : alpha(theme.palette.common.black, 0.18),
   textTransform: "uppercase",
   letterSpacing: "0.07em",
   borderBottom: `2px solid ${theme.palette.divider}`,
@@ -182,7 +221,7 @@ const ModalBox = styled(Box)(({ theme }) => ({
   transform: "translate(-50%, -50%)",
   backgroundColor: theme.palette.background.paper,
   borderRadius: 20,
-  boxShadow: "0 24px 80px rgba(0,0,0,0.18)",
+  boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
   display: "flex",
   flexDirection: "column",
   maxHeight: "95vh",
@@ -199,8 +238,15 @@ const ModalHeader = styled(Box)(({ theme }) => ({
 const InfoTile = styled(Box)(({ theme }) => ({
   padding: "12px 14px",
   borderRadius: 10,
-  backgroundColor: alpha(theme.palette.primary.main, 0.04),
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+  backgroundColor:
+    theme.palette.mode === "dark"
+      ? alpha(theme.palette.primary.light, 0.12)
+      : alpha(theme.palette.primary.main, 0.08),
+  border: `1px solid ${
+    theme.palette.mode === "dark"
+      ? alpha(theme.palette.primary.light, 0.28)
+      : alpha(theme.palette.primary.main, 0.18)
+  }`,
 }));
 
 // ─── Clone Dialog Component ───────────────────────────────────────────────────
@@ -278,12 +324,12 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
           }}
         >
           <Box>
-            <Typography fontWeight={700} fontSize={18} color="white">
+            <Typography fontWeight={700} fontSize={18} color="primary.contrastText">
               Clone Checklist
             </Typography>
             <Typography
               fontSize={13}
-              sx={{ color: alpha("#fff", 0.7), mt: 0.5 }}
+              sx={{ color: alpha(theme.palette.primary.contrastText, 0.7), mt: 0.5 }}
             >
               Create a copy of an existing checklist
             </Typography>
@@ -292,7 +338,7 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
             size="small"
             onClick={onClose}
             disabled={loading}
-            sx={{ color: "white", bgcolor: alpha("#fff", 0.1) }}
+            sx={{ color: "primary.contrastText", bgcolor: alpha("#000", 0.15) }}
           >
             <CloseIcon fontSize="small" />
           </IconButton>
@@ -303,7 +349,7 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
           <Box
             sx={{
               p: 2,
-              bgcolor: alpha(theme.palette.primary.main, 0.04),
+              bgcolor: alpha(theme.palette.primary.main, 0.08),
               borderRadius: 2,
             }}
           >
@@ -311,7 +357,7 @@ const CloneDialog = ({ open, checklist, onClose, onConfirm, loading }) => {
               <Avatar
                 sx={{
                   bgcolor: theme.palette.primary.main,
-                  color: "white",
+                  color: theme.palette.primary.contrastText,
                   width: 48,
                   height: 48,
                 }}
@@ -480,10 +526,22 @@ const TypeBadge = ({ type }) => {
 };
 
 const PRIORITY_CONFIG = {
-  low: { label: "Low", color: "#16a34a", bg: "#f0fdf4" },
-  medium: { label: "Medium", color: "#ca8a04", bg: "#fefce8" },
-  high: { label: "High", color: "#f97316", bg: "#fff7ed" },
-  critical: { label: "Critical", color: "#dc2626", bg: "#fef2f2" },
+  low: { label: "Low", color: "#4ade80", bg: alpha("#4ade80", 0.14) },
+  medium: { label: "Medium", color: "#facc15", bg: alpha("#facc15", 0.14) },
+  high: { label: "High", color: "#fb923c", bg: alpha("#fb923c", 0.14) },
+  critical: { label: "Critical", color: "#f87171", bg: alpha("#f87171", 0.16) },
+};
+
+const resolveAccentColor = (accent) => {
+  const colors = {
+    "primary.main": "#1fb6cf",
+    "success.main": "#3ecf8e",
+    "info.main": "#4fb2e8",
+    "warning.main": "#f0a54a",
+    "error.main": "#f16a6a",
+  };
+
+  return colors[accent] || accent || "#1fb6cf";
 };
 
 const PriorityBadge = ({ priority }) => {
@@ -514,8 +572,10 @@ const StatCard = ({
   loading,
   active = false,
   onClick,
-}) => (
-  
+}) => {
+  const cardAccent = resolveAccentColor(accent);
+
+  return (
   <Card
     role={onClick ? "button" : undefined}
     tabIndex={onClick ? 0 : undefined}
@@ -530,17 +590,40 @@ const StatCard = ({
     sx={{
       height: "100%",
       width: "100%",
+      position: "relative",
+      overflow: "hidden",
       border: "1px solid",
-      borderColor: active ? accent || "primary.main" : "divider",
+      borderColor: active ? `${cardAccent} !important` : "divider",
+      bgcolor: active ? `${alpha(cardAccent, 0.14)} !important` : undefined,
       cursor: onClick ? "pointer" : "default",
-      boxShadow: active ? 2 : 0,
+      outline: active ? `3px solid ${cardAccent}` : "none",
+      outlineOffset: "-3px",
+      boxShadow: active
+        ? `inset 0 0 0 1px ${cardAccent}, 0 18px 40px ${alpha(cardAccent, 0.22)} !important`
+        : 0,
+      "&::before": active
+        ? {
+            content: '""',
+            position: "absolute",
+            inset: "0 auto 0 0",
+            width: 6,
+            bgcolor: cardAccent,
+          }
+        : undefined,
       transition: "all 0.2s ease",
       "&:hover": onClick
-        ? { transform: "translateY(-2px)", boxShadow: 2 }
+        ? {
+            transform: "translateY(-2px)",
+            borderColor: `${cardAccent} !important`,
+            outline: `3px solid ${cardAccent}`,
+            boxShadow: active
+              ? `inset 0 0 0 1px ${cardAccent}, 0 20px 44px ${alpha(cardAccent, 0.24)} !important`
+              : `0 12px 28px ${alpha(cardAccent, 0.16)}`,
+          }
         : undefined,
       "&:focus-visible": {
         outline: "2px solid",
-        outlineColor: accent || "primary.main",
+        outlineColor: cardAccent,
         outlineOffset: 2,
       },
     }}
@@ -573,7 +656,7 @@ const StatCard = ({
             <Typography
               variant="h5"
               fontWeight={800}
-              color={accent || "primary.main"}
+              color={cardAccent}
               sx={{ mt: 0.5, lineHeight: 1.2, fontSize: { xs: 20, sm: 24 } }}
             >
               {value ?? "—"}
@@ -595,8 +678,8 @@ const StatCard = ({
         {icon && (
           <Avatar
             sx={{
-              bgcolor: alpha(theme.palette.primary.main, 0.08),
-              color: "primary.main",
+              bgcolor: alpha(cardAccent, 0.14),
+              color: cardAccent,
               width: { xs: 36, sm: 40 },
               height: { xs: 36, sm: 40 },
             }}
@@ -607,7 +690,8 @@ const StatCard = ({
       </Box>
     </CardContent>
   </Card>
-);
+  );
+};
 
 // ─── EmptyState ───────────────────────────────────────────────────────────────
 const EmptyState = ({ message = "No data found", sub = "", icon }) => (
@@ -617,7 +701,7 @@ const EmptyState = ({ message = "No data found", sub = "", icon }) => (
         width: { xs: 60, sm: 72 },
         height: { xs: 60, sm: 72 },
         borderRadius: "50%",
-        bgcolor: (t) => alpha(t.palette.primary.main, 0.07),
+        bgcolor: (t) => alpha(t.palette.primary.main, 0.1),
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -630,7 +714,7 @@ const EmptyState = ({ message = "No data found", sub = "", icon }) => (
           sx={{
             fontSize: { xs: 26, sm: 30 },
             color: "primary.main",
-            opacity: 0.5,
+            opacity: 0.6,
           }}
         />
       )}
@@ -760,7 +844,7 @@ const MobileChecklistCard = ({
         sx={{
           height: 22,
           fontSize: 11,
-          bgcolor: alpha(theme.palette.primary.main, 0.08),
+          bgcolor: alpha(theme.palette.primary.main, 0.14),
           color: "primary.main",
         }}
       />
@@ -926,14 +1010,14 @@ const ViewChecklistModal = ({
               <Typography
                 variant="h6"
                 fontWeight={800}
-                color="white"
+                color="primary.contrastText"
                 sx={{ fontSize: { xs: 16, sm: 20 } }}
               >
                 {checklist.name}
               </Typography>
               <Typography
                 variant="caption"
-                sx={{ color: alpha("#fff", 0.65), mt: 0.5, display: "block" }}
+                sx={{ color: alpha(theme.palette.primary.contrastText, 0.65), mt: 0.5, display: "block" }}
               >
                 Created {fmt(checklist.createdAt)}
               </Typography>
@@ -952,9 +1036,9 @@ const ViewChecklistModal = ({
                       height: 24,
                       fontSize: 11,
                       fontWeight: 600,
-                      color: "white",
-                      bgcolor: alpha("#fff", 0.15),
-                      border: `1px solid ${alpha("#fff", 0.25)}`,
+                      color: theme.palette.primary.contrastText,
+                      bgcolor: alpha("#000", 0.18),
+                      border: `1px solid ${alpha(theme.palette.primary.contrastText, 0.25)}`,
                     }}
                   />
                 )}
@@ -963,9 +1047,9 @@ const ViewChecklistModal = ({
             <IconButton
               onClick={onClose}
               sx={{
-                color: "white",
-                bgcolor: alpha("#fff", 0.12),
-                "&:hover": { bgcolor: alpha("#fff", 0.2) },
+                color: theme.palette.primary.contrastText,
+                bgcolor: alpha("#000", 0.15),
+                "&:hover": { bgcolor: alpha("#000", 0.25) },
                 width: 36,
                 height: 36,
               }}
@@ -1024,7 +1108,7 @@ const ViewChecklistModal = ({
                 <Box
                   sx={{
                     p: 2,
-                    bgcolor: "#f7f9fa",
+                    bgcolor: "background.default",
                     borderRadius: 2,
                     border: "1px solid",
                     borderColor: "divider",
@@ -1075,7 +1159,7 @@ const ViewChecklistModal = ({
                           height: 28,
                           fontSize: 11,
                           fontWeight: 700,
-                          bgcolor: alpha(theme.palette.primary.main, 0.1),
+                          bgcolor: alpha(theme.palette.primary.main, 0.16),
                           color: "primary.main",
                         }}
                       >
@@ -1106,7 +1190,7 @@ const ViewChecklistModal = ({
             justifyContent: "space-between",
             alignItems: "center",
             flexShrink: 0,
-            bgcolor: "#fafbfc",
+            bgcolor: "background.default",
             borderRadius: { xs: 0, sm: "0 0 20px 20px" },
             flexWrap: "wrap",
             gap: 1,
@@ -1147,24 +1231,24 @@ const CreateModal = ({ open, onClose }) => {
       label: "Custom Checklist",
       desc: "Build a fully custom checklist with drag-and-drop fields",
       path: "/admin/create-checklist/custom",
-      color: "#0d4a5c",
-      bg: "#e3f0f4",
+      color: "#5cd3e6",
+      bg: alpha("#1fb6cf", 0.14),
     },
     {
       icon: <PublicIcon />,
       label: "Custom Checklist (Global)",
       desc: "Submit a custom checklist for super admin approval",
       path: "/admin/create-checklist/global",
-      color: "#2e7d32",
-      bg: "#e8f5e9",
+      color: "#3ecf8e",
+      bg: alpha("#3ecf8e", 0.14),
     },
     {
       icon: <FileCopyIcon />,
       label: "Import from Excel",
       desc: "Auto-generate checklist fields from an Excel spreadsheet",
       path: "/admin/import-checklist/excel",
-      color: "#0288d1",
-      bg: "#e1f5fe",
+      color: "#4fb2e8",
+      bg: alpha("#4fb2e8", 0.14),
     },
   ];
   return (
@@ -1192,7 +1276,7 @@ const CreateModal = ({ open, onClose }) => {
               <Typography
                 variant="h6"
                 fontWeight={800}
-                color="white"
+                color="primary.contrastText"
                 sx={{ fontSize: { xs: 16, sm: 20 } }}
               >
                 Create New Checklist
@@ -1200,7 +1284,7 @@ const CreateModal = ({ open, onClose }) => {
               <Typography
                 variant="body2"
                 sx={{
-                  color: alpha("#fff", 0.65),
+                  color: alpha(theme.palette.primary.contrastText, 0.65),
                   mt: 0.5,
                   fontSize: { xs: 12, sm: 14 },
                 }}
@@ -1211,9 +1295,9 @@ const CreateModal = ({ open, onClose }) => {
             <IconButton
               onClick={onClose}
               sx={{
-                color: "white",
-                bgcolor: alpha("#fff", 0.12),
-                "&:hover": { bgcolor: alpha("#fff", 0.2) },
+                color: theme.palette.primary.contrastText,
+                bgcolor: alpha("#000", 0.15),
+                "&:hover": { bgcolor: alpha("#000", 0.25) },
                 width: 36,
                 height: 36,
               }}
@@ -1243,7 +1327,7 @@ const CreateModal = ({ open, onClose }) => {
                   transition: "all 0.15s",
                   "&:hover": {
                     borderColor: opt.color,
-                    bgcolor: `${opt.bg}80`,
+                    bgcolor: opt.bg,
                     transform: "translateX(3px)",
                   },
                 }}
@@ -1291,7 +1375,7 @@ const CreateModal = ({ open, onClose }) => {
             pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 },
             borderTop: { xs: "1px solid", sm: "none" },
             borderColor: "divider",
-            bgcolor: "#fafbfc",
+            bgcolor: "background.default",
             borderRadius: { xs: 0, sm: "0 0 20px 20px" },
           }}
         >
@@ -1324,7 +1408,7 @@ const DeleteConfirmDialog = ({
       <Stack direction="row" spacing={1.5} alignItems="center">
         <Avatar
           sx={{
-            bgcolor: alpha("#d32f2f", 0.1),
+            bgcolor: alpha("#f16a6a", 0.16),
             color: "error.main",
             width: 38,
             height: 38,
@@ -1461,6 +1545,8 @@ const ReviewRequestDialog = ({ open, onClose, request, onReview }) => {
 export default function ChecklistPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const appTheme = useTheme();
+  theme = createChecklistTheme(appTheme.palette.mode);
   const userRole = user?.role;
   const isSuperAdmin = userRole === "super_admin" || userRole === "superadmin";
   const isAdmin = userRole === "admin";
@@ -1817,8 +1903,6 @@ export default function ChecklistPage() {
     setRequestsFilters((p) => ({ ...p, page: 1 }));
   };
 
-  console.log("tab===>",tab)
-
   const mobileFilters = (
     <Box sx={{ p: 2, width: 280 }}>
       <Box
@@ -1937,7 +2021,7 @@ export default function ChecklistPage() {
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ minHeight: "100vh" }}>
+      <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
         <Container
           maxWidth="xl"
           sx={{
@@ -2059,14 +2143,17 @@ export default function ChecklistPage() {
                     },
                   }}
                 >
-                  <StatCard
-                    {...s}
-                    loading={listLoading}
-                    active={
-                      s.filterStatus !== undefined &&
-                      listStatFilter === s.filterStatus &&
-                      (s.filterStatus !== "" || !listFilters.status)
-                    }
+                    <StatCard
+                      {...s}
+                      loading={listLoading}
+                      active={
+                        s.filterStatus !== undefined &&
+                        (s.filterStatus === ""
+                          ? !listStatFilter &&
+                            (!listFilters.status || listFilters.status === "all")
+                          : listStatFilter === s.filterStatus ||
+                            (!listStatFilter && listFilters.status === s.filterStatus))
+                      }
                     onClick={
                       s.filterStatus !== undefined
                         ? () => handleChecklistStatClick(s.filterStatus)
@@ -2128,8 +2215,11 @@ export default function ChecklistPage() {
                     {...s}
                     loading={requestsLoading}
                     active={
-                      requestStatFilter === s.filterStatus &&
-                      (s.filterStatus !== "" || !requestsFilters.status)
+                      s.filterStatus === ""
+                        ? !requestStatFilter &&
+                          (!requestsFilters.status || requestsFilters.status === "all")
+                        : requestStatFilter === s.filterStatus ||
+                          (!requestStatFilter && requestsFilters.status === s.filterStatus)
                     }
                     onClick={() => handleRequestStatClick(s.filterStatus)}
                   />
@@ -2175,9 +2265,12 @@ export default function ChecklistPage() {
                           ml: 0.5,
                           bgcolor:
                             tab === 0
-                              ? alpha("#fff", 0.25)
-                              : alpha(theme.palette.primary.main, 0.12),
-                          color: tab === 0 ? "white" : "primary.main",
+                              ? alpha("#000", 0.2)
+                              : alpha(theme.palette.primary.main, 0.16),
+                          color:
+                            tab === 0
+                              ? theme.palette.primary.contrastText
+                              : "primary.main",
                         }}
                       />
                     )}
@@ -2199,9 +2292,12 @@ export default function ChecklistPage() {
                           ml: 0.5,
                           bgcolor:
                             tab === 1
-                              ? alpha("#fff", 0.25)
-                              : alpha(theme.palette.primary.main, 0.12),
-                          color: tab === 1 ? "white" : "primary.main",
+                              ? alpha("#000", 0.2)
+                              : alpha(theme.palette.primary.main, 0.16),
+                          color:
+                            tab === 1
+                              ? theme.palette.primary.contrastText
+                              : "primary.main",
                         }}
                       />
                     )}
@@ -2231,7 +2327,10 @@ export default function ChecklistPage() {
                     gap: 1.5,
                     flexWrap: "wrap",
                     alignItems: "center",
-                    bgcolor: "#fafbfc",
+                    bgcolor:
+                      theme.palette.mode === "light"
+                        ? "#ffffff"
+                        : "background.default",
                   }}
                 >
                   <AssetSearchField
@@ -2370,7 +2469,14 @@ export default function ChecklistPage() {
                             <TableRow
                               key={row._id}
                               hover
-                              sx={{ "&:hover": { bgcolor: "#f7f9fa" } }}
+                              sx={{
+                                "&:hover": {
+                                  bgcolor: alpha(
+                                    theme.palette.primary.main,
+                                    0.06,
+                                  ),
+                                },
+                              }}
                             >
                               <TD>
                                 <Typography fontWeight={700} variant="body2">
@@ -2416,7 +2522,7 @@ export default function ChecklistPage() {
                                   sx={{
                                     bgcolor: alpha(
                                       theme.palette.primary.main,
-                                      0.08,
+                                      0.16,
                                     ),
                                     color: "primary.main",
                                     fontWeight: 700,
@@ -2464,7 +2570,7 @@ export default function ChecklistPage() {
                                     sx={{
                                       fontSize: 32,
                                       color: "primary.main",
-                                      opacity: 0.4,
+                                      opacity: 0.5,
                                     }}
                                   />
                                 }
@@ -2488,7 +2594,7 @@ export default function ChecklistPage() {
                       minWidth: 170,
                       border: "1px solid",
                       borderColor: "divider",
-                      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
                     },
                   }}
                 >
@@ -2575,7 +2681,10 @@ export default function ChecklistPage() {
                     gap: 1.5,
                     flexWrap: "wrap",
                     alignItems: "center",
-                    bgcolor: "#fafbfc",
+                    bgcolor:
+                      theme.palette.mode === "light"
+                        ? "#ffffff"
+                        : "background.default",
                   }}
                 >
                   <AssetSearchField
@@ -2733,7 +2842,12 @@ export default function ChecklistPage() {
                               key={row._id}
                               hover
                               sx={{
-                                "&:hover": { bgcolor: "#f7f9fa" },
+                                "&:hover": {
+                                  bgcolor: alpha(
+                                    theme.palette.primary.main,
+                                    0.06,
+                                  ),
+                                },
                                 opacity: row.isDeleted ? 0.6 : 1,
                               }}
                             >
@@ -2862,7 +2976,7 @@ export default function ChecklistPage() {
                                     sx={{
                                       fontSize: 32,
                                       color: "primary.main",
-                                      opacity: 0.4,
+                                      opacity: 0.5,
                                     }}
                                   />
                                 }
@@ -2959,7 +3073,7 @@ export default function ChecklistPage() {
           }}
         >
           <DialogTitle
-            sx={{ bgcolor: "#0d4a5c", color: "white", p: { xs: 2, sm: 3 } }}
+            sx={{ bgcolor: "primary.dark", color: "primary.contrastText", p: { xs: 2, sm: 3 } }}
           >
             <Box
               sx={{
@@ -2977,7 +3091,7 @@ export default function ChecklistPage() {
                 </Typography>
                 <Typography
                   variant="caption"
-                  sx={{ color: alpha("#fff", 0.6) }}
+                  sx={{ color: alpha(theme.palette.primary.contrastText, 0.7) }}
                 >
                   Submitted{" "}
                   {fmt(viewRequest?.requestDate || viewRequest?.createdAt)}
@@ -2986,7 +3100,15 @@ export default function ChecklistPage() {
               <IconButton
                 onClick={() => setViewRequest(null)}
                 size="small"
-                sx={{ color: "white" }}
+                sx={{
+                  color: "primary.contrastText",
+                  bgcolor: (theme) =>
+                    alpha(theme.palette.primary.contrastText, 0.12),
+                  "&:hover": {
+                    bgcolor: (theme) =>
+                      alpha(theme.palette.primary.contrastText, 0.2),
+                  },
+                }}
               >
                 <CloseIcon />
               </IconButton>
@@ -2995,13 +3117,22 @@ export default function ChecklistPage() {
           <DialogContent
             sx={{
               p: { xs: 2, sm: 3 },
-              mt: { xs: 0, sm: 2 },
               flex: 1,
               overflowY: "auto",
             }}
           >
             <Stack spacing={2.5}>
-              <Grid container spacing={1.5} >
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "repeat(2, minmax(0, 1fr))",
+                    sm: "repeat(4, minmax(0, 1fr))",
+                  },
+                  gap: 1.5,
+                  width: "100%",
+                }}
+              >
                 {[
                   {
                     label: "Status",
@@ -3030,22 +3161,20 @@ export default function ChecklistPage() {
                     ),
                   },
                 ].map(({ label, content }) => (
-                  <Grid item xs={6} sm={3} key={label}>
-                    <InfoTile sx={{ height: "100%", width: "100%" }}>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        fontWeight={600}
-                        display="block"
-                        sx={{ mb: 0.5 }}
-                      >
-                        {label}
-                      </Typography>
-                      {content}
-                    </InfoTile>
-                  </Grid>
+                  <InfoTile key={label} sx={{ minWidth: 0 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontWeight={600}
+                      display="block"
+                      sx={{ mb: 0.5 }}
+                    >
+                      {label}
+                    </Typography>
+                    {content}
+                  </InfoTile>
                 ))}
-              </Grid>
+              </Box>
 
               <Box>
                 <Typography
@@ -3065,7 +3194,7 @@ export default function ChecklistPage() {
                   sx={{
                     p: 2,
                     width: "100%",
-                    bgcolor: "#f7f9fa",
+                    bgcolor: "background.default",
                     borderRadius: "10px",
                     border: "1px solid",
                     borderColor: "divider",
@@ -3099,7 +3228,7 @@ export default function ChecklistPage() {
                   sx={{
                     p: 2,
                     width: "100%",
-                    bgcolor: "#f7f9fa",
+                    bgcolor: "background.default",
                     borderRadius: "10px",
                     border: "1px solid",
                     borderColor: "divider",
@@ -3198,8 +3327,7 @@ export default function ChecklistPage() {
           open={snack.open}
           autoHideDuration={4000}
           onClose={() => setSnack((p) => ({ ...p, open: false }))}
-          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert
             severity={snack.severity}
             onClose={() => setSnack((p) => ({ ...p, open: false }))}

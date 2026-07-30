@@ -21,6 +21,7 @@ import {
   Stack,
   Snackbar,
   Alert,
+  Portal,
   CircularProgress,
   Avatar,
   Autocomplete,
@@ -113,33 +114,46 @@ const SECTION_COLORS = {
 const inputSx = {
   "& .MuiOutlinedInput-root": {
     borderRadius: T.radius.md,
-    bgcolor: T.bgInput,
+    bgcolor: "var(--asset-input-bg, #ffffff)",
     fontSize: "0.875rem",
     fontFamily: T.font,
-    "& fieldset": { borderColor: T.border },
-    "&:hover fieldset": { borderColor: "#cbd5e1" },
+    "& fieldset": { borderColor: "var(--asset-border, #e2e8f0)" },
+    "&:hover fieldset": { borderColor: "var(--asset-border-hover, #cbd5e1)" },
     "&.Mui-focused fieldset": {
       borderColor: T.borderFocus,
       borderWidth: "1.5px",
     },
-    "&.Mui-disabled": { bgcolor: "#f8fafc" },
+    "&.Mui-disabled": { bgcolor: "var(--asset-input-disabled-bg, #f8fafc)" },
   },
   "& .MuiInputBase-input": {
     py: "10px",
     px: "14px",
-    color: T.text.primary,
+    color: "var(--asset-text-primary, #0f172a)",
+    "&::placeholder": {
+      color: "var(--asset-text-muted, #94a3b8)",
+      opacity: 1,
+    },
+  },
+  "& .MuiFormHelperText-root": {
+    color: "var(--asset-text-muted, #94a3b8)",
+  },
+  "& .Mui-error .MuiFormHelperText-root, & .MuiFormHelperText-root.Mui-error": {
+    color: T.error,
   },
 };
 
 const selectSx = {
   borderRadius: T.radius.md,
-  bgcolor: T.bgInput,
-  "& .MuiOutlinedInput-notchedOutline": { borderColor: T.border },
-  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" },
+  bgcolor: "var(--asset-input-bg, #ffffff)",
+  "& .MuiOutlinedInput-notchedOutline": { borderColor: "var(--asset-border, #e2e8f0)" },
+  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "var(--asset-border-hover, #cbd5e1)" },
   "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
     borderColor: T.borderFocus,
   },
   "& .MuiSelect-select": { py: "10px", px: "14px" },
+  "& .MuiSelect-select, & .MuiInputBase-input": {
+    color: "var(--asset-text-primary, #0f172a)",
+  },
 };
 
 const menuPaperSx = {
@@ -174,7 +188,7 @@ const Label = ({ children, required }) => (
       sx={{
         fontSize: "0.7rem",
         fontWeight: 600,
-        color: T.text.secondary,
+        color: "var(--asset-text-secondary, #475569)",
         textTransform: "uppercase",
         letterSpacing: "0.03em",
       }}
@@ -370,6 +384,14 @@ function QuickCategoryDialog({
   categories = [],
   onSelectExisting,
 }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const dialogBg = isDark ? "#0f1c2e" : T.bgCard;
+  const dialogInputBg = isDark ? "#0d1a2b" : T.bgInput;
+  const dialogBorder = isDark ? "rgba(148, 163, 184, 0.24)" : T.border;
+  const dialogTextPrimary = isDark ? "#f8fafc" : T.text.primary;
+  const dialogTextSecondary = isDark ? "#cbd5e1" : T.text.secondary;
+  const dialogTextMuted = isDark ? "#94a3b8" : T.text.muted;
   const [form, setForm] = useState({ name: "", description: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -448,6 +470,19 @@ function QuickCategoryDialog({
           borderRadius: T.radius.lg,
           boxShadow: T.shadow.lg,
           overflow: "hidden",
+          bgcolor: dialogBg,
+          color: dialogTextPrimary,
+          "--asset-input-bg": dialogInputBg,
+          "--asset-input-disabled-bg": isDark
+            ? "rgba(148, 163, 184, 0.08)"
+            : "#f8fafc",
+          "--asset-border": dialogBorder,
+          "--asset-border-hover": isDark
+            ? "rgba(148, 163, 184, 0.38)"
+            : "#cbd5e1",
+          "--asset-text-primary": dialogTextPrimary,
+          "--asset-text-secondary": dialogTextSecondary,
+          "--asset-text-muted": dialogTextMuted,
         },
       }}
     >
@@ -456,8 +491,10 @@ function QuickCategoryDialog({
           px: 3,
           pt: 2.5,
           pb: 2,
-          borderBottom: `1px solid ${T.border}`,
-          bgcolor: alpha(T.brandPrimary, 0.04),
+          borderBottom: `1px solid ${dialogBorder}`,
+          bgcolor: isDark
+            ? "rgba(13, 68, 78, 0.18)"
+            : alpha(T.brandPrimary, 0.04),
         }}
       >
         <Stack direction="row" alignItems="center" spacing={1.5}>
@@ -475,7 +512,7 @@ function QuickCategoryDialog({
             <CategoryOutlined sx={{ fontSize: 18, color: T.brandPrimary }} />
           </Box>
           <Typography
-            sx={{ fontWeight: 700, fontSize: "1rem", color: T.text.primary }}
+            sx={{ fontWeight: 700, fontSize: "1rem", color: dialogTextPrimary }}
           >
             Add New Category
           </Typography>
@@ -535,7 +572,7 @@ function QuickCategoryDialog({
           px: 3,
           pb: 2.5,
           pt: 1.5,
-          borderTop: `1px solid ${T.border}`,
+          borderTop: `1px solid ${dialogBorder}`,
           display: "flex",
           justifyContent: "flex-end",
           gap: 1.5,
@@ -548,8 +585,8 @@ function QuickCategoryDialog({
           sx={{
             textTransform: "none",
             borderRadius: T.radius.md,
-            borderColor: T.border,
-            color: T.text.secondary,
+            borderColor: dialogBorder,
+            color: dialogTextSecondary,
           }}
         >
           Cancel
@@ -586,6 +623,14 @@ export default function AddNewAsset({
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isDark = theme.palette.mode === "dark";
+  const pageBg = isDark ? "#08111f" : T.bg;
+  const surfaceBg = isDark ? "#0f1c2e" : T.bgCard;
+  const inputBg = isDark ? "#0d1a2b" : T.bgInput;
+  const borderColor = isDark ? "rgba(148, 163, 184, 0.24)" : T.border;
+  const textPrimary = isDark ? "#f8fafc" : T.text.primary;
+  const textSecondary = isDark ? "#cbd5e1" : T.text.secondary;
+  const textMuted = isDark ? "#94a3b8" : T.text.muted;
   const navigate = useNavigate();
 
   const { user, updateCurrentUser } = useAuth() || {};
@@ -1277,11 +1322,23 @@ export default function AddNewAsset({
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: T.bg }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: pageBg,
+        "--asset-input-bg": inputBg,
+        "--asset-input-disabled-bg": isDark ? "rgba(148, 163, 184, 0.08)" : "#f8fafc",
+        "--asset-border": borderColor,
+        "--asset-border-hover": isDark ? "rgba(148, 163, 184, 0.38)" : "#cbd5e1",
+        "--asset-text-primary": textPrimary,
+        "--asset-text-secondary": textSecondary,
+        "--asset-text-muted": textMuted,
+      }}
+    >
       <Box
         sx={{
-          borderBottom: `1px solid ${T.border}`,
-          bgcolor: T.bgCard,
+          borderBottom: `1px solid ${borderColor}`,
+          bgcolor: surfaceBg,
           px: { xs: 2, sm: 3, md: 4 },
           py: { xs: 1.5, sm: 2 },
           width: "100%",
@@ -1312,7 +1369,7 @@ export default function AddNewAsset({
                 sx={{
                   fontWeight: 700,
                   fontSize: { xs: "0.9375rem", sm: "1.0625rem" },
-                  color: T.text.primary,
+                  color: textPrimary,
                 }}
               >
                 Add {formAssetLabel}
@@ -1337,7 +1394,7 @@ export default function AddNewAsset({
                 }}
               />
               <Typography
-                sx={{ fontSize: "0.7rem", color: T.text.muted, mt: 0.25 }}
+                sx={{ fontSize: "0.7rem", color: textMuted, mt: 0.25 }}
               >
                 {isAdmin
                   ? `Complete all required fields to register a ${formAssetLabel.toLowerCase()}`
@@ -1355,8 +1412,8 @@ export default function AddNewAsset({
                 sx={{
                   textTransform: "none",
                   borderRadius: T.radius.md,
-                  borderColor: T.border,
-                  color: T.text.secondary,
+                  borderColor,
+                  color: textSecondary,
                   px: 2.5,
                 }}
               >
@@ -1399,8 +1456,8 @@ export default function AddNewAsset({
             <Paper
               elevation={0}
               sx={{
-                bgcolor: T.bgCard,
-                border: `1px solid ${T.border}`,
+                bgcolor: surfaceBg,
+                border: `1px solid ${borderColor}`,
                 borderRadius: T.radius.lg,
                 p: { xs: 2, sm: 2.5 },
                 mb: 2.5,
@@ -1426,7 +1483,7 @@ export default function AddNewAsset({
                   sx={{
                     fontWeight: 600,
                     fontSize: "0.875rem",
-                    color: T.text.primary,
+                    color: textPrimary,
                   }}
                 >
                   Core Identification
@@ -1455,7 +1512,7 @@ export default function AddNewAsset({
                         sx={{
                           fontSize: "0.82rem",
                           fontWeight: 600,
-                          color: T.text.secondary,
+                          color: textSecondary,
                         }}
                       >
                         Do you want to add a portfolio?
@@ -1799,8 +1856,8 @@ export default function AddNewAsset({
             <Paper
               elevation={0}
               sx={{
-                bgcolor: T.bgCard,
-                border: `1px solid ${T.border}`,
+                bgcolor: surfaceBg,
+                border: `1px solid ${borderColor}`,
                 borderRadius: T.radius.lg,
                 p: { xs: 2, sm: 2.5 },
                 mb: 2.5,
@@ -1824,7 +1881,7 @@ export default function AddNewAsset({
                   sx={{
                     fontWeight: 600,
                     fontSize: "0.875rem",
-                    color: T.text.primary,
+                    color: textPrimary,
                   }}
                 >
                   Assigned Users
@@ -1852,7 +1909,7 @@ export default function AddNewAsset({
                   sx={{ py: 1 }}
                 >
                   <CircularProgress size={18} />
-                  <Typography sx={{ fontSize: "0.8rem", color: T.text.muted }}>
+                  <Typography sx={{ fontSize: "0.8rem", color: textMuted }}>
                     Loading members…
                   </Typography>
                 </Stack>
@@ -1920,7 +1977,7 @@ export default function AddNewAsset({
                                   sx={{
                                     fontSize: "0.8125rem",
                                     fontWeight: 500,
-                                    color: T.text.primary,
+                                    color: textPrimary,
                                   }}
                                 >
                                   {opt.name || opt.label}
@@ -1928,7 +1985,7 @@ export default function AddNewAsset({
                                 <Typography
                                   sx={{
                                     fontSize: "0.7rem",
-                                    color: T.text.muted,
+                                    color: textMuted,
                                   }}
                                 >
                                   {opt.role} · {opt.email}
@@ -1948,8 +2005,8 @@ export default function AddNewAsset({
             <Paper
               elevation={0}
               sx={{
-                bgcolor: T.bgCard,
-                border: `1px solid ${T.border}`,
+                bgcolor: surfaceBg,
+                border: `1px solid ${borderColor}`,
                 borderRadius: T.radius.lg,
                 p: { xs: 2, sm: 2.5 },
                 mb: 2.5,
@@ -1973,7 +2030,7 @@ export default function AddNewAsset({
                   sx={{
                     fontWeight: 600,
                     fontSize: "0.875rem",
-                    color: T.text.primary,
+                    color: textPrimary,
                   }}
                 >
                   Physical Address
@@ -2045,8 +2102,8 @@ export default function AddNewAsset({
             <Paper
               elevation={0}
               sx={{
-                bgcolor: T.bgCard,
-                border: `1px solid ${T.border}`,
+                bgcolor: surfaceBg,
+                border: `1px solid ${borderColor}`,
                 borderRadius: T.radius.lg,
                 p: { xs: 2, sm: 2.5 },
                 mb: 2.5,
@@ -2070,7 +2127,7 @@ export default function AddNewAsset({
                   sx={{
                     fontWeight: 600,
                     fontSize: "0.875rem",
-                    color: T.text.primary,
+                    color: textPrimary,
                   }}
                 >
                   Primary Information
@@ -2808,8 +2865,8 @@ export default function AddNewAsset({
                 mb: 2,
                 p: { xs: 2, sm: 2.5 },
                 borderRadius: T.radius.lg,
-                bgcolor: T.bgCard,
-                border: `1px solid ${T.border}`,
+                bgcolor: surfaceBg,
+                border: `1px solid ${borderColor}`,
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
@@ -2818,10 +2875,10 @@ export default function AddNewAsset({
               }}
             >
               <Box>
-                <Typography sx={{ fontWeight: 600, color: T.text.primary }}>
+                <Typography sx={{ fontWeight: 600, color: textPrimary }}>
                   {canEdit ? "Ready to save?" : "Read-only access"}
                 </Typography>
-                <Typography sx={{ fontSize: "0.7rem", color: T.text.muted }}>
+                <Typography sx={{ fontSize: "0.7rem", color: textMuted }}>
                   {canEdit
                     ? "Asset Name and Category are required."
                     : "You need admin or team permissions to save assets."}
@@ -2874,20 +2931,23 @@ export default function AddNewAsset({
         }}
       />
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={5000}
-        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert
-          severity={snackbar.severity}
+      <Portal>
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={5000}
           onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-          sx={{ borderRadius: T.radius.md }}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+          sx={{ zIndex: (theme) => theme.zIndex.modal + 2 }}
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+          <Alert
+            severity={snackbar.severity}
+            onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+            sx={{ borderRadius: T.radius.md }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Portal>
 
       <Dialog
         open={confirmCloseOpen}

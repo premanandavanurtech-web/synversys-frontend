@@ -12,6 +12,19 @@ import Testimonials from "./Testimonials";
 import Contact from "./Contact";
 import ServicesSection from "./Services";
 
+const THEME_STORAGE_KEY = "assetmach-theme-mode";
+const THEME_EXPLICIT_STORAGE_KEY = "assetmach-theme-mode-explicit";
+
+const resolveStoredDarkMode = () => {
+  const mode = localStorage.getItem(THEME_STORAGE_KEY);
+  if (mode === "dark") return true;
+  if (mode === "light") return false;
+  if (mode === "auto") {
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches || false;
+  }
+  return false;
+};
+
 // Create light theme
 const lightTheme = createTheme({
   palette: {
@@ -112,7 +125,7 @@ function Main() {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("home");
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(resolveStoredDarkMode);
 
   const sections = [
     { id: "home", label: "Home" },
@@ -123,6 +136,31 @@ function Main() {
     { id: "pricing", label: "Pricing" },
     { id: "contact", label: "Contact" },
   ];
+
+  useEffect(() => {
+    const handleThemeChange = (event) => {
+      const mode = event.detail?.mode || localStorage.getItem(THEME_STORAGE_KEY);
+      if (mode === "dark") setIsDarkMode(true);
+      else if (mode === "light") setIsDarkMode(false);
+      else if (mode === "auto") {
+        setIsDarkMode(window.matchMedia?.("(prefers-color-scheme: dark)").matches || false);
+      }
+    };
+
+    const media = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const handleSystemThemeChange = () => {
+      if (localStorage.getItem(THEME_STORAGE_KEY) === "auto") {
+        setIsDarkMode(media?.matches || false);
+      }
+    };
+
+    window.addEventListener("assetmach-theme-change", handleThemeChange);
+    media?.addEventListener?.("change", handleSystemThemeChange);
+    return () => {
+      window.removeEventListener("assetmach-theme-change", handleThemeChange);
+      media?.removeEventListener?.("change", handleSystemThemeChange);
+    };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -177,7 +215,12 @@ function Main() {
   }, [location.hash, location.pathname, location.state, navigate]);
 
   const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
+    const nextIsDark = !isDarkMode;
+    const nextMode = nextIsDark ? "dark" : "light";
+    setIsDarkMode(nextIsDark);
+    localStorage.setItem(THEME_STORAGE_KEY, nextMode);
+    localStorage.setItem(THEME_EXPLICIT_STORAGE_KEY, "true");
+    window.dispatchEvent(new CustomEvent("assetmach-theme-change", { detail: { mode: nextMode } }));
   };
 
   return (

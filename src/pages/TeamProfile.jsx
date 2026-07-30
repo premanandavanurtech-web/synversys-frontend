@@ -21,6 +21,8 @@ import {
   Skeleton,
   Chip,
   CircularProgress,
+  ToggleButton,
+  ToggleButtonGroup,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -48,6 +50,10 @@ import BadgeIcon from "@mui/icons-material/Badge";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import BusinessIcon from "@mui/icons-material/Business";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import PaletteOutlinedIcon from "@mui/icons-material/PaletteOutlined";
+import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
+import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
+import SettingsSuggestOutlinedIcon from "@mui/icons-material/SettingsSuggestOutlined";
 
 // ─── Animations ────────────────────────────────────────────────────────────────
 const fadeUp = keyframes`
@@ -61,7 +67,17 @@ const pulse = keyframes`
 `;
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
-const T = {
+const THEME_STORAGE_KEY = "assetmach-theme-mode";
+const THEME_EXPLICIT_STORAGE_KEY = "assetmach-theme-mode-explicit";
+const DEFAULT_THEME_MODE = "light";
+const VALID_THEME_MODES = new Set(["light", "dark", "auto"]);
+
+const getSavedThemeMode = () => {
+  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  return VALID_THEME_MODES.has(saved) ? saved : DEFAULT_THEME_MODE;
+};
+
+const LIGHT_PROFILE_TOKENS = {
   ink: "#0f1117",
   ink2: "#374151",
   ink3: "#6b7280",
@@ -70,9 +86,9 @@ const T = {
   line2: "#f3f4f6",
   surface: "#ffffff",
   bg: "#f9fafb",
-  brand: "#095064",
-  brandDark: "#0b4557",
-  brandMid: "#105364",
+  brand: "#16354F",
+  brandDark: "#0F2A40",
+  brandMid: "#244F70",
   brandGhost: "#f0f9ff",
   brandBorder: "#bae6fd",
   green: "#10b981",
@@ -82,34 +98,67 @@ const T = {
   redBg: "#fef2f2",
 };
 
+const DARK_PROFILE_TOKENS = {
+  ink: "#e7eef2",
+  ink2: "#d6e1e8",
+  ink3: "#9fb0bd",
+  ink4: "#728697",
+  line: "#223544",
+  line2: "#132433",
+  surface: "#0f1e29",
+  bg: "#0a1620",
+  brand: "#1fb6cf",
+  brandDark: "#0d8ba1",
+  brandMid: "#105364",
+  brandGhost: "rgba(31, 182, 207, 0.12)",
+  brandBorder: "rgba(31, 182, 207, 0.28)",
+  green: "#4ade80",
+  greenBg: "rgba(74, 222, 128, 0.14)",
+  greenText: "#4ade80",
+  red: "#f87171",
+  redBg: "rgba(248, 113, 113, 0.14)",
+};
+
+const T = { ...DARK_PROFILE_TOKENS };
+
+const applyProfileThemeTokens = (mode) => {
+  Object.assign(T, mode === "light" ? LIGHT_PROFILE_TOKENS : DARK_PROFILE_TOKENS);
+};
+
 // ─── Styled components ─────────────────────────────────────────────────────────
-const Page = styled(Box)({ minHeight: "100vh", background: T.bg, paddingBottom: 80 });
+const Page = styled(Box)(() => ({
+  minHeight: "100vh",
+  background: T.bg,
+  paddingBottom: 80,
+}));
 
 // FIX: added height: "100%" so cards fill the stretched column box
 // (works together with the parent flex container's alignItems: "stretch")
-const Card = styled(Paper)({
+const Card = styled(Paper)(() => ({
   background: T.surface,
   border: `1px solid ${T.line}`,
   borderRadius: 14,
-  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+  boxShadow: T.bg === LIGHT_PROFILE_TOKENS.bg
+    ? "0 1px 3px rgba(15, 23, 42, 0.05)"
+    : "0 1px 3px rgba(0, 0, 0, 0.35)",
   overflow: "hidden",
   animation: `${fadeUp} 0.4s ease both`,
   width: "100%",
   height: "100%",
   boxSizing: "border-box",
-});
+}));
 
-const SectionHeader = styled(Box)({
+const SectionHeader = styled(Box)(() => ({
   padding: "16px 22px",
   borderBottom: `1px solid ${T.line}`,
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-});
+}));
 
 const Body = styled(Box)({ padding: "22px" });
 
-const Label = styled(Typography)({
+const Label = styled(Typography)(() => ({
   fontSize: "0.6875rem",
   fontWeight: 700,
   color: T.ink3,
@@ -117,9 +166,9 @@ const Label = styled(Typography)({
   letterSpacing: "0.55px",
   marginBottom: 5,
   display: "block",
-});
+}));
 
-const StyledField = styled(TextField)({
+const StyledField = styled(TextField)(() => ({
   width: "100%",
   "& .MuiOutlinedInput-root": {
     borderRadius: 9,
@@ -135,9 +184,9 @@ const StyledField = styled(TextField)({
   "& .MuiInputBase-input": { fontSize: "0.8125rem", padding: "10px 13px", color: T.ink },
   "& .MuiInputBase-input.Mui-disabled": { color: T.ink3, WebkitTextFillColor: T.ink3 },
   "& .MuiFormHelperText-root": { fontSize: "0.7rem", marginTop: 3 },
-});
+}));
 
-const PrimaryBtn = styled(Button)({
+const PrimaryBtn = styled(Button)(() => ({
   background: T.brand,
   color: "#fff",
   fontWeight: 600,
@@ -149,9 +198,9 @@ const PrimaryBtn = styled(Button)({
   transition: "all 0.18s",
   "&:hover": { background: T.brandDark, boxShadow: `0 3px 10px ${alpha(T.brand, 0.35)}` },
   "&.Mui-disabled": { background: T.line, color: T.ink4, boxShadow: "none" },
-});
+}));
 
-const OutlineBtn = styled(Button)({
+const OutlineBtn = styled(Button)(() => ({
   color: T.ink3,
   fontWeight: 500,
   fontSize: "0.75rem",
@@ -162,16 +211,16 @@ const OutlineBtn = styled(Button)({
   background: T.surface,
   transition: "all 0.18s",
   "&:hover": { background: T.line2, borderColor: "#d1d5db", color: T.ink2 },
-});
+}));
 
-const IconBtn = styled(IconButton)({
+const IconBtn = styled(IconButton)(() => ({
   width: 32,
   height: 32,
   borderRadius: 8,
   border: `1px solid ${T.line}`,
   transition: "all 0.18s",
   flexShrink: 0,
-});
+}));
 
 // FIX: the "fields too narrow" bug came from MUI's <Grid item sm={6}>, which
 // sizes itself off the BROWSER WINDOW width, not the width of the column it's
@@ -265,6 +314,7 @@ const ProfileContent = () => {
   } = useTeam();
 
   const theme = useTheme();
+  applyProfileThemeTokens(theme.palette.mode);
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [showPass, setShowPass] = useState({ current: false, new: false, confirm: false });
@@ -277,8 +327,18 @@ const ProfileContent = () => {
   const [saving, setSaving] = useState(false);
   const [changingPass, setChangingPass] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [themeChoice, setThemeChoice] = useState(getSavedThemeMode);
 
   useEffect(() => { fetchTeamProfile(); }, [fetchTeamProfile]);
+
+  useEffect(() => {
+    const handleThemeChange = (event) => {
+      const nextMode = event.detail?.mode;
+      if (VALID_THEME_MODES.has(nextMode)) setThemeChoice(nextMode);
+    };
+    window.addEventListener("assetmach-theme-change", handleThemeChange);
+    return () => window.removeEventListener("assetmach-theme-change", handleThemeChange);
+  }, []);
 
   useEffect(() => {
     if (profile) {
@@ -295,6 +355,15 @@ const ProfileContent = () => {
   }, [profile]);
 
   const toast = (msg, sev = "success") => setSnack({ open: true, message: msg, severity: sev });
+
+  const handleThemeChoice = (_, mode) => {
+    if (!mode) return;
+    setThemeChoice(mode);
+    localStorage.setItem(THEME_STORAGE_KEY, mode);
+    localStorage.setItem(THEME_EXPLICIT_STORAGE_KEY, "true");
+    window.dispatchEvent(new CustomEvent("assetmach-theme-change", { detail: { mode } }));
+    toast(`${mode[0].toUpperCase()}${mode.slice(1)} mode applied.`);
+  };
 
   const handlePhoneChange = (e) => {
     const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
@@ -629,8 +698,8 @@ const ProfileContent = () => {
           </Box>
 
           {/* ── RIGHT COLUMN ── */}
-          <Box sx={{ flex: 1, minWidth: 0, display: "flex" }}>
-            <Card sx={{ width: "100%" }}>
+          <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+            <Card sx={{ width: "100%", height: "auto" }}>
               <SectionHeader>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, minWidth: 0 }}>
                   <IconBox><PersonOutlineIcon /></IconBox>
@@ -774,6 +843,67 @@ const ProfileContent = () => {
                 </Fade>
               </Body>
             </Card>
+            <Card sx={{ width: "100%", height: "auto" }}>
+              <SectionHeader>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, minWidth: 0 }}>
+                  <IconBox><PaletteOutlinedIcon /></IconBox>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: "0.85rem", color: T.ink }}>Appearance</Typography>
+                    <Typography sx={{ fontSize: "0.68rem", color: T.ink4 }}>
+                      Choose your preferred display mode
+                    </Typography>
+                  </Box>
+                </Box>
+              </SectionHeader>
+              <Body>
+                <ToggleButtonGroup
+                  exclusive
+                  value={themeChoice}
+                  onChange={handleThemeChoice}
+                  aria-label="Theme mode"
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
+                    gap: 1.25,
+                    "& .MuiToggleButtonGroup-grouped": {
+                      m: 0,
+                      border: `1px solid ${T.line}`,
+                      borderRadius: "10px !important",
+                    },
+                  }}
+                >
+                  {[
+                    { value: "light", label: "Light", icon: LightModeOutlinedIcon },
+                    { value: "dark", label: "Dark", icon: DarkModeOutlinedIcon },
+                    { value: "auto", label: "Auto", icon: SettingsSuggestOutlinedIcon },
+                  ].map(({ value, label, icon: Icon }) => (
+                    <ToggleButton
+                      key={value}
+                      value={value}
+                      sx={{
+                        minHeight: 52,
+                        gap: 1,
+                        color: themeChoice === value ? "#fff" : T.ink2,
+                        bgcolor: themeChoice === value ? T.brand : T.surface,
+                        textTransform: "none",
+                        fontWeight: 700,
+                        "&:hover": {
+                          bgcolor: themeChoice === value ? T.brandDark : T.line2,
+                        },
+                        "&.Mui-selected": {
+                          bgcolor: T.brand,
+                          color: "#fff",
+                          "&:hover": { bgcolor: T.brandDark },
+                        },
+                      }}
+                    >
+                      <Icon sx={{ fontSize: 18 }} />
+                      {label}
+                    </ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+              </Body>
+            </Card>
           </Box>
 
         </Box>
@@ -790,8 +920,7 @@ const ProfileContent = () => {
         open={snack.open}
         autoHideDuration={5000}
         onClose={() => setSnack(s => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={() => setSnack(s => ({ ...s, open: false }))}
           severity={snack.severity}

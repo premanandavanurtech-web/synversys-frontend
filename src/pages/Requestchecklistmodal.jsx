@@ -44,6 +44,10 @@ import { useRequestChecklist } from "../context/RequestChecklistContext";
 
 const PRIMARY = "#0d4a5c";
 const PRIMARY_DARK = "#092f3a";
+const DARK_FIELD_BG = "#0f1d2c";
+const DARK_FIELD_BG_SOFT = "#102334";
+const DARK_BORDER = "#2b3f55";
+const DARK_TEXT_MUTED = "#9aa9bb";
 
 const CATEGORIES = [
   "Safety & Compliance",
@@ -168,13 +172,17 @@ const UrgencyCard = ({ cfg, selected, onClick, isMobile }) => (
       p: { xs: "6px 4px", sm: "8px 6px" },
       borderRadius: "8px",
       border: "0.5px solid",
-      borderColor: selected ? cfg.color : "divider",
-      bgcolor: selected ? cfg.bg : "grey.50",
+      borderColor: selected ? cfg.color : DARK_BORDER,
+      bgcolor: selected ? alpha(cfg.color, 0.16) : DARK_FIELD_BG,
       cursor: "pointer",
       width: "100%",
       textAlign: "center",
       transition: "all 0.15s ease",
-      "&:hover": { borderColor: cfg.color },
+      boxShadow: selected ? `0 0 0 1px ${alpha(cfg.color, 0.35)}` : "none",
+      "&:hover": {
+        borderColor: cfg.color,
+        bgcolor: selected ? alpha(cfg.color, 0.2) : DARK_FIELD_BG_SOFT,
+      },
       "&:active": isMobile ? { transform: "scale(0.98)" } : {},
     }}
   >
@@ -183,7 +191,7 @@ const UrgencyCard = ({ cfg, selected, onClick, isMobile }) => (
       display="block"
       fontWeight={600}
       sx={{
-        color: selected ? cfg.color : "text.primary",
+        color: selected ? cfg.color : "#e8eef6",
         fontSize: { xs: 11, sm: 12 },
         mb: 0.25,
       }}
@@ -194,7 +202,7 @@ const UrgencyCard = ({ cfg, selected, onClick, isMobile }) => (
       variant="caption"
       display="block"
       sx={{
-        color: "text.disabled",
+        color: selected ? alpha(cfg.color, 0.9) : DARK_TEXT_MUTED,
         fontSize: { xs: 9, sm: 10.5 },
         lineHeight: 1.3,
       }}
@@ -795,15 +803,15 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                     ? PRIMARY
                     : fileError
                       ? "error.main"
-                      : "divider",
+                      : DARK_BORDER,
                   borderRadius: 2,
                   p: { xs: 2, sm: 2.5 },
                   textAlign: "center",
                   cursor: submitting ? "not-allowed" : "pointer",
-                  bgcolor: dragActive ? alpha(PRIMARY, 0.03) : "grey.50",
+                  bgcolor: dragActive ? alpha("#1fb6cf", 0.12) : DARK_FIELD_BG,
                   transition: "all 0.15s ease",
                   "&:hover": !submitting
-                    ? { borderColor: PRIMARY, bgcolor: alpha(PRIMARY, 0.02) }
+                    ? { borderColor: "#1fb6cf", bgcolor: DARK_FIELD_BG_SOFT }
                     : {},
                   "&:active":
                     isMobile && !submitting ? { transform: "scale(0.98)" } : {},
@@ -826,7 +834,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                     width: { xs: 32, sm: 36 },
                     height: { xs: 32, sm: 36 },
                     borderRadius: "50%",
-                    bgcolor: alpha(PRIMARY, 0.08),
+                    bgcolor: alpha("#1fb6cf", 0.14),
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -835,21 +843,19 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                   }}
                 >
                   <CloudUploadIcon
-                    sx={{ color: PRIMARY, fontSize: { xs: 16, sm: 18 } }}
+                    sx={{ color: "#67e8f9", fontSize: { xs: 16, sm: 18 } }}
                   />
                 </Box>
                 <Typography
                   variant="body2"
                   fontWeight={500}
-                  color="text.secondary"
-                  sx={{ fontSize: { xs: 12, sm: 13 } }}
+                  sx={{ fontSize: { xs: 12, sm: 13 }, color: "#dbeafe" }}
                 >
                   {dragActive ? "Drop files here" : "Click to upload"}
                 </Typography>
                 <Typography
                   variant="caption"
-                  color="text.disabled"
-                  sx={{ fontSize: { xs: 10, sm: 11 } }}
+                  sx={{ fontSize: { xs: 10, sm: 11 }, color: DARK_TEXT_MUTED }}
                 >
                   PDF, DOC, XLS, images · max {MAX_FILE_SIZE_MB} MB
                 </Typography>
@@ -881,14 +887,14 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                         p: { xs: "4px 8px", sm: "5px 10px" },
                         borderRadius: 1.5,
                         border: "0.5px solid",
-                        borderColor: "divider",
-                        bgcolor: "grey.50",
+                        borderColor: DARK_BORDER,
+                        bgcolor: DARK_FIELD_BG,
                       }}
                     >
                       <AttachFileIcon
                         sx={{
                           fontSize: { xs: 12, sm: 13 },
-                          color: "text.disabled",
+                          color: "#8bddec",
                           flexShrink: 0,
                         }}
                       />
@@ -901,14 +907,18 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
                           fontSize: { xs: 10, sm: 11 },
+                          color: "#e8eef6",
                         }}
                       >
                         {name}
                       </Typography>
                       <Typography
                         variant="caption"
-                        color="text.disabled"
-                        sx={{ flexShrink: 0, fontSize: { xs: 9, sm: 11 } }}
+                        sx={{
+                          flexShrink: 0,
+                          fontSize: { xs: 9, sm: 11 },
+                          color: DARK_TEXT_MUTED,
+                        }}
                       >
                         {fmtSize(size)}
                       </Typography>
@@ -959,8 +969,8 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
           py: { xs: 1.5, sm: 1.75 },
           pb: { xs: "calc(12px + env(safe-area-inset-bottom))", sm: 1.75 },
           borderTop: "0.5px solid",
-          borderColor: "divider",
-          bgcolor: "grey.50",
+          borderColor: DARK_BORDER,
+          bgcolor: "#0d1a28",
           justifyContent: "space-between",
           gap: 1,
           flexShrink: 0,

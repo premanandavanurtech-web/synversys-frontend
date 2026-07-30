@@ -279,10 +279,7 @@ export const TeamProvider = ({ children }) => {
           `${API_BASE_URL}/team/me/avatar`,
           formData,
           {
-            headers: {
-              ...authHeaders(),
-              "Content-Type": "multipart/form-data",
-            },
+            headers: authHeaders(),
           },
         );
 

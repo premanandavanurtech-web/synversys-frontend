@@ -1320,8 +1320,7 @@ const SubmitRequestModal = ({ open, onClose, onSubmitSuccess }) => {
         open={snackbar.open}
         autoHideDuration={5000}
         onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
           severity={snackbar.severity}

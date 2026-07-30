@@ -31,7 +31,12 @@ export const buildFilterParams = (filters = {}) => {
   const { preset = "30d", startDate, endDate } = filters;
 
   const today = new Date();
-  const fmt = (d) => d.toISOString().split("T")[0];
+  const fmt = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   if (preset === "today") {
     return {

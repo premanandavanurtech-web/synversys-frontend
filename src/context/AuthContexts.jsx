@@ -25,15 +25,20 @@ const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   "https://synversys-backend.onrender.com/api/v1";
 
+const AUTH_PERSISTENCE_KEY = "authPersistence";
+
 // Clear all auth data from storage
 const clearAuthData = () => {
   localStorage.removeItem("accessToken");
   localStorage.removeItem("token");
   localStorage.removeItem("user");
   localStorage.removeItem("userType");
-  localStorage.removeItem("rememberMe");
-  localStorage.removeItem("rememberedEmail");
+  localStorage.removeItem(AUTH_PERSISTENCE_KEY);
   sessionStorage.removeItem("accessToken");
+  sessionStorage.removeItem("token");
+  sessionStorage.removeItem("user");
+  sessionStorage.removeItem("userType");
+  sessionStorage.removeItem(AUTH_PERSISTENCE_KEY);
 
   document.cookie.split(";").forEach((cookie) => {
     const name = cookie.split("=")[0]?.trim();
@@ -42,6 +47,55 @@ const clearAuthData = () => {
     }
   });
 };
+
+const getStoredAuthData = () => {
+  const persistentToken =
+    localStorage.getItem("accessToken") || localStorage.getItem("token");
+  const persistentUser = localStorage.getItem("user");
+  const persistentUserType = localStorage.getItem("userType");
+
+  if (persistentToken || persistentUser) {
+    return {
+      storage: localStorage,
+      persistence: "local",
+      token: persistentToken,
+      user: persistentUser,
+      userType: persistentUserType,
+    };
+  }
+
+  return {
+    storage: sessionStorage,
+    persistence: "session",
+    token:
+      sessionStorage.getItem("accessToken") || sessionStorage.getItem("token"),
+    user: sessionStorage.getItem("user"),
+    userType: sessionStorage.getItem("userType"),
+  };
+};
+
+const persistAuthData = ({ accessToken, user, userType, remember }) => {
+  const storage = remember ? localStorage : sessionStorage;
+  const otherStorage = remember ? sessionStorage : localStorage;
+  const persistence = remember ? "local" : "session";
+
+  ["accessToken", "token", "user", "userType", AUTH_PERSISTENCE_KEY].forEach(
+    (key) => otherStorage.removeItem(key),
+  );
+
+  storage.setItem("accessToken", accessToken);
+  storage.setItem("token", accessToken);
+  storage.setItem("user", JSON.stringify(user));
+  storage.setItem("userType", userType);
+  storage.setItem(AUTH_PERSISTENCE_KEY, persistence);
+};
+
+const getCurrentAuthPersistence = () =>
+  localStorage.getItem(AUTH_PERSISTENCE_KEY) ||
+  sessionStorage.getItem(AUTH_PERSISTENCE_KEY) ||
+  (localStorage.getItem("accessToken") || localStorage.getItem("token")
+    ? "local"
+    : "session");
 
 const isPublicPath = (pathname) => (
   pathname === "/" ||
@@ -92,6 +146,95 @@ const isValidToken = (token) => {
   }
 };
 
+const buildSessionFromAuthResponse = (responseData) => {
+  const userData = responseData.user;
+  const accessToken = responseData.accessToken;
+
+  let transformedUser = {};
+  let userRoleType = "";
+  let redirectPath = "/dashboard";
+
+  const backendRole = (userData.role || "").toLowerCase();
+
+  if (backendRole === "super_admin") {
+    transformedUser = {
+      id: userData.id || userData._id,
+      _id: userData.id || userData._id,
+      email: userData.email,
+      role: "super_admin",
+      backendRole: userData.role,
+      name: userData.name || "Super Admin",
+      permissions: userData.permissions || [],
+    };
+    userRoleType = "super_admin";
+    redirectPath = "/dashboard";
+  } else if (backendRole === "admin") {
+    transformedUser = {
+      id: userData.id || userData._id,
+      _id: userData.id || userData._id,
+      email: userData.email,
+      role: "admin",
+      backendRole: userData.role,
+      name: userData.customerName || userData.name || "Admin",
+      customerName: userData.customerName,
+      adminId: userData.adminId,
+      accountAdminId: userData.accountAdminId || userData.adminId || userData.id || userData._id,
+      accessType: userData.accessType || "read_only",
+      membershipPlan: userData.membershipPlan,
+      daysRemaining: userData.daysRemaining,
+      usagePercentage: userData.usagePercentage,
+      licenseLimit: userData.licenseLimit,
+      assetLimit: userData.assetLimit,
+      usersUsed: userData.usersUsed,
+      phone: userData.phone,
+      website: userData.website,
+      address: userData.address,
+      settings: userData.settings,
+    };
+    userRoleType = "admin";
+    redirectPath = "/dashboard";
+  } else if (backendRole === "team") {
+    transformedUser = {
+      id: userData.id || userData._id,
+      _id: userData.id || userData._id,
+      email: userData.email,
+      role: "team",
+      backendRole: userData.role,
+      name:
+        userData.fullName ||
+        `${userData.firstName || ""} ${userData.lastName || ""}`.trim() ||
+        userData.name ||
+        "Team Member",
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      fullName: userData.fullName,
+      initials: userData.initials,
+      department: userData.department,
+      location: userData.location,
+      adminId: userData.adminId,
+      teamRole: userData.teamRole,
+      roleDisplay: userData.roleDisplay,
+      stats: userData.stats,
+      permissions: userData.permissions || [],
+    };
+    userRoleType = "team";
+    redirectPath = "/team";
+  } else {
+    transformedUser = {
+      id: userData.id || userData._id,
+      _id: userData.id || userData._id,
+      email: userData.email,
+      role: userData.role || "team",
+      backendRole: userData.role,
+      name: userData.name || userData.fullName || "User",
+    };
+    userRoleType = userData.role || "team";
+    redirectPath = userData.role === "team" ? "/team" : "/dashboard";
+  }
+
+  return { transformedUser, userRoleType, redirectPath, accessToken };
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -101,10 +244,11 @@ export const AuthProvider = ({ children }) => {
 
   const initializeAuth = useCallback(() => {
     console.log("Initializing authentication...");
-    const storedUser = localStorage.getItem("user");
-    const storedToken =
-      localStorage.getItem("accessToken") || localStorage.getItem("token");
-    const storedUserType = localStorage.getItem("userType");
+    const {
+      user: storedUser,
+      token: storedToken,
+      userType: storedUserType,
+    } = getStoredAuthData();
 
     const isValidUser =
       storedUser && storedUser !== "undefined" && storedUser !== "null";
@@ -152,7 +296,7 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener("auth:expired", handleExpired);
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, remember = false) => {
     console.log("Attempting login for:", email);
 
     // Clear any existing auth state before login attempt
@@ -174,115 +318,29 @@ export const AuthProvider = ({ children }) => {
 
       console.log("Login response status:", response.status);
 
-      if (
-        response.data.success &&
-        response.data.user &&
-        response.data.accessToken
-      ) {
-        const userData = response.data.user;
-        const accessToken = response.data.accessToken;
+      if (response.data.success && response.data.otpRequired) {
+        return {
+          success: true,
+          otpRequired: true,
+          email: response.data.email || email,
+          message: response.data.message || "Verification code sent to your email.",
+        };
+      }
 
-        console.log("Backend user role:", userData.role);
+      if (response.data.success && response.data.user && response.data.accessToken) {
+        const { transformedUser, userRoleType, redirectPath, accessToken } =
+          buildSessionFromAuthResponse(response.data);
 
-        let transformedUser = {};
-        let userRoleType = "";
-        let redirectPath = "/dashboard";
+        persistAuthData({
+          accessToken,
+          user: transformedUser,
+          userType: userRoleType,
+          remember,
+        });
 
-        const backendRole = (userData.role || "").toLowerCase();
-
-        if (backendRole === "super_admin") {
-          transformedUser = {
-            id: userData.id || userData._id,
-            _id: userData.id || userData._id,
-            email: userData.email,
-            role: "super_admin",
-            backendRole: userData.role,
-            name: userData.name || "Super Admin",
-            permissions: userData.permissions || [],
-          };
-          userRoleType = "super_admin";
-          redirectPath = "/dashboard";
-        } else if (backendRole === "admin") {
-          transformedUser = {
-            id: userData.id || userData._id,
-            _id: userData.id || userData._id,
-            email: userData.email,
-            role: "admin",
-            backendRole: userData.role,
-            name: userData.customerName || userData.name || "Admin",
-            customerName: userData.customerName,
-            adminId: userData.adminId,
-            accountAdminId: userData.accountAdminId || userData.adminId || userData.id || userData._id,
-            accessType: userData.accessType || "read_only",
-            membershipPlan: userData.membershipPlan,
-            daysRemaining: userData.daysRemaining,
-            usagePercentage: userData.usagePercentage,
-            licenseLimit: userData.licenseLimit,
-            assetLimit: userData.assetLimit,
-            usersUsed: userData.usersUsed,
-            phone: userData.phone,
-            website: userData.website,
-            address: userData.address,
-            settings: userData.settings,
-          };
-          userRoleType = "admin";
-          redirectPath = "/dashboard";
-        } else if (backendRole === "team") {
-          transformedUser = {
-            id: userData.id || userData._id,
-            _id: userData.id || userData._id,
-            email: userData.email,
-            role: "team",
-            backendRole: userData.role,
-            name:
-              userData.fullName ||
-              `${userData.firstName || ""} ${userData.lastName || ""}`.trim() ||
-              userData.name ||
-              "Team Member",
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            fullName: userData.fullName,
-            initials: userData.initials,
-            department: userData.department,
-            location: userData.location,
-            adminId: userData.adminId,
-            teamRole: userData.teamRole,
-            roleDisplay: userData.roleDisplay,
-            stats: userData.stats,
-            permissions: userData.permissions || [],
-          };
-          userRoleType = "team";
-          redirectPath = "/team";
-        } else {
-          transformedUser = {
-            id: userData.id || userData._id,
-            _id: userData.id || userData._id,
-            email: userData.email,
-            role: userData.role || "team",
-            backendRole: userData.role,
-            name: userData.name || userData.fullName || "User",
-          };
-          userRoleType = userData.role || "team";
-          redirectPath = userData.role === "team" ? "/team" : "/dashboard";
-        }
-
-        // Store auth data
-        localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("token", accessToken);
-        localStorage.setItem("user", JSON.stringify(transformedUser));
-        localStorage.setItem("userType", userRoleType);
-
-        // Update state
         setToken(accessToken);
         setUser(transformedUser);
         setUserType(userRoleType);
-
-        console.log(
-          "Login successful! Role:",
-          userRoleType,
-          "Redirecting to:",
-          redirectPath,
-        );
 
         return {
           success: true,
@@ -346,6 +404,68 @@ export const AuthProvider = ({ children }) => {
           error: "An unexpected error occurred. Please try again.",
         };
       }
+    }
+  };
+
+  const verifyLoginOtp = async (email, otp, remember = false) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/auth/verify-login-otp`,
+        { email, otp },
+        {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true,
+          timeout: 30000,
+        },
+      );
+
+      if (response.data.success && response.data.user && response.data.accessToken) {
+        const { transformedUser, userRoleType, redirectPath, accessToken } =
+          buildSessionFromAuthResponse(response.data);
+
+        persistAuthData({
+          accessToken,
+          user: transformedUser,
+          userType: userRoleType,
+          remember,
+        });
+
+        setToken(accessToken);
+        setUser(transformedUser);
+        setUserType(userRoleType);
+
+        return {
+          success: true,
+          role: userRoleType,
+          userType: userRoleType,
+          user: transformedUser,
+          token: accessToken,
+          redirectPath,
+          message: response.data.message || "Login verified successfully",
+        };
+      }
+
+      return {
+        success: false,
+        error: response.data.message || "Invalid verification response from server",
+      };
+    } catch (error) {
+      console.error("Verify login OTP error:", error);
+
+      if (error.code === "ECONNABORTED" || error.message === "Network Error") {
+        return {
+          success: false,
+          error: "Network error. Please check your internet connection.",
+        };
+      }
+
+      return {
+        success: false,
+        error:
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Invalid or expired verification code.",
+      };
     }
   };
 
@@ -521,7 +641,9 @@ export const AuthProvider = ({ children }) => {
       const currentToken =
         token ||
         localStorage.getItem("accessToken") ||
-        localStorage.getItem("token");
+        localStorage.getItem("token") ||
+        sessionStorage.getItem("accessToken") ||
+        sessionStorage.getItem("token");
       if (isValidToken(currentToken)) {
         await axios.post(
           `${API_BASE_URL}/auth/logout`,
@@ -551,7 +673,9 @@ export const AuthProvider = ({ children }) => {
     const currentToken =
       token ||
       localStorage.getItem("accessToken") ||
-      localStorage.getItem("token");
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("accessToken") ||
+      sessionStorage.getItem("token");
 
     if (isValidToken(currentToken)) {
       fetch(`${API_BASE_URL}/auth/logout`, {
@@ -592,7 +716,9 @@ export const AuthProvider = ({ children }) => {
     setUser((currentUser) => {
       if (!currentUser) return currentUser;
       const nextUser = { ...currentUser, ...patch };
-      localStorage.setItem("user", JSON.stringify(nextUser));
+      const storage =
+        getCurrentAuthPersistence() === "local" ? localStorage : sessionStorage;
+      storage.setItem("user", JSON.stringify(nextUser));
       return nextUser;
     });
   }, []);
@@ -615,9 +741,15 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data?.success && response.data?.accessToken) {
         const newToken = response.data.accessToken;
-        localStorage.setItem("accessToken", newToken);
-        localStorage.setItem("token", newToken);
-        sessionStorage.removeItem("accessToken");
+        const storage =
+          getCurrentAuthPersistence() === "local"
+            ? localStorage
+            : sessionStorage;
+        const otherStorage = storage === localStorage ? sessionStorage : localStorage;
+        storage.setItem("accessToken", newToken);
+        storage.setItem("token", newToken);
+        otherStorage.removeItem("accessToken");
+        otherStorage.removeItem("token");
         setToken(newToken);
         return newToken;
       }
@@ -635,7 +767,10 @@ export const AuthProvider = ({ children }) => {
       let currentToken = token;
       if (!isValidToken(currentToken)) {
         currentToken =
-          localStorage.getItem("accessToken") || localStorage.getItem("token");
+          localStorage.getItem("accessToken") ||
+          localStorage.getItem("token") ||
+          sessionStorage.getItem("accessToken") ||
+          sessionStorage.getItem("token");
       }
 
       if (!isValidToken(currentToken)) {
@@ -778,6 +913,7 @@ export const AuthProvider = ({ children }) => {
     () => ({
       user,
       login,
+      verifyLoginOtp,
       logout,
       forgotPassword,
       resetPassword,
@@ -806,6 +942,10 @@ export const AuthProvider = ({ children }) => {
     }),
     [
       user,
+      login,
+      verifyLoginOtp,
+      forgotPassword,
+      resetPassword,
       token,
       loading,
       userType,

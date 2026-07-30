@@ -836,8 +836,7 @@ export default function LocationManagement() {
         open={toast.open}
         autoHideDuration={4000}
         onClose={closeToast}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={closeToast}
           severity={toast.severity}

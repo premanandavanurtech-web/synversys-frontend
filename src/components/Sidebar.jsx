@@ -1,6 +1,6 @@
 // components/Sidebar.jsx - Complete with Proper Tab Order Management
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
@@ -26,6 +26,7 @@ import {
   Fade,
   Zoom,
   Drawer,
+  Portal,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 
@@ -43,13 +44,18 @@ import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
 import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import EventNoteOutlinedIcon from "@mui/icons-material/EventNoteOutlined";
 import ChevronLeftOutlinedIcon from "@mui/icons-material/ChevronLeftOutlined";
 import ChevronRightOutlinedIcon from "@mui/icons-material/ChevronRightOutlined";
+import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import SpaceDashboardOutlinedIcon from "@mui/icons-material/SpaceDashboardOutlined";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import AnalyticsOutlinedIcon from "@mui/icons-material/AnalyticsOutlined"; // NEW
 import RestoreFromTrashOutlinedIcon from "@mui/icons-material/RestoreFromTrashOutlined";
+import ConfirmationNumberOutlinedIcon from "@mui/icons-material/ConfirmationNumberOutlined";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import { useAuth } from "../context/AuthContexts";
 import { useTeam } from "../context/TeamContext";
 import { PROJECT_LOGO_URL } from "../utils/brand";
@@ -81,10 +87,15 @@ const MobileNavItem = styled(ListItem, {
   cursor: "pointer",
   transition: "all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1)",
   backgroundColor: active
-    ? alpha(theme.palette.primary.main, 0.08)
+    ? ACTIVE_NAV_COLOR
     : "transparent",
-  color: active ? theme.palette.primary.main : theme.palette.text.secondary,
-  "&:hover": { backgroundColor: alpha(theme.palette.primary.main, 0.05) },
+  color: active ? "#ffffff" : theme.palette.text.secondary,
+  "&:hover": {
+    backgroundColor: active
+      ? ACTIVE_NAV_COLOR
+      : alpha(theme.palette.primary.main, 0.05),
+    color: active ? "#ffffff" : theme.palette.primary.main,
+  },
   "&:active": { transform: "scale(0.98)" },
   "& .MuiListItemIcon-root": { color: "inherit", minWidth: { xs: 36, sm: 40 } },
 }));
@@ -113,13 +124,53 @@ const DesktopSidebar = styled(Box)(({ theme, iscollapsed }) => ({
   height: "100vh",
   position: "sticky",
   top: 0,
+  zIndex: theme.zIndex.drawer + 3,
   transition: theme.transitions.create("width", {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.enteringScreen,
   }),
-  overflow: "hidden",
+  overflow: "visible",
   boxShadow: `2px 0 12px ${alpha(theme.palette.common.black, 0.02)}`,
+  "@keyframes sidebarItemIn": {
+    from: {
+      opacity: 0,
+      transform: "translateX(-10px)",
+    },
+    to: {
+      opacity: 1,
+      transform: "translateX(0)",
+    },
+  },
+  "@keyframes sidebarActiveGlow": {
+    "0%, 100%": {
+      boxShadow: `0 10px 24px ${alpha(ACTIVE_NAV_COLOR, 0.16)}`,
+    },
+    "50%": {
+      boxShadow: `0 14px 30px ${alpha(ACTIVE_NAV_COLOR, 0.22)}`,
+    },
+  },
+  ...(iscollapsed === "true"
+    ? {
+        "& .MuiListItem-root": {
+          justifyContent: "center",
+          position: "relative",
+        },
+        "& .MuiListItemIcon-root": {
+          minWidth: "0 !important",
+          marginRight: "0 !important",
+          justifyContent: "center",
+        },
+        "& .MuiListItemText-root, & .MuiListItemText-primary": {
+          display: "none !important",
+        },
+        "& .MuiSvgIcon-root + .MuiListItemText-root": {
+          display: "none !important",
+        },
+      }
+    : {}),
 }));
+
+const ACTIVE_NAV_COLOR = "#15576A";
 
 // Navigation Configuration with Proper Order Management
 // Each role has its own order sequence that can be easily adjusted
@@ -145,31 +196,42 @@ const navItemsConfig = {
       section: "management",
     },
     {
-      id: "checklists",
-      icon: ChecklistOutlinedIcon,
-      label: "Checklists Builder",
-      path: "/admin/checklists",
+      id: "task",
+      icon: AssignmentOutlinedIcon,
+      label: "Task",
       roles: ["super_admin"],
       order: 30,
-      section: "content",
-    },
-    {
-      id: "recycle-bin",
-      icon: RestoreFromTrashOutlinedIcon,
-      label: "Checklist Recycle Bin",
-      path: "/admin/checklists/recycle-bin",
-      roles: ["super_admin"],
-      order: 35,
-      section: "content",
-    },
-    {
-      id: "assigned",
-      icon: AssignmentOutlinedIcon,
-      label: "Assigned Checklist",
-      path: "/admin/assigned-checklists",
-      roles: ["super_admin"],
-      order: 40,
-      section: "operations",
+      section: "task",
+      children: [
+        {
+          id: "checklists",
+          icon: ChecklistOutlinedIcon,
+          label: "Checklist Builder",
+          path: "/admin/checklists",
+          order: 10,
+        },
+        {
+          id: "assigned",
+          icon: EventNoteOutlinedIcon,
+          label: "Checklist Assignment",
+          path: "/admin/assigned-checklists",
+          order: 20,
+        },
+        {
+          id: "tickets",
+          icon: ConfirmationNumberOutlinedIcon,
+          label: "Tickets",
+          path: "/admin/tickets-raised",
+          order: 30,
+        },
+        // {
+        //   id: "time-stamp",
+        //   icon: AccessTimeOutlinedIcon,
+        //   label: "Time Stamp",
+        //   path: "/admin/audit-logs?focus=timestamp",
+        //   order: 40,
+        // },
+      ],
     },
     {
       id: "reports",
@@ -177,17 +239,8 @@ const navItemsConfig = {
       label: "Reports",
       path: "/admin/reports",
       roles: ["super_admin"],
-      order: 50,
-      section: "analytics",
-    },
-    {
-      id: "contact-inquiries",
-      icon: EmailOutlinedIcon,
-      label: "Contact Inquiries",
-      path: "/admin/contact-inquiries",
-      roles: ["super_admin"],
       order: 60,
-      section: "communications",
+      section: "analytics",
     },
     {
       id: "audit-logs",
@@ -197,6 +250,33 @@ const navItemsConfig = {
       roles: ["super_admin"],
       order: 70,
       section: "security",
+    },
+    {
+      id: "contact-inquiries",
+      icon: EmailOutlinedIcon,
+      label: "Enquiries",
+      path: "/admin/contact-inquiries",
+      roles: ["super_admin"],
+      order: 80,
+      section: "communications",
+    },
+    {
+      id: "recycle-bin",
+      icon: RestoreFromTrashOutlinedIcon,
+      label: "Recycle Bin",
+      path: "/admin/checklists/recycle-bin",
+      roles: ["super_admin"],
+      order: 90,
+      section: "records",
+    },
+    {
+      id: "settings",
+      icon: SettingsOutlinedIcon,
+      label: "Settings",
+      path: "/admin/settings",
+      roles: ["super_admin"],
+      order: 100,
+      section: "user",
     },
   ],
   admin: [
@@ -255,6 +335,15 @@ const navItemsConfig = {
       section: "operations",
     },
     {
+      id: "raise-ticket",
+      icon: ConfirmationNumberOutlinedIcon,
+      label: "Raise Ticket",
+      path: "/admin/tickets",
+      roles: ["admin"],
+      order: 48,
+      section: "operations",
+    },
+    {
       id: "assets",
       icon: Inventory2OutlinedIcon,
       label: "Assets Management",
@@ -280,6 +369,15 @@ const navItemsConfig = {
       roles: ["admin"],
       order: 60,
       section: "security",
+    },
+    {
+      id: "settings",
+      icon: SettingsOutlinedIcon,
+      label: "Settings",
+      path: "/admin/settings",
+      roles: ["admin"],
+      order: 70,
+      section: "user",
     },
   ],
   team: [
@@ -308,6 +406,15 @@ const navItemsConfig = {
       path: "/team/history",
       roles: ["team"],
       order: 30,
+      section: "records",
+    },
+    {
+      id: "raise-ticket",
+      icon: ConfirmationNumberOutlinedIcon,
+      label: "Raise Ticket",
+      path: "/team/tickets",
+      roles: ["team"],
+      order: 35,
       section: "records",
     },
     {
@@ -342,17 +449,32 @@ const navItemsConfig = {
 
 
 // Section headers for visual grouping (optional)
-const sectionHeaders = {
-  main: { label: "MAIN", order: 1 },
-  management: { label: "MANAGEMENT", order: 2 },
-  content: { label: "CONTENT", order: 3 },
-  operations: { label: "OPERATIONS", order: 4 },
-  analytics: { label: "ANALYTICS", order: 5 },
-  communications: { label: "COMMUNICATIONS", order: 6 },
-  security: { label: "SECURITY & AUDIT", order: 7 },
-  records: { label: "RECORDS", order: 8 },
-  user: { label: "USER", order: 9 },
-};
+// const sectionHeaders = {
+//   main: { label: "MAIN", order: 1 },
+//   management: { label: "MANAGEMENT", order: 2 },
+//   task: { label: "TASK", order: 3 },
+//   content: { label: "CONTENT", order: 4 },
+//   operations: { label: "OPERATIONS", order: 5 },
+//   analytics: { label: "ANALYTICS", order: 6 },
+//   security: { label: "SECURITY & AUDIT", order: 7 },
+//   communications: { label: "COMMUNICATIONS", order: 8 },
+//   records: { label: "RECORDS", order: 9 },
+//   user: { label: "USER", order: 10 },
+// };
+
+const sortNavItems = (items) =>
+  [...items]
+    .sort((a, b) => a.order - b.order)
+    .map((item) => ({
+      ...item,
+      children: item.children ? sortNavItems(item.children) : undefined,
+    }));
+
+const flattenNavItems = (items) =>
+  items.flatMap((item) => [
+    item,
+    ...(item.children ? flattenNavItems(item.children) : []),
+  ]);
 
 // Helper function to filter, sort, and optionally group nav items
 export const getNavItems = (userRole, groupBySection = false) => {
@@ -369,7 +491,7 @@ export const getNavItems = (userRole, groupBySection = false) => {
   }
 
   // Sort by order
-  items.sort((a, b) => a.order - b.order);
+  items = sortNavItems(items);
 
   if (groupBySection) {
     // Group items by section
@@ -383,13 +505,13 @@ export const getNavItems = (userRole, groupBySection = false) => {
     });
 
     // Sort sections by their defined order
-    const sortedSections = Object.keys(grouped).sort((a, b) => {
-      const orderA = sectionHeaders[a]?.order || 999;
-      const orderB = sectionHeaders[b]?.order || 999;
-      return orderA - orderB;
-    });
+    // const sortedSections = Object.keys(grouped).sort((a, b) => {
+    //   const orderA = sectionHeaders[a]?.order || 999;
+    //   const orderB = sectionHeaders[b]?.order || 999;
+    //   return orderA - orderB;
+    // });
 
-    return { grouped, sortedSections, items };
+    return { grouped, items };
   }
 
   return items;
@@ -426,17 +548,27 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeItem, setActiveItem] = useState("");
+  const [openNavGroups, setOpenNavGroups] = useState({ task: true });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [bottomNavValue, setBottomNavValue] = useState(0);
+  const [collapsedTooltip, setCollapsedTooltip] = useState(null);
   const avatarUrl = profile?.avatarUrl || user?.avatarUrl || "";
 
   // Get sorted nav items (no grouping for bottom nav)
-  const navItems = getNavItems(user?.role, false);
+  const navItems = useMemo(() => getNavItems(user?.role, false), [user?.role]);
+  const flatNavItems = useMemo(() => flattenNavItems(navItems), [navItems]);
   // Get grouped nav items for desktop sidebar (optional visual grouping)
-  const { grouped, sortedSections } = getNavItems(user?.role, true);
+  const { grouped, sortedSections } = useMemo(
+    () => getNavItems(user?.role, true),
+    [user?.role],
+  );
 
   // Filter nav items for bottom navigation (max 5 items)
-  const bottomNavItems = navItems.slice(0, isMobile ? 4 : 5);
+  const bottomNavItems = useMemo(
+    () =>
+      flatNavItems.filter((item) => item.path).slice(0, isMobile ? 4 : 5),
+    [flatNavItems, isMobile],
+  );
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) navigate("/login");
@@ -449,13 +581,26 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
   }, [mobileOpen]);
 
   useEffect(() => {
-    const currentPath = location.pathname;
-    const activeIndex = navItems.findIndex((item) => currentPath === item.path);
+    const currentPath = `${location.pathname}${location.search}`;
+    const activeIndex = flatNavItems.findIndex(
+      (item) => currentPath === item.path || location.pathname === item.path,
+    );
     if (activeIndex !== -1) {
-      setActiveItem(navItems[activeIndex].id);
+      const activeNavItem = flatNavItems[activeIndex];
+      setActiveItem(activeNavItem.id);
+      const activeParent = navItems.find((item) =>
+        item.children?.some((child) => child.id === activeNavItem.id),
+      );
+      if (activeParent) {
+        setOpenNavGroups((prev) =>
+          prev[activeParent.id] ? prev : { ...prev, [activeParent.id]: true },
+        );
+      } else {
+        setOpenNavGroups((prev) => (Object.keys(prev).length ? {} : prev));
+      }
       // Find index in bottom nav items
       const bottomIndex = bottomNavItems.findIndex(
-        (item) => item.id === navItems[activeIndex].id,
+        (item) => item.id === activeNavItem.id,
       );
       if (bottomIndex !== -1) {
         setBottomNavValue(bottomIndex);
@@ -463,16 +608,37 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
     } else {
       setActiveItem("");
     }
-  }, [location.pathname, navItems, bottomNavItems]);
+  }, [location.pathname, location.search, navItems, flatNavItems, bottomNavItems]);
 
   const handleLogout = async () => {
     try {
       await logout();
+      sessionStorage.setItem("logoutToastMessage", "Logged out successfully");
       navigate("/login", { replace: true });
     } catch (error) {
       console.error("Logout failed:", error);
     }
   };
+
+  const navigateWithPageTransition = useCallback(
+    (path) => {
+      const prefersReducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      const canUseViewTransition =
+        typeof document !== "undefined" &&
+        typeof document.startViewTransition === "function" &&
+        !prefersReducedMotion;
+
+      if (canUseViewTransition) {
+        document.startViewTransition(() => navigate(path));
+        return;
+      }
+
+      navigate(path);
+    },
+    [navigate],
+  );
 
   const handleNavigation = useCallback(
     (path, id, e) => {
@@ -480,26 +646,52 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
         e.preventDefault();
         e.stopPropagation();
       }
+      if (!path) {
+        setOpenNavGroups((prev) => ({ ...prev, [id]: !prev[id] }));
+        return;
+      }
+      const nextParent = navItems.find((item) =>
+        item.children?.some((child) => child.id === id),
+      );
+      setOpenNavGroups(nextParent ? { [nextParent.id]: true } : {});
       setActiveItem(id);
       if (mobileMenuOpen) setMobileMenuOpen(false);
       if (onDrawerToggle && mobileOpen) onDrawerToggle();
-      navigate(path);
+      navigateWithPageTransition(path);
     },
-    [navigate, onDrawerToggle, mobileOpen, mobileMenuOpen],
+    [navigateWithPageTransition, navItems, onDrawerToggle, mobileOpen, mobileMenuOpen],
   );
 
   const handleBottomNavChange = (_event, newValue) => {
     const item = bottomNavItems[newValue];
     if (item) {
+      const nextParent = navItems.find((navItem) =>
+        navItem.children?.some((child) => child.id === item.id),
+      );
+      setOpenNavGroups(nextParent ? { [nextParent.id]: true } : {});
       setActiveItem(item.id);
       setBottomNavValue(newValue);
-      navigate(item.path);
+      navigateWithPageTransition(item.path);
     }
   };
 
   const handleCollapseToggle = () => setIsCollapsed((prev) => !prev);
   const handleOpenMobileMenu = () => setMobileMenuOpen(true);
   const handleCloseMobileMenu = () => setMobileMenuOpen(false);
+  const showCollapsedTooltip = (label, event) => {
+    if (!isCollapsed) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const railRight =
+      typeof window !== "undefined"
+        ? Math.max(rect.right, 86)
+        : rect.right;
+    setCollapsedTooltip({
+      label,
+      top: rect.top + rect.height / 2,
+      left: railRight + 12,
+    });
+  };
+  const hideCollapsedTooltip = () => setCollapsedTooltip(null);
 
   if (authLoading) {
     return (
@@ -528,7 +720,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
 
         return (
           <Box key={section}>
-            {header && !isCollapsed && (
+            {header && !isCollapsed && user?.role !== "super_admin" && (
               <Typography
                 variant="caption"
                 sx={{
@@ -545,19 +737,34 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
                 {header.label}
               </Typography>
             )}
-            {sectionItems.map(({ id, icon: Icon, label, path }) => {
-              const isActive = activeItem === id || location.pathname === path;
+            {sectionItems.map(({ id, icon: Icon, label, path, children }, index) => {
+              const currentPath = `${location.pathname}${location.search}`;
+              const childItems = children || [];
+              const hasChildren = childItems.length > 0;
+              const hasActiveChild = childItems.some(
+                (child) =>
+                  activeItem === child.id ||
+                  currentPath === child.path ||
+                  location.pathname === child.path,
+              );
+              const isActive =
+                activeItem === id || currentPath === path || location.pathname === path;
+              const isGroupOpen = Boolean(openNavGroups[id]);
+              const isGroupActive = hasChildren && hasActiveChild;
               const isRecycleBin = id === "recycle-bin";
 
               return (
-                <Tooltip
+                <Box
                   key={id}
-                  title={isCollapsed ? label : ""}
-                  placement="right"
-                  arrow
-                  enterDelay={500}
+                  sx={{ mb: hasChildren && !isCollapsed ? 0.5 : 0.5 }}
                 >
                   <ListItem
+                    aria-label={label}
+                    tabIndex={0}
+                    onMouseEnter={(e) => showCollapsedTooltip(label, e)}
+                    onMouseLeave={hideCollapsedTooltip}
+                    onFocus={(e) => showCollapsedTooltip(label, e)}
+                    onBlur={hideCollapsedTooltip}
                     onClick={(e) => handleNavigation(path, id, e)}
                     sx={{
                       borderRadius: 2,
@@ -565,25 +772,73 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
                       py: { md: 1, lg: 1.2 },
                       px: { md: 1.2, lg: 1.5 },
                       cursor: "pointer",
-                      backgroundColor: isActive
-                        ? alpha(theme.palette.primary.main, 0.08)
-                        : "transparent",
-                      color: isActive
-                        ? theme.palette.primary.main
-                        : isRecycleBin && !isActive
-                          ? theme.palette.text.secondary
-                          : theme.palette.text.secondary,
+                      animation: `sidebarItemIn 320ms ${index * 35}ms ease both`,
+                      backgroundColor:
+                        isGroupActive
+                          ? ACTIVE_NAV_COLOR
+                          : isActive
+                            ? ACTIVE_NAV_COLOR
+                            : "transparent",
+                      color:
+                        isGroupActive
+                          ? "#ffffff"
+                          : isActive
+                            ? "#ffffff"
+                            : isRecycleBin && !isActive
+                              ? theme.palette.text.secondary
+                              : theme.palette.text.secondary,
                       "&:hover": {
                         backgroundColor:
-                          isRecycleBin && !isActive
+                          isGroupActive
+                            ? ACTIVE_NAV_COLOR
+                            : isActive
+                            ? ACTIVE_NAV_COLOR
+                            : isRecycleBin && !isActive
                             ? alpha(theme.palette.warning.main, 0.05)
                             : alpha(theme.palette.primary.main, 0.05),
-                        transform: "translateX(4px)",
+                        color:
+                          isGroupActive || isActive
+                            ? "#ffffff"
+                            : theme.palette.primary.main,
+                        transform: isCollapsed ? "scale(1.04)" : "translateX(4px)",
                       },
-                      transition: "all 0.2s ease",
+                      transform:
+                        isGroupActive || isActive
+                          ? isCollapsed
+                            ? "scale(1.03)"
+                            : "translateX(2px)"
+                          : "translateX(0)",
+                      boxShadow:
+                        isGroupActive || isActive
+                          ? `0 10px 24px ${alpha(ACTIVE_NAV_COLOR, 0.16)}`
+                          : "none",
+                      animationName:
+                        isGroupActive || isActive
+                          ? "sidebarItemIn, sidebarActiveGlow"
+                          : "sidebarItemIn",
+                      animationDuration:
+                        isGroupActive || isActive ? "320ms, 2.8s" : "320ms",
+                      animationDelay:
+                        isGroupActive || isActive ? `${index * 35}ms, 320ms` : `${index * 35}ms`,
+                      animationTimingFunction:
+                        isGroupActive || isActive ? "ease, ease-in-out" : "ease",
+                      animationFillMode: "both",
+                      animationIterationCount:
+                        isGroupActive || isActive ? "1, infinite" : "1",
+                      transition:
+                        "background-color 220ms ease, color 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease",
                       "& .MuiListItemIcon-root": {
                         color: "inherit",
                         minWidth: isCollapsed ? "auto" : { md: 36, lg: 40 },
+                        transition:
+                          "transform 220ms cubic-bezier(0.22, 1, 0.36, 1), color 220ms ease",
+                      },
+                      "&:hover .MuiListItemIcon-root": {
+                        transform: "scale(1.1)",
+                      },
+                      "&:hover .collapsed-nav-pill, &:focus-visible .collapsed-nav-pill": {
+                        opacity: 1,
+                        transform: "translate(0, -50%)",
                       },
                     }}
                   >
@@ -591,17 +846,131 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
                       <Icon sx={{ fontSize: { md: 20, lg: 22, xl: 24 } }} />
                     </ListItemIcon>
                     {!isCollapsed && (
-                      <ListItemText
-                        primary={label}
-                        primaryTypographyProps={{
-                          fontSize: { md: 13, lg: 14, xl: 15 },
-                          fontWeight: isActive ? 600 : 500,
-                          noWrap: true,
-                        }}
-                      />
+                      <>
+                        <ListItemText
+                          primary={label}
+                          primaryTypographyProps={{
+                            fontSize: { md: 13, lg: 14, xl: 15 },
+                            fontWeight: isActive || hasActiveChild ? 700 : 500,
+                            noWrap: true,
+                          }}
+                        />
+                        {hasChildren && (
+                          <KeyboardArrowDownOutlinedIcon
+                            sx={{
+                              fontSize: 20,
+                              transform: isGroupOpen ? "rotate(0deg)" : "rotate(-90deg)",
+                              transition: "transform 0.2s ease",
+                            }}
+                          />
+                        )}
+                      </>
                     )}
                   </ListItem>
-                </Tooltip>
+                  {hasChildren && !isCollapsed && (
+                    <Box
+                      sx={{
+                        ml: 0.25,
+                        pl: 2.25,
+                        pt: isGroupOpen ? 1 : 0,
+                        pb: isGroupOpen ? 1.2 : 0,
+                        borderLeft: `3px solid ${
+                          isGroupOpen ? theme.palette.primary.main : "transparent"
+                        }`,
+                        borderRadius: "0 0 10px 10px",
+                        backgroundColor: isGroupOpen
+                          ? alpha(theme.palette.primary.main, 0.04)
+                          : "transparent",
+                        maxHeight: isGroupOpen ? 180 : 0,
+                        opacity: isGroupOpen ? 1 : 0,
+                        overflow: "hidden",
+                        pointerEvents: isGroupOpen ? "auto" : "none",
+                        transform: isGroupOpen ? "translateY(0)" : "translateY(-6px)",
+                        transition:
+                          "max-height 240ms ease, opacity 180ms ease, padding 240ms ease, transform 240ms ease, background-color 180ms ease, border-color 180ms ease",
+                      }}
+                    >
+                      {childItems.map((child, childIndex) => {
+                        const ChildIcon = child.icon;
+                        const childActive =
+                          activeItem === child.id ||
+                          currentPath === child.path ||
+                          location.pathname === child.path;
+
+                        return (
+                          <ListItem
+                            key={child.id}
+                            onClick={(e) => handleNavigation(child.path, child.id, e)}
+                            sx={{
+                              minHeight: 34,
+                              py: 0.65,
+                              px: 1,
+                              borderRadius: 1.5,
+                              cursor: "pointer",
+                              animation: isGroupOpen
+                                ? `sidebarItemIn 260ms ${childIndex * 35}ms ease both`
+                                : "none",
+                              bgcolor: childActive ? ACTIVE_NAV_COLOR : "transparent",
+                              color: childActive ? "#ffffff" : theme.palette.text.secondary,
+                              transition:
+                                "background-color 220ms ease, color 220ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms ease",
+                              transform: childActive ? "translateX(2px)" : "translateX(0)",
+                              boxShadow: childActive
+                                ? `0 8px 20px ${alpha(ACTIVE_NAV_COLOR, 0.14)}`
+                                : "none",
+                              "&:hover": {
+                                backgroundColor: childActive
+                                  ? ACTIVE_NAV_COLOR
+                                  : alpha(theme.palette.primary.main, 0.07),
+                                color: childActive ? "#ffffff" : theme.palette.primary.main,
+                                transform: "translateX(3px)",
+                              },
+                              "& svg": {
+                                transition:
+                                  "transform 200ms cubic-bezier(0.22, 1, 0.36, 1)",
+                              },
+                              "&:hover svg": {
+                                transform: "scale(1.08)",
+                              },
+                            }}
+                          >
+                            {ChildIcon ? (
+                              <ChildIcon
+                                sx={{
+                                  fontSize: 18,
+                                  mr: 1.4,
+                                  color: "inherit",
+                                  flexShrink: 0,
+                                }}
+                              />
+                            ) : (
+                              <Box
+                                sx={{
+                                  width: 5,
+                                  height: 5,
+                                  borderRadius: "50%",
+                                  mr: 1.6,
+                                  bgcolor: childActive
+                                  ? theme.palette.primary.main
+                                  : alpha(theme.palette.primary.main, 0.75),
+                                  flexShrink: 0,
+                                }}
+                              />
+                            )}
+                            <ListItemText
+                              primary={child.label}
+                              primaryTypographyProps={{
+                                fontSize: { md: 12.5, lg: 13.5 },
+                                fontWeight: childActive ? 700 : 500,
+                                noWrap: true,
+                              }}
+                            />
+                          </ListItem>
+                        );
+                      })}
+                    </Box>
+                  )}
+                </Box>
               );
             })}
           </Box>
@@ -610,46 +979,159 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
     }
 
     // Simple list without grouping (for mobile)
-    return itemsList.map(({ id, icon: Icon, label, path }) => {
-      const isActive = activeItem === id || location.pathname === path;
+    return itemsList.map(({ id, icon: Icon, label, path, children }) => {
+      const currentPath = `${location.pathname}${location.search}`;
+      const childItems = children || [];
+      const hasChildren = childItems.length > 0;
+      const hasActiveChild = childItems.some(
+        (child) =>
+          activeItem === child.id ||
+          currentPath === child.path ||
+          location.pathname === child.path,
+      );
+      const isActive =
+        activeItem === id || currentPath === path || location.pathname === path;
+      const isGroupOpen = Boolean(openNavGroups[id]);
+      const isGroupActive = hasChildren && hasActiveChild;
       const isRecycleBin = id === "recycle-bin";
 
       return (
-        <MobileNavItem
-          key={id}
-          active={isActive}
-          onClick={(e) => handleNavigation(path, id, e)}
-          sx={{
-            backgroundColor:
-              isRecycleBin && !isActive
-                ? alpha(theme.palette.warning.main, 0.03)
-                : undefined,
-          }}
-        >
-          <ListItemIcon>
-            <Icon sx={{ fontSize: { xs: 22, sm: 24 } }} />
-          </ListItemIcon>
-          <ListItemText
-            primary={label}
-            primaryTypographyProps={{
-              fontSize: { xs: 14, sm: 15 },
-              fontWeight: isActive ? 600 : 500,
+        <Box key={id}>
+          <MobileNavItem
+            active={isActive || hasActiveChild}
+            onClick={(e) => handleNavigation(path, id, e)}
+            sx={{
+              backgroundColor:
+                isGroupActive
+                  ? ACTIVE_NAV_COLOR
+                  : isActive
+                    ? ACTIVE_NAV_COLOR
+                  : isRecycleBin && !isActive
+                    ? alpha(theme.palette.warning.main, 0.03)
+                    : undefined,
+              color:
+                isGroupActive
+                  ? "#ffffff"
+                  : isActive
+                  ? "#ffffff"
+                  : undefined,
             }}
-          />
-        </MobileNavItem>
+          >
+            <ListItemIcon>
+              <Icon sx={{ fontSize: { xs: 22, sm: 24 } }} />
+            </ListItemIcon>
+            <ListItemText
+              primary={label}
+              primaryTypographyProps={{
+                fontSize: { xs: 14, sm: 15 },
+                fontWeight: isActive || hasActiveChild ? 700 : 500,
+              }}
+            />
+            {hasChildren && (
+              <KeyboardArrowDownOutlinedIcon
+                sx={{
+                  fontSize: 20,
+                  transform: isGroupOpen ? "rotate(0deg)" : "rotate(-90deg)",
+                  transition: "transform 0.2s ease",
+                }}
+              />
+            )}
+          </MobileNavItem>
+          {hasChildren && (
+            <Box
+              sx={{
+                ml: 2,
+                pl: 2,
+                mb: isGroupOpen ? 1 : 0,
+                borderLeft: `3px solid ${
+                  isGroupOpen ? theme.palette.primary.main : "transparent"
+                }`,
+                maxHeight: isGroupOpen ? 180 : 0,
+                opacity: isGroupOpen ? 1 : 0,
+                overflow: "hidden",
+                pointerEvents: isGroupOpen ? "auto" : "none",
+                transform: isGroupOpen ? "translateY(0)" : "translateY(-6px)",
+                transition:
+                  "max-height 240ms ease, opacity 180ms ease, margin 240ms ease, transform 240ms ease, border-color 180ms ease",
+              }}
+            >
+              {childItems.map((child) => {
+                const ChildIcon = child.icon;
+                const childActive =
+                  activeItem === child.id ||
+                  currentPath === child.path ||
+                  location.pathname === child.path;
+
+                return (
+                  <MobileNavItem
+                    key={child.id}
+                    active={childActive}
+                    onClick={(e) => handleNavigation(child.path, child.id, e)}
+                    sx={{
+                      py: 0.8,
+                      bgcolor: childActive ? ACTIVE_NAV_COLOR : "transparent",
+                      color: childActive ? "#ffffff" : undefined,
+                      transition:
+                        "background-color 220ms ease, color 220ms ease, transform 180ms ease",
+                      "&:hover": {
+                        bgcolor: childActive
+                          ? ACTIVE_NAV_COLOR
+                          : alpha(theme.palette.primary.main, 0.07),
+                      },
+                    }}
+                  >
+                    {ChildIcon ? (
+                      <ChildIcon
+                        sx={{
+                          fontSize: 18,
+                          mr: 1.4,
+                          color: "inherit",
+                          flexShrink: 0,
+                        }}
+                      />
+                    ) : (
+                      <Box
+                        sx={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: "50%",
+                          mr: 1.5,
+                          bgcolor: theme.palette.primary.main,
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                    <ListItemText
+                      primary={child.label}
+                      primaryTypographyProps={{
+                        fontSize: { xs: 13, sm: 14 },
+                        fontWeight: childActive ? 700 : 500,
+                      }}
+                    />
+                  </MobileNavItem>
+                );
+              })}
+            </Box>
+          )}
+        </Box>
       );
     });
   };
 
   // Desktop Sidebar Content
+  const isDarkMode = theme.palette.mode === "dark";
+  const sidebarBackground = isDarkMode
+    ? "linear-gradient(180deg, #07111f 0%, #0a1626 100%)"
+    : "#ffffff";
+
   const desktopSidebarContent = (
     <Box
       sx={{
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "#ffffff",
-        borderRight: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+        background: sidebarBackground,
+        borderRight: `1px solid ${isDarkMode ? "rgba(148, 163, 184, 0.18)" : alpha(theme.palette.divider, 0.08)}`,
         position: "relative",
       }}
     >
@@ -675,7 +1157,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
               alignItems: "center",
               justifyContent: "center",
               overflow: "hidden",
-              bgcolor: "#fff",
+              bgcolor: isDarkMode ? "rgba(255, 255, 255, 0.08)" : "#fff",
               border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
               boxShadow: `0 6px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
               flexShrink: 0,
@@ -715,13 +1197,21 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
               right: -9,
               top: "50%",
               transform: "translateY(-50%)",
-              bgcolor: "#fff",
+              bgcolor: isDarkMode ? "#0d1a2b" : "#fff",
               boxShadow: 1,
               border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
               width: { md: 22, lg: 24 },
               height: { md: 22, lg: 24 },
-              "&:hover": { bgcolor: "#f5f5f5" },
+              "&:hover": { bgcolor: isDarkMode ? "#122238" : "#f5f5f5" },
               display: { xs: "none", md: "flex" },
+              transition:
+                "background-color 180ms ease, box-shadow 180ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+              "& svg": {
+                transition: "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+              },
+              "&:hover svg": {
+                transform: isCollapsed ? "translateX(2px)" : "translateX(-2px)",
+              },
             }}
           >
             {isCollapsed ? (
@@ -739,19 +1229,20 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
           flex: 1,
           px: isCollapsed ? 1 : { md: 1.5, lg: 2 },
           py: 2,
-          overflowY: "auto",
+          overflowY: isCollapsed ? "visible" : "auto",
+          overflowX: "visible",
           "&::-webkit-scrollbar": {
             width: "4px",
           },
           "&::-webkit-scrollbar-track": {
-            background: "#f1f1f1",
+            background: isDarkMode ? "rgba(148, 163, 184, 0.08)" : "#f1f1f1",
             borderRadius: "4px",
           },
           "&::-webkit-scrollbar-thumb": {
-            background: "#c1c1c1",
+            background: isDarkMode ? "rgba(148, 163, 184, 0.35)" : "#c1c1c1",
             borderRadius: "4px",
             "&:hover": {
-              background: "#a1a1a1",
+              background: isDarkMode ? "rgba(148, 163, 184, 0.5)" : "#a1a1a1",
             },
           },
         }}
@@ -760,7 +1251,48 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
       </List>
 
       {/* User Profile Section */}
-      {!isCollapsed && (
+      {isCollapsed ? (
+        <Box
+          sx={{
+            p: { md: 1.5, lg: 2 },
+            borderTop: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+            display: "flex",
+            justifyContent: "center",
+            position: "relative",
+            overflow: "visible",
+            "&:hover .collapsed-profile-pill, &:focus-within .collapsed-profile-pill": {
+              opacity: 1,
+              transform: "translate(0, -50%)",
+            },
+          }}
+        >
+          <Avatar
+            src={avatarUrl || undefined}
+            aria-label={getUserDisplayName(user)}
+            tabIndex={0}
+            onMouseEnter={(e) => showCollapsedTooltip(getUserDisplayName(user), e)}
+            onMouseLeave={hideCollapsedTooltip}
+            onFocus={(e) => showCollapsedTooltip(getUserDisplayName(user), e)}
+            onBlur={hideCollapsedTooltip}
+            sx={{
+              width: { md: 34, lg: 38 },
+              height: { md: 34, lg: 38 },
+              bgcolor: theme.palette.primary.main,
+              fontSize: { md: 12, lg: 14 },
+              cursor: "default",
+              transition:
+                "transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease",
+              "&:hover, &:focus-visible": {
+                transform: "scale(1.08)",
+                boxShadow: `0 10px 24px ${alpha(theme.palette.primary.main, 0.24)}`,
+                outline: "none",
+              },
+            }}
+          >
+            {getUserInitials(user)}
+          </Avatar>
+        </Box>
+      ) : (
         <Fade in={!isCollapsed}>
           <Box
             sx={{
@@ -812,10 +1344,13 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
           borderTop: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
         }}
       >
-        <Tooltip title={isCollapsed ? "Logout" : ""} placement="right" arrow>
           <Button
             onClick={handleLogout}
             startIcon={!isCollapsed ? <LogoutOutlinedIcon /> : null}
+            onMouseEnter={(e) => showCollapsedTooltip("Logout", e)}
+            onMouseLeave={hideCollapsedTooltip}
+            onFocus={(e) => showCollapsedTooltip("Logout", e)}
+            onBlur={hideCollapsedTooltip}
             fullWidth
             variant="text"
             sx={{
@@ -828,8 +1363,10 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
               borderRadius: 2,
               minWidth: 0,
               "&:hover": {
-                color: theme.palette.error.main,
-                backgroundColor: alpha(theme.palette.error.main, 0.08),
+                color: isCollapsed ? ACTIVE_NAV_COLOR : theme.palette.error.main,
+                backgroundColor: isCollapsed
+                  ? alpha(ACTIVE_NAV_COLOR, 0.1)
+                  : alpha(theme.palette.error.main, 0.08),
               },
             }}
           >
@@ -839,7 +1376,6 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
               <LogoutOutlinedIcon sx={{ fontSize: { md: 18, lg: 20 } }} />
             )}
           </Button>
-        </Tooltip>
       </Box>
     </Box>
   );
@@ -849,7 +1385,7 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
     <Box
       sx={{
         height: "100%",
-        bgcolor: "#fff",
+        bgcolor: isDarkMode ? "#07111f" : "#fff",
         display: "flex",
         flexDirection: "column",
         width: isMobile ? "85vw" : 320,
@@ -1129,10 +1665,62 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
     );
   }
 
+  const collapsedTooltipNode = isCollapsed && collapsedTooltip && (
+    <Portal>
+        <Box
+          sx={{
+            position: "fixed",
+            left: collapsedTooltip.left,
+            top: collapsedTooltip.top,
+            transform: "translateY(-50%)",
+            zIndex: 2147483647,
+            pointerEvents: "none",
+            display: "flex",
+            alignItems: "center",
+            animation: "sidebarTooltipIn 160ms cubic-bezier(0.22, 1, 0.36, 1) both",
+            "@keyframes sidebarTooltipIn": {
+              from: { opacity: 0, transform: "translate(-6px, -50%)" },
+              to: { opacity: 1, transform: "translate(0, -50%)" },
+            },
+          }}
+        >
+          <Box
+            sx={{
+              width: 12,
+              height: 12,
+              bgcolor: ACTIVE_NAV_COLOR,
+              transform: "rotate(45deg)",
+              mr: "-6px",
+              boxShadow: "0 8px 18px rgba(15, 23, 42, 0.16)",
+            }}
+          />
+          <Box
+            sx={{
+              bgcolor: ACTIVE_NAV_COLOR,
+              color: "#ffffff",
+              fontSize: 14,
+              fontWeight: 700,
+              lineHeight: 1,
+              whiteSpace: "nowrap",
+              px: 1.75,
+              py: 1.1,
+              borderRadius: 1.5,
+              boxShadow: "0 12px 28px rgba(15, 23, 42, 0.24)",
+            }}
+          >
+            {collapsedTooltip.label}
+          </Box>
+        </Box>
+    </Portal>
+  );
+
   // Desktop Layout
   return (
-    <DesktopSidebar iscollapsed={isCollapsed.toString()}>
-      {desktopSidebarContent}
-    </DesktopSidebar>
+    <>
+      <DesktopSidebar iscollapsed={isCollapsed.toString()}>
+        {desktopSidebarContent}
+      </DesktopSidebar>
+      {collapsedTooltipNode}
+    </>
   );
 }

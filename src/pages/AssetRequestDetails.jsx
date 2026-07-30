@@ -35,7 +35,7 @@ import {
   useTheme,
   Autocomplete,
 } from "@mui/material";
-import { styled, keyframes } from "@mui/material/styles";
+import { alpha, styled, keyframes } from "@mui/material/styles";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowBack,
@@ -93,16 +93,24 @@ const C = {
 };
 
 // ─── Styled components ─────────────────────────────────────────────────────────
-const PageWrap = styled(Box)({
+const PageWrap = styled(Box)(({ theme }) => {
+  const isDark = theme.palette.mode === "dark";
+  return {
   minHeight: "100vh",
-  background: C.bg,
+  background: isDark
+    ? "linear-gradient(180deg, #07111f 0%, #081422 100%)"
+    : C.bg,
   paddingBottom: 60,
   animation: `${fadeUp} 0.28s ease both`,
+  color: isDark ? "#f8fafc" : C.text,
+  };
 });
 
 const TopBar = styled(Box)(({ theme }) => ({
-  background: C.surface,
-  borderBottom: `1px solid ${C.border}`,
+  background: theme.palette.mode === "dark" ? "#07111f" : C.surface,
+  borderBottom: `1px solid ${
+    theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.22)" : C.border
+  }`,
   padding: "12px 24px",
   display: "flex",
   alignItems: "center",
@@ -122,23 +130,27 @@ const ContentWrap = styled(Box)(({ theme }) => ({
   [theme.breakpoints.down("sm")]: { padding: "14px 10px" },
 }));
 
-const SectionCard = styled(Paper)({
+const SectionCard = styled(Paper)(({ theme }) => ({
   borderRadius: 14,
-  border: `1px solid ${C.border}`,
+  border: `1px solid ${
+    theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.18)" : C.border
+  }`,
   overflow: "hidden",
-  boxShadow: "none",
+  boxShadow: theme.palette.mode === "dark" ? "0 18px 38px rgba(0,0,0,0.18)" : "none",
   marginBottom: 14,
-  background: C.surface,
-});
+  background: theme.palette.mode === "dark" ? "#0c1726" : C.surface,
+}));
 
-const SectionHead = styled(Box)({
+const SectionHead = styled(Box)(({ theme }) => ({
   padding: "11px 18px",
-  borderBottom: `1px solid ${C.border}`,
-  background: "#f8fafc",
+  borderBottom: `1px solid ${
+    theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.18)" : C.border
+  }`,
+  background: theme.palette.mode === "dark" ? "#101d2e" : "#f8fafc",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-});
+}));
 
 const SectionTitle = ({ icon, children }) => (
   <Typography
@@ -147,7 +159,7 @@ const SectionTitle = ({ icon, children }) => (
       fontWeight: 800,
       textTransform: "uppercase",
       letterSpacing: "0.07em",
-      color: C.textMuted,
+      color: (theme) => (theme.palette.mode === "dark" ? "#aeb8c8" : C.textMuted),
       display: "flex",
       alignItems: "center",
       gap: 0.8,
@@ -160,22 +172,26 @@ const SectionTitle = ({ icon, children }) => (
 
 const InfoRow = ({ label, children, noBorder }) => (
   <Box
-    sx={{
+    sx={(theme) => ({
       display: "flex",
       alignItems: "flex-start",
       py: 1.5,
       px: 2.25,
-      borderBottom: noBorder ? "none" : `1px solid ${C.border}`,
+      borderBottom: noBorder
+        ? "none"
+        : `1px solid ${
+            theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.18)" : C.border
+          }`,
       flexWrap: "wrap",
       gap: 1,
       "&:last-child": { borderBottom: "none" },
-    }}
+    })}
   >
     <Typography
       sx={{
         fontSize: 11,
         fontWeight: 700,
-        color: C.textMuted,
+        color: (theme) => (theme.palette.mode === "dark" ? "#d9e2ef" : C.textMuted),
         minWidth: 130,
         textTransform: "uppercase",
         letterSpacing: "0.04em",
@@ -191,7 +207,7 @@ const InfoRow = ({ label, children, noBorder }) => (
         minWidth: 140,
         fontSize: 13,
         fontWeight: 500,
-        color: C.text,
+        color: (theme) => (theme.palette.mode === "dark" ? "#f8fafc" : C.text),
       }}
     >
       {children}
@@ -234,14 +250,20 @@ const StatusChip = ({ status }) => {
       icon={c.icon}
       label={c.label}
       size="small"
-      sx={{
-        bgcolor: c.bg,
-        color: c.color,
+      sx={(theme) => ({
+        bgcolor:
+          theme.palette.mode === "dark" ? alpha(c.color, 0.18) : c.bg,
+        color: theme.palette.mode === "dark" ? "#67e8f9" : c.color,
+        border: `1px solid ${
+          theme.palette.mode === "dark" ? alpha(c.color, 0.28) : "transparent"
+        }`,
         fontWeight: 700,
         fontSize: "0.7rem",
         height: 24,
-        "& .MuiChip-icon": { color: c.color },
-      }}
+        "& .MuiChip-icon": {
+          color: theme.palette.mode === "dark" ? "#67e8f9" : c.color,
+        },
+      })}
     />
   );
 };
@@ -260,15 +282,18 @@ const TypeChip = ({ type }) => {
     <Chip
       label={type || "other"}
       size="small"
-      sx={{
-        bgcolor: `${color}18`,
-        color,
+      sx={(theme) => ({
+        bgcolor: alpha(color, theme.palette.mode === "dark" ? 0.18 : 0.1),
+        color: theme.palette.mode === "dark" ? "#e0f2fe" : color,
         fontWeight: 700,
         fontSize: "0.7rem",
         height: 24,
         textTransform: "capitalize",
-        border: `1px solid ${color}28`,
-      }}
+        border: `1px solid ${alpha(
+          color,
+          theme.palette.mode === "dark" ? 0.28 : 0.16,
+        )}`,
+      })}
     />
   );
 };
@@ -286,14 +311,18 @@ const UrgencyChip = ({ urgency }) => {
     <Chip
       label={urgency || "medium"}
       size="small"
-      sx={{
-        bgcolor: c.bg,
-        color: c.color,
+      sx={(theme) => ({
+        bgcolor:
+          theme.palette.mode === "dark" ? alpha(c.color, 0.18) : c.bg,
+        color: theme.palette.mode === "dark" ? "#fde68a" : c.color,
+        border: `1px solid ${
+          theme.palette.mode === "dark" ? alpha(c.color, 0.28) : "transparent"
+        }`,
         fontWeight: 700,
         fontSize: "0.7rem",
         height: 24,
         textTransform: "capitalize",
-      }}
+      })}
     />
   );
 };
@@ -901,6 +930,7 @@ export default function AssetRequestDetails() {
   const { user, isAdmin: authIsAdmin } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isDark = theme.palette.mode === "dark";
 
   const [request, setRequest] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -1186,7 +1216,8 @@ export default function AssetRequestDetails() {
                 sx={{
                   fontSize: { xs: 14, sm: 16 },
                   fontWeight: 800,
-                  color: C.text,
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "#f8fafc" : C.text,
                 }}
               >
                 Request Details
@@ -1286,13 +1317,15 @@ export default function AssetRequestDetails() {
       <ContentWrap>
         <Grid container spacing={2}>
           {/* ── Left column ── */}
-          <Grid item xs={12} md={8} sx={{ width: "600px" }}>
+          <Grid item xs={12} md={8}>
             {/* Requester card */}
             <SectionCard>
               <Box
                 sx={{
                   p: 2.5,
-                  background: `linear-gradient(135deg, ${C.tealLight} 0%, #f8fffd 100%)`,
+                  background: isDark
+                    ? "linear-gradient(135deg, rgba(20, 100, 120, 0.32) 0%, rgba(15, 28, 46, 0.92) 100%)"
+                    : `linear-gradient(135deg, ${C.tealLight} 0%, #f8fffd 100%)`,
                 }}
               >
                 <Stack direction="row" spacing={2} alignItems="center">
@@ -1301,6 +1334,7 @@ export default function AssetRequestDetails() {
                       width: 48,
                       height: 48,
                       bgcolor: C.teal,
+                      color: "#ffffff",
                       fontSize: 18,
                       fontWeight: 700,
                     }}
@@ -1311,7 +1345,7 @@ export default function AssetRequestDetails() {
                     <Typography
                       fontWeight={800}
                       fontSize={15}
-                      color={C.text}
+                      color={isDark ? "#f8fafc" : C.text}
                       noWrap
                     >
                       {requesterName}
@@ -1324,7 +1358,10 @@ export default function AssetRequestDetails() {
                     >
                       <Email sx={{ fontSize: 12, color: C.textMuted }} />
                       <Typography
-                        sx={{ fontSize: 12, color: C.textSub }}
+                        sx={{
+                          fontSize: 12,
+                          color: isDark ? "#cbd5e1" : C.textSub,
+                        }}
                         noWrap
                       >
                         {requesterEmail || "No email provided"}
@@ -1347,7 +1384,7 @@ export default function AssetRequestDetails() {
                       sx={{
                         fontSize: 12,
                         fontWeight: 600,
-                        color: C.text,
+                        color: isDark ? "#f8fafc" : C.text,
                         mt: 0.25,
                       }}
                     >
@@ -1882,8 +1919,16 @@ export default function AssetRequestDetails() {
                   label={request.isChildRequest ? "Yes" : "No"}
                   size="small"
                   sx={{
-                    bgcolor: request.isChildRequest ? C.blueBg : "#f1f5f9",
-                    color: request.isChildRequest ? C.blue : C.textMuted,
+                    bgcolor: request.isChildRequest
+                      ? C.blueBg
+                      : isDark
+                        ? "rgba(26, 166, 196, 0.12)"
+                        : "#f1f5f9",
+                    color: request.isChildRequest
+                      ? C.blue
+                      : isDark
+                        ? "#61d7ed"
+                        : C.textMuted,
                     fontSize: 10.5,
                     height: 21,
                   }}
@@ -1955,6 +2000,61 @@ export default function AssetRequestDetails() {
                   )}
                 </Stack>
               </InfoRow>
+              {!!request.metadata?.pendingChildAssets?.length && (
+                <InfoRow label="Requested Links">
+                  <Stack spacing={0.5}>
+                    <Typography sx={{ fontWeight: 700, fontSize: 12.5 }}>
+                      {request.metadata.pendingChildAssets.length}
+                    </Typography>
+                    <Box>
+                      {request.metadata.pendingChildAssets.map((asset, idx) => {
+                        const linkedAssetId = getLinkedAssetId(asset);
+                        const linkedAssetName =
+                          getLinkedAssetName(asset) || "Requested Child Asset";
+                        const rawAsset = asset?.assetId || asset?.asset || asset;
+                        const serial =
+                          typeof rawAsset === "object"
+                            ? rawAsset.serialNumber || rawAsset.assetId
+                            : null;
+                        return (
+                          <CompactLinkRow
+                            key={linkedAssetId || idx}
+                            icon={<Inventory2 />}
+                            title={linkedAssetName}
+                            subtitle={
+                              serial ||
+                              (linkedAssetId ? `#${linkedAssetId.slice(-12)}` : null)
+                            }
+                            color={C.amber}
+                            bg={C.amberBg}
+                            chip={
+                              asset?.relationshipType ? (
+                                <Chip
+                                  label={asset.relationshipType}
+                                  size="small"
+                                  sx={{
+                                    height: 21,
+                                    fontSize: 10.5,
+                                    textTransform: "capitalize",
+                                  }}
+                                />
+                              ) : null
+                            }
+                            onView={
+                              linkedAssetId
+                                ? () =>
+                                    navigate(
+                                      `/admin/assets/view/${linkedAssetId}`
+                                    )
+                                : null
+                            }
+                          />
+                        );
+                      })}
+                    </Box>
+                  </Stack>
+                </InfoRow>
+              )}
               <InfoRow label="Linked Assets" noBorder>
                 <Stack spacing={0.5}>
                   <Typography sx={{ fontWeight: 700, fontSize: 12.5 }}>
@@ -2124,7 +2224,7 @@ export default function AssetRequestDetails() {
       <Snackbar
         open={snack.open}
         autoHideDuration={4000}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+
         onClose={() => setSnack((p) => ({ ...p, open: false }))}
         sx={{
           bottom: { xs: 20, sm: 28 },
@@ -2134,7 +2234,7 @@ export default function AssetRequestDetails() {
             boxShadow: "none",
           },
         }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity={snack.severity}
           onClose={() => setSnack((p) => ({ ...p, open: false }))}

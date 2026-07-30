@@ -68,6 +68,8 @@ import {
   Notifications as NotifIcon,
   AccountBalance as RevenueIcon,
   Category as CategoryIcon,
+  ConfirmationNumber as ConfirmationNumberIcon,
+  Search as SearchIcon,
 } from "@mui/icons-material";
 import CurrencyRupeeIcon from "@mui/icons-material/CurrencyRupee";
 import SimCardDownloadIcon from "@mui/icons-material/SimCardDownload";
@@ -134,8 +136,8 @@ const FILTER_PRESETS = [
 // pill buttons render to the right of the Period filter bar instead.
 const QUICK_ACTIONS_BY_ROLE = {
   super_admin: [
-    { icon: PeopleIcon, title: "Manage Clients", path: "/admin/clients" },
-    { icon: AssignmentIcon, title: "Checklists", path: "/admin/checklists" },
+    { icon: PeopleIcon, title: "Customer Management", path: "/admin/clients" },
+    { icon: AssignmentIcon, title: "Checklist Builder", path: "/admin/checklists" },
     { icon: AnalyticsIcon, title: "Reports", path: "/admin/reports" },
   ],
   admin: [
@@ -159,6 +161,12 @@ const fmt = (n) => {
 const fmtStat = (n) => fmt(n ?? 0);
 const pct = (n) => `${n ?? 0}%`;
 const fmtRs = (n) => `â‚¹${fmt(n)}`;
+const titleize = (key = "") =>
+  String(key)
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 
 // CSV export
 const doCSV = (data, filename) => {
@@ -180,8 +188,9 @@ const doCSV = (data, filename) => {
   };
   const fd = flat(data);
   const hdrs = Object.keys(fd);
+  const labels = hdrs.map(titleize);
   const rows = [
-    hdrs.join(","),
+    labels.join(","),
     hdrs
       .map((h) => {
         const v = fd[h];
@@ -219,7 +228,10 @@ const doExcel = async (data, filename) => {
     }
     return r;
   };
-  const ws = XLSX.utils.json_to_sheet([flat(data)]);
+  const labelled = Object.fromEntries(
+    Object.entries(flat(data)).map(([key, value]) => [titleize(key), value]),
+  );
+  const ws = XLSX.utils.json_to_sheet([labelled]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Dashboard");
   XLSX.writeFile(wb, `${filename}.xlsx`);
@@ -227,48 +239,35 @@ const doExcel = async (data, filename) => {
 
 // PDF export
 const doPDF = async (overview, filename) => {
-  const { default: html2pdf } = await import("html2pdf.js");
+  const { jsPDF } = await import("jspdf");
+  const autoTable = (await import("jspdf-autotable")).default;
   const stamp = new Date().toLocaleString("en-IN", {
     dateStyle: "long",
     timeStyle: "short",
   });
-  const el = document.createElement("div");
-  el.style.cssText =
-    "padding:36px 40px;font-family:Arial,sans-serif;max-width:860px;";
-  el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;border-bottom:3px solid #002631;padding-bottom:16px">
-      <div>
-        <h1 style="color:#002631;font-size:22px;font-weight:800;margin:0">Dashboard Report</h1>
-        <p style="color:#516072;font-size:11px;margin:4px 0 0">Generated: ${stamp}</p>
-      </div>
-      <div style="background:#003d4d;color:#fff;padding:5px 14px;border-radius:20px;font-size:10px;font-weight:600">CONFIDENTIAL</div>
-    </div>
-    <h2 style="color:#002631;font-size:13px;font-weight:700;margin:24px 0 12px">Overview Metrics</h2>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
-      <thead><tr>
-        <th style="background:#002631;color:#fff;padding:8px 12px;text-align:left">Metric</th>
-        <th style="background:#002631;color:#fff;padding:8px 12px;text-align:left">Value</th>
-      </tr></thead>
-      <tbody>${Object.entries(overview)
-        .map(
-          ([k, v]) =>
-            `<tr><td style="padding:7px 12px;border-bottom:1px solid #e0e3e5">${k.replace(/([A-Z])/g, " $1").trim()}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid #e0e3e5">${v}</td></tr>`,
-        )
-        .join("")}</tbody>
-    </table>
-    <p style="color:#71787c;font-size:10px;text-align:center;margin-top:36px;padding-top:12px;border-top:1px solid #e0e3e5">Confidential â€” Internal Use Only</p>`;
-  document.body.appendChild(el);
-  await html2pdf()
-    .set({
-      margin: 0.5,
-      filename: `${filename}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-    })
-    .from(el)
-    .save();
-  document.body.removeChild(el);
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  doc.setFillColor(0, 38, 49);
+  doc.rect(0, 0, 210, 24, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Dashboard Report", 14, 14);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text(`Generated: ${stamp}`, 196, 14, { align: "right" });
+
+  autoTable(doc, {
+    startY: 34,
+    head: [["Metric", "Value"]],
+    body: Object.entries(overview).map(([key, value]) => [
+      titleize(key),
+      Array.isArray(value) ? JSON.stringify(value) : String(value ?? ""),
+    ]),
+    styles: { fontSize: 9, cellPadding: 3, textColor: [17, 24, 39] },
+    headStyles: { fillColor: [0, 38, 49], textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+  });
+  doc.save(`${filename}.pdf`);
 };
 
 // â”€â”€â”€ Reusable Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -505,6 +504,14 @@ const EmptyChart = ({ msg = "No data available" }) => (
 const ActivityTable = ({ activities }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isDark = theme.palette.mode === "dark";
+  const activityCardBg = isDark ? "#132433" : C.surfaceContainerLow;
+  const activityBorder = isDark
+    ? "rgba(148, 163, 184, 0.18)"
+    : alpha(C.outlineVariant, 0.4);
+  const activityText = isDark ? theme.palette.text.primary : C.secondary;
+  const activityMuted = isDark ? theme.palette.text.secondary : C.outline;
+  const activityStrong = isDark ? theme.palette.text.primary : C.primary;
   const [showAll, setShowAll] = useState(false);
 
   const displayed = isMobile
@@ -523,8 +530,8 @@ const ActivityTable = ({ activities }) => {
               sx={{
                 p: 1.5,
                 borderRadius: 2,
-                bgcolor: C.surfaceContainerLow,
-                border: `1px solid ${alpha(C.outlineVariant, 0.4)}`,
+                bgcolor: activityCardBg,
+                border: `1px solid ${activityBorder}`,
               }}
             >
               {/* Row 1: Action chip + When */}
@@ -554,7 +561,7 @@ const ActivityTable = ({ activities }) => {
                             : C.secondary,
                   }}
                 />
-                <Typography sx={{ fontSize: "0.65rem", color: C.outline }}>
+                <Typography sx={{ fontSize: "0.65rem", color: activityMuted }}>
                   {act.timestamp
                     ? new Date(act.timestamp).toLocaleDateString("en-IN", {
                         day: "2-digit",
@@ -565,12 +572,12 @@ const ActivityTable = ({ activities }) => {
                 </Typography>
               </Box>
               {/* Row 2: Description */}
-              <Typography sx={{ fontSize: "0.72rem", color: C.secondary, mb: 0.5 }}>
+              <Typography sx={{ fontSize: "0.72rem", color: activityText, mb: 0.5 }}>
                 {act.description || act.desc || "â€”"}
               </Typography>
               {/* Row 3: User + Role chip */}
               <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Typography sx={{ fontSize: "0.7rem", color: C.primary, fontWeight: 600 }}>
+                <Typography sx={{ fontSize: "0.7rem", color: activityStrong, fontWeight: 600 }}>
                   {act.actor?.email || act.actor || "â€”"}
                 </Typography>
                 <Chip
@@ -579,8 +586,8 @@ const ActivityTable = ({ activities }) => {
                   sx={{
                     height: 16,
                     fontSize: "0.58rem",
-                    bgcolor: alpha(C.primaryLight, 0.08),
-                    color: C.primaryLight,
+                    bgcolor: isDark ? alpha("#1fb6cf", 0.16) : alpha(C.primaryLight, 0.08),
+                    color: isDark ? "#67e8f9" : C.primaryLight,
                   }}
                 />
               </Box>
@@ -595,7 +602,7 @@ const ActivityTable = ({ activities }) => {
             sx={{
               py: 1.25,
               textAlign: "center",
-              borderTop: `1px solid ${alpha(C.outlineVariant, 0.3)}`,
+              borderTop: `1px solid ${isDark ? "rgba(148, 163, 184, 0.18)" : alpha(C.outlineVariant, 0.3)}`,
               cursor: "pointer",
             }}
           >
@@ -603,7 +610,7 @@ const ActivityTable = ({ activities }) => {
               sx={{
                 fontSize: "0.72rem",
                 fontWeight: 700,
-                color: C.primaryLight,
+                color: isDark ? "#67e8f9" : C.primaryLight,
                 letterSpacing: "0.04em",
                 textTransform: "uppercase",
               }}
@@ -739,83 +746,85 @@ const ActivityTable = ({ activities }) => {
 };
 
 // â”€â”€â”€ REPLACE NotifList â€” only change: remove width: "1090px" â†’ width: "100%" â”€â”€
-const NotifList = ({ notifications }) => (
-  <Stack spacing={1}>
-    {notifications.length > 0 ? (
-      notifications.map((n, i) => (
-        <Box
-          key={i}
-          sx={{
-            p: 1.5,
-            
-            borderRadius: 2,
-            width: "100%",
-            minWidth: 0,
-            bgcolor: C.surfaceContainerLow,
-            border: `1px solid ${alpha(C.outlineVariant, 0.4)}`,
-          }}
-        >
-          {/* rest unchanged */}
-          <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-            <Typography
-              sx={{ fontSize: "0.75rem",  fontWeight: 700, color: C.primary, flex: 1, pr: 1 }}
-            >
-              {n.title}
+const NotifList = ({ notifications }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const cardBg = isDark ? "#132433" : C.surfaceContainerLow;
+  const cardBorder = isDark ? "rgba(148, 163, 184, 0.18)" : alpha(C.outlineVariant, 0.4);
+  const titleColor = isDark ? theme.palette.text.primary : C.primary;
+  const msgColor = isDark ? theme.palette.text.secondary : C.secondary;
+  const timeColor = isDark ? alpha(theme.palette.text.secondary, 0.7) : C.outline;
+
+  return (
+    <Stack spacing={1}>
+      {notifications.length > 0 ? (
+        notifications.map((n, i) => (
+          <Box
+            key={i}
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              width: "100%",
+              minWidth: 0,
+              bgcolor: cardBg,
+              border: `1px solid ${cardBorder}`,
+            }}
+          >
+            <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+              <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: titleColor, flex: 1, pr: 1 }}>
+                {n.title}
+              </Typography>
+              <Chip
+                label={n.priority}
+                size="small"
+                sx={{
+                  height: 16,
+                  fontSize: "0.55rem",
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  bgcolor:
+                    n.priority === "high"
+                      ? (isDark ? alpha(C.onErrorContainer, 0.25) : C.errorContainer)
+                      : n.priority === "medium"
+                        ? alpha(C.accent, isDark ? 0.2 : 0.12)
+                        : (isDark ? alpha("#ffffff", 0.08) : C.surfaceVariant),
+                  color:
+                    n.priority === "high"
+                      ? (isDark ? "#ff9d94" : C.onErrorContainer)
+                      : n.priority === "medium"
+                        ? C.accent
+                        : msgColor,
+                }}
+              />
+            </Box>
+            <Typography sx={{ fontSize: "0.68rem", color: msgColor, mt: 0.5 }}>
+              {n.message || n.msg}
             </Typography>
-            <Chip
-              label={n.priority}
-              size="small"
-              sx={{
-                height: 16,
-                fontSize: "0.55rem",
-                fontWeight: 700,
-                flexShrink: 0,
-                bgcolor:
-                  n.priority === "high"
-                    ? C.errorContainer
-                    : n.priority === "medium"
-                      ? alpha(C.accent, 0.12)
-                      : C.surfaceVariant,
-                color:
-                  n.priority === "high"
-                    ? C.onErrorContainer
-                    : n.priority === "medium"
-                      ? C.accent
-                      : C.secondary,
-              }}
-            />
+            <Typography sx={{ fontSize: "0.6rem", color: timeColor, mt: 0.75 }}>
+              {n.createdAt
+                ? new Date(n.createdAt).toLocaleString("en-IN", {
+                    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                  })
+                : "—"}
+            </Typography>
           </Box>
-          <Typography sx={{ fontSize: "0.68rem", color: C.secondary, mt: 0.5 }}>
-            {n.message || n.msg}
-          </Typography>
-          <Typography sx={{ fontSize: "0.6rem", color: C.outline, mt: 0.75 }}>
-            {n.createdAt
-              ? new Date(n.createdAt).toLocaleString("en-IN", {
-                  day: "2-digit",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "â€”"}
-          </Typography>
-        </Box>
-      ))
-    ) : (
-      <Typography
-        sx={{ fontSize: "0.8rem", width: "100%", color: C.secondary, textAlign: "center", py: 2 }}
-      >
-        No notifications
-      </Typography>
-    )}
-  </Stack>
-);
+        ))
+      ) : (
+        <Typography sx={{ fontSize: "0.8rem", width: "100%", color: msgColor, textAlign: "center", py: 2 }}>
+          No notifications
+        </Typography>
+      )}
+    </Stack>
+  );
+};
 
 // â”€â”€â”€ Filter Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // âœ… Now accepts an `actions` prop â€” when present, quick-action pill buttons
 // render right-aligned next to the Period filters (previously a separate
 // "Quick Actions" Paper block lower on the page for super_admin).
-const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
+const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [], minDate }) => {
   const navigate = useNavigate();
+  const theme = useTheme();
   const [showCustom, setShowCustom] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -985,9 +994,17 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             InputLabelProps={{ shrink: true }}
+            inputProps={minDate ? { min: minDate } : undefined}
             sx={{
               flex: { xs: "1 1 100%", sm: "0 0 auto" },
               "& .MuiInputBase-root": { fontSize: "0.8rem", height: 36 },
+              "& input": {
+                colorScheme: theme.palette.mode,
+              },
+              "& input::-webkit-calendar-picker-indicator": {
+                cursor: "pointer",
+                filter: theme.palette.mode === "dark" ? "invert(1)" : "none",
+              },
             }}
           />
           <Typography
@@ -1006,9 +1023,17 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [] }) => {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             InputLabelProps={{ shrink: true }}
+            inputProps={minDate ? { min: minDate } : undefined}
             sx={{
               flex: { xs: "1 1 100%", sm: "0 0 auto" },
               "& .MuiInputBase-root": { fontSize: "0.8rem", height: 36 },
+              "& input": {
+                colorScheme: theme.palette.mode,
+              },
+              "& input::-webkit-calendar-picker-indicator": {
+                cursor: "pointer",
+                filter: theme.palette.mode === "dark" ? "invert(1)" : "none",
+              },
             }}
           />
           <Box display="flex" gap={1}>
@@ -1057,7 +1082,7 @@ const useChartHeight = (defaultH = 240, mobileH = 200) => {
 };
 
 // â”€â”€â”€ SUPER ADMIN VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const SuperAdminDashboard = ({ data, loading }) => {
+const SuperAdminDashboard = ({ data, loading, searchQuery = "" }) => {
   const navigate = useNavigate();
   const chartH = useChartHeight(240, 190);
 
@@ -1124,25 +1149,65 @@ const SuperAdminDashboard = ({ data, loading }) => {
   const statCards = [
     {
       icon: PeopleIcon,
-      title: "Total Customer",
+      title: "Total Customers",
       value: fmtStat(summary.totalClients),
-      sub: ``,
+      sub: `${fmtStat(summary.activeSubscriptions)} Active · ${fmtStat(summary.inactiveCustomers15Days ?? summary.inactiveCustomers)} Inactive Customers (15 Days)`,
       trend: summary.clientGrowth ? `${summary.clientGrowth}%` : null,
       trendUp: (summary.clientGrowth ?? 0) >= 0,
       onClick: () => navigate("/admin/clients"),
     },
     {
-  icon: PeopleIcon,
-  title: "Active Customers",
-  value: fmtStat(summary.activeSubscriptions),
-  sub: ``,
-  trend: summary.clientGrowth ? `${summary.clientGrowth}%` : null,
-  trendUp: (summary.clientGrowth ?? 0) >= 0,
-  onClick: () => navigate("/admin/clients"),
-},
+      icon: HourglassIcon,
+      title: "Trial & Onboarding",
+      value: fmtStat(num(summary.trialCustomers) + num(summary.onboardingCustomers)),
+      sub: `${fmtStat(summary.trialCustomers)} Trial · ${fmtStat(summary.onboardingCustomers)} Onboarding · ${fmtStat(summary.pendingCustomerApprovals)} Pending Approval`,
+      onClick: () => navigate("/admin/clients"),
+    },
+    // {
+    //   icon: InventoryIcon,
+    //   title: "Total Assets",
+    //   value: fmtStat(summary.totalAssets),
+    //   sub: `${fmtStat(summary.averageAssetsPerCustomer)} Avg Assets Per Customer`,
+    //   onClick: () => navigate("/admin/assets"),
+    // },
+    {
+      icon: CalendarIcon,
+      title: "Subscription Lifecycle",
+      value: fmtStat(summary.activeSubscriptions),
+      sub: `${fmtStat(summary.upcomingRenewals)} Upcoming Renewals · ${fmtStat(summary.expiringSoon)} Expiring Soon`,
+      onClick: () => navigate("/admin/clients"),
+    },
+    {
+      icon: WarningIcon,
+      title: "Capacity Alerts",
+      value: fmtStat(summary.accountsApproachingLimits),
+      sub: "Accounts approaching asset/user plan limits",
+      onClick: () => navigate("/admin/clients"),
+    },
+    {
+      icon: ErrorIcon,
+      title: "Security Alerts",
+      value: fmtStat(num(summary.failedLogins) + num(summary.flaggedIps) + num(summary.recentRoleChanges)),
+      sub: `${fmtStat(summary.activeSessions)} Active Sessions · ${fmtStat(summary.failedLogins)} Failed Login · ${fmtStat(summary.flaggedIps)} Flagged IPs · ${fmtStat(summary.recentRoleChanges)} Role Changes · ${pct(summary.twoFactorAdoptionRate)} 2FA`,
+      onClick: () => navigate("/admin/audit-logs"),
+    },
+    {
+      icon: GroupIcon,
+      title: "Active Users",
+      value: fmtStat(summary.dailyActiveUsers),
+      sub: `${fmtStat(summary.dailyActiveUsers)} Daily Active Users · ${fmtStat(summary.monthlyActiveUsers)} Monthly Active Users`,
+      onClick: () => navigate("/admin/audit-logs"),
+    },
+    {
+      icon: ConfirmationNumberIcon,
+      title: "Customer Support",
+      value: fmtStat(summary.criticalTickets),
+      sub: `${fmtStat(summary.avgResponseTimeHours)}h Avg Response · ${fmtStat(summary.resolvedToday)} Resolved Today · ${fmtStat(summary.systemOutages)} System Outages`,
+      onClick: () => navigate("/admin/tickets-raised"),
+    },
     {
       icon: AssignmentIcon,
-      title: "Checklists",
+      title: "Checklist Builder",
       value: fmtStat(summary.totalChecklists),
       sub: `${fmtStat(summary.publishedChecklists)} published`,
       onClick: () => navigate("/admin/checklists"),
@@ -1158,6 +1223,11 @@ const SuperAdminDashboard = ({ data, loading }) => {
       sub: `${fmtStat(summary.pendingAssignments)} Pending · ${fmtStat(summary.pendingApprovalAssignments)} Pending Approval · ${fmtStat(summary.submittedAssignments)} Submission`,
     },
   ];
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const matchesSearch = (value) => String(value || "").toLowerCase().includes(normalizedSearch);
+  const visibleStatCards = normalizedSearch
+    ? statCards.filter((card) => matchesSearch(card.title) || matchesSearch(card.sub))
+    : statCards;
 
   // âœ… NOTE: the standalone "Quick Actions" Paper block (Manage Clients /
   // Checklists / Reports) that used to render here has been removed.
@@ -1167,20 +1237,20 @@ const SuperAdminDashboard = ({ data, loading }) => {
 
   return (
     <Box>
-      {/* âœ… 2-col on sm, 4-col on lg */}
+      {/* âœ… 2-col on small screens, 5-col on desktop */}
       <Box
         sx={{
           display: "grid",
           gridTemplateColumns: {
             xs: "repeat(2, minmax(0, 1fr))",
             sm: "repeat(2, minmax(0, 1fr))",
-            lg: "repeat(4, minmax(0, 1fr))",
+            lg: "repeat(5, minmax(0, 1fr))",
           },
           gap: { xs: 1.5, sm: 2 },
           mb: 3,
         }}
       >
-        {statCards.map((s, i) => (
+        {visibleStatCards.map((s, i) => (
           <StatCard {...s} loading={loading} key={i} />
         ))}
       </Box>
@@ -1258,20 +1328,28 @@ const SuperAdminDashboard = ({ data, loading }) => {
                   <Pie
                     data={clientsByPlan}
                     cx="50%"
-                    cy="50%"
+                    cy="46%"
                     innerRadius="50%"
-                    outerRadius="72%"
+                    outerRadius="68%"
                     dataKey="value"
                     paddingAngle={3}
-                    label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
-                    }
                     labelLine={false}
                   >
                     {clientsByPlan.map((_, i) => (
                       <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                     ))}
                   </Pie>
+                  <Legend
+                    verticalAlign="bottom"
+                    align="center"
+                    iconType="circle"
+                    formatter={(value, entry) => {
+                      const total = clientsByPlan.reduce((sum, item) => sum + Number(item.value || 0), 0);
+                      const percent = total ? Math.round((Number(entry.payload?.value || 0) / total) * 100) : 0;
+                      return `${value} ${percent}%`;
+                    }}
+                    wrapperStyle={{ fontSize: 12, color: C.secondary }}
+                  />
                   <RTooltip />
                 </PieChart>
               </ResponsiveContainer>
@@ -1430,8 +1508,27 @@ const SuperAdminDashboard = ({ data, loading }) => {
 // â”€â”€â”€ ADMIN VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const AdminDashboard = ({ data, loading }) => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const chartH = useChartHeight(240, 190);
   const [expiryTypeFilter, setExpiryTypeFilter] = useState("");
+  const assignmentTrendColors = isDark
+    ? {
+        created: "#22d3ee",
+        completed: "#34d399",
+        overdue: "#fb7185",
+        tooltipBg: "#0f1e29",
+        tooltipText: "#e2e8f0",
+        tooltipMuted: "#94a3b8",
+      }
+    : {
+        created: C.primaryLight,
+        completed: C.success,
+        overdue: C.onErrorContainer,
+        tooltipBg: C.white,
+        tooltipText: C.primary,
+        tooltipMuted: C.secondary,
+      };
 
   const payload = data?.data || data || {};
   const summary = payload.summary || {};
@@ -1530,7 +1627,7 @@ const AdminDashboard = ({ data, loading }) => {
       onClick: () => navigate("/admin/assets"),
       value: fmtStat(totalAssetCount),
       sub: hasAssetTypeBreakdown
-        ? `${fmtStat(parentAssetCount)} parent · ${fmtStat(childAssetCount)} child`
+        ? `${fmtStat(parentAssetCount)} parent · ${fmtStat(childAssetCount)} child · ${fmtStat(summary.activeAssets)} active`
         : `${fmtStat(summary.activeAssets)} active · ${fmtStat(summary.assetsNeedingAttention)} need attention`,
     },
     {
@@ -1922,11 +2019,24 @@ const AdminDashboard = ({ data, loading }) => {
                     cursor={false}
                     contentStyle={{
                       borderRadius: 10,
-                      border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
-                      boxShadow: `0 4px 16px ${alpha(C.primary, 0.1)}`,
+                      backgroundColor: assignmentTrendColors.tooltipBg,
+                      color: assignmentTrendColors.tooltipText,
+                      border: `1px solid ${
+                        isDark
+                          ? "rgba(148, 163, 184, 0.24)"
+                          : alpha(C.outlineVariant, 0.5)
+                      }`,
+                      boxShadow: `0 4px 16px ${
+                        isDark ? alpha("#000", 0.28) : alpha(C.primary, 0.1)
+                      }`,
                       fontSize: "0.75rem",
                       padding: "10px 12px",
                     }}
+                    labelStyle={{
+                      color: assignmentTrendColors.tooltipMuted,
+                      fontWeight: 700,
+                    }}
+                    itemStyle={{ color: assignmentTrendColors.tooltipText }}
                     formatter={(value, name, props) => {
                       const real = {
                         Created: "_created",
@@ -1941,9 +2051,9 @@ const AdminDashboard = ({ data, loading }) => {
                     iconSize={10}
                     wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
                   />
-                  <Bar dataKey="created" name="Created" fill={C.primary} radius={[3, 3, 0, 0]} maxBarSize={26} />
-                  <Bar dataKey="completed" name="Completed" fill={C.success} radius={[3, 3, 0, 0]} maxBarSize={26} />
-                  <Bar dataKey="overdue" name="Overdue" fill={C.outlineVariant} radius={[3, 3, 0, 0]} maxBarSize={26} />
+                  <Bar dataKey="created" name="Created" fill={assignmentTrendColors.created} radius={[3, 3, 0, 0]} maxBarSize={26} />
+                  <Bar dataKey="completed" name="Completed" fill={assignmentTrendColors.completed} radius={[3, 3, 0, 0]} maxBarSize={26} />
+                  <Bar dataKey="overdue" name="Overdue" fill={assignmentTrendColors.overdue} radius={[3, 3, 0, 0]} maxBarSize={26} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -2509,6 +2619,7 @@ const TeamDashboard = ({ data, loading }) => {
 
 // â”€â”€â”€ Root Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function Dashboard() {
+  const theme = useTheme();
   const { user } = useAuth();
   const {
     dashboardData,
@@ -2522,6 +2633,7 @@ export default function Dashboard() {
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [dashboardSearch, setDashboardSearch] = useState("");
   const [toast, setToast] = useState({
     open: false,
     message: "",
@@ -2585,6 +2697,10 @@ export default function Dashboard() {
   );
 
   const role = user?.role;
+  const dashboardPayload = dashboardData?.data || dashboardData || {};
+  const systemActivatedDate = dashboardPayload.systemActivatedAt
+    ? new Date(dashboardPayload.systemActivatedAt).toLocaleDateString("en-CA")
+    : undefined;
 
   if (loading && !dashboardData) return <LoadingSkeleton />;
   if (error && !dashboardData)
@@ -2597,18 +2713,6 @@ export default function Dashboard() {
         }}
       />
     );
-
-  const filterLabel = (() => {
-    const p = activeFilter?.preset;
-    if (!p || p === "30d") return "Last 30 days";
-    if (p === "today") return "Today";
-    if (p === "7d") return "Last 7 days";
-    if (p === "monthly") return "This month";
-    if (p === "yearly") return "This year";
-    if (p === "custom")
-      return `${activeFilter.startDate} â†’ ${activeFilter.endDate}`;
-    return "";
-  })();
 
   return (
     <Box
@@ -2653,11 +2757,7 @@ export default function Dashboard() {
               fontSize: { xs: "1.1rem", sm: "1.35rem", md: "1.5rem" }, // âœ… fluid heading
             }}
           >
-            {role === "super_admin"
-              ? "Platform Overview"
-              : role === "admin"
-                ? "Dashboard"
-                : "My Dashboard"}
+            {role === "team" ? "My Dashboard" : "Dashboard"}
           </Typography>
           {/* âœ… Date/filter label: wrap on xs */}
           <Box
@@ -2675,44 +2775,58 @@ export default function Dashboard() {
                 day: "numeric",
               })}
             </Typography>
-            {filterLabel && (
-              <>
-                <Typography sx={{ color: C.outlineVariant, fontSize: "0.72rem" }}>
-                  Â·
-                </Typography>
-                <Chip
-                  label={filterLabel}
-                  size="small"
-                  icon={<CalendarIcon sx={{ fontSize: "12px !important" }} />}
-                  sx={{
-                    height: 18,
-                    fontSize: "0.62rem",
-                    bgcolor: alpha(C.primaryLight, 0.08),
-                    color: C.primaryLight,
-                    "& .MuiChip-icon": { color: C.primaryLight },
-                  }}
-                />
-              </>
-            )}
           </Box>
         </Box>
 
         {/* âœ… Action buttons stay on the right even on mobile, shrink gracefully */}
-        <Stack direction="row" spacing={1} flexShrink={0}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexShrink={0} sx={{ width: { xs: "100%", sm: "auto" } }}>
+          <TextField
+            size="small"
+            value={dashboardSearch}
+            onChange={(event) => setDashboardSearch(event.target.value)}
+            placeholder="Search dashboard"
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ mr: 0.75, fontSize: 18, color: C.outline }} />,
+            }}
+            sx={{
+              minWidth: { xs: "100%", sm: 220 },
+              "& .MuiInputBase-root": {
+                height: 34,
+                bgcolor: theme.palette.mode === "dark" ? "#0f1e29" : C.white,
+                borderRadius: 2,
+                fontSize: "0.78rem",
+              },
+            }}
+          />
+          <Stack direction="row" spacing={1}>
           <Tooltip title="Refresh data">
             <IconButton
               onClick={handleRefresh}
               disabled={loading}
               size="small"
               sx={{
-                bgcolor: C.white,
-                border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
+                bgcolor: theme.palette.mode === "dark" ? "#0f1e29" : C.white,
+                border: `1px solid ${
+                  theme.palette.mode === "dark"
+                    ? "rgba(148, 163, 184, 0.18)"
+                    : alpha(C.outlineVariant, 0.5)
+                }`,
+                "&:hover": {
+                  bgcolor:
+                    theme.palette.mode === "dark"
+                      ? alpha("#1fb6cf", 0.12)
+                      : alpha(C.primaryLight, 0.08),
+                },
               }}
             >
               <RefreshIcon
                 sx={{
                   fontSize: 20,
-                  color: loading ? C.outline : C.primaryLight,
+                  color: loading
+                    ? theme.palette.text.disabled
+                    : theme.palette.mode === "dark"
+                      ? "#67e8f9"
+                      : C.primaryLight,
                 }}
               />
             </IconButton>
@@ -2723,14 +2837,29 @@ export default function Dashboard() {
               disabled={exporting || !dashboardData}
               size="small"
               sx={{
-                bgcolor: C.white,
-                border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
+                bgcolor: theme.palette.mode === "dark" ? "#0f1e29" : C.white,
+                border: `1px solid ${
+                  theme.palette.mode === "dark"
+                    ? "rgba(148, 163, 184, 0.18)"
+                    : alpha(C.outlineVariant, 0.5)
+                }`,
+                "&:hover": {
+                  bgcolor:
+                    theme.palette.mode === "dark"
+                      ? alpha("#1fb6cf", 0.12)
+                      : alpha(C.primaryLight, 0.08),
+                },
               }}
             >
               {exporting ? (
                 <CircularProgress size={18} />
               ) : (
-                <DownloadIcon sx={{ fontSize: 20, color: C.primaryLight }} />
+                <DownloadIcon
+                  sx={{
+                    fontSize: 20,
+                    color: theme.palette.mode === "dark" ? "#67e8f9" : C.primaryLight,
+                  }}
+                />
               )}
             </IconButton>
           </Tooltip>
@@ -2741,8 +2870,16 @@ export default function Dashboard() {
             PaperProps={{
               sx: {
                 borderRadius: 2,
-                border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
-                boxShadow: `0 4px 20px ${alpha(C.primary, 0.12)}`,
+                bgcolor: theme.palette.mode === "dark" ? "#0f1e29" : C.white,
+                border: `1px solid ${
+                  theme.palette.mode === "dark"
+                    ? "rgba(148, 163, 184, 0.18)"
+                    : alpha(C.outlineVariant, 0.5)
+                }`,
+                boxShadow:
+                  theme.palette.mode === "dark"
+                    ? "0 12px 32px rgba(0,0,0,0.42)"
+                    : `0 4px 20px ${alpha(C.primary, 0.12)}`,
               },
             }}
           >
@@ -2774,6 +2911,7 @@ export default function Dashboard() {
               />
             </MenuItem>
           </Menu>
+          </Stack>
         </Stack>
       </Box>
 
@@ -2786,12 +2924,13 @@ export default function Dashboard() {
           onFilterChange={handleFilterChange}
           loading={loading}
           actions={QUICK_ACTIONS_BY_ROLE[role] || []}
+          minDate={systemActivatedDate}
         />
       )}
 
       {/* Role-specific content */}
       {role === "super_admin" && (
-        <SuperAdminDashboard data={dashboardData} loading={loading} />
+        <SuperAdminDashboard data={dashboardData} loading={loading} searchQuery={dashboardSearch} />
       )}
       {role === "admin" && (
         <AdminDashboard data={dashboardData} loading={loading} />
@@ -2804,8 +2943,7 @@ export default function Dashboard() {
         open={toast.open}
         autoHideDuration={4000}
         onClose={closeToast}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={closeToast}
           severity={toast.severity}

@@ -933,7 +933,8 @@ export default function CloneChecklist() {
           onClone={openClone}
         />
         
-        <Snackbar open={snack.open} autoHideDuration={4500} onClose={() => setSnack((s) => ({ ...s, open: false }))} anchorOrigin={{ vertical: "top", horizontal: "right" }} TransitionComponent={Fade}>
+        <Snackbar open={snack.open} autoHideDuration={4500} onClose={() => setSnack((s) => ({ ...s, open: false }))} TransitionComponent={Fade}
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert 
             severity={snack.severity} 
             variant="filled" 

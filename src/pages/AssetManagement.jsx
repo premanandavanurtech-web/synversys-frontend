@@ -66,35 +66,52 @@ import { api, useAsset } from "../context/AssetContext";
 import { useAuth } from "../context/AuthContexts";
 
 // ── Design tokens matching the screenshot ────────────────────────────────────
-const T = {
-  pageBg: "#f0f4f7",
-  surface: "#ffffff",
-  border: "#e4e9ee",
-  text: {
-    primary: "#0d2b35",
-    secondary: "#4a5568",
-    muted: "#94a3b8",
-    label: "#6b7280",
-  },
-  brand: "#0d4f63",
-  brandDark: "#093a4a",
-  brandLight: "#e8f4f8",
-  error: "#dc2626",
-  errorBg: "#fef2f2",
-  success: "#0f766e",
-  successBg: "#f0fdf4",
-  warning: "#b45309",
-  warningBg: "#fffbeb",
-  radius: {
-    card: "14px",
-    pill: "999px",
-    input: "10px",
-    btn: "10px",
-    dialog: "16px",
-  },
-  shadow: "0 1px 4px rgba(0,0,0,0.06)",
-  shadowCard: "0 2px 8px rgba(0,0,0,0.06)",
-  shadowMd: "0 4px 16px rgba(0,0,0,0.10)",
+const getTokens = (mode = "light") => {
+  const dark = mode === "dark";
+  return {
+    mode,
+    pageBg: dark ? "#07111f" : "#f0f4f7",
+    surface: dark ? "#0c1726" : "#ffffff",
+    surfaceAlt: dark ? "#101d2e" : "#f8fafc",
+    surfaceHover: dark ? "#152338" : "#f1f5f9",
+    surfaceHover2: dark ? "#1f314a" : "#e2e8f0",
+    border: dark ? "rgba(148, 163, 184, 0.18)" : "#e4e9ee",
+    borderHover: dark ? "rgba(148, 163, 184, 0.32)" : "#cbd5e1",
+    borderSubtle: dark ? "rgba(148, 163, 184, 0.12)" : "#f1f5f9",
+    text: {
+      primary: dark ? "#f8fafc" : "#0d2b35",
+      secondary: dark ? "#aeb8c8" : "#4a5568",
+      muted: dark ? "#7f8da3" : "#94a3b8",
+      label: dark ? "#9aa7ba" : "#6b7280",
+    },
+    brand: dark ? "#1aa6c4" : "#0d4f63",
+    brandDark: dark ? "#0f6c84" : "#093a4a",
+    brandLight: dark ? "rgba(26, 166, 196, 0.14)" : "#e8f4f8",
+    brandHover: dark ? "rgba(26, 166, 196, 0.24)" : "#cfe8f3",
+    error: dark ? "#f87171" : "#dc2626",
+    errorBg: dark ? "rgba(248, 113, 113, 0.14)" : "#fef2f2",
+    errorHoverBg: dark ? "rgba(248, 113, 113, 0.22)" : "#fee2e2",
+    success: dark ? "#4ade80" : "#0f766e",
+    successBg: dark ? "rgba(74, 222, 128, 0.14)" : "#f0fdf4",
+    successHoverBg: dark ? "rgba(74, 222, 128, 0.22)" : "#d1fae5",
+    warning: dark ? "#fb923c" : "#b45309",
+    warningBg: dark ? "rgba(251, 146, 60, 0.14)" : "#fffbeb",
+    warningHoverBg: dark ? "rgba(251, 146, 60, 0.22)" : "#ffedd5",
+    childBg: dark ? "rgba(26, 166, 196, 0.14)" : "#e6f4f2",
+    childColor: dark ? "#61d7ed" : "#0d4f63",
+    parentBg: dark ? "rgba(96, 165, 250, 0.14)" : "#eef6ff",
+    parentColor: dark ? "#93c5fd" : "#1d4ed8",
+    radius: {
+      card: "14px",
+      pill: "999px",
+      input: "10px",
+      btn: "10px",
+      dialog: "16px",
+    },
+    shadow: dark ? "0 1px 4px rgba(0,0,0,0.35)" : "0 1px 4px rgba(0,0,0,0.06)",
+    shadowCard: dark ? "0 2px 8px rgba(0,0,0,0.35)" : "0 2px 8px rgba(0,0,0,0.06)",
+    shadowMd: dark ? "0 4px 16px rgba(0,0,0,0.5)" : "0 4px 16px rgba(0,0,0,0.10)",
+  };
 };
 
 // ── Status pill config — matches screenshot pill shapes ───────────────────────
@@ -128,7 +145,7 @@ const ASSET_TYPE_FILTER_OPTIONS = [
   { label: "Child Asset", value: "child" },
 ];
 
-const StatusPill = ({ status = "" }) => {
+const StatusPill = ({ status = "", T }) => {
   const safeStatus = displayText(status, "Unknown");
   const cfg = STATUS_CFG[safeStatus] || { bg: "#6b7280", color: "#fff" };
 
@@ -243,9 +260,46 @@ const isCloneAssetRecord = (asset) => {
   );
 };
 
+const getLinkedAssetId = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return value._id || value.id || value.assetId || "";
+};
+
+const getExistingAssetId = (asset) => asset?.id || asset?._id;
+
+const isExistingAssetReadyForSelection = (asset, portfolioFilter, overrideAssetIds = []) => {
+  const assetId = getExistingAssetId(asset);
+  if (!assetId) return false;
+  const currentPortfolio = getAssetPortfolioName(asset);
+  const inOtherPortfolio =
+    currentPortfolio && norm(currentPortfolio) !== norm(portfolioFilter);
+  return !inOtherPortfolio || overrideAssetIds.includes(assetId);
+};
+
+const getCloneSourceAsset = (asset, assets = []) => {
+  const sourceId = getLinkedAssetId(asset?.clonedFrom || asset?.parentAssetId);
+  if (!sourceId) return asset?.clonedFrom || asset?.parentAssetId || null;
+
+  return (
+    assets.find((candidate) => {
+      const ids = [
+        candidate?._id,
+        candidate?.id,
+        candidate?.assetId,
+      ].filter(Boolean).map(String);
+      return ids.includes(String(sourceId));
+    }) ||
+    asset?.clonedFrom ||
+    asset?.parentAssetId ||
+    null
+  );
+};
+
 // ── Asset Card — matches screenshot cards exactly ────────────────────────────
 const AssetCard = ({
   asset,
+  T,
   onView,
   onClone,
   onDelete,
@@ -257,6 +311,8 @@ const AssetCard = ({
 }) => {
   const canClone = !asset.isClone && asset.canBeCloned !== false;
   const isChildAsset = isChildAssetRecord(asset);
+  const isCloneAsset = isCloneAssetRecord(asset);
+  const cloneVersion = asset?.cloneInfo?.version || asset?.cloneVersion;
   const portfolioName = getAssetPortfolioName(asset);
   asset = {
     ...asset,
@@ -328,8 +384,9 @@ const AssetCard = ({
               </Box>
             )}
           </Typography>
-          <StatusPill status={asset.status} />
+          <StatusPill status={asset.status} T={T} />
         </Stack>
+        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
         <Box
           sx={{
             display: "inline-flex",
@@ -338,8 +395,8 @@ const AssetCard = ({
             py: 0.35,
             mb: 1.25,
             borderRadius: "6px",
-            bgcolor: isChildAsset ? "#e6f4f2" : "#eef6ff",
-            color: isChildAsset ? T.brand : "#1d4ed8",
+            bgcolor: isChildAsset ? T.childBg : T.parentBg,
+            color: isChildAsset ? T.childColor : T.parentColor,
             fontSize: "0.68rem",
             fontWeight: 800,
             textTransform: "uppercase",
@@ -348,6 +405,27 @@ const AssetCard = ({
         >
           {isChildAsset ? "Child Asset" : "Parent Asset"}
         </Box>
+        {isCloneAsset && (
+          <Box
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              px: 1,
+              py: 0.35,
+              mb: 1.25,
+              borderRadius: "6px",
+              bgcolor: T.brandLight,
+              color: T.brand,
+              fontSize: "0.68rem",
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.03em",
+            }}
+          >
+            Clone{cloneVersion ? ` v${cloneVersion}` : ""}
+          </Box>
+        )}
+        </Stack>
 
         {/* Location */}
         <Stack direction="row" alignItems="center" spacing={0.5} mb={2.5}>
@@ -363,7 +441,7 @@ const AssetCard = ({
         {/* Label-value rows */}
         {[
           { label: "Category:", value: category },
-          { label: "Asset ID:", value: asset.assetId },
+          { label: isChildAsset ? "Child ID:" : "Asset ID:", value: asset.assetId },
           { label: "Tag Number:", value: asset.tagNumber },
           canViewFinancials && { label: "Purchase Cost:", value: asset.purchaseCost },
           { label: "status::", value: asset.status },
@@ -411,7 +489,7 @@ const AssetCard = ({
                 sx={{
                   borderRadius: "8px",
                   bgcolor: T.brandLight,
-                  "&:hover": { bgcolor: "#cfe8f3" },
+                  "&:hover": { bgcolor: T.brandHover },
                 }}
               >
                 <ContentCopy sx={{ fontSize: 13, color: T.brand }} />
@@ -425,7 +503,7 @@ const AssetCard = ({
               sx={{
                 borderRadius: "8px",
                 bgcolor: T.brandLight,
-                "&:hover": { bgcolor: "#cfe8f3" },
+                "&:hover": { bgcolor: T.brandHover },
               }}
             >
               <Edit sx={{ fontSize: 13, color: T.brand }} />
@@ -437,8 +515,8 @@ const AssetCard = ({
               onClick={() => onView(asset)}
               sx={{
                 borderRadius: "8px",
-                bgcolor: "#f1f5f9",
-                "&:hover": { bgcolor: "#e2e8f0" },
+                bgcolor: T.surfaceHover,
+                "&:hover": { bgcolor: T.surfaceHover2 },
               }}
             >
               <Visibility sx={{ fontSize: 13, color: T.text.secondary }} />
@@ -450,8 +528,8 @@ const AssetCard = ({
                 size="small"
                 sx={{
                   borderRadius: "8px",
-                  bgcolor: "#ecfdf5",
-                  "&:hover": { bgcolor: "#d1fae5" },
+                  bgcolor: T.successBg,
+                  "&:hover": { bgcolor: T.successHoverBg },
                 }}
               >
                 <Workspaces sx={{ fontSize: 13, color: T.success }} />
@@ -464,8 +542,8 @@ const AssetCard = ({
                 onClick={() => onPortfolio(asset)}
                 sx={{
                   borderRadius: "8px",
-                  bgcolor: "#fff7ed",
-                  "&:hover": { bgcolor: "#ffedd5" },
+                  bgcolor: T.warningBg,
+                  "&:hover": { bgcolor: T.warningHoverBg },
                 }}
               >
                 <AddBusiness sx={{ fontSize: 13, color: T.warning }} />
@@ -480,8 +558,8 @@ const AssetCard = ({
                 sx={{
                   ml: "auto !important",
                   borderRadius: "8px",
-                  bgcolor: "#fef2f2",
-                  "&:hover": { bgcolor: "#fee2e2" },
+                  bgcolor: T.errorBg,
+                  "&:hover": { bgcolor: T.errorHoverBg },
                 }}
               >
                 <Delete sx={{ fontSize: 13, color: T.error }} />
@@ -495,7 +573,7 @@ const AssetCard = ({
 };
 
 // ── Empty state ───────────────────────────────────────────────────────────────
-const EmptyState = ({ hasFilters, onClear, onAdd }) => (
+const EmptyState = ({ T, hasFilters, onClear, onAdd }) => (
   <Box
     sx={{
       textAlign: "center",
@@ -570,7 +648,7 @@ const TableSkeleton = () =>
     ));
 
 // ── Shared button styles ──────────────────────────────────────────────────────
-const primaryBtn = {
+const getPrimaryBtn = (T) => ({
   bgcolor: T.brand,
   color: "#fff",
   textTransform: "none",
@@ -580,16 +658,16 @@ const primaryBtn = {
   fontSize: "0.82rem",
   px: 2,
   "&:hover": { bgcolor: T.brandDark, boxShadow: "none" },
-};
-const ghostBtn = {
+});
+const getGhostBtn = (T) => ({
   textTransform: "none",
   borderRadius: T.radius.pill,
   borderColor: T.border,
   color: T.text.secondary,
   fontWeight: 500,
   fontSize: "0.82rem",
-  "&:hover": { bgcolor: "#f8fafc", borderColor: "#cbd5e1" },
-};
+  "&:hover": { bgcolor: T.surfaceAlt, borderColor: T.borderHover },
+});
 
 // ── Export helpers ────────────────────────────────────────────────────────────
 const formatExportDate = (value) => {
@@ -630,6 +708,9 @@ export default function AssetManagement() {
   const canViewPortfolio = !isTeam;
 
   const { getAllAssets, cloneAsset, deleteAsset, updateAsset, assetStats } = useAsset();
+  const T = useMemo(() => getTokens(theme.palette.mode), [theme.palette.mode]);
+  const primaryBtn = useMemo(() => getPrimaryBtn(T), [T]);
+  const ghostBtn = useMemo(() => getGhostBtn(T), [T]);
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
@@ -708,6 +789,7 @@ export default function AssetManagement() {
       if (categoryFilter) filters.category = categoryFilter;
       if (canViewPortfolio && portfolioFilter) filters.portfolioName = portfolioFilter;
       if (statusFilter) filters.status = statusFilter;
+      if (assetTypeFilter) filters.assetType = assetTypeFilter;
 
       const data = await getAllAssets(filters);
       if (!data) return;
@@ -760,6 +842,7 @@ export default function AssetManagement() {
     categoryFilter,
     portfolioFilter,
     statusFilter,
+    assetTypeFilter,
     canViewPortfolio,
   ]);
 
@@ -812,7 +895,6 @@ export default function AssetManagement() {
   const visibleAssets = useMemo(() => {
     const searchTerm = norm(debouncedSearch);
     return assets.filter((a) => {
-      if (isCloneAssetRecord(a)) return false;
       const searchOk = !searchTerm || getSearchText(a).includes(searchTerm);
       const statusOk =
         !statusFilter || norm(a.status) === norm(statusFilter);
@@ -855,6 +937,43 @@ export default function AssetManagement() {
         .includes(term),
     );
   }, [existingAssets, existingAssetSearch]);
+
+  const selectableExistingAssetIds = useMemo(
+    () =>
+      filteredExistingAssets
+        .filter((asset) =>
+          isExistingAssetReadyForSelection(
+            asset,
+            portfolioFilter,
+            portfolioOverrideAssetIds,
+          ),
+        )
+        .map(getExistingAssetId)
+        .filter(Boolean),
+    [filteredExistingAssets, portfolioFilter, portfolioOverrideAssetIds],
+  );
+  const selectableExistingAssetIdSet = useMemo(
+    () => new Set(selectableExistingAssetIds),
+    [selectableExistingAssetIds],
+  );
+  const selectedReadyExistingAssetCount = selectedExistingAssetIds.filter((assetId) =>
+    selectableExistingAssetIdSet.has(assetId),
+  ).length;
+  const allReadyExistingAssetsSelected =
+    selectableExistingAssetIds.length > 0 &&
+    selectedReadyExistingAssetCount === selectableExistingAssetIds.length;
+  const someReadyExistingAssetsSelected =
+    selectedReadyExistingAssetCount > 0 && !allReadyExistingAssetsSelected;
+
+  const toggleAllReadyExistingAssets = () => {
+    if (selectableExistingAssetIds.length === 0 || actionLoading) return;
+    setSelectedExistingAssetIds((prev) => {
+      if (allReadyExistingAssetsSelected) {
+        return prev.filter((assetId) => !selectableExistingAssetIdSet.has(assetId));
+      }
+      return Array.from(new Set([...prev, ...selectableExistingAssetIds]));
+    });
+  };
 
   const clearFilters = () => {
     setCategoryFilter("");
@@ -1151,7 +1270,7 @@ export default function AssetManagement() {
   const stats = assetStats || {};
 
   const headCellSx = {
-    bgcolor: "#f8fafc",
+    bgcolor: T.surfaceAlt,
     fontWeight: 700,
     fontSize: "0.65rem",
     color: T.text.muted,
@@ -1164,13 +1283,13 @@ export default function AssetManagement() {
   const cellSx = {
     py: "11px",
     fontSize: "0.8rem",
-    borderBottom: `1px solid #f1f5f9`,
+    borderBottom: `1px solid ${T.borderSubtle}`,
     color: T.text.secondary,
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ minHeight: "100vh" }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: T.pageBg, color: T.text.primary }}>
       {/* ── Page Header ── */}
       <Box sx={{ px: { xs: 2, md: 4 }, pt: 3, pb: 2.5 }}>
         <Stack
@@ -1276,9 +1395,9 @@ export default function AssetManagement() {
                 sx: {
                   borderRadius: T.radius.input,
                   fontSize: "0.85rem",
-                  bgcolor: "#f8fafc",
+                  bgcolor: T.surfaceAlt,
                   "& fieldset": { borderColor: T.border },
-                  "&:hover fieldset": { borderColor: "#cbd5e1" },
+                  "&:hover fieldset": { borderColor: T.borderHover },
                   "&.Mui-focused fieldset": { borderColor: T.brand },
                 },
               }}
@@ -1294,11 +1413,11 @@ export default function AssetManagement() {
                     width: 40,
                     height: 40,
                     flexShrink: 0,
-                    bgcolor: hasFilters ? T.brand : "#f8fafc",
+                    bgcolor: hasFilters ? T.brand : T.surfaceAlt,
                     color: hasFilters ? "#fff" : T.brand,
                     border: `1px solid ${hasFilters ? T.brand : T.border}`,
                     "&:hover": {
-                      bgcolor: hasFilters ? T.brandDark : "#e2e8f0",
+                      bgcolor: hasFilters ? T.brandDark : T.surfaceHover2,
                     },
                   }}
                 >
@@ -1322,9 +1441,9 @@ export default function AssetManagement() {
                   sx={{
                     borderRadius: T.radius.input,
                     fontSize: "0.85rem",
-                    bgcolor: "#f8fafc",
+                    bgcolor: T.surfaceAlt,
                     "& fieldset": { borderColor: T.border },
-                    "&:hover fieldset": { borderColor: "#cbd5e1" },
+                    "&:hover fieldset": { borderColor: T.borderHover },
                     "& .MuiSelect-select": { py: "8.5px" },
                   }}
                 >
@@ -1365,9 +1484,9 @@ export default function AssetManagement() {
                 sx={{
                   borderRadius: T.radius.input,
                   fontSize: "0.85rem",
-                  bgcolor: "#f8fafc",
+                  bgcolor: T.surfaceAlt,
                   "& fieldset": { borderColor: T.border },
-                  "&:hover fieldset": { borderColor: "#cbd5e1" },
+                  "&:hover fieldset": { borderColor: T.borderHover },
                   "& .MuiSelect-select": { py: "8.5px" },
                 }}
               >
@@ -1407,9 +1526,9 @@ export default function AssetManagement() {
                 sx={{
                   borderRadius: T.radius.input,
                   fontSize: "0.85rem",
-                  bgcolor: "#f8fafc",
+                  bgcolor: T.surfaceAlt,
                   "& fieldset": { borderColor: T.border },
-                  "&:hover fieldset": { borderColor: "#cbd5e1" },
+                  "&:hover fieldset": { borderColor: T.borderHover },
                   "& .MuiSelect-select": { py: "8.5px" },
                 }}
               >
@@ -1443,9 +1562,9 @@ export default function AssetManagement() {
                 sx={{
                   borderRadius: T.radius.input,
                   fontSize: "0.85rem",
-                  bgcolor: "#f8fafc",
+                  bgcolor: T.surfaceAlt,
                   "& fieldset": { borderColor: T.border },
-                  "&:hover fieldset": { borderColor: "#cbd5e1" },
+                  "&:hover fieldset": { borderColor: T.borderHover },
                   "& .MuiSelect-select": { py: "8.5px" },
                 }}
               >
@@ -1477,11 +1596,11 @@ export default function AssetManagement() {
                     borderRadius: "8px",
                     width: 34,
                     height: 34,
-                    bgcolor: viewMode === mode ? T.brand : "#f1f5f9",
+                    bgcolor: viewMode === mode ? T.brand : T.surfaceHover,
                     color: viewMode === mode ? "#fff" : T.text.secondary,
                     border: `1px solid ${viewMode === mode ? T.brand : T.border}`,
                     "&:hover": {
-                      bgcolor: viewMode === mode ? T.brandDark : "#e2e8f0",
+                      bgcolor: viewMode === mode ? T.brandDark : T.surfaceHover2,
                     },
                   }}
                 >
@@ -1511,9 +1630,9 @@ export default function AssetManagement() {
                     borderRadius: "8px",
                     width: 34,
                     height: 34,
-                    bgcolor: "#f1f5f9",
+                    bgcolor: T.surfaceHover,
                     border: `1px solid ${T.border}`,
-                    "&:hover": { bgcolor: "#e2e8f0" },
+                    "&:hover": { bgcolor: T.surfaceHover2 },
                   }}
                 >
                   {icon}
@@ -1582,7 +1701,7 @@ export default function AssetManagement() {
           <Stack spacing={1.2}>
             {canViewPortfolio && (
               <FormControl size="small" fullWidth>
-                <Select value={portfolioFilter} onChange={(e) => { setPortfolioFilter(e.target.value); setPage(0); }} displayEmpty sx={{ borderRadius: T.radius.input, fontSize: "0.85rem", bgcolor: "#f8fafc", "& fieldset": { borderColor: T.border }, "& .MuiSelect-select": { py: "10px" } }}>
+                <Select value={portfolioFilter} onChange={(e) => { setPortfolioFilter(e.target.value); setPage(0); }} displayEmpty sx={{ borderRadius: T.radius.input, fontSize: "0.85rem", bgcolor: T.surfaceAlt, "& fieldset": { borderColor: T.border }, "& .MuiSelect-select": { py: "10px" } }}>
                   <MenuItem value="" sx={{ fontSize: "0.85rem", color: T.text.secondary }}>Portfolio</MenuItem>
                   {portfolioOptions.length === 0 ? (
                     <MenuItem disabled sx={{ fontSize: "0.8rem" }}>No portfolios found</MenuItem>
@@ -1593,7 +1712,7 @@ export default function AssetManagement() {
               </FormControl>
             )}
             <FormControl size="small" fullWidth>
-              <Select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }} displayEmpty sx={{ borderRadius: T.radius.input, fontSize: "0.85rem", bgcolor: "#f8fafc", "& fieldset": { borderColor: T.border }, "& .MuiSelect-select": { py: "10px" } }}>
+              <Select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }} displayEmpty sx={{ borderRadius: T.radius.input, fontSize: "0.85rem", bgcolor: T.surfaceAlt, "& fieldset": { borderColor: T.border }, "& .MuiSelect-select": { py: "10px" } }}>
                 <MenuItem value="" sx={{ fontSize: "0.85rem", color: T.text.secondary }}>Category</MenuItem>
                 {categories.length === 0 ? (
                   <MenuItem disabled sx={{ fontSize: "0.8rem" }}>No categories found</MenuItem>
@@ -1603,27 +1722,27 @@ export default function AssetManagement() {
               </Select>
             </FormControl>
             <FormControl size="small" fullWidth>
-              <Select value={assetTypeFilter} onChange={(e) => { setAssetTypeFilter(e.target.value); setPage(0); }} displayEmpty sx={{ borderRadius: T.radius.input, fontSize: "0.85rem", bgcolor: "#f8fafc", "& fieldset": { borderColor: T.border }, "& .MuiSelect-select": { py: "10px" } }}>
+              <Select value={assetTypeFilter} onChange={(e) => { setAssetTypeFilter(e.target.value); setPage(0); }} displayEmpty sx={{ borderRadius: T.radius.input, fontSize: "0.85rem", bgcolor: T.surfaceAlt, "& fieldset": { borderColor: T.border }, "& .MuiSelect-select": { py: "10px" } }}>
                 <MenuItem value="" sx={{ fontSize: "0.85rem", color: T.text.secondary }}>Asset Type</MenuItem>
                 {ASSET_TYPE_FILTER_OPTIONS.map((type) => <MenuItem key={type.value} value={type.value} sx={{ fontSize: "0.85rem" }}>{type.label}</MenuItem>)}
               </Select>
             </FormControl>
             <FormControl size="small" fullWidth>
-              <Select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }} displayEmpty sx={{ borderRadius: T.radius.input, fontSize: "0.85rem", bgcolor: "#f8fafc", "& fieldset": { borderColor: T.border }, "& .MuiSelect-select": { py: "10px" } }}>
+              <Select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }} displayEmpty sx={{ borderRadius: T.radius.input, fontSize: "0.85rem", bgcolor: T.surfaceAlt, "& fieldset": { borderColor: T.border }, "& .MuiSelect-select": { py: "10px" } }}>
                 <MenuItem value="" sx={{ fontSize: "0.85rem", color: T.text.secondary }}>Asset Status</MenuItem>
                 {STATUS_FILTER_OPTIONS.map((s) => <MenuItem key={s} value={s} sx={{ fontSize: "0.85rem" }}>{s}</MenuItem>)}
               </Select>
             </FormControl>
             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
               {[{ mode: "grid", Icon: GridView }, { mode: "list", Icon: ViewList }].map(({ mode, Icon }) => (
-                <IconButton key={mode} size="small" onClick={() => setViewMode(mode)} sx={{ borderRadius: "10px", width: 38, height: 38, bgcolor: viewMode === mode ? T.brand : "#f1f5f9", color: viewMode === mode ? "#fff" : T.text.secondary, border: `1px solid ${viewMode === mode ? T.brand : T.border}` }}>
+                <IconButton key={mode} size="small" onClick={() => setViewMode(mode)} sx={{ borderRadius: "10px", width: 38, height: 38, bgcolor: viewMode === mode ? T.brand : T.surfaceHover, color: viewMode === mode ? "#fff" : T.text.secondary, border: `1px solid ${viewMode === mode ? T.brand : T.border}` }}>
                   <Icon sx={{ fontSize: 16 }} />
                 </IconButton>
               ))}
-              <IconButton size="small" onClick={fetchAssets} sx={{ borderRadius: "10px", width: 38, height: 38, bgcolor: "#f1f5f9", border: `1px solid ${T.border}` }}>
+              <IconButton size="small" onClick={fetchAssets} sx={{ borderRadius: "10px", width: 38, height: 38, bgcolor: T.surfaceHover, border: `1px solid ${T.border}` }}>
                 <Refresh sx={{ fontSize: 15 }} />
               </IconButton>
-              <IconButton size="small" onClick={handleExportAssets} sx={{ borderRadius: "10px", width: 38, height: 38, bgcolor: "#f1f5f9", border: `1px solid ${T.border}` }}>
+              <IconButton size="small" onClick={handleExportAssets} sx={{ borderRadius: "10px", width: 38, height: 38, bgcolor: T.surfaceHover, border: `1px solid ${T.border}` }}>
                 <FileDownload sx={{ fontSize: 15 }} />
               </IconButton>
             </Stack>
@@ -1709,6 +1828,7 @@ export default function AssetManagement() {
               </Box>
             ) : visibleAssets.length === 0 ? (
               <EmptyState
+                T={T}
                 hasFilters={hasFilters}
                 onClear={clearFilters}
                 onAdd={() => navigate("/admin/assets/add")}
@@ -1729,6 +1849,7 @@ export default function AssetManagement() {
                   <AssetCard
                     key={asset.id || asset._id}
                     asset={asset}
+                    T={T}
                     onView={handleViewAsset}
                     onClone={openCloneDialog}
                     onEdit={handleEditAsset}
@@ -1792,6 +1913,7 @@ export default function AssetManagement() {
                 </Stack>
               ) : visibleAssets.length === 0 ? (
                 <EmptyState
+                  T={T}
                   hasFilters={hasFilters}
                   onClear={clearFilters}
                   onAdd={() => navigate("/admin/assets/add")}
@@ -1803,6 +1925,7 @@ export default function AssetManagement() {
                       <AssetCard
                         key={asset.id || asset._id}
                         asset={asset}
+                        T={T}
                         onView={handleViewAsset}
                         onClone={openCloneDialog}
                         onEdit={handleEditAsset}
@@ -1917,14 +2040,18 @@ export default function AssetManagement() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    visibleAssets.map((asset) => (
+                    visibleAssets.map((asset) => {
+                      const isCloneAsset = isCloneAssetRecord(asset);
+                      const sourceAsset = getCloneSourceAsset(asset, assets);
+
+                      return (
                       <TableRow
                         hover
                         key={asset.id || asset._id}
                         onClick={() => handleViewAsset(asset)}
                         sx={{
                           cursor: "pointer",
-                          "&:hover": { bgcolor: "#f8fafc" },
+                          "&:hover": { bgcolor: T.surfaceAlt },
                           transition: "background 0.12s",
                         }}
                       >
@@ -1959,8 +2086,8 @@ export default function AssetManagement() {
                               py: 0.2,
                               borderRadius: "5px",
                               bgcolor: isChildAssetRecord(asset)
-                                ? "#e6f4f2"
-                                : "#eef6ff",
+                                ? T.childBg
+                                : T.parentBg,
                               color: isChildAssetRecord(asset)
                                 ? T.brand
                                 : "#1d4ed8",
@@ -1989,6 +2116,18 @@ export default function AssetManagement() {
                               }}
                             >
                               CLONE
+                            </Typography>
+                          )}
+                          {isCloneAsset && (
+                            <Typography
+                              sx={{
+                                display: "block",
+                                mt: 0.6,
+                                fontSize: "0.68rem",
+                                color: T.text.secondary,
+                              }}
+                            >
+                              Source: {displayText(sourceAsset, "Original asset")}
                             </Typography>
                           )}
                         </TableCell>
@@ -2021,7 +2160,7 @@ export default function AssetManagement() {
                           </Stack>
                         </TableCell>
                         <TableCell sx={cellSx}>
-                          <StatusPill status={asset.status} />
+                          <StatusPill status={asset.status} T={T} />
                         </TableCell>
                         <TableCell sx={cellSx}>
                           <Typography
@@ -2102,7 +2241,8 @@ export default function AssetManagement() {
                           </Stack>
                         </TableCell>
                       </TableRow>
-                    ))
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -2144,7 +2284,7 @@ export default function AssetManagement() {
           sx={{
             fontWeight: 700,
             fontSize: "0.95rem",
-            borderBottom: `1px solid #f1f5f9`,
+            borderBottom: `1px solid ${T.borderSubtle}`,
             pb: 1.5,
           }}
         >
@@ -2205,7 +2345,7 @@ export default function AssetManagement() {
           />
         </DialogContent>
         <DialogActions
-          sx={{ p: 2.5, pt: 2, borderTop: `1px solid #f1f5f9`, gap: 1 }}
+          sx={{ p: 2.5, pt: 2, borderTop: `1px solid ${T.borderSubtle}`, gap: 1 }}
         >
           <Button
             onClick={() => setCloneOpen(false)}
@@ -2282,7 +2422,7 @@ export default function AssetManagement() {
           sx={{
             fontWeight: 800,
             fontSize: "1rem",
-            borderBottom: `1px solid #f1f5f9`,
+            borderBottom: `1px solid ${T.borderSubtle}`,
             pb: 1.5,
           }}
         >
@@ -2305,10 +2445,10 @@ export default function AssetManagement() {
               mb: 2,
               "& .MuiOutlinedInput-root": {
                 borderRadius: "10px",
-                bgcolor: "#f8fafc",
+                bgcolor: T.surfaceAlt,
                 fontSize: "0.85rem",
                 "& fieldset": { borderColor: T.border },
-                "&:hover fieldset": { borderColor: "#cbd5e1" },
+                "&:hover fieldset": { borderColor: T.borderHover },
                 "&.Mui-focused fieldset": { borderColor: T.brand },
               },
             }}
@@ -2343,6 +2483,31 @@ export default function AssetManagement() {
             </Alert>
           ) : isMobile ? (
             <Stack spacing={1.25}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={0.75}
+                sx={{
+                  border: `1px solid ${T.border}`,
+                  borderRadius: "10px",
+                  bgcolor: T.surfaceAlt,
+                  px: 1.25,
+                  py: 0.75,
+                }}
+              >
+                <Checkbox
+                  size="small"
+                  checked={allReadyExistingAssetsSelected}
+                  indeterminate={someReadyExistingAssetsSelected}
+                  disabled={actionLoading || selectableExistingAssetIds.length === 0}
+                  onChange={toggleAllReadyExistingAssets}
+                  inputProps={{ "aria-label": "Select all ready assets" }}
+                  sx={{ color: T.brand, "&.Mui-checked": { color: T.brand } }}
+                />
+                <Typography sx={{ color: T.text.secondary, fontSize: "0.78rem", fontWeight: 800 }}>
+                  Select all ready assets
+                </Typography>
+              </Stack>
               {filteredExistingAssets.map((asset) => {
                 const assetId = asset.id || asset._id;
                 const currentPortfolio = displayText(getAssetPortfolioName(asset), "");
@@ -2384,7 +2549,7 @@ export default function AssetManagement() {
                               Tag: {displayText(asset.tagNumber || asset.serialNumber, "-")}
                             </Typography>
                           </Box>
-                          <StatusPill status={asset.status} />
+                          <StatusPill status={asset.status} T={T} />
                         </Stack>
 
                         <Box
@@ -2454,7 +2619,25 @@ export default function AssetManagement() {
               <Table stickyHeader size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ width: 54, ...headCellSx }}>Select</TableCell>
+                    <TableCell sx={{ width: 94, ...headCellSx }}>
+                      <Stack direction="row" alignItems="center" spacing={0.5}>
+                        <Checkbox
+                          size="small"
+                          checked={allReadyExistingAssetsSelected}
+                          indeterminate={someReadyExistingAssetsSelected}
+                          disabled={actionLoading || selectableExistingAssetIds.length === 0}
+                          onChange={toggleAllReadyExistingAssets}
+                          inputProps={{ "aria-label": "Select all ready assets" }}
+                          sx={{
+                            p: 0,
+                            color: T.brand,
+                            "&.Mui-checked": { color: T.brand },
+                            "&.MuiCheckbox-indeterminate": { color: T.brand },
+                          }}
+                        />
+                        <Box component="span">Select</Box>
+                      </Stack>
+                    </TableCell>
                     <TableCell sx={headCellSx}>Asset</TableCell>
                     <TableCell sx={headCellSx}>Category</TableCell>
                     <TableCell sx={headCellSx}>Portfolio Name</TableCell>
@@ -2543,7 +2726,7 @@ export default function AssetManagement() {
             p: 2.5,
             pb: { xs: "calc(20px + env(safe-area-inset-bottom))", sm: 2.5 },
             pt: 2,
-            borderTop: `1px solid #f1f5f9`,
+            borderTop: `1px solid ${T.borderSubtle}`,
             gap: 1,
           }}
         >
@@ -2611,7 +2794,7 @@ export default function AssetManagement() {
               width: 36,
               height: 36,
               borderRadius: "10px",
-              bgcolor: "#fff7ed",
+              bgcolor: T.warningBg,
               color: T.warning,
               display: "grid",
               placeItems: "center",
@@ -2632,7 +2815,7 @@ export default function AssetManagement() {
                 mt: 2,
                 p: 1.5,
                 borderRadius: "10px",
-                bgcolor: "#f8fafc",
+                bgcolor: T.surfaceAlt,
                 border: `1px solid ${T.border}`,
               }}
             >
@@ -2711,7 +2894,7 @@ export default function AssetManagement() {
           sx={{
             fontWeight: 700,
             fontSize: "0.95rem",
-            borderBottom: `1px solid #f1f5f9`,
+            borderBottom: `1px solid ${T.borderSubtle}`,
             pb: 1.5,
           }}
         >
@@ -2859,7 +3042,7 @@ export default function AssetManagement() {
             p: 2.5,
             pb: { xs: "calc(20px + env(safe-area-inset-bottom))", sm: 2.5 },
             pt: 2,
-            borderTop: `1px solid #f1f5f9`,
+            borderTop: `1px solid ${T.borderSubtle}`,
             gap: 1,
           }}
         >
@@ -2978,8 +3161,7 @@ export default function AssetManagement() {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity={snackbar.severity}
           onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
@@ -2995,3 +3177,4 @@ export default function AssetManagement() {
     </Box>
   );
 }
+  

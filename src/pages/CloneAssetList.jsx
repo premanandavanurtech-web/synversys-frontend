@@ -24,6 +24,7 @@ import {
   Fade,
   Grid,
   Pagination,
+  useTheme,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useAsset } from "../context/AssetContext";
@@ -107,8 +108,41 @@ const isCloneAssetRecord = (asset) => {
   );
 };
 
+const isChildAssetRecord = (asset) => {
+  const assetId = String(asset?.assetId || "").trim().toLowerCase();
+  return (
+    String(asset?.assetType || "").trim().toLowerCase() === "child" ||
+    !!asset?.parentAssetId ||
+    assetId.startsWith("ca-") ||
+    assetId.startsWith("ca_")
+  );
+};
+
 // ── Asset Card — faithful to screenshot ──────────────────────────────────────
+const getPageTokens = (isDark) =>
+  isDark
+    ? {
+        ...T,
+        pageBg: "#08111f",
+        surface: "#0f1c2e",
+        border: "rgba(148, 163, 184, 0.24)",
+        borderCard: "rgba(148, 163, 184, 0.22)",
+        text: {
+          primary: "#f8fafc",
+          secondary: "#cbd5e1",
+          label: "#94a3b8",
+          muted: "#64748b",
+        },
+        cloneBtn: "rgba(20, 76, 92, 0.22)",
+        cloneBtnHover: "rgba(26, 98, 120, 0.32)",
+        shadow: "none",
+        shadowCard: "none",
+      }
+    : T;
+
 const AssetCard = ({ asset, onClone }) => {
+  const theme = useTheme();
+  const P = getPageTokens(theme.palette.mode === "dark");
   const canClone =
     asset.canBeCloned !== false &&
     !["retired", "decommissioned"].includes(asset.status?.toLowerCase());
@@ -130,21 +164,22 @@ const AssetCard = ({ asset, onClone }) => {
 
   const category =
     asset.assetCategoryId?.name || asset.assetCategory || "Uncategorized";
+  const isChildAsset = isChildAssetRecord(asset);
 
   return (
     <Box
       sx={{
-        bgcolor: T.surface,
-        borderRadius: T.radius.card,
-        border: `1px solid ${T.borderCard}`,
-        boxShadow: T.shadowCard,
+        bgcolor: P.surface,
+        borderRadius: P.radius.card,
+        border: `1px solid ${P.borderCard}`,
+        boxShadow: P.shadowCard,
         display: "flex",
         width:"355px",
         flexDirection: "column",
         overflow: "hidden",
         transition: "box-shadow 0.18s ease, transform 0.18s ease",
         "&:hover": {
-          boxShadow: "0 4px 16px rgba(0,0,0,0.11)",
+          boxShadow: theme.palette.mode === "dark" ? `0 12px 28px ${P.pageBg}` : "0 4px 16px rgba(0,0,0,0.11)",
           transform: "translateY(-2px)",
         },
       }}
@@ -161,7 +196,7 @@ const AssetCard = ({ asset, onClone }) => {
           <Typography
             fontWeight={700}
             fontSize="1rem"
-            color={T.text.primary}
+            color={P.text.primary}
             sx={{ lineHeight: 1.3, pr: 1 }}
           >
             {asset.assetName}
@@ -171,15 +206,15 @@ const AssetCard = ({ asset, onClone }) => {
 
         {/* Row 2: Location */}
         <Stack direction="row" alignItems="center" spacing={0.5} mb={1.75}>
-          <LocationOn sx={{ fontSize: 14, color: T.text.muted }} />
-          <Typography fontSize="0.8rem" color={T.text.secondary}>
+          <LocationOn sx={{ fontSize: 14, color: P.text.muted }} />
+          <Typography fontSize="0.8rem" color={P.text.secondary}>
             {asset.currentLocation || "—"}
           </Typography>
         </Stack>
 
         {/* Divider-like rows: label on left, value on right */}
         {[
-          { label: "Asset ID:", value: asset.assetId || "—" },
+          { label: isChildAsset ? "Child ID:" : "Asset ID:", value: asset.assetId || "—" },
           { label: "Category:", value: category },
           { label: "Last Inspection:", value: formatDate(lastInspection) },
         ].map(({ label, value }) => (
@@ -190,13 +225,13 @@ const AssetCard = ({ asset, onClone }) => {
             alignItems="center"
             mb={0.75}
           >
-            <Typography fontSize="0.8rem" color={T.text.label}>
+            <Typography fontSize="0.8rem" color={P.text.label}>
               {label}
             </Typography>
             <Typography
               fontSize="0.8rem"
               fontWeight={600}
-              color={T.text.primary}
+              color={P.text.primary}
             >
               {value}
             </Typography>
@@ -213,18 +248,18 @@ const AssetCard = ({ asset, onClone }) => {
           onClick={() => onClone(asset)}
           sx={{
             py: 1,
-            borderRadius: T.radius.btn,
-            bgcolor: canClone ? T.cloneBtn : "#fafafa",
-            color: canClone ? T.text.primary : T.text.muted,
+            borderRadius: P.radius.btn,
+            bgcolor: canClone ? P.cloneBtn : "rgba(148, 163, 184, 0.12)",
+            color: canClone ? P.text.primary : P.text.muted,
             fontSize: "0.85rem",
             fontWeight: 500,
             textTransform: "none",
-            border: `1px solid ${T.border}`,
+            border: `1px solid ${P.border}`,
             "&:hover": {
-              bgcolor: T.cloneBtnHover,
-              border: `1px solid #d0d0d0`,
+              bgcolor: P.cloneBtnHover,
+              border: `1px solid ${P.border}`,
             },
-            "&.Mui-disabled": { bgcolor: "#fafafa", color: T.text.muted },
+            "&.Mui-disabled": { bgcolor: "rgba(148, 163, 184, 0.12)", color: P.text.muted },
           }}
         >
           Clone Asset
@@ -237,6 +272,8 @@ const AssetCard = ({ asset, onClone }) => {
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function CloneAssets() {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const P = getPageTokens(theme.palette.mode === "dark");
   const {
     assets,
     getAllAssets,
@@ -345,14 +382,14 @@ export default function CloneAssets() {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: T.pageBg }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: P.pageBg }}>
       {/* ── Header ── */}
       <Box
         sx={{
-          bgcolor: T.surface,
+          bgcolor: P.surface,
           px: { xs: 2, md: 4 },
           py: 2.5,
-          borderBottom: `1px solid ${T.border}`,
+          borderBottom: `1px solid ${P.border}`,
         }}
       >
         <Stack
@@ -365,24 +402,24 @@ export default function CloneAssets() {
               onClick={() => navigate(-1)}
               size="small"
               sx={{
-                bgcolor: T.pageBg,
-                border: `1px solid ${T.border}`,
+                bgcolor: P.pageBg,
+                border: `1px solid ${P.border}`,
                 borderRadius: "8px",
-                "&:hover": { bgcolor: T.cloneBtnHover },
+                "&:hover": { bgcolor: P.cloneBtnHover },
               }}
             >
-              <ArrowBack sx={{ fontSize: 18, color: T.text.primary }} />
+              <ArrowBack sx={{ fontSize: 18, color: P.text.primary }} />
             </IconButton>
             <Box>
               <Typography
                 fontWeight={700}
                 fontSize="1.25rem"
-                color={T.text.primary}
+                color={P.text.primary}
                 lineHeight={1.2}
               >
                 Clone Assets
               </Typography>
-              <Typography fontSize="0.78rem" color={T.text.label} mt={0.2}>
+              <Typography fontSize="0.78rem" color={P.text.label} mt={0.2}>
                 Showing cloned assets only
               </Typography>
             </Box>
@@ -393,15 +430,15 @@ export default function CloneAssets() {
             disabled={assetLoading}
             size="small"
             sx={{
-              bgcolor: T.pageBg,
-              border: `1px solid ${T.border}`,
+              bgcolor: P.pageBg,
+              border: `1px solid ${P.border}`,
               borderRadius: "8px",
             }}
           >
             {assetLoading ? (
-              <CircularProgress size={16} sx={{ color: T.text.secondary }} />
+              <CircularProgress size={16} sx={{ color: P.text.secondary }} />
             ) : (
-              <Refresh sx={{ fontSize: 18, color: T.text.secondary }} />
+              <Refresh sx={{ fontSize: 18, color: P.text.secondary }} />
             )}
           </IconButton>
         </Stack>
@@ -423,7 +460,7 @@ export default function CloneAssets() {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <Search sx={{ fontSize: 18, color: T.text.muted }} />
+                  <Search sx={{ fontSize: 18, color: P.text.muted }} />
                 </InputAdornment>
               ),
               endAdornment: search && (
@@ -432,11 +469,12 @@ export default function CloneAssets() {
                 </IconButton>
               ),
               sx: {
-                borderRadius: T.radius.search,
-                bgcolor: T.surface,
+                borderRadius: P.radius.search,
+                bgcolor: P.surface,
                 fontSize: "0.85rem",
-                "& fieldset": { borderColor: T.border },
-                "&:hover fieldset": { borderColor: "#cccccc" },
+                color: P.text.primary,
+                "& fieldset": { borderColor: P.border },
+                "&:hover fieldset": { borderColor: P.text.label },
               },
             }}
           />
@@ -450,11 +488,12 @@ export default function CloneAssets() {
               }}
               displayEmpty
               sx={{
-                borderRadius: T.radius.search,
-                bgcolor: T.surface,
+                borderRadius: P.radius.search,
+                bgcolor: P.surface,
                 fontSize: "0.85rem",
-                "& fieldset": { borderColor: T.border },
-                "&:hover fieldset": { borderColor: "#cccccc" },
+                color: P.text.primary,
+                "& fieldset": { borderColor: P.border },
+                "&:hover fieldset": { borderColor: P.text.label },
               }}
             >
               {allCategories.map((c) => (
@@ -474,7 +513,7 @@ export default function CloneAssets() {
                 <Skeleton
                   variant="rounded"
                   height={260}
-                  sx={{ borderRadius: T.radius.card }}
+                  sx={{ borderRadius: P.radius.card }}
                 />
               </Grid>
             ))}
@@ -484,16 +523,16 @@ export default function CloneAssets() {
             sx={{
               textAlign: "center",
               py: 10,
-              bgcolor: T.surface,
-              borderRadius: T.radius.card,
-              border: `1px solid ${T.borderCard}`,
+              bgcolor: P.surface,
+              borderRadius: P.radius.card,
+              border: `1px solid ${P.borderCard}`,
             }}
           >
-            <ErrorOutline sx={{ fontSize: 40, color: T.text.muted, mb: 1.5 }} />
-            <Typography fontWeight={600} color={T.text.secondary} mb={0.5}>
+            <ErrorOutline sx={{ fontSize: 40, color: P.text.muted, mb: 1.5 }} />
+            <Typography fontWeight={600} color={P.text.secondary} mb={0.5}>
               No cloned assets found
             </Typography>
-            <Typography fontSize="0.82rem" color={T.text.muted}>
+            <Typography fontSize="0.82rem" color={P.text.muted}>
               {search || category !== "All"
                 ? "Try adjusting your search or category filter"
                 : "No clone assets are available yet"}
@@ -522,8 +561,9 @@ export default function CloneAssets() {
                   shape="rounded"
                   sx={{
                     "& .MuiPaginationItem-root": {
-                      borderRadius: T.radius.btn,
+                      borderRadius: P.radius.btn,
                       fontSize: "0.82rem",
+                      color: P.text.secondary,
                     },
                   }}
                 />
@@ -539,14 +579,14 @@ export default function CloneAssets() {
         onClose={() => !cloning && setCloneDialogOpen(false)}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: T.radius.card } }}
+        PaperProps={{ sx: { borderRadius: P.radius.card, bgcolor: P.surface } }}
       >
-        <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1 }}>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: "1rem", pb: 1, color: P.text.primary }}>
           Clone Asset
           {selectedAsset && (
             <Typography
               fontSize="0.78rem"
-              color={T.text.label}
+              color={P.text.label}
               fontWeight={400}
               mt={0.25}
             >
@@ -580,7 +620,7 @@ export default function CloneAssets() {
             disabled={cloning}
             sx={{
               textTransform: "none",
-              color: T.text.secondary,
+              color: P.text.secondary,
               fontSize: "0.85rem",
             }}
           >
@@ -600,9 +640,10 @@ export default function CloneAssets() {
             sx={{
               textTransform: "none",
               fontSize: "0.85rem",
-              bgcolor: T.text.primary,
-              borderRadius: T.radius.btn,
-              "&:hover": { bgcolor: "#333" },
+              bgcolor: P.text.primary,
+              color: P.pageBg,
+              borderRadius: P.radius.btn,
+              "&:hover": { bgcolor: P.text.secondary },
             }}
           >
             {cloning ? "Cloning…" : "Confirm Clone"}
@@ -614,10 +655,9 @@ export default function CloneAssets() {
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
-        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
         TransitionComponent={Fade}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity={snackbar.severity}
           sx={{ borderRadius: T.radius.btn, fontSize: "0.82rem" }}

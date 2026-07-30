@@ -673,9 +673,9 @@ const ForgotPassword = () => {
         open={snackbarOpen}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+
         TransitionComponent={Slide}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={handleCloseSnackbar}
           severity="error"

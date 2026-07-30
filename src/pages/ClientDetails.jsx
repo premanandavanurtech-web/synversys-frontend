@@ -182,14 +182,15 @@ const StatTile = ({
   color,
   loading,
   onClick,
+  palette = C,
 }) => {
   if (loading) {
     return (
       <Box
         sx={{
-          bgcolor: "white",
+          bgcolor: palette.card,
           
-          border: `1px solid ${C.border}`,
+          border: `1px solid ${palette.border}`,
           borderRadius: 2,
           p: 2,
           height: "100%",
@@ -206,10 +207,11 @@ const StatTile = ({
   return (
     <Box
       onClick={onClick}
-      sx={{
-        bgcolor: "white",
-        border: `1px solid ${C.border}`,
-        width:{xs:"173px",md:"279px"},
+        sx={{
+          bgcolor: palette.card,
+          border: `1px solid ${palette.border}`,
+        width: "100%",
+        minWidth: 0,
         borderRadius: 2,
         p: { xs: 1.5, sm: 2 },
         height: "100%",
@@ -287,6 +289,26 @@ const EditModal = ({
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isDark = theme.palette.mode === "dark";
+  const modalColors = isDark
+    ? {
+        surface: "#0c1726",
+        header: "#111c2b",
+        border: "rgba(148, 163, 184, 0.22)",
+        primaryLight: "rgba(26, 166, 196, 0.12)",
+        text: {
+          primary: "#f8fafc",
+          secondary: "#d9e2ef",
+          muted: "#aeb8c8",
+        },
+      }
+    : {
+        surface: C.surface,
+        header: "white",
+        border: C.border,
+        primaryLight: C.primaryLight,
+        text: C.text,
+      };
   const [activeTab, setActiveTab] = useState(0);
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
@@ -303,6 +325,7 @@ const EditModal = ({
         membershipPlan: client.membershipPlan || "standard",
         licenseLimit: client.licenseLimit || 10,
         assetLimit: client.assetLimit || 100,
+        duration: 30,
         notes: client.notes || "",
       });
       setErrors({});
@@ -312,6 +335,12 @@ const EditModal = ({
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
+    if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
+  };
+
+  const handleNumberChange = (name, value, min, max) => {
+    const nextValue = value === "" ? "" : Math.min(max, Math.max(min, Number(value)));
+    setForm((p) => ({ ...p, [name]: nextValue }));
     if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
   };
 
@@ -331,6 +360,8 @@ const EditModal = ({
       if (form.licenseLimit > 10000) e.licenseLimit = "Max 10000";
       if (form.assetLimit < 1) e.assetLimit = "Min 1";
       if (form.assetLimit > 10000) e.assetLimit = "Max 10000";
+      if ((Number(form.duration) || 0) < 1) e.duration = "Min 1";
+      if ((Number(form.duration) || 0) > 365) e.duration = "Max 365";
     }
     if (!ACCESS_TYPES.some((option) => option.value === form.accessType)) {
       e.accessType = "Access type is required";
@@ -349,7 +380,7 @@ const EditModal = ({
     if (index === 0) {
       return Boolean(errors.customerName || errors.phone || errors.website || errors.accessType);
     }
-    return Boolean(errors.licenseLimit || errors.assetLimit);
+    return Boolean(errors.licenseLimit || errors.assetLimit || errors.duration);
   };
 
   const inputSx = (hasError = false) => ({
@@ -366,6 +397,17 @@ const EditModal = ({
     "& .MuiInputLabel-root": { fontSize: "0.8rem" },
     "& .MuiInputBase-input": { py: 1.3 },
     "& .MuiFormHelperText-root": { fontSize: "0.68rem", ml: 0, mt: 0.5 },
+  });
+
+  const numberFieldSx = (hasError = false) => ({
+    ...inputSx(hasError),
+    "& input[type=number]": {
+      MozAppearance: "textfield",
+    },
+    "& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button": {
+      WebkitAppearance: "none",
+      margin: 0,
+    },
   });
 
   const accountInfo = (
@@ -497,7 +539,7 @@ const EditModal = ({
           sx={{
             fontSize: "0.72rem",
             fontWeight: 600,
-            color: C.text.muted,
+            color: modalColors.text.muted,
             textTransform: "uppercase",
             letterSpacing: "0.07em",
             mb: 1.5,
@@ -534,38 +576,55 @@ const EditModal = ({
       </Box>
       <Divider />
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+        <Grid item xs={12} sm={4}>
           <TextField
             name="licenseLimit"
             label="License limit"
             type="number"
-            value={form.licenseLimit || 10}
-            onChange={handleChange}
+            value={form.licenseLimit ?? ""}
+            onChange={(e) => handleNumberChange("licenseLimit", e.target.value, 1, 10000)}
             fullWidth
             size="small"
             disabled={!canEditPlanLimits}
             error={!!errors.licenseLimit}
             helperText={errors.licenseLimit}
             InputLabelProps={{ shrink: true }}
-            InputProps={{ inputProps: { min: 1, max: 10000 } }}
-            sx={inputSx(!!errors.licenseLimit)}
+            inputProps={{ min: 1, max: 10000, inputMode: "numeric" }}
+            sx={numberFieldSx(!!errors.licenseLimit)}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid item xs={12} sm={4}>
           <TextField
             name="assetLimit"
             label="Asset limit"
             type="number"
-            value={form.assetLimit || 100}
-            onChange={handleChange}
+            value={form.assetLimit ?? ""}
+            onChange={(e) => handleNumberChange("assetLimit", e.target.value, 1, 10000)}
             fullWidth
             size="small"
             disabled={!canEditPlanLimits}
             error={!!errors.assetLimit}
             helperText={errors.assetLimit}
             InputLabelProps={{ shrink: true }}
-            InputProps={{ inputProps: { min: 1, max: 10000 } }}
-            sx={inputSx(!!errors.assetLimit)}
+            inputProps={{ min: 1, max: 10000, inputMode: "numeric" }}
+            sx={numberFieldSx(!!errors.assetLimit)}
+          />
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <TextField
+            name="duration"
+            label="Duration (days)"
+            type="number"
+            value={form.duration ?? ""}
+            onChange={(e) => handleNumberChange("duration", e.target.value, 1, 365)}
+            fullWidth
+            size="small"
+            disabled={!canEditPlanLimits}
+            error={!!errors.duration}
+            helperText={errors.duration}
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ min: 1, max: 365, inputMode: "numeric" }}
+            sx={numberFieldSx(!!errors.duration)}
           />
         </Grid>
       </Grid>
@@ -584,6 +643,7 @@ const EditModal = ({
           borderRadius: fullScreen ? 0 : "16px",
           overflow: "hidden",
           margin: { xs: 0, sm: 2 },
+          bgcolor: modalColors.surface,
         },
       }}
     >
@@ -595,8 +655,8 @@ const EditModal = ({
             justifyContent: "space-between",
             px: { xs: 2, sm: 2.5 },
             py: { xs: 1.5, sm: 1.75 },
-            bgcolor: "white",
-            borderBottom: `1px solid ${C.border}`,
+            bgcolor: modalColors.header,
+            borderBottom: `1px solid ${modalColors.border}`,
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
@@ -605,7 +665,7 @@ const EditModal = ({
                 width: { xs: 30, sm: 34 },
                 height: { xs: 30, sm: 34 },
                 borderRadius: "8px",
-                bgcolor: C.primaryLight,
+                bgcolor: modalColors.primaryLight,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -614,10 +674,10 @@ const EditModal = ({
               <DashboardIcon sx={{ fontSize: "1rem", color: C.primary }} />
             </Box>
             <Box>
-              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: C.text.primary }}>
+              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: modalColors.text.primary }}>
                 {copy.editTitle}
               </Typography>
-              <Typography sx={{ fontSize: "0.72rem", color: C.text.secondary }}>
+              <Typography sx={{ fontSize: "0.72rem", color: modalColors.text.secondary }}>
                 {copy.updateSubtitle}
               </Typography>
             </Box>
@@ -626,11 +686,11 @@ const EditModal = ({
             size="small"
             onClick={onClose}
             sx={{
-              border: `1px solid ${C.border}`,
+              border: `1px solid ${modalColors.border}`,
               borderRadius: "8px",
               width: 32,
               height: 32,
-              color: C.text.secondary,
+              color: modalColors.text.secondary,
             }}
           >
             <CloseIcon sx={{ fontSize: "0.9rem" }} />
@@ -639,9 +699,9 @@ const EditModal = ({
         <Box
           sx={{
             display: "flex",
-            borderBottom: `1px solid ${C.border}`,
+            borderBottom: `1px solid ${modalColors.border}`,
             px: { xs: 1.5, sm: 2.5 },
-            bgcolor: C.surface,
+            bgcolor: modalColors.header,
             overflowX: "auto",
           }}
         >
@@ -655,7 +715,7 @@ const EditModal = ({
                 cursor: "pointer",
                 fontSize: "0.8rem",
                 fontWeight: activeTab === index ? 700 : 500,
-                color: activeTab === index ? C.primary : C.text.secondary,
+                color: activeTab === index ? C.primary : modalColors.text.secondary,
                 borderBottom: "2px solid",
                 borderColor: activeTab === index ? C.primary : "transparent",
                 display: "inline-flex",
@@ -677,6 +737,7 @@ const EditModal = ({
         sx={{
           px: { xs: 2, sm: 2.5 },
           py: { xs: 2, sm: 2.5 },
+          bgcolor: modalColors.surface,
           maxHeight: { xs: "calc(100vh - 180px)", sm: "60vh" },
           overflowY: "auto",
         }}
@@ -688,16 +749,16 @@ const EditModal = ({
         sx={{
           px: { xs: 2, sm: 2.5 },
           py: 1.5,
-          borderTop: `1px solid ${C.border}`,
+          borderTop: `1px solid ${modalColors.border}`,
           justifyContent: "space-between",
           flexWrap: "wrap",
           gap: 1,
-          bgcolor: "white",
+          bgcolor: modalColors.header,
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-          <LockIcon sx={{ fontSize: "0.9rem", color: "#8aa0bb" }} />
-          <Typography sx={{ fontSize: "0.72rem", color: "#8aa0bb" }}>
+          <LockIcon sx={{ fontSize: "0.9rem", color: modalColors.text.muted }} />
+          <Typography sx={{ fontSize: "0.72rem", color: modalColors.text.muted }}>
             {copy.singular} receives a secure Set Password email
           </Typography>
         </Box>
@@ -710,8 +771,8 @@ const EditModal = ({
               textTransform: "none",
               fontSize: "0.8rem",
               borderRadius: "8px",
-              borderColor: C.border,
-              color: C.text.secondary,
+              borderColor: modalColors.border,
+              color: modalColors.text.secondary,
               px: 2.5,
             }}
           >
@@ -813,6 +874,25 @@ const UpgradeModal = ({
   onUpgrade,
   loading,
 }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const modalColors = isDark
+    ? {
+        surface: "#0c1726",
+        info: "rgba(15, 28, 46, 0.78)",
+        border: "rgba(148, 163, 184, 0.22)",
+        text: {
+          secondary: "#d9e2ef",
+        },
+      }
+    : {
+        surface: C.card,
+        info: C.primaryLight,
+        border: C.border,
+        text: {
+          secondary: C.text.secondary,
+        },
+      };
   const [selectedPlan, setSelectedPlan] = useState(currentPlan);
   const [extendDays, setExtendDays] = useState(30);
 
@@ -833,7 +913,7 @@ const UpgradeModal = ({
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { borderRadius: "16px" } }}
+      PaperProps={{ sx: { borderRadius: "16px", bgcolor: modalColors.surface } }}
     >
       <DialogTitle sx={{ p: 0 }}>
         <Box
@@ -856,10 +936,10 @@ const UpgradeModal = ({
           </IconButton>
         </Box>
       </DialogTitle>
-      <DialogContent sx={{ p: 2.5 }}>
+      <DialogContent sx={{ p: 2.5, bgcolor: modalColors.surface }}>
         <Stack spacing={2}>
-          <Box sx={{ p: 1.5, bgcolor: C.primaryLight, borderRadius: 2 }}>
-            <Typography sx={{ fontSize: "0.7rem", color: C.text.secondary }}>
+          <Box sx={{ p: 1.5, bgcolor: modalColors.info, borderRadius: 2, border: `1px solid ${modalColors.border}` }}>
+            <Typography sx={{ fontSize: "0.7rem", color: modalColors.text.secondary }}>
               Current Plan:{" "}
               <strong>
                 {currentPlan?.charAt(0).toUpperCase() + currentPlan?.slice(1)}
@@ -907,7 +987,7 @@ const UpgradeModal = ({
           />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ p: 2, pt: 0, gap: 1 }}>
+      <DialogActions sx={{ p: 2, pt: 0, gap: 1, bgcolor: modalColors.surface }}>
         <Button onClick={onClose} size="small" sx={{ textTransform: "none" }}>
           Cancel
         </Button>
@@ -930,7 +1010,25 @@ const UpgradeModal = ({
 
 // Deactivate Dialog
 const DeactivateDialog = ({ open, client, onClose, onConfirm, loading, copy = getAccountCopy("super_admin") }) => {
+  const theme = useTheme();
   const isActive = client?.status === "active";
+  const isDark = theme.palette.mode === "dark";
+  const tone = isActive ? C.error : C.success;
+  const dialogColors = isDark
+    ? {
+        surface: "#0c1726",
+        header: "#111c2b",
+        border: "rgba(148, 163, 184, 0.18)",
+        text: "#f8fafc",
+        muted: "#aeb8c8",
+      }
+    : {
+        surface: "#ffffff",
+        header: "#ffffff",
+        border: C.border,
+        text: C.text.primary,
+        muted: C.text.secondary,
+      };
 
   return (
     <Dialog
@@ -938,22 +1036,98 @@ const DeactivateDialog = ({ open, client, onClose, onConfirm, loading, copy = ge
       onClose={onClose}
       maxWidth="xs"
       fullWidth
-      PaperProps={{ sx: { borderRadius: "16px" } }}
+      PaperProps={{
+        sx: {
+          borderRadius: "18px",
+          overflow: "hidden",
+          bgcolor: dialogColors.surface,
+          border: `1px solid ${dialogColors.border}`,
+          boxShadow: isDark ? "0 24px 80px rgba(0,0,0,0.45)" : undefined,
+        },
+      }}
     >
-      <DialogTitle sx={{ p: 2, pb: 0 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
-          {copy.deactivateTitle(isActive)}
-        </Typography>
+      <DialogTitle sx={{ p: 0 }}>
+        <Box
+          sx={{
+            px: 2.25,
+            py: 2,
+            bgcolor: dialogColors.header,
+            borderBottom: `1px solid ${dialogColors.border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+            <Box
+              sx={{
+                width: 42,
+                height: 42,
+                borderRadius: "12px",
+                bgcolor: `${tone}18`,
+                color: tone,
+                display: "grid",
+                placeItems: "center",
+                flexShrink: 0,
+              }}
+            >
+              <WarningAmberIcon sx={{ fontSize: 22 }} />
+            </Box>
+            <Typography sx={{ fontWeight: 700, fontSize: "1rem", color: dialogColors.text }}>
+              {copy.deactivateTitle(isActive)}
+            </Typography>
+          </Box>
+          <IconButton
+            size="small"
+            onClick={onClose}
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: "10px",
+              border: `1px solid ${dialogColors.border}`,
+              color: dialogColors.muted,
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Box>
       </DialogTitle>
-      <DialogContent sx={{ p: 2 }}>
-        <Typography sx={{ fontSize: "0.75rem", color: C.text.secondary }}>
+      <DialogContent sx={{ px: 2.25, py: 2.25, bgcolor: dialogColors.surface }}>
+        <Typography sx={{ fontSize: "0.9rem", color: dialogColors.text, lineHeight: 1.55 }}>
           Are you sure you want to {isActive ? "deactivate" : "activate"}{" "}
-          <strong>{client?.customerName}</strong>?
-          {isActive && " They will lose access until reactivated."}
+          <Box component="strong" sx={{ color: dialogColors.text, fontWeight: 800 }}>
+            {client?.customerName}
+          </Box>
+          ?
+        </Typography>
+        <Typography sx={{ mt: 1, fontSize: "0.78rem", color: dialogColors.muted, lineHeight: 1.5 }}>
+          {isActive
+            ? "They will lose access immediately until the account is reactivated."
+            : "They will regain access to the account immediately."}
         </Typography>
       </DialogContent>
-      <DialogActions sx={{ p: 2, pt: 0, gap: 1 }}>
-        <Button onClick={onClose} size="small" sx={{ textTransform: "none" }}>
+      <DialogActions
+        sx={{
+          px: 2.25,
+          py: 2,
+          bgcolor: dialogColors.header,
+          borderTop: `1px solid ${dialogColors.border}`,
+          gap: 1.25,
+        }}
+      >
+        <Button
+          onClick={onClose}
+          size="small"
+          variant="outlined"
+          sx={{
+            textTransform: "none",
+            borderRadius: "10px",
+            px: 2.5,
+            color: dialogColors.muted,
+            borderColor: dialogColors.border,
+          }}
+        >
           Cancel
         </Button>
         <Button
@@ -961,8 +1135,15 @@ const DeactivateDialog = ({ open, client, onClose, onConfirm, loading, copy = ge
           variant="contained"
           disabled={loading}
           sx={{
-            bgcolor: isActive ? C.error : C.success,
+            bgcolor: tone,
             textTransform: "none",
+            borderRadius: "10px",
+            px: 2.75,
+            fontWeight: 700,
+            "&:hover": {
+              bgcolor: tone,
+              filter: "brightness(0.92)",
+            },
           }}
         >
           {loading ? (
@@ -1065,6 +1246,26 @@ const AccessDenied = () => {
 export default function ClientDetails() {
   const theme = useTheme();
   const nav = useNavigate();
+  const isDark = theme.palette.mode === "dark";
+  const pageColors = isDark
+    ? {
+        surface: "transparent",
+        card: "rgba(12, 23, 38, 0.92)",
+        header: "#0c1726",
+        border: "rgba(148, 163, 184, 0.18)",
+        text: {
+          primary: "#f8fafc",
+          secondary: "#d9e2ef",
+          muted: "#aeb8c8",
+        },
+      }
+    : {
+        surface: C.surface,
+        card: C.card,
+        header: "white",
+        border: C.border,
+        text: C.text,
+      };
   const { id } = useParams();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -1188,6 +1389,7 @@ export default function ClientDetails() {
             membershipPlan: formData.membershipPlan,
             licenseLimit: parseInt(formData.licenseLimit),
             assetLimit: parseInt(formData.assetLimit),
+            extendDays: parseInt(formData.duration),
           };
       await editClient(clientId, {
         customerName: formData.customerName,
@@ -1322,7 +1524,7 @@ export default function ClientDetails() {
   const settingsTabIndex = showPlanLimits ? 2 : 1;
 
   return (
-    <Box sx={{ bgcolor: C.surface, minHeight: "100vh" }}>
+    <Box sx={{ bgcolor: pageColors.surface, minHeight: "100vh" }}>
       {(loading || actionLoading) && !initialLoading && !isFetching && (
         <LinearProgress sx={{ height: 3 }} />
       )}
@@ -1330,8 +1532,8 @@ export default function ClientDetails() {
       {/* Top Header Bar */}
       <Box
         sx={{
-          bgcolor: "white",
-          borderBottom: `1px solid ${C.border}`,
+          bgcolor: pageColors.header,
+          borderBottom: `1px solid ${pageColors.border}`,
           px: { xs: 2, sm: 3 },
           py: { xs: 1.5, sm: 2 },
         }}
@@ -1357,8 +1559,8 @@ export default function ClientDetails() {
               onClick={() => nav("/admin/clients")}
               size="small"
               sx={{
-                bgcolor: C.surface,
-                border: `1px solid ${C.border}`,
+                bgcolor: pageColors.card,
+                border: `1px solid ${pageColors.border}`,
                 borderRadius: "8px",
               }}
             >
@@ -1389,7 +1591,7 @@ export default function ClientDetails() {
                   sx={{
                     fontWeight: 700,
                     fontSize: { xs: "0.95rem", sm: "1rem" },
-                    color: C.text.primary,
+                    color: pageColors.text.primary,
                   }}
                 >
                   {client?.customerName}
@@ -1427,9 +1629,9 @@ export default function ClientDetails() {
               >
                 {client?.email && (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <EmailIcon sx={{ fontSize: 11, color: C.text.muted }} />
+                    <EmailIcon sx={{ fontSize: 11, color: pageColors.text.muted }} />
                     <Typography
-                      sx={{ fontSize: "0.65rem", color: C.text.secondary }}
+                      sx={{ fontSize: "0.65rem", color: pageColors.text.secondary }}
                     >
                       {client.email}
                     </Typography>
@@ -1437,9 +1639,9 @@ export default function ClientDetails() {
                 )}
                 {client?.phone && (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <PhoneIcon sx={{ fontSize: 11, color: C.text.muted }} />
+                    <PhoneIcon sx={{ fontSize: 11, color: pageColors.text.muted }} />
                     <Typography
-                      sx={{ fontSize: "0.65rem", color: C.text.secondary }}
+                      sx={{ fontSize: "0.65rem", color: pageColors.text.secondary }}
                     >
                       {client.phone}
                     </Typography>
@@ -1447,9 +1649,9 @@ export default function ClientDetails() {
                 )}
                 {client?.website && (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <LanguageIcon sx={{ fontSize: 11, color: C.text.muted }} />
+                    <LanguageIcon sx={{ fontSize: 11, color: pageColors.text.muted }} />
                     <Typography
-                      sx={{ fontSize: "0.65rem", color: C.text.secondary }}
+                      sx={{ fontSize: "0.65rem", color: pageColors.text.secondary }}
                     >
                       {client.website}
                     </Typography>
@@ -1497,8 +1699,8 @@ export default function ClientDetails() {
                 textTransform: "none",
                 fontSize: "0.75rem",
                 borderRadius: "8px",
-                borderColor: C.border,
-                color: C.text.secondary,
+                borderColor: pageColors.border,
+                color: pageColors.text.secondary,
               }}
             >
               {isActive ? "Disable" : "Enable"}
@@ -1512,12 +1714,23 @@ export default function ClientDetails() {
         sx={{
           px: { xs: 2, sm: 3 },
           py: { xs: 1.5, sm: 2 },
-          bgcolor: "white",
-          borderBottom: `1px solid ${C.border}`,
+          bgcolor: pageColors.header,
+          borderBottom: `1px solid ${pageColors.border}`,
         }}
       >
-        <Grid container spacing={{ xs: 1, sm: 1.5 }}>
-          <Grid item xs={12} sm={6} md={4}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "repeat(2, minmax(0, 1fr))",
+              lg: "repeat(4, minmax(0, 1fr))",
+            },
+            gap: { xs: 1, sm: 1.5 },
+            width: "100%",
+          }}
+        >
+          <Box sx={{ minWidth: 0 }}>
             <StatTile
               icon={PeopleIcon}
               label="Users"
@@ -1525,9 +1738,10 @@ export default function ClientDetails() {
               sub={`of ${limit} licenses`}
               color={C.primary}
               loading={isFetching}
+              palette={pageColors}
             />
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
             <StatTile
               icon={AssignmentIcon}
               label="Active Checklist"
@@ -1535,9 +1749,10 @@ export default function ClientDetails() {
               sub="View all forms →"
               color="#7c3aed"
               loading={isFetching}
+              palette={pageColors}
             />
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
             <StatTile
               icon={InventoryIcon}
               label="Assets"
@@ -1545,9 +1760,10 @@ export default function ClientDetails() {
               sub="total managed"
               color={C.warning}
               loading={isFetching}
+              palette={pageColors}
             />
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
             <StatTile
               icon={TrendingUpIcon}
               label="Submissions"
@@ -1555,13 +1771,14 @@ export default function ClientDetails() {
               sub="all time"
               color={C.success}
               loading={isFetching}
+              palette={pageColors}
             />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Box>
 
       {/* Tab Bar */}
-      <Box sx={{ bgcolor: "white", borderBottom: `1px solid ${C.border}` }}>
+      <Box sx={{ bgcolor: pageColors.header, borderBottom: `1px solid ${pageColors.border}` }}>
         <Box sx={{ display: "flex", px: { xs: 2, sm: 3 } }}>
           {TABS.map((t, i) => (
             <Button
@@ -1573,7 +1790,7 @@ export default function ClientDetails() {
                 px: { xs: 1.5, sm: 2.5 },
                 textTransform: "none",
                 fontWeight: tab === i ? 700 : 500,
-                color: tab === i ? C.primary : C.text.secondary,
+                color: tab === i ? C.primary : pageColors.text.secondary,
                 borderBottom: "2px solid",
                 borderColor: tab === i ? C.primary : "transparent",
                 minWidth: "auto",
@@ -1686,7 +1903,7 @@ export default function ClientDetails() {
                 <Box
                   sx={{
                     p: 2,
-                    bgcolor: C.surface,
+                    bgcolor: isDark ? "rgba(15, 28, 46, 0.78)" : C.surface,
                     borderRadius: 2,
                     mb: client?.notes ? 2 : 0,
                   }}
@@ -1726,7 +1943,7 @@ export default function ClientDetails() {
                     sx={{
                       height: 8,
                       borderRadius: 4,
-                      bgcolor: "#e2e8f0",
+                      bgcolor: isDark ? "rgba(148, 163, 184, 0.22)" : "#e2e8f0",
                       "& .MuiLinearProgress-bar": {
                         bgcolor: usagePct > 85 ? C.error : C.primary,
                         borderRadius: 4,
@@ -1735,7 +1952,7 @@ export default function ClientDetails() {
                   />
                 </Box>
                 {client?.notes && (
-                  <Box sx={{ p: 2, bgcolor: C.surface, borderRadius: 2 }}>
+                  <Box sx={{ p: 2, bgcolor: isDark ? "rgba(15, 28, 46, 0.78)" : C.surface, borderRadius: 2 }}>
                     <Typography
                       sx={{
                         fontSize: "0.65rem",
@@ -1790,7 +2007,8 @@ export default function ClientDetails() {
                 </Typography>
                 <Box
                   sx={{
-                    bgcolor: plan.bg,
+                    bgcolor: isDark ? "rgba(15, 28, 46, 0.78)" : plan.bg,
+                    border: isDark ? `1px solid ${pageColors.border}` : "none",
                     borderRadius: 2,
                     p: { xs: 2, sm: 2.5 },
                     mb: 2,
@@ -1817,7 +2035,7 @@ export default function ClientDetails() {
                         {plan.label}
                       </Typography>
                       <Typography
-                        sx={{ fontSize: "0.7rem", color: C.text.secondary }}
+                        sx={{ fontSize: "0.7rem", color: pageColors.text.secondary }}
                       >
                         Premium business features
                       </Typography>
@@ -1833,7 +2051,7 @@ export default function ClientDetails() {
                         {plan.price.split("/")[0]}
                       </Typography>
                       <Typography
-                        sx={{ fontSize: "0.65rem", color: C.text.secondary }}
+                        sx={{ fontSize: "0.65rem", color: pageColors.text.secondary }}
                       >
                         per month
                       </Typography>
@@ -1853,7 +2071,7 @@ export default function ClientDetails() {
                         sx={{ fontSize: "0.85rem", color: plan.color }}
                       />
                       <Typography
-                        sx={{ fontSize: "0.72rem", color: C.text.secondary }}
+                        sx={{ fontSize: "0.72rem", color: pageColors.text.secondary }}
                       >
                         {f}
                       </Typography>
@@ -2126,8 +2344,7 @@ export default function ClientDetails() {
         open={toast.open}
         autoHideDuration={5000}
         onClose={closeToast}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={closeToast}
           severity={toast.severity}

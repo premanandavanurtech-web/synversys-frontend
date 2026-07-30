@@ -1315,8 +1315,7 @@ export default function GlobalChecklistBuilder() {
           setSnackbar((s) => ({ ...s, open: false }));
           clearMessages();
         }}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity={snackbar.severity}
           onClose={() => {

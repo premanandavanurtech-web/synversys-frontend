@@ -26,6 +26,8 @@ import {
   Select,
   MenuItem,
   Autocomplete,
+  Pagination,
+  Portal,
   Slide,
   alpha,
   useMediaQuery,
@@ -175,12 +177,21 @@ const getUserName = (user) => {
   return user.name || user.email || "Unknown";
 };
 
+const isAdminCreatedAssetRequest = (request) =>
+  /^Admin created\s+(parent|child)?\s*asset\b/i.test(
+    String(request?.description || ""),
+  ) ||
+  /^Asset link request for\b/i.test(String(request?.description || ""));
+
 // ─── Styled atoms ─────────────────────────────────────────────────────────────
-const Card = styled(Paper)({
-  background: T.surface,
+const Card = styled(Paper)(({ theme }) => {
+  const isDark = theme.palette.mode === "dark";
+  return {
+  background: isDark ? "#0f1c2e" : T.surface,
+  color: isDark ? "#f8fafc" : T.ink,
   borderRadius: 20,
-  border: `1px solid ${T.border}`,
-  boxShadow: T.sh.sm,
+  border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.24)" : T.border}`,
+  boxShadow: isDark ? "none" : T.sh.sm,
   overflow: "hidden",
   position: "relative",
   transition: "box-shadow 0.25s ease, transform 0.25s ease",
@@ -193,7 +204,8 @@ const Card = styled(Paper)({
     height: 2,
     background: T.goldLine,
   },
-  "&:hover": { boxShadow: T.sh.md },
+  "&:hover": { boxShadow: isDark ? "0 12px 28px rgba(0,0,0,0.18)" : T.sh.md },
+  };
 });
 
 const SectionTitle = ({ children, icon, action }) => (
@@ -383,6 +395,8 @@ function AddAssetModal({
   subtitle = "Asset will be auto-selected after saving",
 }) {
   const [AddNewAsset, setAddNewAsset] = useState(null);
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
 
   useEffect(() => {
     if (open && !AddNewAsset) {
@@ -401,7 +415,7 @@ function AddAssetModal({
       sx={{ zIndex: 1700 }}
       PaperProps={{
         sx: {
-          bgcolor: T.bg,
+          bgcolor: isDark ? "#07111f" : T.bg,
           m: { xs: 0, sm: "12px" },
           borderRadius: { xs: 0, sm: T.r.lg },
           height: { xs: "100%", sm: "calc(100% - 24px)" },
@@ -419,8 +433,10 @@ function AddAssetModal({
           justifyContent: "space-between",
           px: 3,
           py: 1.25,
-          bgcolor: T.surface,
-          borderBottom: `1px solid ${T.border}`,
+          bgcolor: isDark ? "#0c1726" : T.surface,
+          borderBottom: `1px solid ${
+            isDark ? "rgba(148, 163, 184, 0.22)" : T.border
+          }`,
           flexShrink: 0,
           zIndex: 10,
         }}
@@ -431,19 +447,30 @@ function AddAssetModal({
               width: 30,
               height: 30,
               borderRadius: T.r.sm,
-              bgcolor: T.brandLight,
+              bgcolor: isDark ? "rgba(103, 232, 249, 0.14)" : T.brandLight,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Inventory2 sx={{ fontSize: 15, color: T.brand }} />
+            <Inventory2
+              sx={{ fontSize: 15, color: isDark ? "#67e8f9" : T.brand }}
+            />
           </Box>
           <Box>
-            <Typography sx={{ fontWeight: 700, fontSize: "0.875rem", color: T.ink, lineHeight: 1.2 }}>
+            <Typography
+              sx={{
+                fontWeight: 700,
+                fontSize: "0.875rem",
+                color: isDark ? "#f8fafc" : T.ink,
+                lineHeight: 1.2,
+              }}
+            >
               {title}
             </Typography>
-            <Typography sx={{ fontSize: "0.68rem", color: T.inkMuted }}>
+            <Typography
+              sx={{ fontSize: "0.68rem", color: isDark ? "#94a3b8" : T.inkMuted }}
+            >
               {subtitle}
             </Typography>
           </Box>
@@ -453,12 +480,15 @@ function AddAssetModal({
             onClick={onClose}
             size="small"
             sx={{
-              bgcolor: T.surfaceAlt,
-              color: T.inkMuted,
+              bgcolor: isDark ? "rgba(148, 163, 184, 0.12)" : T.surfaceAlt,
+              color: isDark ? "#cbd5e1" : T.inkMuted,
               borderRadius: T.r.xs,
               width: 30,
               height: 30,
-              "&:hover": { bgcolor: T.redLight, color: T.red },
+              "&:hover": {
+                bgcolor: isDark ? "rgba(239, 68, 68, 0.16)" : T.redLight,
+                color: isDark ? "#fca5a5" : T.red,
+              },
             }}
           >
             <Close sx={{ fontSize: 16 }} />
@@ -1003,15 +1033,29 @@ function CreateRequestDialog({ open, onClose, onSuccess }) {
 const LinkAssetDialog = ({ open, onClose, assetId, currentAsset, onSuccess }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isDark = theme.palette.mode === "dark";
+  const dialogSurface = isDark ? "#0f1c2e" : T.surface;
+  const dialogSurfaceAlt = isDark ? "#0b1626" : T.surfaceAlt;
+  const dialogSoft = isDark ? "rgba(45, 74, 62, 0.26)" : T.brandLight;
+  const dialogBorder = isDark ? "rgba(148, 163, 184, 0.24)" : T.border;
+  const dialogText = isDark ? "#f8fafc" : T.ink;
+  const dialogTextSecondary = isDark ? "#cbd5e1" : T.inkSecondary;
+  const dialogMuted = isDark ? "#94a3b8" : T.inkMuted;
   const { user } = useAuth();
-  const { fetchRequests, linkAsset } = useAssetRequest();
+  const {
+    fetchRequests,
+    getRequestsByAsset,
+    createParentRequest,
+    approveRequest,
+    linkAsset,
+  } = useAssetRequest();
   const { getAllAssets, assets, loading: assetsLoading } = useAsset();
   const canCreateRequests = ["admin", "team"].includes(user?.role);
   const [parentRequests, setParentRequests] = useState([]);
   const [loadingParents, setLoadingParents] = useState(false);
   const [parentError, setParentError] = useState("");
   const [selectedParent, setSelectedParent] = useState(null);
-  const [selectedChildAsset, setSelectedChildAsset] = useState(null);
+  const [selectedChildAssets, setSelectedChildAssets] = useState([]);
   const [relationshipType, setRelationshipType] = useState("accessory");
   const [searchParent, setSearchParent] = useState("");
   const [linking, setLinking] = useState(false);
@@ -1038,6 +1082,34 @@ const LinkAssetDialog = ({ open, onClose, assetId, currentAsset, onSuccess }) =>
     text(currentAsset?.serialNumber).startsWith("ca-") ||
     text(currentAsset?.serialNumber).startsWith("ca_");
   const showingChildAssets = true;
+  const isLinkableChildAsset = (asset) => {
+    const assetType = text(asset?.assetType);
+    const assetCode = text(asset?.assetId);
+    const serial = text(asset?.serialNumber);
+
+    return (
+      assetType === "child" ||
+      assetCode.startsWith("ca-") ||
+      assetCode.startsWith("ca_") ||
+      serial.startsWith("ca-") ||
+      serial.startsWith("ca_")
+    );
+  };
+  const dialogScrollbarSx = {
+    scrollbarWidth: "thin",
+    scrollbarColor: `${alpha(T.brand, isDark ? 0.6 : 0.45)} transparent`,
+    "&::-webkit-scrollbar": { width: 8, height: 8 },
+    "&::-webkit-scrollbar-track": { backgroundColor: "transparent" },
+    "&::-webkit-scrollbar-thumb": {
+      backgroundColor: alpha(T.brand, isDark ? 0.48 : 0.32),
+      borderRadius: 999,
+      border: `2px solid ${dialogSurface}`,
+    },
+    "&::-webkit-scrollbar-thumb:hover": {
+      backgroundColor: alpha(T.brand, isDark ? 0.68 : 0.48),
+    },
+    "&::-webkit-scrollbar-corner": { backgroundColor: "transparent" },
+  };
 
   const loadParentRequests = useCallback(async () => {
     setLoadingParents(true);
@@ -1048,12 +1120,18 @@ const LinkAssetDialog = ({ open, onClose, assetId, currentAsset, onSuccess }) =>
         status: "approved",
         limit: 100,
       });
+      const currentAssetRequestsRes = await getRequestsByAsset(assetId);
+      const currentAssetRequests = currentAssetRequestsRes?.requests || [];
+      const currentAssetApprovedRequests = currentAssetRequests.filter(
+        (req) => req.status === "approved",
+      );
+
       if (res?.success) {
-        setParentRequests(res.requests || []);
+        setParentRequests([...(res.requests || []), ...currentAssetApprovedRequests]);
       } else if (res?.requests) {
-        setParentRequests(res.requests);
+        setParentRequests([...res.requests, ...currentAssetApprovedRequests]);
       } else if (Array.isArray(res)) {
-        setParentRequests(res);
+        setParentRequests([...res, ...currentAssetApprovedRequests]);
       } else {
         setParentError(res?.message || "Failed to load requests");
       }
@@ -1075,12 +1153,12 @@ const LinkAssetDialog = ({ open, onClose, assetId, currentAsset, onSuccess }) =>
     } finally {
       setLoadingParents(false);
     }
-  }, [fetchRequests]);
+  }, [assetId, fetchRequests, getRequestsByAsset]);
 
   useEffect(() => {
     if (open) {
       setSelectedParent(null);
-      setSelectedChildAsset(null);
+      setSelectedChildAssets([]);
       setSearchParent("");
       setParentError("");
       setRelationshipType("accessory");
@@ -1136,7 +1214,7 @@ const filteredParents = parentRequests
     const reqAssetId = req.assetId?._id || req.assetId?.id || req.assetId;
     if (String(reqAssetId) !== String(assetId)) return;
 
-    (req.metadata?.childAssets || []).forEach((entry) => {
+    [...(req.metadata?.childAssets || []), ...(req.metadata?.pendingChildAssets || [])].forEach((entry) => {
       const linkedAsset = entry.assetId || entry.asset || entry;
       const linkedAssetId =
         typeof linkedAsset === "string"
@@ -1149,20 +1227,11 @@ const filteredParents = parentRequests
   const filteredChildAssets = (Array.isArray(assets) ? assets : [])
     .filter((asset) => {
       const candidateId = asset._id || asset.id;
-      const assetIdCode = text(asset.assetId);
-      const serial = text(asset.serialNumber);
-      const assetName = text(asset.assetName || asset.name);
 
       return (
         String(candidateId) !== String(assetId) &&
         !alreadyLinkedChildAssetIds.has(String(candidateId)) &&
-        (text(asset.assetType) === "child" ||
-          !!asset.parentAssetId ||
-          assetIdCode.startsWith("ca-") ||
-          assetIdCode.startsWith("ca_") ||
-          serial.startsWith("ca-") ||
-          serial.startsWith("ca_") ||
-          assetName.includes("child"))
+        isLinkableChildAsset(asset)
       );
     })
     .filter((asset) => {
@@ -1181,9 +1250,24 @@ const filteredParents = parentRequests
       return fields.includes(searchLower);
     });
 
+  const toggleChildAssetSelection = (childAsset) => {
+    const childAssetId = childAsset._id || childAsset.id;
+    setSelectedChildAssets((previous) => {
+      const isAlreadySelected = previous.some(
+        (selected) => String(selected._id || selected.id) === String(childAssetId),
+      );
+      if (isAlreadySelected) {
+        return previous.filter(
+          (selected) => String(selected._id || selected.id) !== String(childAssetId),
+        );
+      }
+      return [...previous, childAsset];
+    });
+  };
+
   const handleLink = async () => {
-    if (showingChildAssets && !selectedChildAsset) {
-      setSnackMsg("Please select a child asset");
+    if (showingChildAssets && selectedChildAssets.length === 0) {
+      setSnackMsg("Please select at least one child asset");
       return;
     }
     if (!showingChildAssets && !selectedParent) {
@@ -1192,18 +1276,62 @@ const filteredParents = parentRequests
     }
     setLinking(true);
     try {
-      const targetRequest = parentRequests.find((req) => {
+      const getRequestId = (request) =>
+        request?._id ||
+        request?.id ||
+        request?._doc?._id ||
+        request?._doc?.id ||
+        request?.request?._id ||
+        request?.request?.id;
+
+      let targetRequest = parentRequests.find((req) => {
         const reqAssetId = req.assetId?._id || req.assetId?.id || req.assetId;
         return String(reqAssetId) === String(assetId);
       });
 
       if (!targetRequest?._id) {
+        const currentAssetRequestsRes = await getRequestsByAsset(assetId);
+        targetRequest = (currentAssetRequestsRes?.requests || []).find((req) => {
+          const reqAssetId = req.assetId?._id || req.assetId?.id || req.assetId;
+          return String(reqAssetId) === String(assetId) && req.status === "approved";
+        });
+      }
+
+      if (!getRequestId(targetRequest) && user?.role === "admin") {
+        const createdRequest = await createParentRequest({
+          assetId,
+          requestType: "other",
+          description: `Asset link request for ${currentAsset?.assetName || currentAsset?.assetId || "asset"}`,
+          urgency: "medium",
+          assetType: currentAssetIsChild ? "child" : "parent",
+          parentAssetId: currentAsset?.parentAssetId || null,
+        });
+        const createdRequestId = getRequestId(createdRequest);
+        if (createdRequestId) {
+          const approvedRequest = await approveRequest(
+            createdRequestId,
+            "Auto-approved to link child asset",
+          );
+          targetRequest = approvedRequest || createdRequest;
+        }
+      }
+
+      const targetRequestId = getRequestId(targetRequest);
+      if (!targetRequestId) {
         throw new Error("Create or approve a request for this asset before linking a child asset.");
       }
 
-      const childAssetId = selectedChildAsset._id || selectedChildAsset.id;
-      await linkAsset(targetRequest._id, childAssetId, relationshipType);
-      onSuccess?.();
+      await Promise.all(
+        selectedChildAssets.map((childAsset) => {
+          const childAssetId = childAsset._id || childAsset.id;
+          return linkAsset(targetRequestId, childAssetId, relationshipType);
+        }),
+      );
+      onSuccess?.(
+        user?.role === "team"
+          ? "Asset link request sent for admin approval"
+          : "Asset linked successfully!",
+      );
       onClose();
     } catch (err) {
       const status = err?.response?.status;
@@ -1234,9 +1362,9 @@ const filteredParents = parentRequests
         PaperProps={{
           sx: {
             borderRadius: { xs: 0, sm: T.r.lg },
-            border: `1px solid ${T.border}`,
-            bgcolor: T.surface,
-            boxShadow: T.sh.xl,
+            border: `1px solid ${dialogBorder}`,
+            bgcolor: dialogSurface,
+            boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.28)" : T.sh.xl,
             overflow: "hidden",
             animation: `${popIn} 0.25s ease both`,
             m: { xs: 0, sm: 2 },
@@ -1255,7 +1383,9 @@ const filteredParents = parentRequests
             px: { xs: 2, sm: 3 },
             pt: { xs: 2, sm: 3 },
             pb: { xs: 2, sm: 0 },
-            background: `linear-gradient(135deg, ${T.brandLight} 0%, ${T.surface} 70%)`,
+            background: isDark
+              ? `linear-gradient(135deg, ${dialogSoft} 0%, ${dialogSurface} 70%)`
+              : `linear-gradient(135deg, ${T.brandLight} 0%, ${T.surface} 70%)`,
             flexShrink: 0,
           }}
         >
@@ -1285,7 +1415,7 @@ const filteredParents = parentRequests
                   sx={{
                     fontWeight: 700,
                     fontSize: "1rem",
-                    color: T.ink,
+                    color: dialogText,
                     fontFamily: T.font,
                     letterSpacing: "-0.02em",
                   }}
@@ -1295,7 +1425,7 @@ const filteredParents = parentRequests
                 <Typography
                   sx={{
                     fontSize: "0.72rem",
-                    color: T.inkMuted,
+                    color: dialogMuted,
                     fontFamily: T.font,
                   }}
                 >
@@ -1309,10 +1439,11 @@ const filteredParents = parentRequests
               onClick={onClose}
               size="small"
               sx={{
-                bgcolor: T.surfaceAlt,
+                bgcolor: dialogSurfaceAlt,
                 borderRadius: T.r.xs,
-                border: `1px solid ${T.border}`,
-                "&:hover": { bgcolor: T.border },
+                border: `1px solid ${dialogBorder}`,
+                color: dialogText,
+                "&:hover": { bgcolor: dialogSoft },
               }}
             >
               <Close sx={{ fontSize: 16 }} />
@@ -1323,9 +1454,14 @@ const filteredParents = parentRequests
         <DialogContent
           sx={{
             p: { xs: 2, sm: 3 },
+            bgcolor: dialogSurface,
             flex: 1,
             maxHeight: { xs: "none", sm: "72vh" },
-            overflowY: "auto",
+            overflowY: { xs: "auto", sm: "hidden" },
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+            ...dialogScrollbarSx,
           }}
         >
           {/* Current Asset Info */}
@@ -1333,7 +1469,7 @@ const filteredParents = parentRequests
             sx={{
               p: 2,
               borderRadius: T.r.md,
-              bgcolor: T.brandLight,
+              bgcolor: dialogSoft,
               border: `1px solid ${alpha(T.brand, 0.2)}`,
               mb: 3,
             }}
@@ -1359,7 +1495,7 @@ const filteredParents = parentRequests
                 sx={{
                   fontSize: "0.875rem",
                   fontWeight: 600,
-                  color: T.ink,
+                  color: dialogText,
                   fontFamily: T.fontMono,
                 }}
               >
@@ -1371,7 +1507,7 @@ const filteredParents = parentRequests
           <Typography
             sx={{
               fontSize: "0.8rem",
-              color: T.inkSecondary,
+              color: dialogTextSecondary,
               fontFamily: T.font,
               mb: 2,
               lineHeight: 1.6,
@@ -1399,7 +1535,7 @@ const filteredParents = parentRequests
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Search sx={{ fontSize: 15, color: T.inkMuted }} />
+                      <Search sx={{ fontSize: 15, color: dialogMuted }} />
                     </InputAdornment>
                   ),
                 }}
@@ -1409,7 +1545,9 @@ const filteredParents = parentRequests
                     borderRadius: T.r.sm,
                     fontSize: "0.875rem",
                     fontFamily: T.font,
-                    "& fieldset": { borderColor: T.border },
+                    bgcolor: dialogSurfaceAlt,
+                    color: dialogText,
+                    "& fieldset": { borderColor: dialogBorder },
                     "&:hover fieldset": { borderColor: T.brand },
                     "&.Mui-focused fieldset": {
                       borderColor: T.brand,
@@ -1437,8 +1575,8 @@ const filteredParents = parentRequests
                       width: 56,
                       height: 56,
                       borderRadius: "50%",
-                      bgcolor: T.surfaceAlt,
-                      border: `1px solid ${T.border}`,
+                      bgcolor: dialogSurfaceAlt,
+                      border: `1px solid ${dialogBorder}`,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1446,13 +1584,13 @@ const filteredParents = parentRequests
                       mb: 2,
                     }}
                   >
-                    <LinkOff sx={{ fontSize: 26, color: T.inkMuted }} />
+                    <LinkOff sx={{ fontSize: 26, color: dialogMuted }} />
                   </Box>
                   <Typography
                     sx={{
                       fontSize: "0.9rem",
                       fontWeight: 600,
-                      color: T.ink,
+                      color: dialogText,
                       fontFamily: T.font,
                       mb: 0.5,
                     }}
@@ -1466,7 +1604,7 @@ const filteredParents = parentRequests
                   <Typography
                     sx={{
                       fontSize: "0.78rem",
-                      color: T.inkMuted,
+                      color: dialogMuted,
                       fontFamily: T.font,
                       mb: 3,
                     }}
@@ -1534,20 +1672,42 @@ const filteredParents = parentRequests
                 </Box>
               ) : (
                 <>
+                  {showingChildAssets && selectedChildAssets.length > 0 && (
+                    <Chip
+                      label={`${selectedChildAssets.length} selected`}
+                      size="small"
+                      sx={{
+                        mb: 1.25,
+                        height: 24,
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        bgcolor: T.brandLight,
+                        color: T.brand,
+                        fontFamily: T.font,
+                      }}
+                    />
+                  )}
                   <Stack
                     spacing={1.25}
-                    sx={{ maxHeight: { xs: "none", sm: 360 }, overflowY: { xs: "visible", sm: "auto" }, pr: { xs: 0, sm: 0.5 } }}
+                    sx={{
+                      maxHeight: { xs: "none", sm: 360 },
+                      overflowY: { xs: "visible", sm: "auto" },
+                      pr: { xs: 0, sm: 0.75 },
+                      ...dialogScrollbarSx,
+                    }}
                   >
                    {(showingChildAssets ? filteredChildAssets : filteredParents).map((item) => {
   const req = item;
   const childAssetId = item._id || item.id;
   const isSelected = showingChildAssets
-    ? (selectedChildAsset?._id || selectedChildAsset?.id) === childAssetId
+    ? selectedChildAssets.some(
+        (selected) => String(selected._id || selected.id) === String(childAssetId),
+      )
     : selectedParent?._id === req._id;
   const sCfg = REQ_STATUS_CFG[showingChildAssets ? "approved" : req.status] || {};
   const linkedCount = showingChildAssets ? 0 : req.childRequests?.length || 0;
   const assetSerial = showingChildAssets
-    ? item.serialNumber || "Not set"
+    ? item.serialNumber || item.assetId || "Not set"
     : req.assetId?.serialNumber ||
       req.proposedAssetData?.serialNumber ||
       "Not set";
@@ -1564,22 +1724,22 @@ const filteredParents = parentRequests
                           key={showingChildAssets ? childAssetId : req._id}
                           onClick={() =>
                             showingChildAssets
-                              ? setSelectedChildAsset(item)
+                              ? toggleChildAssetSelection(item)
                               : setSelectedParent(req)
                           }
                           sx={{
                             p: 2,
                             borderRadius: T.r.md,
                             cursor: "pointer",
-                            border: `1.5px solid ${isSelected ? T.brand : T.border}`,
-                            bgcolor: isSelected ? T.brandLight : T.surface,
+                            border: `1.5px solid ${isSelected ? T.brand : dialogBorder}`,
+                            bgcolor: isSelected ? dialogSoft : dialogSurface,
                             transition: "all 0.15s ease",
                             boxShadow: isSelected
                               ? `0 0 0 3px ${T.brandGlow}`
                               : "none",
                             "&:hover": {
                               borderColor: T.brand,
-                              bgcolor: T.brandLight,
+                              bgcolor: dialogSoft,
                             },
                           }}
                         >
@@ -1599,7 +1759,7 @@ const filteredParents = parentRequests
                                   width: 36,
                                   height: 36,
                                   borderRadius: T.r.xs,
-                                  bgcolor: isSelected ? T.brand : T.surfaceAlt,
+                                  bgcolor: isSelected ? T.brand : dialogSurfaceAlt,
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
@@ -1611,7 +1771,7 @@ const filteredParents = parentRequests
                                 <AccountTree
                                   sx={{
                                     fontSize: 16,
-                                    color: isSelected ? "#fff" : T.inkMuted,
+                                    color: isSelected ? "#fff" : dialogMuted,
                                   }}
                                 />
                               </Box>
@@ -1620,7 +1780,7 @@ const filteredParents = parentRequests
                                   sx={{
                                     fontSize: "0.875rem",
                                     fontWeight: 600,
-                                    color: T.ink,
+                                    color: dialogText,
                                     fontFamily: T.font,
                                     overflow: "hidden",
                                     textOverflow: "ellipsis",
@@ -1632,7 +1792,7 @@ const filteredParents = parentRequests
                                 <Typography
                                   sx={{
                                     fontSize: "0.7rem",
-                                    color: T.inkSecondary,
+                                    color: dialogTextSecondary,
                                     fontFamily: T.fontMono,
                                     mt: 0.25,
                                   }}
@@ -1664,7 +1824,7 @@ const filteredParents = parentRequests
                                 <Typography
                                   sx={{
                                     fontSize: "0.7rem",
-                                    color: T.inkMuted,
+                                    color: dialogMuted,
                                     fontFamily: T.fontMono,
                                     mt: 0.2,
                                   }}
@@ -1784,12 +1944,12 @@ const filteredParents = parentRequests
                   {/* Relationship Type */}
                   {selectedParent && (
                     <Box sx={{ mt: 3 }}>
-                      <Divider sx={{ my: 2, borderColor: T.border }} />
+                      <Divider sx={{ my: 2, borderColor: dialogBorder }} />
                       <Typography
                         sx={{
                           fontSize: "0.67rem",
                           fontWeight: 700,
-                          color: T.inkMuted,
+                          color: dialogMuted,
                           textTransform: "uppercase",
                           letterSpacing: "0.06em",
                           mb: 1.5,
@@ -1817,12 +1977,12 @@ const filteredParents = parentRequests
                               fontFamily: T.font,
                               textTransform: "capitalize",
                               bgcolor:
-                                relationshipType === t ? T.brand : T.surfaceAlt,
+                                relationshipType === t ? T.brand : dialogSurfaceAlt,
                               color:
                                 relationshipType === t
                                   ? "#fff"
-                                  : T.inkSecondary,
-                              border: `1px solid ${relationshipType === t ? T.brand : T.border}`,
+                                  : dialogTextSecondary,
+                              border: `1px solid ${relationshipType === t ? T.brand : dialogBorder}`,
                               transition: "all 0.15s",
                               boxShadow:
                                 relationshipType === t
@@ -1846,12 +2006,12 @@ const filteredParents = parentRequests
             px: { xs: 2, sm: 3 },
             py: { xs: 1.5, sm: 2.5 },
             pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 },
-            borderTop: `1px solid ${T.border}`,
+            borderTop: `1px solid ${dialogBorder}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-end",
             gap: 1.5,
-            bgcolor: T.surfaceAlt,
+            bgcolor: dialogSurfaceAlt,
             flexShrink: 0,
           }}
         >
@@ -1860,13 +2020,13 @@ const filteredParents = parentRequests
             sx={{
               textTransform: "none",
               borderRadius: T.r.sm,
-              color: T.inkSecondary,
+              color: dialogTextSecondary,
               fontFamily: T.font,
               fontWeight: 600,
               px: 2.5,
-              border: `1px solid ${T.border}`,
-              bgcolor: T.surface,
-              "&:hover": { bgcolor: T.surfaceHover },
+              border: `1px solid ${dialogBorder}`,
+              bgcolor: dialogSurface,
+              "&:hover": { bgcolor: dialogSoft },
             }}
           >
             Cancel
@@ -1876,7 +2036,7 @@ const filteredParents = parentRequests
             onClick={handleLink}
             disabled={
               linking ||
-              (showingChildAssets ? !selectedChildAsset : !selectedParent)
+              (showingChildAssets ? selectedChildAssets.length === 0 : !selectedParent)
             }
             startIcon={
               linking ? (
@@ -1898,7 +2058,11 @@ const filteredParents = parentRequests
               "&.Mui-disabled": { opacity: 0.45 },
             }}
           >
-            {linking ? "Linking..." : "Link Asset"}
+            {linking
+              ? "Linking..."
+              : selectedChildAssets.length > 1
+                ? `Link ${selectedChildAssets.length} Assets`
+                : "Link Asset"}
           </Button>
         </Box>
       </Dialog>
@@ -1941,20 +2105,29 @@ const filteredParents = parentRequests
         }}
       />
 
-      <Snackbar
-        open={!!snackMsg}
-        autoHideDuration={5000}
-        onClose={() => setSnackMsg("")}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          severity="error"
+      <Portal>
+        <Snackbar
+          open={!!snackMsg}
+          autoHideDuration={5000}
           onClose={() => setSnackMsg("")}
-          sx={{ borderRadius: T.r.sm, fontFamily: T.font, fontWeight: 500 }}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+          sx={{ zIndex: (theme) => theme.zIndex.modal + 500 }}
         >
-          {snackMsg}
-        </Alert>
-      </Snackbar>
+          <Alert
+            severity="error"
+            onClose={() => setSnackMsg("")}
+            sx={{
+              borderRadius: T.r.sm,
+              fontFamily: T.font,
+              fontWeight: 500,
+              boxShadow: T.sh.lg,
+              maxWidth: { xs: "calc(100vw - 32px)", sm: 520 },
+            }}
+          >
+            {snackMsg}
+          </Alert>
+        </Snackbar>
+      </Portal>
     </>
   );
 };
@@ -1963,6 +2136,7 @@ const filteredParents = parentRequests
 export default function AssetView() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const theme = useTheme();
   const { getAssetById, deleteAsset, loading: assetLoading } = useAsset();
   const { getRequestsByAsset } = useAssetRequest();
   const { user } = useAuth();
@@ -1977,6 +2151,7 @@ export default function AssetView() {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkedRequests, setLinkedRequests] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
+  const [linkedAssetsPage, setLinkedAssetsPage] = useState(1);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -2045,6 +2220,10 @@ export default function AssetView() {
     if (asset) loadLinkedRequests();
   }, [asset, loadLinkedRequests]);
 
+  const visibleLinkedRequests = linkedRequests.filter(
+    (req) => !isAdminCreatedAssetRequest(req),
+  );
+
   const linkedAssets = linkedRequests.reduce((items, req) => {
     const childAssets = req.metadata?.childAssets || [];
     childAssets.forEach((entry) => {
@@ -2067,6 +2246,21 @@ export default function AssetView() {
     });
     return items;
   }, []);
+  const linkedAssetsPerPage = 6;
+  const linkedAssetsPageCount = Math.max(
+    1,
+    Math.ceil(linkedAssets.length / linkedAssetsPerPage),
+  );
+  const visibleLinkedAssets = linkedAssets.slice(
+    (linkedAssetsPage - 1) * linkedAssetsPerPage,
+    linkedAssetsPage * linkedAssetsPerPage,
+  );
+
+  useEffect(() => {
+    if (linkedAssetsPage > linkedAssetsPageCount) {
+      setLinkedAssetsPage(linkedAssetsPageCount);
+    }
+  }, [linkedAssetsPage, linkedAssetsPageCount]);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -2172,18 +2366,33 @@ export default function AssetView() {
         ? "#A0560A"
         : "#A93226";
   const healthBg =
-    healthScore >= 70
-      ? "#E8F5EE"
-      : healthScore >= 40
-        ? "#FEF3E2"
-        : "#FCE8E6";
+    theme.palette.mode === "dark"
+      ? healthScore >= 70
+        ? "rgba(16, 185, 129, 0.16)"
+        : healthScore >= 40
+          ? "rgba(245, 158, 11, 0.16)"
+          : "rgba(239, 68, 68, 0.16)"
+      : healthScore >= 70
+        ? "#E8F5EE"
+        : healthScore >= 40
+          ? "#FEF3E2"
+          : "#FCE8E6";
   const category =
     asset.assetCategoryId?.name || asset.assetCategory || "Uncategorized";
+  const isDark = theme.palette.mode === "dark";
+  const statusBadgeBg = isDark ? alpha(statusCfg.dot || statusCfg.color || T.brand, 0.16) : statusCfg.bg;
+  const statusBadgeColor = isDark ? "#86efac" : statusCfg.color;
+  const pageBg = isDark ? "#08111f" : T.bg;
+  const surfaceBg = isDark ? "#0f1c2e" : T.surface;
+  const surfaceAltBg = isDark ? "#0b1626" : T.surfaceAlt;
+  const borderColor = isDark ? "rgba(148, 163, 184, 0.24)" : T.border;
+  const overlayBg = isDark ? "rgba(15, 28, 46, 0.9)" : "rgba(255,255,255,0.92)";
 
   return (
     <Box
       sx={{
         minHeight: "100vh",
+        bgcolor: pageBg,
         fontFamily: T.font,
         animation: `${fadeUp} 0.4s ease both`,
         overflowX: "hidden",
@@ -2194,8 +2403,8 @@ export default function AssetView() {
       {/* FIX #5: removed inner maxWidth wrapper — bar now stretches full width */}
       <Box
         sx={{
-          bgcolor: T.surface,
-          borderBottom: `1px solid ${T.border}`,
+          bgcolor: surfaceBg,
+          borderBottom: `1px solid ${borderColor}`,
           px: { xs: 2, sm: 3, md: 4, xl: 6 },
           py: { xs: 2, sm: 2.5 },
           position: "sticky",
@@ -2232,7 +2441,7 @@ export default function AssetView() {
               sx={{
                 width: 38,
                 height: 38,
-                border: `1.5px solid ${T.border}`,
+                border: `1.5px solid ${borderColor}`,
                 borderRadius: T.r.sm,
                 flexShrink: 0,
                 "&:hover": {
@@ -2275,7 +2484,8 @@ export default function AssetView() {
                     px: 1.25,
                     py: 0.4,
                     borderRadius: T.r.xs,
-                    bgcolor: statusCfg.bg,
+                    bgcolor: statusBadgeBg,
+                    border: `1px solid ${isDark ? alpha(statusCfg.dot || statusCfg.color || T.brand, 0.26) : "transparent"}`,
                     flexShrink: 0,
                   }}
                 >
@@ -2292,7 +2502,7 @@ export default function AssetView() {
                     sx={{
                       fontSize: "0.67rem",
                       fontWeight: 700,
-                      color: statusCfg.color,
+                      color: statusBadgeColor,
                       textTransform: "uppercase",
                       letterSpacing: "0.06em",
                       fontFamily: T.font,
@@ -2479,8 +2689,8 @@ export default function AssetView() {
                 {/* FIX #7: taller image on large screens */}
                 <Box
                   sx={{
-                    height: { xs: 210, sm: 170, md: 220, lg: 260 },
-                    bgcolor: T.surfaceAlt,
+                height: { xs: 210, sm: 170, md: 220, lg: 260 },
+                    bgcolor: surfaceAltBg,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -2521,9 +2731,9 @@ export default function AssetView() {
                       px: 1.25,
                       py: 0.4,
                       borderRadius: T.r.xs,
-                      bgcolor: "rgba(255,255,255,0.92)",
+                      bgcolor: overlayBg,
                       backdropFilter: "blur(4px)",
-                      border: `1px solid ${T.border}`,
+                      border: `1px solid ${borderColor}`,
                     }}
                   >
                     <Typography
@@ -2811,11 +3021,11 @@ export default function AssetView() {
             <Stack spacing={2.5}>
               <Box
                 sx={{
-                  bgcolor: T.surface,
+                  bgcolor: surfaceBg,
                   borderRadius: T.r.lg,
-                  border: `1px solid ${T.border}`,
+                  border: `1px solid ${borderColor}`,
                   overflow: "hidden",
-                  boxShadow: T.sh.sm,
+                  boxShadow: isDark ? "none" : T.sh.sm,
                 }}
               >
                 <Tabs
@@ -2826,16 +3036,16 @@ export default function AssetView() {
                   allowScrollButtonsMobile
                   sx={{
                     px: 2,
-                    borderBottom: `1px solid ${T.border}`,
+                    borderBottom: `1px solid ${borderColor}`,
                     minHeight: 50,
-                    bgcolor: T.surfaceAlt,
+                    bgcolor: surfaceAltBg,
                     "& .MuiTab-root": {
                       textTransform: "none",
                       fontFamily: T.font,
                       fontWeight: 600,
                       fontSize: "0.85rem",
                       minHeight: 50,
-                      color: T.inkMuted,
+                      color: isDark ? "#94a3b8" : T.inkMuted,
                       "&.Mui-selected": { color: T.brand },
                     },
                     "& .MuiTabs-indicator": {
@@ -2852,14 +3062,14 @@ export default function AssetView() {
                       <Stack direction="row" alignItems="center" spacing={0.75}>
                         <span>Requests</span>
                         <Chip
-                          label={linkedRequests.length}
+                          label={visibleLinkedRequests.length}
                           size="small"
                           sx={{
                             height: 18,
                             fontSize: "0.6rem",
                             fontWeight: 700,
-                            bgcolor: linkedRequests.length ? T.brand : T.border,
-                            color: linkedRequests.length ? "#fff" : T.inkMuted,
+                            bgcolor: visibleLinkedRequests.length ? T.brand : T.border,
+                            color: visibleLinkedRequests.length ? "#fff" : T.inkMuted,
                             minWidth: 22,
                           }}
                         />
@@ -3090,7 +3300,7 @@ export default function AssetView() {
                       )}
 
                     {/* User Assignment */}
-                    <Divider sx={{ my: 3, borderColor: T.border }} />
+                    <Divider sx={{ my: 3, borderColor }} />
                     <SectionTitle icon={<Person sx={{ fontSize: 15 }} />}>
                       User Assignment
                     </SectionTitle>
@@ -3117,8 +3327,8 @@ export default function AssetView() {
                             sx={{
                               p: 2,
                               borderRadius: T.r.md,
-                              border: `1px solid ${T.border}`,
-                              bgcolor: T.surfaceAlt,
+                              border: `1px solid ${borderColor}`,
+                              bgcolor: surfaceAltBg,
                               height: "100%",
                             }}
                           >
@@ -3126,7 +3336,7 @@ export default function AssetView() {
                               sx={{
                                 fontSize: "0.62rem",
                                 fontWeight: 700,
-                                color: T.inkMuted,
+                                color: isDark ? "#94a3b8" : T.inkMuted,
                                 textTransform: "uppercase",
                                 letterSpacing: "0.06em",
                                 mb: 1.25,
@@ -3161,7 +3371,7 @@ export default function AssetView() {
                                     sx={{
                                       fontSize: "0.8rem",
                                       fontWeight: 600,
-                                      color: T.ink,
+                                      color: isDark ? "#f8fafc" : T.ink,
                                       fontFamily: T.font,
                                       overflow: "hidden",
                                       textOverflow: "ellipsis",
@@ -3174,7 +3384,7 @@ export default function AssetView() {
                                     <Typography
                                       sx={{
                                         fontSize: "0.68rem",
-                                        color: T.inkMuted,
+                                        color: isDark ? "#94a3b8" : T.inkMuted,
                                         fontFamily: T.font,
                                         overflow: "hidden",
                                         textOverflow: "ellipsis",
@@ -3190,7 +3400,7 @@ export default function AssetView() {
                               <Typography
                                 sx={{
                                   fontSize: "0.8rem",
-                                  color: T.inkMuted,
+                                  color: isDark ? "#94a3b8" : T.inkMuted,
                                   fontFamily: T.font,
                                 }}
                               >
@@ -3222,15 +3432,15 @@ export default function AssetView() {
                 {/* ── TAB 2: REQUESTS ──────────────────────────────────── */}
                 {activeTab === 2 && (
                   <Box sx={{ p: { xs: 2, sm: 3 } }}>
-                    {linkedRequests.length === 0 ? (
+                    {visibleLinkedRequests.length === 0 ? (
                       <Box sx={{ py: 7, textAlign: "center" }}>
                         <Box
                           sx={{
                             width: 64,
                             height: 64,
                             borderRadius: "50%",
-                            bgcolor: T.surfaceAlt,
-                            border: `1px solid ${T.border}`,
+                            bgcolor: surfaceAltBg,
+                            border: `1px solid ${borderColor}`,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -3239,14 +3449,14 @@ export default function AssetView() {
                           }}
                         >
                           <AccountTree
-                            sx={{ fontSize: 30, color: T.inkMuted }}
+                            sx={{ fontSize: 30, color: isDark ? "#94a3b8" : T.inkMuted }}
                           />
                         </Box>
                         <Typography
                           sx={{
                             fontSize: "1rem",
                             fontWeight: 700,
-                            color: T.ink,
+                            color: isDark ? "#f8fafc" : T.ink,
                             fontFamily: T.font,
                             mb: 0.75,
                           }}
@@ -3256,7 +3466,7 @@ export default function AssetView() {
                         <Typography
                           sx={{
                             fontSize: "0.85rem",
-                            color: T.inkMuted,
+                            color: isDark ? "#94a3b8" : T.inkMuted,
                             fontFamily: T.font,
                             mb: 2.5,
                           }}
@@ -3286,7 +3496,7 @@ export default function AssetView() {
                       </Box>
                     ) : (
                       <Stack spacing={2}>
-                        {linkedRequests.map((req) => {
+                        {visibleLinkedRequests.map((req) => {
                           const cfg = REQ_STATUS_CFG[req.status] || {};
                           return (
                             <Box
@@ -3294,8 +3504,8 @@ export default function AssetView() {
                               sx={{
                                 p: 2.5,
                                 borderRadius: T.r.md,
-                                border: `1px solid ${T.border}`,
-                                bgcolor: T.surfaceAlt,
+                                border: `1px solid ${borderColor}`,
+                                bgcolor: surfaceAltBg,
                               }}
                             >
                               <Stack
@@ -3317,7 +3527,7 @@ export default function AssetView() {
                                       width: 38,
                                       height: 38,
                                       borderRadius: T.r.sm,
-                                      bgcolor: T.brandLight,
+                                      bgcolor: isDark ? "rgba(45, 74, 62, 0.26)" : T.brandLight,
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center",
@@ -3333,7 +3543,7 @@ export default function AssetView() {
                                       sx={{
                                         fontSize: "0.875rem",
                                         fontWeight: 700,
-                                        color: T.ink,
+                                        color: isDark ? "#f8fafc" : T.ink,
                                         fontFamily: T.font,
                                         overflow: "hidden",
                                         textOverflow: "ellipsis",
@@ -3347,7 +3557,7 @@ export default function AssetView() {
                                     <Typography
                                       sx={{
                                         fontSize: "0.7rem",
-                                        color: T.inkMuted,
+                                        color: isDark ? "#94a3b8" : T.inkMuted,
                                         fontFamily: T.fontMono,
                                         overflow: "hidden",
                                         textOverflow: "ellipsis",
@@ -3427,7 +3637,7 @@ export default function AssetView() {
                                         sx={{
                                           fontSize: "0.8rem",
                                           fontWeight: 600,
-                                          color: T.ink,
+                                          color: isDark ? "#f8fafc" : T.ink,
                                           fontFamily: T.font,
                                         }}
                                       >
@@ -3442,7 +3652,7 @@ export default function AssetView() {
                                         sx={{
                                           fontSize: "0.8rem",
                                           fontWeight: 500,
-                                          color: T.ink,
+                                          color: isDark ? "#f8fafc" : T.ink,
                                           fontFamily: T.font,
                                         }}
                                       >
@@ -3465,7 +3675,7 @@ export default function AssetView() {
                                         sx={{
                                           fontSize: "0.8rem",
                                           fontWeight: 500,
-                                          color: T.ink,
+                                          color: isDark ? "#f8fafc" : T.ink,
                                           fontFamily: T.font,
                                           textTransform: "capitalize",
                                         }}
@@ -3479,7 +3689,7 @@ export default function AssetView() {
                                     <Typography
                                       sx={{
                                         fontSize: "0.62rem",
-                                        color: T.inkMuted,
+                                        color: isDark ? "#94a3b8" : T.inkMuted,
                                         fontFamily: T.font,
                                         textTransform: "uppercase",
                                         letterSpacing: "0.06em",
@@ -3499,14 +3709,14 @@ export default function AssetView() {
                                     mt: 1.5,
                                     p: 1.25,
                                     borderRadius: T.r.xs,
-                                    bgcolor: T.surface,
-                                    border: `1px solid ${T.border}`,
+                                    bgcolor: surfaceBg,
+                                    border: `1px solid ${borderColor}`,
                                   }}
                                 >
                                   <Typography
                                     sx={{
                                       fontSize: "0.78rem",
-                                      color: T.inkSecondary,
+                                      color: isDark ? "#cbd5e1" : T.inkSecondary,
                                       fontFamily: T.font,
                                     }}
                                   >
@@ -3532,8 +3742,8 @@ export default function AssetView() {
                             width: 64,
                             height: 64,
                             borderRadius: "50%",
-                            bgcolor: T.surfaceAlt,
-                            border: `1px solid ${T.border}`,
+                            bgcolor: surfaceAltBg,
+                            border: `1px solid ${borderColor}`,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -3541,13 +3751,13 @@ export default function AssetView() {
                             mb: 2,
                           }}
                         >
-                          <LinkIcon sx={{ fontSize: 30, color: T.inkMuted }} />
+                          <LinkIcon sx={{ fontSize: 30, color: isDark ? "#94a3b8" : T.inkMuted }} />
                         </Box>
                         <Typography
                           sx={{
                             fontSize: "1rem",
                             fontWeight: 700,
-                            color: T.ink,
+                            color: isDark ? "#f8fafc" : T.ink,
                             fontFamily: T.font,
                             mb: 0.75,
                           }}
@@ -3557,7 +3767,7 @@ export default function AssetView() {
                         <Typography
                           sx={{
                             fontSize: "0.85rem",
-                            color: T.inkMuted,
+                            color: isDark ? "#94a3b8" : T.inkMuted,
                             fontFamily: T.font,
                             mb: 2.5,
                           }}
@@ -3585,6 +3795,7 @@ export default function AssetView() {
                         )}
                       </Box>
                     ) : (
+                      <>
                       <Box
                         sx={{
                           display: "grid",
@@ -3595,7 +3806,7 @@ export default function AssetView() {
                           gap: 2,
                         }}
                       >
-                        {linkedAssets.map(
+                        {visibleLinkedAssets.map(
                           ({ id, asset: linkedAsset, relationshipType, linkedAt }) => {
                             const assetName =
                               linkedAsset?.assetName ||
@@ -3614,8 +3825,8 @@ export default function AssetView() {
                                 sx={{
                                   p: 2.5,
                                   borderRadius: T.r.md,
-                                  border: `1px solid ${T.border}`,
-                                  bgcolor: T.surfaceAlt,
+                                  border: `1px solid ${borderColor}`,
+                                  bgcolor: surfaceAltBg,
                                 }}
                               >
                                 <Stack
@@ -3635,7 +3846,7 @@ export default function AssetView() {
                                         width: 40,
                                         height: 40,
                                         borderRadius: T.r.sm,
-                                        bgcolor: T.brandLight,
+                                        bgcolor: isDark ? "rgba(45, 74, 62, 0.26)" : T.brandLight,
                                         color: T.brand,
                                         display: "flex",
                                         alignItems: "center",
@@ -3650,7 +3861,7 @@ export default function AssetView() {
                                         sx={{
                                           fontSize: "0.95rem",
                                           fontWeight: 700,
-                                          color: T.ink,
+                                          color: isDark ? "#f8fafc" : T.ink,
                                           fontFamily: T.font,
                                           overflow: "hidden",
                                           textOverflow: "ellipsis",
@@ -3662,7 +3873,7 @@ export default function AssetView() {
                                       <Typography
                                         sx={{
                                           fontSize: "0.72rem",
-                                          color: T.inkMuted,
+                                          color: isDark ? "#94a3b8" : T.inkMuted,
                                           fontFamily: T.fontMono,
                                         }}
                                       >
@@ -3710,7 +3921,7 @@ export default function AssetView() {
                                     <Typography
                                       sx={{
                                         fontSize: "0.72rem",
-                                        color: T.inkMuted,
+                                        color: isDark ? "#94a3b8" : T.inkMuted,
                                         fontFamily: T.font,
                                       }}
                                     >
@@ -3733,12 +3944,12 @@ export default function AssetView() {
                                     mt: 2,
                                     textTransform: "none",
                                     borderRadius: T.r.sm,
-                                    border: `1px solid ${T.border}`,
-                                    color: T.ink,
+                                    border: `1px solid ${borderColor}`,
+                                    color: isDark ? "#f8fafc" : T.ink,
                                     fontFamily: T.font,
                                     fontWeight: 700,
-                                    bgcolor: T.surface,
-                                    "&:hover": { bgcolor: T.surfaceHover },
+                                    bgcolor: surfaceBg,
+                                    "&:hover": { bgcolor: surfaceAltBg },
                                   }}
                                 >
                                   View Asset
@@ -3748,6 +3959,28 @@ export default function AssetView() {
                           },
                         )}
                       </Box>
+                      {linkedAssetsPageCount > 1 && (
+                        <Stack alignItems="center" sx={{ mt: 2.5 }}>
+                          <Pagination
+                            count={linkedAssetsPageCount}
+                            page={linkedAssetsPage}
+                            onChange={(_, page) => setLinkedAssetsPage(page)}
+                            color="primary"
+                            shape="rounded"
+                            sx={{
+                              "& .MuiPaginationItem-root": {
+                                fontFamily: T.font,
+                                fontWeight: 700,
+                              },
+                              "& .Mui-selected": {
+                                bgcolor: `${T.brand} !important`,
+                                color: "#fff",
+                              },
+                            }}
+                          />
+                        </Stack>
+                      )}
+                      </>
                     )}
                   </Box>
                 )}
@@ -3888,9 +4121,9 @@ export default function AssetView() {
         onClose={() => setLinkOpen(false)}
         assetId={id}
         currentAsset={asset}
-        onSuccess={() => {
+        onSuccess={(message) => {
           loadLinkedRequests();
-          toast("Asset linked successfully!");
+          toast(message || "Asset linked successfully!");
         }}
       />
 
@@ -3901,8 +4134,8 @@ export default function AssetView() {
         PaperProps={{
           sx: {
             borderRadius: T.r.lg,
-            border: `1px solid ${T.border}`,
-            bgcolor: T.surface,
+            border: `1px solid ${borderColor}`,
+            bgcolor: surfaceBg,
             maxWidth: 420,
             animation: `${popIn} 0.2s ease both`,
           },
@@ -3928,7 +4161,7 @@ export default function AssetView() {
                 sx={{
                   fontWeight: 700,
                   fontSize: "1rem",
-                  color: T.ink,
+                  color: isDark ? "#f8fafc" : T.ink,
                   fontFamily: T.font,
                 }}
               >
@@ -3937,7 +4170,7 @@ export default function AssetView() {
               <Typography
                 sx={{
                   fontSize: "0.75rem",
-                  color: T.inkMuted,
+                  color: isDark ? "#94a3b8" : T.inkMuted,
                   fontFamily: T.font,
                 }}
               >
@@ -3949,7 +4182,7 @@ export default function AssetView() {
             sx={{
               p: 2,
               borderRadius: T.r.sm,
-              bgcolor: T.redLight,
+              bgcolor: isDark ? "rgba(239, 68, 68, 0.16)" : T.redLight,
               border: `1px solid ${alpha(T.red, 0.2)}`,
               mb: 2.5,
             }}
@@ -3957,7 +4190,7 @@ export default function AssetView() {
             <Typography
               sx={{
                 fontSize: "0.875rem",
-                color: T.red,
+                color: isDark ? "#fecaca" : T.red,
                 fontFamily: T.font,
                 fontWeight: 500,
               }}
@@ -3974,8 +4207,8 @@ export default function AssetView() {
               sx={{
                 textTransform: "none",
                 borderRadius: T.r.sm,
-                border: `1px solid ${T.border}`,
-                color: T.inkSecondary,
+                border: `1px solid ${borderColor}`,
+                color: isDark ? "#cbd5e1" : T.inkSecondary,
                 fontFamily: T.font,
                 fontWeight: 600,
                 px: 2.5,
@@ -4014,26 +4247,28 @@ export default function AssetView() {
       </Dialog>
 
       {/* ── SNACKBAR ─────────────────────────────────────────────────────── */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={5000}
-        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert
-          severity={snackbar.severity}
+      <Portal>
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={5000}
           onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-          sx={{
-            borderRadius: T.r.sm,
-            fontFamily: T.font,
-            fontSize: "0.8125rem",
-            boxShadow: T.sh.lg,
-            fontWeight: 500,
-          }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+          sx={{ zIndex: (theme) => theme.zIndex.modal + 2 }}
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+          <Alert
+            severity={snackbar.severity}
+            onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+            sx={{
+              borderRadius: T.r.sm,
+              fontFamily: T.font,
+              fontSize: "0.8125rem",
+              boxShadow: T.sh.lg,
+              fontWeight: 500,
+            }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Portal>
     </Box>
   );
 }

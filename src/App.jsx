@@ -24,6 +24,7 @@ import { ContactInquiryProvider } from "./context/InquiryContext";
 import { RecycleBinProvider } from "./context/Recyclebincontext";
 import { RoleProvider } from "./context/RoleContext";
 import { DepartmentProvider } from "./context/DepartmentContext";
+import { TicketProvider } from "./context/TicketContext";
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
 import Login from "./components/Login";
@@ -70,6 +71,8 @@ import LocationsManagement from "./pages/LocationsManagement";
 import RecycleBin from "./pages/Recyclebin";
 import AssignmentDetailPage from "./pages/Assignmentdetailpage";
 import AssignmentAnalyticsPage from "./pages/Assignmentanalyticspage";
+import Settings from "./pages/Settings";
+import Tickets from "./pages/Tickets";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Providers
@@ -93,7 +96,9 @@ const AppProviders = ({ children }) => (
                                 <RecycleBinProvider>
                                   <RoleProvider>
                                     <DepartmentProvider>
-                                      {children}
+                                      <TicketProvider>
+                                        {children}
+                                      </TicketProvider>
                                     </DepartmentProvider>
                                   </RoleProvider>
                                 </RecycleBinProvider>
@@ -265,6 +270,16 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/team/tickets"
+            element={
+              <ProtectedRoute allowedRoles={["team"]}>
+                <DashboardLayout>
+                  <Tickets />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
 
           {/* ── Reports ─────────────────────────────────────────────────────── */}
           <Route
@@ -303,6 +318,36 @@ export default function App() {
           />
 
           {/* ── Checklists ──────────────────────────────────────────────────── */}
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <DashboardLayout>
+                  <Settings />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/tickets"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <DashboardLayout>
+                  <Tickets />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/tickets-raised"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <DashboardLayout>
+                  <Tickets />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/admin/checklists"
             element={

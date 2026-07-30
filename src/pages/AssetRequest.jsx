@@ -113,17 +113,35 @@ const PageWrap = styled(Box)(({ theme }) => ({
 const StatCard = styled(Card, {
   shouldForwardProp: (prop) => prop !== "accent" && prop !== "active",
 })(({ accent, active }) => ({
+  position: "relative",
+  overflow: "hidden",
   borderRadius: 16,
-  border: `1px solid ${active ? accent || T.teal : T.border}`,
-  borderLeft: `4px solid ${accent || T.teal}`,
-  boxShadow: active ? `0 10px 26px ${accent || T.teal}22` : "none",
-  background: active ? `${accent || T.teal}08` : T.surface,
+  border: `1px solid ${active ? `${accent || T.teal} !important` : T.border}`,
+  borderLeft: `6px solid ${accent || T.teal}`,
+  outline: active ? `3px solid ${accent || T.teal}` : "none",
+  outlineOffset: "-3px",
+  boxShadow: active
+    ? `inset 0 0 0 1px ${accent || T.teal}, 0 18px 40px ${accent || T.teal}38 !important`
+    : "none",
+  background: active ? `${accent || T.teal}24 !important` : T.surface,
   cursor: "pointer",
   transition: "transform 0.18s, box-shadow 0.18s, border-color 0.18s, background 0.18s",
+  "&::before": active
+    ? {
+        content: '""',
+        position: "absolute",
+        inset: "0 auto 0 0",
+        width: 6,
+        backgroundColor: accent || T.teal,
+      }
+    : undefined,
   "&:hover": {
     transform: "translateY(-2px)",
-    boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
+    boxShadow: active
+      ? `inset 0 0 0 1px ${accent || T.teal}, 0 20px 44px ${accent || T.teal}3d !important`
+      : "0 8px 24px rgba(0,0,0,0.06)",
     borderColor: accent || T.teal,
+    outline: `3px solid ${accent || T.teal}`,
   },
   "&:focus-visible": {
     outline: `3px solid ${accent || T.teal}33`,
@@ -268,6 +286,12 @@ const getRequestAssetName = (request) => {
     "Unnamed Asset"
   );
 };
+
+const isAdminCreatedAssetRequest = (request) =>
+  request?.requestType === "asset_creation" &&
+  /^Admin created\s+(parent|child)?\s*asset\b/i.test(
+    String(request?.description || ""),
+  );
 
 const assetStatusColor = (s) =>
   ({
@@ -1074,6 +1098,7 @@ export default function AssetRequests() {
       : "/team/asset-requests/create";
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isDark = theme.palette.mode === "dark";
 
   const [requests, setRequests] = useState([]);
   const [stats, setStats] = useState({
@@ -1206,9 +1231,11 @@ export default function AssetRequests() {
     setPagination((p) => ({ ...p, page: 1 }));
   };
 
+  const visibleRequests = requests.filter((r) => !isAdminCreatedAssetRequest(r));
+
   // Apply the Parent/Child tab on top of whatever the server returned.
   // (Server-side `filters.type` filter still applies separately via the Type select.)
-  const tabFiltered = requests.filter((r) =>
+  const tabFiltered = visibleRequests.filter((r) =>
     requestKindTab === "child"
       ? r.assetType === "child" || !!r.isChildRequest
       : r.assetType === "parent" || (!r.assetType && !r.isChildRequest),
@@ -1240,13 +1267,13 @@ export default function AssetRequests() {
   const displayStats = {
     ...stats,
     ...tabStats,
-    total: pagination.total || tabStats.total,
+    total: tabStats.total,
   };
 
-  const parentCount = stats.parent ?? requests.filter(
+  const parentCount = visibleRequests.filter(
     (r) => r.assetType === "parent" || (!r.assetType && !r.isChildRequest),
   ).length;
-  const childCount = stats.child ?? requests.filter(
+  const childCount = visibleRequests.filter(
     (r) => r.assetType === "child" || r.isChildRequest,
   ).length;
   const requestVerb = user?.role === "team" ? "Sent" : "Received";
@@ -1586,11 +1613,16 @@ export default function AssetRequests() {
               fontWeight: 700,
               fontSize: { xs: "0.78rem", sm: "0.82rem" },
               borderRadius: 2,
-              color: T.textMuted,
-              bgcolor: "#eef2f5",
+              color: isDark ? "#94a3b8" : T.textMuted,
+              bgcolor: isDark ? "#0f1c2e" : "#eef2f5",
+              border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "transparent"}`,
               "&.Mui-selected": {
-                color: T.teal,
-                bgcolor: T.tealLight,
+                color: isDark ? "#61d7ed" : T.teal,
+                bgcolor: isDark ? "rgba(26, 166, 196, 0.16)" : T.tealLight,
+                borderColor: isDark ? "rgba(97, 215, 237, 0.32)" : "transparent",
+              },
+              "&:hover": {
+                bgcolor: isDark ? "rgba(26, 166, 196, 0.1)" : T.tealLight,
               },
             }}
           />
@@ -1739,9 +1771,9 @@ export default function AssetRequests() {
       <Snackbar
         open={snack.open}
         autoHideDuration={4000}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+
         onClose={() => setSnack((p) => ({ ...p, open: false }))}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity={snack.severity}
           onClose={() => setSnack((p) => ({ ...p, open: false }))}

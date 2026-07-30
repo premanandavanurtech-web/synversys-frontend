@@ -35,8 +35,9 @@ import {
   DialogActions,
   FormHelperText,
   useMediaQuery,
+  useTheme,
 } from "@mui/material";
-import { createTheme, ThemeProvider, alpha } from "@mui/material/styles";
+import { alpha } from "@mui/material/styles";
 import {
   Refresh as RefreshIcon,
   Assignment as AssignmentIcon,
@@ -69,48 +70,6 @@ import { useTeamAssignment } from "../context/TeamAssignmentcontext";
 import { useAuth } from "../context/AuthContexts";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#0d3d52",
-      dark: "#072535",
-      light: "#e6f3f8",
-      contrastText: "#fff",
-    },
-    success: { main: "#10b981" },
-    warning: { main: "#f59e0b" },
-    error: { main: "#ef4444" },
-    background: { default: "#f8fafc", paper: "#ffffff" },
-  },
-  shape: { borderRadius: 12 },
-  typography: {
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    h5: { fontWeight: 800, letterSpacing: "-0.025em" },
-    h6: { fontWeight: 700, letterSpacing: "-0.015em" },
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: { root: { textTransform: "none", fontWeight: 600 } },
-    },
-    MuiChip: { styleOverrides: { root: { fontWeight: 600 } } },
-    MuiOutlinedInput: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-          backgroundColor: "#fff",
-          "& fieldset": { borderColor: "#e2e8f0" },
-          "&:hover fieldset": { borderColor: "#cbd5e1" },
-        },
-      },
-    },
-    MuiSelect: {
-      styleOverrides: {
-        select: { paddingTop: 8, paddingBottom: 8, fontSize: "0.85rem" },
-      },
-    },
-  },
-});
-
 // ─── Config ──────────────────────────────────────────────────────────────────
 const PRIORITY_CFG = {
   critical: {
@@ -243,19 +202,35 @@ const StatCard = ({ title, value, active = false, onClick, sx }) => (
     }}
     sx={{
       ...sx,
+      position: "relative",
+      overflow: "hidden",
       p: { xs: 2, sm: 2.5 },
-      border: active ? "1.5px solid #111827" : "1px solid #e2e8f0",
+      border: active ? "1px solid #22d3ee" : "1px solid #e2e8f0",
+      outline: active ? "3px solid rgba(34, 211, 238, 0.55)" : "none",
+      outlineOffset: active ? "-3px" : 0,
       bgcolor: "#fff",
       borderRadius: 1,
       flex: 1,
       minWidth: 0,
       cursor: onClick ? "pointer" : "default",
+      boxShadow: active
+        ? "0 12px 28px rgba(34, 211, 238, 0.18)"
+        : "none",
       transition:
-        "border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease",
+        "border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, outline-color 0.18s ease",
+      "&::before": active
+        ? {
+            content: '""',
+            position: "absolute",
+            inset: "0 auto 0 0",
+            width: 4,
+            bgcolor: "#22d3ee",
+          }
+        : {},
       "&:hover": onClick
         ? {
-            borderColor: "#111827",
-            boxShadow: "0 8px 20px rgba(13, 61, 82, 0.08)",
+            borderColor: "#22d3ee",
+            boxShadow: "0 8px 20px rgba(34, 211, 238, 0.14)",
           }
         : {},
       "&:focus-visible": {
@@ -355,10 +330,28 @@ const getTaskStatus = (task) => {
 };
 
 const TaskCard = ({ task, onView, onPoa }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const cardBg = isDark ? "#0f1c2e" : "#ffffff";
+  const cardBorder = isDark ? "rgba(148, 163, 184, 0.2)" : "#e8edf2";
+  const primaryText = isDark ? "#f8fafc" : "#0f172a";
+  const mutedText = isDark ? "#aeb8c8" : "#64748b";
+  const iconColor = isDark ? "#94a3b8" : "#94a3b8";
+  const poaBg = isDark ? "#101d2e" : "#fff";
+  const poaDisabledBg = isDark ? "rgba(148, 163, 184, 0.08)" : "#f8fafc";
+  const poaDisabledColor = isDark ? "#94a3b8" : "#94a3b8";
   const prKey = task.priority?.toLowerCase() || "medium";
   const stKey = getTaskStatus(task);
   const pPill = PRIORITY_PILL[prKey] || PRIORITY_PILL.medium;
   const sPill = STATUS_PILL[stKey] || STATUS_PILL.pending;
+  const statusPill = isDark
+    ? {
+        ...sPill,
+        bg: stKey === "pending" ? "rgba(148, 163, 184, 0.14)" : alpha(sPill.color, 0.16),
+        color: stKey === "pending" ? "#d9e2ef" : "#f8fafc",
+        border: stKey === "pending" ? "rgba(148, 163, 184, 0.28)" : alpha(sPill.color, 0.42),
+      }
+    : sPill;
 
   const assetName =
     task.assets?.[0]?.assetName ||
@@ -407,9 +400,9 @@ const TaskCard = ({ task, onView, onPoa }) => {
   return (
     <Box
       sx={{
-        bgcolor: "#ffffff",
+        bgcolor: cardBg,
         borderRadius: "16px",
-        border: "1px solid #e8edf2",
+        border: `1px solid ${cardBorder}`,
         display: "flex",
         flexDirection: "column",
         height: { xs: 284, sm: 278, md: 272 },
@@ -418,7 +411,9 @@ const TaskCard = ({ task, onView, onPoa }) => {
         minWidth: 0,
         overflow: "hidden",
         transition: "box-shadow 0.2s ease",
-        "&:hover": { boxShadow: "0 6px 24px rgba(0,0,0,0.08)" },
+        "&:hover": {
+          boxShadow: isDark ? "0 14px 32px rgba(0,0,0,0.22)" : "0 6px 24px rgba(0,0,0,0.08)",
+        },
       }}
     >
       {/* Card Body */}
@@ -482,8 +477,8 @@ const TaskCard = ({ task, onView, onPoa }) => {
               px: 1.5,
               py: 0.45,
               borderRadius: "20px",
-              bgcolor: sPill.bg,
-              border: `1px solid ${sPill.border}`,
+              bgcolor: statusPill.bg,
+              border: `1px solid ${statusPill.border}`,
               flexShrink: 0,
               maxWidth: "100%",
             }}
@@ -492,12 +487,12 @@ const TaskCard = ({ task, onView, onPoa }) => {
               sx={{
                 fontSize: "0.72rem",
                 fontWeight: 500,
-                color: sPill.color,
+                color: `${statusPill.color} !important`,
                 lineHeight: 1,
                 whiteSpace: "nowrap",
               }}
             >
-              {sPill.label}
+              {statusPill.label}
             </Typography>
           </Box>
         </Box>
@@ -517,7 +512,7 @@ const TaskCard = ({ task, onView, onPoa }) => {
               fontWeight: 700,
               fontSize: "1.05rem",
               lineHeight: 1.3,
-              color: "#0f172a",
+              color: primaryText,
               flex: 1,
               minWidth: 0,
               wordBreak: "break-word",
@@ -558,12 +553,12 @@ const TaskCard = ({ task, onView, onPoa }) => {
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.7 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
             <DescriptionIcon
-              sx={{ fontSize: 15, color: "#94a3b8", flexShrink: 0 }}
+              sx={{ fontSize: 15, color: iconColor, flexShrink: 0 }}
             />
             <Typography
               sx={{
                 fontSize: "0.82rem",
-                color: "#64748b",
+                color: mutedText,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: { xs: "normal", sm: "nowrap" },
@@ -578,12 +573,12 @@ const TaskCard = ({ task, onView, onPoa }) => {
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
             <LocationIcon
-              sx={{ fontSize: 15, color: "#94a3b8", flexShrink: 0 }}
+              sx={{ fontSize: 15, color: iconColor, flexShrink: 0 }}
             />
             <Typography
               sx={{
                 fontSize: "0.82rem",
-                color: "#64748b",
+                color: mutedText,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: { xs: "normal", sm: "nowrap" },
@@ -600,14 +595,14 @@ const TaskCard = ({ task, onView, onPoa }) => {
             <CalendarTodayIcon
               sx={{
                 fontSize: 14,
-                color: isOverdue ? "#ef4444" : "#94a3b8",
+                color: isOverdue ? "#ef4444" : iconColor,
                 flexShrink: 0,
               }}
             />
             <Typography
               sx={{
                 fontSize: "0.82rem",
-                color: isOverdue ? "#ef4444" : "#64748b",
+                color: isOverdue ? "#ef4444" : mutedText,
                 fontWeight: isOverdue ? 600 : 400,
                 overflowWrap: "anywhere",
               }}
@@ -624,12 +619,12 @@ const TaskCard = ({ task, onView, onPoa }) => {
               sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}
             >
               <Typography
-                sx={{ fontSize: "0.7rem", color: "#94a3b8", fontWeight: 600 }}
+                sx={{ fontSize: "0.7rem", color: iconColor, fontWeight: 600 }}
               >
                 Progress
               </Typography>
               <Typography
-                sx={{ fontSize: "0.7rem", color: "#0d3d52", fontWeight: 700 }}
+                sx={{ fontSize: "0.7rem", color: isDark ? "#61d7ed" : "#0d3d52", fontWeight: 700 }}
               >
                 {completionRate}%
               </Typography>
@@ -640,7 +635,7 @@ const TaskCard = ({ task, onView, onPoa }) => {
               sx={{
                 height: 5,
                 borderRadius: 4,
-                bgcolor: "#f1f5f9",
+                bgcolor: isDark ? "rgba(148, 163, 184, 0.16)" : "#f1f5f9",
                 "& .MuiLinearProgress-bar": {
                   borderRadius: 4,
                   bgcolor: "#0d3d52",
@@ -706,20 +701,20 @@ const TaskCard = ({ task, onView, onPoa }) => {
             width:"100%",
             fontSize: { xs: "0.72rem", sm: "0.75rem" },
             borderColor: poaSubmitted ? "#7c3aed" : "#bfe0ec",
-            color: poaSubmitted ? "#fff" : "#0d3d52",
-            bgcolor: poaSubmitted ? "#7c3aed" : "#fff",
+            color: poaSubmitted ? "#fff" : isDark ? "#d9e2ef" : "#0d3d52",
+            bgcolor: poaSubmitted ? "#7c3aed" : poaBg,
             whiteSpace: "nowrap",
             boxShadow: "none",
             "&:hover": {
               borderColor: poaSubmitted ? "#6d28d9" : "#0d3d52",
-              bgcolor: poaSubmitted ? "#6d28d9" : "#e6f3f8",
+              bgcolor: poaSubmitted ? "#6d28d9" : isDark ? "rgba(26, 166, 196, 0.12)" : "#e6f3f8",
               boxShadow: "none",
               
             },
             "&.Mui-disabled": {
-              borderColor: "#e2e8f0",
-              bgcolor: "#f8fafc",
-              color: "#94a3b8",
+              borderColor: isDark ? "rgba(148, 163, 184, 0.18)" : "#e2e8f0",
+              bgcolor: poaDisabledBg,
+              color: poaDisabledColor,
             },
           }}
          
@@ -754,7 +749,8 @@ const PoaDialog = ({
   onClose,
   onSubmit,
 }) => {
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const appTheme = useTheme();
+  const isMobile = useMediaQuery(appTheme.breakpoints.down("sm"));
   const assetName =
     task?.assets?.[0]?.assetName ||
     task?.assetIds?.[0]?.assetName ||
@@ -930,6 +926,17 @@ const MiniMonthCalendar = ({
   onPrev,
   onNext,
 }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const monthText = isDark ? "#f8fafc" : "#0f172a";
+  const weekdayText = isDark ? "#d9e2ef" : "#64748b";
+  const mutedText = isDark ? "#7f8da3" : "#94a3b8";
+  const regularDayText = isDark ? "#d9e2ef" : "#0f172a";
+  const todayBg = isDark ? "rgba(96, 165, 250, 0.22)" : "#dbeafe";
+  const selectedBg = isDark ? "#1aa6c4" : "#0d3d52";
+  const selectedBorder = isDark ? "#61d7ed" : "#0d3d52";
+  const todayBorder = isDark ? "rgba(96, 165, 250, 0.48)" : "#bfdbfe";
+  const hoverBg = isDark ? "rgba(148, 163, 184, 0.12)" : "#f1f5f9";
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const previousMonthDays = new Date(year, month, 0).getDate();
@@ -961,20 +968,20 @@ const MiniMonthCalendar = ({
   return (
     <Box>
       <Box sx={{ display: "grid", gridTemplateColumns: "28px 1fr 28px", alignItems: "center", mb: 1 }}>
-        <IconButton size="small" onClick={onPrev} sx={{ p: 0.25, color: "#0f172a" }}>
+        <IconButton size="small" onClick={onPrev} sx={{ p: 0.25, color: mutedText }}>
           <NavigateBeforeIcon sx={{ fontSize: 16 }} />
         </IconButton>
         <Typography
           sx={{
             fontWeight: 800,
             fontSize: "0.82rem",
-            color: "#0f172a",
+            color: monthText,
             textAlign: "center",
           }}
         >
           {MONTHS[month]} {year}
         </Typography>
-        <IconButton size="small" onClick={onNext} sx={{ p: 0.25, color: "#0f172a" }}>
+        <IconButton size="small" onClick={onNext} sx={{ p: 0.25, color: mutedText }}>
           <NavigateNextIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </Box>
@@ -992,7 +999,7 @@ const MiniMonthCalendar = ({
             sx={{
               textAlign: "center",
               fontSize: "0.68rem",
-              color: "#64748b",
+              color: weekdayText,
               fontWeight: 700,
             }}
           >
@@ -1028,9 +1035,9 @@ const MiniMonthCalendar = ({
                 ? "#10b981"
                 : "#ef4444"
             : todayCell
-              ? "#dbeafe"
+              ? todayBg
               : selectedCell
-                ? "#0d3d52"
+                ? selectedBg
                 : "transparent";
           const markerColor = hasTasks
             ? hasPendingApproval
@@ -1041,8 +1048,8 @@ const MiniMonthCalendar = ({
             : selectedCell
               ? "#fff"
               : isMuted
-                ? "#94a3b8"
-                : "#0f172a";
+                ? mutedText
+                : regularDayText;
           return (
             <Box
               key={idx}
@@ -1067,15 +1074,15 @@ const MiniMonthCalendar = ({
                   bgcolor: markerBg,
                   color: markerColor,
                   border: selectedCell
-                    ? "2px solid #0d3d52"
+                    ? `2px solid ${selectedBorder}`
                     : todayCell && !hasTasks
-                      ? "1px solid #bfdbfe"
+                      ? `1px solid ${todayBorder}`
                       : "none",
                   fontWeight: todayCell || hasTasks || selectedCell ? 800 : 500,
                   fontSize: "0.68rem",
                   transition: "background 0.12s",
                   "&:hover": {
-                    bgcolor: hasTasks || selectedCell || todayCell ? markerBg : "#f1f5f9",
+                    bgcolor: hasTasks || selectedCell || todayCell ? markerBg : hoverBg,
                   },
                 }}
               >
@@ -1090,6 +1097,14 @@ const MiniMonthCalendar = ({
 };
 
 const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const surfaceBg = isDark ? "rgba(12, 23, 38, 0.92)" : "#ffffff";
+  const surfaceBorder = isDark ? "rgba(148, 163, 184, 0.18)" : "#e2e8f0";
+  const primaryText = isDark ? "#f8fafc" : "#0f172a";
+  const secondaryText = isDark ? "#aeb8c8" : "#475569";
+  const mutedText = isDark ? "#7f8da3" : "#94a3b8";
+  const hoverBg = isDark ? "rgba(148, 163, 184, 0.12)" : "#f8fafc";
   const today = new Date();
   const [offset, setOffset] = useState(0);
   const selectedDay = selectedDate;
@@ -1124,8 +1139,8 @@ const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
         width: { xs: "100%", lg: 288 },
         flexShrink: 0,
         borderRadius: 2,
-        border: "1px solid #e2e8f0",
-        bgcolor: "#fff",
+        border: `1px solid ${surfaceBorder}`,
+        bgcolor: surfaceBg,
         p: 2.25,
         position: { lg: "sticky" },
         top: { lg: 24 },
@@ -1141,8 +1156,8 @@ const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
         }}
       >
         <Stack direction="row" spacing={1} alignItems="center">
-          <CalendarMonthIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
-          <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "0.95rem" }}>
+          <CalendarMonthIcon sx={{ fontSize: 18, color: mutedText }} />
+          <Typography sx={{ color: primaryText, fontWeight: 800, fontSize: "0.95rem" }}>
             Calendar
           </Typography>
         </Stack>
@@ -1154,7 +1169,7 @@ const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
               height: 32,
               borderRadius: 1.5,
               fontSize: "0.72rem",
-              color: "#475569",
+              color: secondaryText,
               "& .MuiSelect-select": { py: 0.5, pl: 1.2, pr: 3 },
             }}
           >
@@ -1201,7 +1216,7 @@ const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
           sx={{
             mt: 2,
             borderRadius: 1.5,
-            border: "1px solid #e2e8f0",
+            border: `1px solid ${surfaceBorder}`,
             overflow: "hidden",
           }}
         >
@@ -1209,7 +1224,7 @@ const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
               sx={{
                 px: 1.5,
                 py: 1,
-                borderBottom: "1px solid #f1f5f9",
+                borderBottom: `1px solid ${surfaceBorder}`,
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
@@ -1218,14 +1233,14 @@ const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
               <Box>
                 <Typography
                   fontWeight={800}
-                  sx={{ fontSize: "0.85rem", color: "#0f172a" }}
+                  sx={{ fontSize: "0.85rem", color: primaryText }}
                 >
                   {selectedDay.toLocaleDateString("en-US", {
                     day: "2-digit",
                     month: "short",
                   })}
                 </Typography>
-                <Typography sx={{ fontSize: "0.68rem", color: "#94a3b8" }}>
+                <Typography sx={{ fontSize: "0.68rem", color: mutedText }}>
                   {selectedTasks.length} task
                   {selectedTasks.length !== 1 ? "s" : ""}
                 </Typography>
@@ -1270,13 +1285,13 @@ const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
                         p: 1.5,
                         cursor: onView ? "pointer" : "default",
                         "&:hover": onView
-                          ? { bgcolor: "#f8fafc", borderColor: pCfg.color }
+                          ? { bgcolor: hoverBg, borderColor: pCfg.color }
                           : undefined,
                       }}
                     >
                       <Typography
                         fontWeight={700}
-                        sx={{ fontSize: "0.78rem", color: "#0f172a" }}
+                        sx={{ fontSize: "0.78rem", color: primaryText }}
                       >
                         {aName}
                       </Typography>
@@ -1333,6 +1348,17 @@ const getCalendarDotColor = (task) => {
 };
 
 const CalendarView = ({ tasks, onView }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const surfaceBg = isDark ? "rgba(12, 23, 38, 0.92)" : "#ffffff";
+  const headerBg = isDark ? "rgba(15, 28, 46, 0.72)" : "#f8fafc";
+  const cellBg = isDark ? "rgba(12, 23, 38, 0.86)" : "#ffffff";
+  const cellHoverBg = isDark ? "rgba(26, 166, 196, 0.12)" : "#f8fafc";
+  const borderColor = isDark ? "rgba(148, 163, 184, 0.16)" : "#eef2f7";
+  const primaryText = isDark ? "#f8fafc" : "#0f172a";
+  const secondaryText = isDark ? "#aeb8c8" : "#64748b";
+  const mutedText = isDark ? "#7f8da3" : "#cbd5e1";
+  const todayBg = isDark ? "#1aa6c4" : "#0d3d52";
   const today = new Date();
   const [visibleMonth, setVisibleMonth] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1),
@@ -1389,8 +1415,8 @@ const CalendarView = ({ tasks, onView }) => {
         elevation={0}
         sx={{
           borderRadius: 2,
-          border: "1px solid #e2e8f0",
-          bgcolor: "#fff",
+          border: `1px solid ${borderColor}`,
+          bgcolor: surfaceBg,
           overflow: "hidden",
         }}
       >
@@ -1407,13 +1433,13 @@ const CalendarView = ({ tasks, onView }) => {
           <IconButton
             size="small"
             onClick={goPrevMonth}
-            sx={{ border: "1px solid #e2e8f0", color: "#94a3b8" }}
+            sx={{ border: `1px solid ${borderColor}`, color: secondaryText }}
           >
             <NavigateBeforeIcon sx={{ fontSize: 18 }} />
           </IconButton>
           <Typography
             sx={{
-              color: "#0f172a",
+              color: primaryText,
               fontWeight: 800,
               textAlign: "center",
               fontSize: { xs: "1rem", sm: "1.1rem" },
@@ -1425,7 +1451,7 @@ const CalendarView = ({ tasks, onView }) => {
             <IconButton
               size="small"
               onClick={goNextMonth}
-              sx={{ border: "1px solid #e2e8f0", color: "#94a3b8" }}
+              sx={{ border: `1px solid ${borderColor}`, color: secondaryText }}
             >
               <NavigateNextIcon sx={{ fontSize: 18 }} />
             </IconButton>
@@ -1435,8 +1461,8 @@ const CalendarView = ({ tasks, onView }) => {
               onClick={goToday}
               sx={{
                 borderRadius: 2,
-                borderColor: "#e2e8f0",
-                color: "#64748b",
+                borderColor,
+                color: secondaryText,
                 fontWeight: 700,
                 px: 2,
               }}
@@ -1450,9 +1476,9 @@ const CalendarView = ({ tasks, onView }) => {
           sx={{
             display: "grid",
             gridTemplateColumns: "repeat(7, minmax(90px, 1fr))",
-            bgcolor: "#f8fafc",
-            borderTop: "1px solid #eef2f7",
-            borderBottom: "1px solid #eef2f7",
+            bgcolor: headerBg,
+            borderTop: `1px solid ${borderColor}`,
+            borderBottom: `1px solid ${borderColor}`,
             overflowX: "auto",
           }}
         >
@@ -1462,7 +1488,7 @@ const CalendarView = ({ tasks, onView }) => {
               sx={{
                 py: 1.4,
                 textAlign: "center",
-                color: "#94a3b8",
+                color: secondaryText,
                 fontSize: "0.72rem",
                 fontWeight: 800,
                 letterSpacing: "0.08em",
@@ -1491,11 +1517,11 @@ const CalendarView = ({ tasks, onView }) => {
                 sx={{
                   minHeight: { xs: 92, sm: 104 },
                   p: 1.5,
-                  borderRight: "1px solid #eef2f7",
-                  borderBottom: "1px solid #eef2f7",
+                  borderRight: `1px solid ${borderColor}`,
+                  borderBottom: `1px solid ${borderColor}`,
                   cursor: dayTasks.length ? "pointer" : "default",
-                  bgcolor: "#fff",
-                  "&:hover": dayTasks.length ? { bgcolor: "#f8fafc" } : {},
+                  bgcolor: cellBg,
+                  "&:hover": dayTasks.length ? { bgcolor: cellHoverBg } : {},
                 }}
               >
                 <Box
@@ -1506,8 +1532,8 @@ const CalendarView = ({ tasks, onView }) => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    bgcolor: isToday ? "#0d3d52" : "transparent",
-                    color: isToday ? "#fff" : cell.muted ? "#cbd5e1" : "#0f172a",
+                    bgcolor: isToday ? todayBg : "transparent",
+                    color: isToday ? "#fff" : cell.muted ? mutedText : primaryText,
                     fontWeight: isToday ? 800 : 500,
                     fontSize: "0.82rem",
                   }}
@@ -1539,19 +1565,19 @@ const CalendarView = ({ tasks, onView }) => {
         elevation={0}
         sx={{
           borderRadius: 2,
-          border: "1px solid #e2e8f0",
-          bgcolor: "#fff",
+          border: `1px solid ${borderColor}`,
+          bgcolor: surfaceBg,
           p: 2.5,
         }}
       >
-        <Typography sx={{ color: "#0f172a", fontSize: "0.95rem", fontWeight: 800, mb: 2 }}>
+        <Typography sx={{ color: primaryText, fontSize: "0.95rem", fontWeight: 800, mb: 2 }}>
           Legend
         </Typography>
         <Stack spacing={1.4}>
           {FULL_CALENDAR_LEGEND.map((item) => (
             <Stack key={item.label} direction="row" spacing={1.2} alignItems="center">
               <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: item.color }} />
-              <Typography sx={{ color: "#64748b", fontSize: "0.86rem", fontWeight: 500 }}>
+              <Typography sx={{ color: secondaryText, fontSize: "0.86rem", fontWeight: 500 }}>
                 {item.label}
               </Typography>
             </Stack>
@@ -1568,7 +1594,45 @@ export default function MyTask() {
   const { user } = useAuth();
   const { fetchMyTasks, submitPoa, loading, submitting } = useTeamAssignment();
   const mountedRef = useRef(true);
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const appTheme = useTheme();
+  const isDark = appTheme.palette.mode === "dark";
+  const pageBg = isDark ? "transparent" : "#f8fafc";
+  const surfaceBg = isDark ? "rgba(12, 23, 38, 0.92)" : "#ffffff";
+  const surfaceBorder = isDark ? "rgba(148, 163, 184, 0.18)" : "#e2e8f0";
+  const primaryText = isDark ? "#f8fafc" : "#0f172a";
+  const secondaryText = isDark ? "#aeb8c8" : "#94a3b8";
+  const fieldBg = isDark ? "rgba(15, 28, 46, 0.76)" : "#ffffff";
+  const surfaceHover = isDark ? "rgba(26, 166, 196, 0.12)" : "#f8fafc";
+  const isMobile = useMediaQuery(appTheme.breakpoints.down("sm"));
+  const filterSelectSx = {
+    fontSize: "0.82rem",
+    bgcolor: fieldBg,
+    color: primaryText,
+    "& .MuiSelect-icon": { color: secondaryText },
+    "& .MuiOutlinedInput-notchedOutline": { borderColor: surfaceBorder },
+    "&:hover .MuiOutlinedInput-notchedOutline": {
+      borderColor: isDark ? "rgba(148, 163, 184, 0.36)" : "#cbd5e1",
+    },
+  };
+  const filterDateFieldSx = {
+    width: "100%",
+    "& .MuiOutlinedInput-root": {
+      fontSize: "0.82rem",
+      bgcolor: fieldBg,
+      color: primaryText,
+      "& fieldset": { borderColor: surfaceBorder },
+      "&:hover fieldset": {
+        borderColor: isDark ? "rgba(148, 163, 184, 0.36)" : "#cbd5e1",
+      },
+    },
+    "& input[type='date']": {
+      colorScheme: isDark ? "dark" : "light",
+    },
+    "& input[type='date']::-webkit-calendar-picker-indicator": {
+      filter: isDark ? "invert(1)" : "none",
+      opacity: isDark ? 0.78 : 1,
+    },
+  };
 
   const [viewMode, setViewMode] = useState("list");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -1888,8 +1952,7 @@ export default function MyTask() {
         ];
 
   return (
-    <ThemeProvider theme={theme}>
-      <Box sx={{ minHeight: "100vh", bgcolor: "#f8fafc", overflowX: "hidden" }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: pageBg, overflowX: "hidden" }}>
         <Container
           maxWidth="xl"
           sx={{ py: { xs: 2.5, sm: 3, md: 4 }, px: { xs: 1.5, sm: 3 } }}
@@ -1908,7 +1971,7 @@ export default function MyTask() {
             <Box>
               <Typography
                 sx={{
-                  color: "#0f172a",
+                  color: primaryText,
                   fontSize: { xs: "1.3rem", sm: "1.5rem" },
                   fontWeight: 800,
                   mb: 0.25,
@@ -1917,7 +1980,7 @@ export default function MyTask() {
                 My Tasks
               </Typography>
               <Typography
-                sx={{ color: "#94a3b8", fontSize: "0.8rem", fontWeight: 400 }}
+                sx={{ color: secondaryText, fontSize: "0.8rem", fontWeight: 400 }}
               >
                 Your assigned inspection tasks
               </Typography>
@@ -1939,10 +2002,10 @@ export default function MyTask() {
                 sx={{
                   display: "flex",
                   flex: { xs: "1 1 100%", sm: "0 0 auto" },
-                  border: "1px solid #e2e8f0",
+                  border: `1px solid ${surfaceBorder}`,
                   borderRadius: 2,
                   overflow: "hidden",
-                  bgcolor: "#fff",
+                  bgcolor: surfaceBg,
                 }}
               >
                 {[
@@ -1967,10 +2030,10 @@ export default function MyTask() {
                       fontWeight: 500,
                       fontSize: "0.8rem",
                       bgcolor: "transparent",
-                      color: viewMode === mode ? "#0f172a" : "#94a3b8",
+                      color: viewMode === mode ? primaryText : secondaryText,
                       borderRight:
-                        mode === "list" ? "1px solid #e2e8f0" : "none",
-                      "&:hover": { bgcolor: "#f8fafc" },
+                        mode === "list" ? `1px solid ${surfaceBorder}` : "none",
+                      "&:hover": { bgcolor: surfaceHover },
                       transition: "all 0.15s",
                       position: "relative",
                       "& .MuiButton-startIcon": {
@@ -1991,9 +2054,9 @@ export default function MyTask() {
             sx={{
               p: { xs: 1.5, sm: 1.75 },
               borderRadius: 1,
-              border: "1px solid #e2e8f0",
+              border: `1px solid ${surfaceBorder}`,
               mb: 2.5,
-              bgcolor: "#fff",
+              bgcolor: surfaceBg,
             }}
           >
             <Stack
@@ -2024,7 +2087,7 @@ export default function MyTask() {
                   width: "100%",
                   "& .MuiOutlinedInput-root": {
                     fontSize: "0.82rem",
-                    bgcolor: "#fff",
+                    bgcolor: fieldBg,
                   },
                 }}
               />
@@ -2037,11 +2100,11 @@ export default function MyTask() {
                       width: 40,
                       height: 40,
                       borderRadius: 2,
-                      border: "1px solid #e2e8f0",
-                      bgcolor: hasFilters ? "#0d3d52" : "#fff",
-                      color: hasFilters ? "#fff" : "#0d3d52",
+                      border: `1px solid ${hasFilters ? "#0d3d52" : surfaceBorder}`,
+                      bgcolor: hasFilters ? "#0d3d52" : fieldBg,
+                      color: hasFilters ? "#fff" : primaryText,
                       "&:hover": {
-                        bgcolor: hasFilters ? "#072535" : "#f8fafc",
+                        bgcolor: hasFilters ? "#072535" : surfaceHover,
                       },
                     }}
                   >
@@ -2060,7 +2123,7 @@ export default function MyTask() {
                   onChange={(e) => handleFilterChange("status", e.target.value)}
                   displayEmpty
                   IconComponent={ArrowDownIcon}
-                  sx={{ fontSize: "0.82rem", bgcolor: "#fff" }}
+                  sx={filterSelectSx}
                 >
                   <MenuItem value="" sx={{ fontSize: "0.82rem" }}>
                     All Tasks
@@ -2098,7 +2161,7 @@ export default function MyTask() {
                   }
                   displayEmpty
                   IconComponent={ArrowDownIcon}
-                  sx={{ fontSize: "0.82rem", bgcolor: "#fff" }}
+                  sx={filterSelectSx}
                 >
                   <MenuItem value="" sx={{ fontSize: "0.82rem" }}>
                     Priority
@@ -2126,12 +2189,8 @@ export default function MyTask() {
                 value={filters.date || ""}
                 onChange={(e) => handleFilterChange("date", e.target.value)}
                 sx={{
-                  width: "100%",
+                  ...filterDateFieldSx,
                   display: { xs: "none", sm: "block" },
-                  "& .MuiOutlinedInput-root": {
-                    fontSize: "0.82rem",
-                    bgcolor: "#fff",
-                  },
                 }}
               />
 
@@ -2207,7 +2266,7 @@ export default function MyTask() {
                     onChange={(e) => handleFilterChange("status", e.target.value)}
                     displayEmpty
                     IconComponent={ArrowDownIcon}
-                    sx={{ fontSize: "0.82rem", bgcolor: "#fff" }}
+                    sx={filterSelectSx}
                   >
                     <MenuItem value="" sx={{ fontSize: "0.82rem" }}>All Tasks</MenuItem>
                     <MenuItem value="pending" sx={{ fontSize: "0.82rem" }}>Pending</MenuItem>
@@ -2224,7 +2283,7 @@ export default function MyTask() {
                     onChange={(e) => handleFilterChange("priority", e.target.value)}
                     displayEmpty
                     IconComponent={ArrowDownIcon}
-                    sx={{ fontSize: "0.82rem", bgcolor: "#fff" }}
+                    sx={filterSelectSx}
                   >
                     <MenuItem value="" sx={{ fontSize: "0.82rem" }}>Priority</MenuItem>
                     <MenuItem value="critical" sx={{ fontSize: "0.82rem" }}>Critical</MenuItem>
@@ -2240,12 +2299,7 @@ export default function MyTask() {
                   value={filters.date || ""}
                   onChange={(e) => handleFilterChange("date", e.target.value)}
                   fullWidth
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      fontSize: "0.82rem",
-                      bgcolor: "#fff",
-                    },
-                  }}
+                  sx={filterDateFieldSx}
                 />
               </Stack>
             </DialogContent>
@@ -2353,8 +2407,8 @@ export default function MyTask() {
                 p: { xs: 4, sm: 8 },
                 textAlign: "center",
                 borderRadius: 2,
-                border: "1px dashed #cbd5e1",
-                bgcolor: "#fff",
+                border: `1px dashed ${isDark ? "rgba(148, 163, 184, 0.26)" : "#cbd5e1"}`,
+                bgcolor: surfaceBg,
               }}
             >
               <Avatar
@@ -2527,8 +2581,7 @@ export default function MyTask() {
           open={snack.open}
           autoHideDuration={4000}
           onClose={() => setSnack((s) => ({ ...s, open: false }))}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert
             severity={snack.severity}
             onClose={() => setSnack((s) => ({ ...s, open: false }))}
@@ -2538,6 +2591,5 @@ export default function MyTask() {
           </Alert>
         </Snackbar>
       </Box>
-    </ThemeProvider>
   );
 }

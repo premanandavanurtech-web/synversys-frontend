@@ -50,6 +50,7 @@ import {
   AttachFile as AttachFileIcon,
   Send as SendIcon,
 } from "@mui/icons-material";
+import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAssignment } from "../context/AssignmentContext";
 
@@ -57,6 +58,19 @@ import { useAssignment } from "../context/AssignmentContext";
 const BRAND = "#0d4f63";
 const BRAND_DARK = "#0b4457";
 const BRAND_LIGHT = "#e1f5ee";
+
+const statIconBg = (theme, color) => {
+  if (theme.palette.mode !== "dark") return color;
+  const accent =
+    color === "#faeeda"
+      ? "#f59e0b"
+      : color === "#fcebeb"
+        ? "#ef4444"
+        : color === "#eeedfe"
+          ? "#8b5cf6"
+          : BRAND_LIGHT;
+  return alpha(accent, 0.16);
+};
 
 // ── Status / Priority maps ────────────────────────────────────────────────────
 const STATUS_MAP = {
@@ -257,8 +271,20 @@ const StatCard = ({ icon: Icon, iconBg, value, label, sub }) => (
     }}
   >
     <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
-      <Box sx={{ p: 1.1, borderRadius: 2.5, bgcolor: iconBg, flexShrink: 0 }}>
-        <Icon sx={{ fontSize: 20, color: BRAND }} />
+      <Box
+        sx={(theme) => ({
+          p: 1.1,
+          borderRadius: 2.5,
+          bgcolor: statIconBg(theme, iconBg),
+          flexShrink: 0,
+        })}
+      >
+        <Icon
+          sx={(theme) => ({
+            fontSize: 20,
+            color: theme.palette.mode === "dark" ? "#67e8f9" : BRAND,
+          })}
+        />
       </Box>
       <Box sx={{ minWidth: 0 }}>
         <Typography
@@ -321,6 +347,7 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
   const mounted = useRef(true);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isDark = theme.palette.mode === "dark";
 
   useEffect(() => {
     mounted.current = true;
@@ -467,7 +494,7 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
             alignItems: "center",
             borderBottom: "0.5px solid",
             borderColor: "divider",
-            bgcolor: "grey.50",
+            bgcolor: isDark ? "rgba(15, 28, 46, 0.92)" : "grey.50",
           }}
         >
           {["Submitted By", "Date", "Status", "Completion", "Actions"].map(
@@ -784,6 +811,8 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
 const FormStructureTab = ({ checklistData }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isDark = theme.palette.mode === "dark";
+  const iconBg = isDark ? "rgba(148, 163, 184, 0.1)" : "#f0f6f8";
 
   if (!checklistData?.length)
     return (
@@ -932,7 +961,7 @@ const FormStructureTab = ({ checklistData }) => {
                             width: 26,
                             height: 26,
                             borderRadius: 1.5,
-                            bgcolor: "#f0f6f8",
+                            bgcolor: iconBg,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -1022,6 +1051,12 @@ const SHOW_KEYS = [
 ];
 
 const AssetsTab = ({ assets }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const fieldBg = isDark ? "rgba(148, 163, 184, 0.08)" : "#f0f6f8";
+  const accentBg = isDark ? "rgba(245, 158, 11, 0.14)" : "#faeeda";
+  const inactiveBg = isDark ? "rgba(148, 163, 184, 0.12)" : "#f1efe8";
+  const activeBg = isDark ? "rgba(16, 185, 129, 0.16)" : "#eaf3de";
   if (!assets?.length)
     return (
       <Card
@@ -1071,7 +1106,7 @@ const AssetsTab = ({ assets }) => {
               }}
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-                <Box sx={{ p: 0.75, bgcolor: "#faeeda", borderRadius: 1.5 }}>
+                <Box sx={{ p: 0.75, bgcolor: accentBg, borderRadius: 1.5 }}>
                   <AssetIcon sx={{ fontSize: 16, color: "#854f0b" }} />
                 </Box>
                 <Box>
@@ -1097,8 +1132,8 @@ const AssetsTab = ({ assets }) => {
                 size="small"
                 sx={{
                   bgcolor:
-                    asset.assetStatus === "Active" ? "#eaf3de" : "#f1efe8",
-                  color: asset.assetStatus === "Active" ? "#3b6d11" : "#5f5e5a",
+                    asset.assetStatus === "Active" ? activeBg : inactiveBg,
+                  color: asset.assetStatus === "Active" ? "#5eead4" : "text.secondary",
                   fontWeight: 600,
                   fontSize: "0.68rem",
                   height: 20,
@@ -1111,7 +1146,7 @@ const AssetsTab = ({ assets }) => {
               <Grid container spacing={1.25}>
                 {visibleFields.map((f, fi) => (
                   <Grid item xs={6} sm={4} md={3} key={fi} sx={{width:"250px"}}>
-                    <Box sx={{ p: 1.25, bgcolor: "#f0f6f8", borderRadius: 2 }}>
+                    <Box sx={{ p: 1.25, bgcolor: fieldBg, borderRadius: 2 }}>
                       <Typography
                         variant="caption"
                         color="text.secondary"
@@ -1164,8 +1199,8 @@ const AssetsTab = ({ assets }) => {
                       label={tag}
                       size="small"
                       sx={{
-                        bgcolor: "#f1efe8",
-                        color: "#5f5e5a",
+                        bgcolor: inactiveBg,
+                        color: "text.secondary",
                         fontSize: "0.66rem",
                         height: 18,
                       }}
@@ -1384,7 +1419,10 @@ const AssigneesTab = ({
 
 // ── POA Tab ───────────────────────────────────────────────────────────────────
 // Shows proof-of-action feedback and uploaded images/files from assignment.poaSubmissions.
-const POATab = ({ poaSubmissions, canAddPoa, onAddPoa }) => {
+const POATab = ({ poaSubmissions, canAddPoa, inspectionSubmitted, onAddPoa }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const softBg = isDark ? "rgba(148, 163, 184, 0.08)" : "#f0f6f8";
   const submissions = poaSubmissions || [];
 
   if (!submissions.length) {
@@ -1399,7 +1437,21 @@ const POATab = ({ poaSubmissions, canAddPoa, onAddPoa }) => {
           textAlign: "center",
         }}
       >
-        
+        <Typography variant="subtitle2" fontWeight={800} color={BRAND}>
+          {inspectionSubmitted
+            ? "No POA submitted yet"
+            : "Inspection is not submitted yet"}
+        </Typography>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 0.75, maxWidth: 460, mx: "auto" }}
+        >
+          {inspectionSubmitted
+            ? "POA feedback and uploaded files will appear here after submission."
+            : "POA can be added after the inspection has been submitted."}
+        </Typography>
+
         {canAddPoa && (
           <Button
             variant="contained"
@@ -1481,7 +1533,7 @@ const POATab = ({ poaSubmissions, canAddPoa, onAddPoa }) => {
                   mt: 0.75,
                   mb: 2,
                   p: 1.5,
-                  bgcolor: "#f0f6f8",
+                  bgcolor: softBg,
                   borderRadius: 2,
                   color: "text.primary",
                   fontSize: "0.82rem",
@@ -1518,7 +1570,7 @@ const POATab = ({ poaSubmissions, canAddPoa, onAddPoa }) => {
                             borderRadius: 2,
                             overflow: "hidden",
                             textDecoration: "none",
-                            bgcolor: "#fff",
+                            bgcolor: isDark ? "#0f1c2e" : "#fff",
                             width: "100%",
                           }}
                         >
@@ -1755,6 +1807,132 @@ const AdminPoaDialog = ({
   );
 };
 
+const ApproveAssignmentDialog = ({ open, submitting, onClose, onSubmit }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isDark = theme.palette.mode === "dark";
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (open) setNotes("");
+  }, [open]);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={submitting ? undefined : onClose}
+      fullWidth
+      maxWidth="sm"
+      fullScreen={isMobile}
+      sx={{
+        "& .MuiDialog-container": {
+          alignItems: { xs: "stretch", sm: "center" },
+        },
+      }}
+      PaperProps={{
+        sx: {
+          borderRadius: { xs: 0, sm: 3 },
+          m: { xs: 0, sm: 2 },
+          width: { xs: "100%", sm: "calc(100% - 32px)" },
+          maxWidth: { xs: "none", sm: 600 },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        },
+      }}
+    >
+      <DialogTitle sx={{ pb: 1.5 }}>
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Box
+            sx={{
+              width: 38,
+              height: 38,
+              borderRadius: "50%",
+              bgcolor: BRAND_LIGHT,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <CheckCircleIcon sx={{ color: "#10b981", fontSize: 22 }} />
+          </Box>
+          <Typography fontWeight={800} fontSize="1.05rem">
+            Approve Assignment
+          </Typography>
+        </Stack>
+      </DialogTitle>
+      <DialogContent sx={{ pt: "16px !important", flex: 1 }}>
+        <Alert
+          severity="info"
+          sx={{
+            mb: 2.5,
+            borderRadius: 2,
+            fontSize: "0.82rem",
+            bgcolor: isDark ? "rgba(8, 31, 36, 0.9)" : "#e0f2fe",
+            color: isDark ? "#baf0ff" : "#075985",
+            "& .MuiAlert-icon": {
+              color: isDark ? "#22d3ee" : "#0284c7",
+            },
+          }}
+        >
+          This will approve the assignment and notify the assignee.
+        </Alert>
+        <TextField
+          fullWidth
+          multiline
+          minRows={4}
+          label="Approval Notes (Optional)"
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          placeholder="Add any notes for the assignee..."
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+            },
+            "& .MuiInputLabel-root": {
+              bgcolor: "background.paper",
+              px: 0.5,
+            },
+          }}
+        />
+      </DialogContent>
+      <DialogActions
+        sx={{
+          px: 3,
+          pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 },
+          pt: 1,
+          borderTop: { xs: "1px solid", sm: "none" },
+          borderColor: "divider",
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} disabled={submitting} sx={{ color: "text.secondary" }}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={() => onSubmit(notes)}
+          disabled={submitting}
+          startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <CheckCircleIcon />}
+          sx={{
+            borderRadius: 2,
+            bgcolor: BRAND,
+            boxShadow: "none",
+            textTransform: "none",
+            fontWeight: 700,
+            "&:hover": { bgcolor: BRAND_DARK, boxShadow: "none" },
+          }}
+        >
+          Approve Assignment
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 const PageSkeleton = () => (
   <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: "#f0f6f8", minHeight: "100vh" }}>
     <Skeleton width={120} height={20} sx={{ mb: 3 }} />
@@ -1794,6 +1972,7 @@ const AssignmentDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [approving, setApproving] = useState(false);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [poaDialogOpen, setPoaDialogOpen] = useState(false);
   const [poaFeedback, setPoaFeedback] = useState("");
   const [poaFiles, setPoaFiles] = useState([]);
@@ -1835,17 +2014,27 @@ const AssignmentDetailPage = () => {
     loadAssignment();
   }, [loadAssignment]);
 
-  const handleApproveAssignment = useCallback(async () => {
+  const handleOpenApproveDialog = useCallback(() => {
+    setApproveDialogOpen(true);
+  }, []);
+
+  const handleCloseApproveDialog = useCallback(() => {
+    if (approving) return;
+    setApproveDialogOpen(false);
+  }, [approving]);
+
+  const handleApproveAssignment = useCallback(async (approvalNotes = "") => {
     if (!assignment?._id || approving) return;
     setApproving(true);
-    const result = await approveAssignment(assignment._id);
+    const result = await approveAssignment(assignment._id, approvalNotes);
     if (result.success) {
       setAssignment((prev) => ({
         ...prev,
         ...(result.data || {}),
-        status: "submitted",
+        status: result.data?.status || "approved",
       }));
-      setToast({ open: true, message: "Assignment submitted successfully", severity: "success" });
+      setApproveDialogOpen(false);
+      setToast({ open: true, message: "Assignment approved successfully", severity: "success" });
       loadAssignment();
     } else {
       setToast({ open: true, message: result.error || "Failed to approve assignment", severity: "error" });
@@ -1954,9 +2143,10 @@ const AssignmentDetailPage = () => {
   const hasAssets = (assignment.assets || []).length > 0;
   const hasChecklists = (assignment.checklistData || []).length > 0;
   const poaSubmissions = assignment.poaSubmissions || [];
+  const inspectionSubmitted = assignment.totalSubmissions > 0 || completedMem > 0;
   const canAddPoa =
     poaSubmissions.length === 0 &&
-    (assignment.totalSubmissions > 0 || completedMem > 0) &&
+    inspectionSubmitted &&
     ["pending_approval", "submitted"].includes((assignment.status || "").toLowerCase());
   const canApproveAssignment =
     (assignment.status || "").toLowerCase() === "pending_approval" &&
@@ -2118,7 +2308,7 @@ const AssignmentDetailPage = () => {
               <Button
                 variant="contained"
                 startIcon={<CheckCircleIcon />}
-                onClick={handleApproveAssignment}
+                onClick={handleOpenApproveDialog}
                 disabled={approving}
                 sx={{
                   borderRadius: 2.5,
@@ -2366,6 +2556,7 @@ const AssignmentDetailPage = () => {
               <POATab
                 poaSubmissions={poaSubmissions}
                 canAddPoa={canAddPoa}
+                inspectionSubmitted={inspectionSubmitted}
                 onAddPoa={handleOpenPoaDialog}
               />
             )}
@@ -2387,12 +2578,17 @@ const AssignmentDetailPage = () => {
         onClose={handleClosePoaDialog}
         onSubmit={handleSubmitAdminPoa}
       />
+      <ApproveAssignmentDialog
+        open={approveDialogOpen}
+        submitting={approving}
+        onClose={handleCloseApproveDialog}
+        onSubmit={handleApproveAssignment}
+      />
       <Snackbar
         open={toast.open}
         autoHideDuration={3000}
         onClose={() => setToast((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity={toast.severity}
           variant="filled"

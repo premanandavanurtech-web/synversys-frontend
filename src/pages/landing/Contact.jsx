@@ -131,10 +131,13 @@ const Contact = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    const nextValue =
+      name === "phone" ? value.replace(/\D/g, "").slice(0, 10) : value;
+
+    setFormData({ ...formData, [name]: nextValue });
 
     if (touched[name]) {
-      const error = validateField(name, value);
+      const error = validateField(name, nextValue);
       setErrors({ ...errors, [name]: error });
     }
   };
@@ -923,6 +926,11 @@ const Contact = () => {
                         required
                         size="medium"
                         placeholder="9876543210"
+                        inputProps={{
+                          inputMode: "numeric",
+                          pattern: "[0-9]*",
+                          maxLength: 10,
+                        }}
                         helperText={
                           (touched.phone && errors.phone) ||
                           "Enter 10-digit mobile number"
@@ -1240,11 +1248,11 @@ const Contact = () => {
         open={snackbar.open}
         autoHideDuration={5000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+
         sx={{
           bottom: { xs: 16, sm: 20, md: 24 },
         }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={handleCloseSnackbar}
           severity={snackbar.severity}

@@ -31,6 +31,7 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
+  Portal,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -49,6 +50,7 @@ import {
   TableHead,
   TableRow,
   useMediaQuery,
+  useTheme,
   List,
   ListItem,
   ListItemText,
@@ -99,17 +101,23 @@ import { useNavigate } from "react-router-dom";
 import AssetSearchField from "../components/AssetSearchField";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
-const theme = createTheme({
+const createAssignedChecklistTheme = (mode = "light") =>
+createTheme({
   palette: {
+    mode,
     primary: { main: "#185677", light: "#134d64", dark: "#104661", contrastText: "#ffffff" },
     secondary: { main: "#ec4899", light: "#f472b6", dark: "#db2777" },
     success: { main: "#10b981", light: "#34d399", dark: "#059669" },
     warning: { main: "#f59e0b", light: "#fbbf24", dark: "#d97706" },
     error: { main: "#ef4444", light: "#f87171", dark: "#dc2626" },
     info: { main: "#3b82f6", light: "#60a5fa", dark: "#2563eb" },
-    background: { default: "#f8fafc", paper: "#ffffff" },
-    text: { primary: "#0f172a", secondary: "#64748b", disabled: "#94a3b8" },
-    divider: "#e2e8f0",
+    background: mode === "dark"
+      ? { default: "#0a1620", paper: "#0f1e29" }
+      : { default: "#f8fafc", paper: "#ffffff" },
+    text: mode === "dark"
+      ? { primary: "#e7eef2", secondary: "#a8b6c2", disabled: "#6f8291" }
+      : { primary: "#0f172a", secondary: "#64748b", disabled: "#94a3b8" },
+    divider: mode === "dark" ? "#223544" : "#e2e8f0",
   },
   typography: {
     fontFamily: "'Inter', 'Poppins', system-ui, sans-serif",
@@ -135,16 +143,18 @@ const theme = createTheme({
       styleOverrides: { root: { borderRadius: 20, backgroundImage: "none" } },
     },
     MuiCard: {
-      styleOverrides: { root: { borderRadius: 20, border: "1px solid #e2e8f0" } },
+      styleOverrides: { root: { borderRadius: 20, border: `1px solid ${mode === "dark" ? "#223544" : "#e2e8f0"}` } },
     },
     MuiTableCell: {
-      styleOverrides: { root: { borderBottomColor: "#f1f5f9" } },
+      styleOverrides: { root: { borderBottomColor: mode === "dark" ? "#223544" : "#f1f5f9" } },
     },
     MuiDialog: {
       styleOverrides: { paper: { margin: 16 } },
     },
   },
 });
+
+let theme = createAssignedChecklistTheme("light");
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const STATUS_CFG = {
@@ -177,20 +187,35 @@ Object.assign(PRIORITY_CFG, {
   critical: { ...PRIORITY_CFG.critical, color: "#dc2626", bg: "#fef2f2" },
 });
 
-const GlassCard = styled(Card)(() => ({
-  background: "rgba(255,255,255,0.9)",
+const dateFieldSx = {
+  minWidth: 155,
+  "& input": {
+    colorScheme: (theme) => theme.palette.mode,
+  },
+  "& input::-webkit-calendar-picker-indicator": {
+    cursor: "pointer",
+    filter: (theme) => theme.palette.mode === "dark" ? "invert(1)" : "none",
+  },
+};
+
+const GlassCard = styled(Card)(({ theme }) => ({
+  background: theme.palette.mode === "dark" ? "#0f1e29" : "rgba(255,255,255,0.9)",
   backdropFilter: "blur(10px)",
-  border: "1px solid rgba(99,102,241,0.1)",
+  border: `1px solid ${theme.palette.mode === "dark" ? "#223544" : "rgba(99,102,241,0.1)"}`,
   transition: "all 0.3s ease",
   "&:hover": {
     transform: "translateY(-4px)",
-    boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
-    borderColor: "rgba(99,102,241,0.2)",
+    boxShadow: theme.palette.mode === "dark"
+      ? "0 20px 40px rgba(0,0,0,0.28)"
+      : "0 20px 40px rgba(0,0,0,0.08)",
+    borderColor: theme.palette.mode === "dark" ? "#2c475a" : "rgba(99,102,241,0.2)",
   },
 }));
 
-const GradientText = styled(Typography)(() => ({
-  background: "linear-gradient(135deg, #363637 0%, #212122 100%)",
+const GradientText = styled(Typography)(({ theme }) => ({
+  background: theme.palette.mode === "dark"
+    ? "linear-gradient(135deg, #e7eef2 0%, #b8c7d3 100%)"
+    : "linear-gradient(135deg, #363637 0%, #212122 100%)",
   backgroundClip: "text",
   WebkitBackgroundClip: "text",
   WebkitTextFillColor: "transparent",
@@ -216,9 +241,32 @@ const ModernStatCard = ({ label, value, icon: Icon, trend, subtitle, loading, co
         minHeight: { xs: 132, md: 150 },
         overflow: "hidden",
         cursor: onClick ? "pointer" : "default",
-        borderColor: active ? color || "#084d68" : undefined,
-        boxShadow: active ? `0 10px 28px ${alpha(color || "#084d68", 0.18)}` : undefined,
-        outline: "none",
+        borderColor: active ? `${color || "#084d68"} !important` : undefined,
+        bgcolor: active ? `${alpha(color || "#084d68", 0.14)} !important` : undefined,
+        outline: active ? `3px solid ${color || "#084d68"}` : "none",
+        outlineOffset: "-3px",
+        boxShadow: active
+          ? `inset 0 0 0 1px ${color || "#084d68"}, 0 18px 40px ${alpha(color || "#084d68", 0.22)} !important`
+          : undefined,
+        "&::before": active
+          ? {
+              content: '""',
+              position: "absolute",
+              inset: "0 auto 0 0",
+              width: 6,
+              bgcolor: color || "#084d68",
+            }
+          : undefined,
+        "&:hover": onClick
+          ? {
+              transform: "translateY(-2px)",
+              borderColor: `${color || "#084d68"} !important`,
+              outline: `3px solid ${color || "#084d68"}`,
+              boxShadow: active
+                ? `inset 0 0 0 1px ${color || "#084d68"}, 0 20px 44px ${alpha(color || "#084d68", 0.24)} !important`
+                : `0 12px 28px ${alpha(color || "#084d68", 0.16)}`,
+            }
+          : undefined,
         "&:focus-visible": {
           boxShadow: `0 0 0 3px ${alpha(color || "#084d68", 0.22)}`,
         },
@@ -570,6 +618,9 @@ export default function AssignedChecklist() {
   const { authRequest, user } = useAuth();
   const navigate = useNavigate();
   const { assignToAdmin, assignToTeam, reassignToAdmin, reassignToTeam, getAssignments, getAssignmentStats, softDeleteAssignment, assignLoading } = useAssignment();
+  const appTheme = useTheme();
+  theme = createAssignedChecklistTheme(appTheme.palette.mode);
+  const isDark = appTheme.palette.mode === "dark";
 
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isXs = useMediaQuery(theme.breakpoints.down("sm"));
@@ -620,6 +671,7 @@ export default function AssignedChecklist() {
 
   const [assignForm, setAssignForm] = useState(defaultAssignForm);
   const [reassignForm, setReassignForm] = useState(defaultReassignForm);
+  const [assignError, setAssignError] = useState("");
 
   const [modalStates, setModalStates] = useState({
     checklist: false, admin: false, team: false, asset: false,
@@ -643,6 +695,15 @@ export default function AssignedChecklist() {
     (msg, severity = "success") =>
       setSnack({ open: true, msg: formatToastMessage(msg), severity }),
     [formatToastMessage],
+  );
+  const getResultMessage = useCallback(
+    (result, fallback) =>
+      result?.message ||
+      result?.error ||
+      result?.data?.message ||
+      result?.response?.data?.message ||
+      fallback,
+    [],
   );
   const closeSnack = useCallback(() => setSnack((p) => ({ ...p, open: false })), []);
 
@@ -756,8 +817,17 @@ export default function AssignedChecklist() {
   const handleViewDetails = (asgn) => navigate(`/admin/assigned-checklists/${asgn._id}`);
 
   // ── Assign Modal ───────────────────────────────────────────────────────────
-  const openAssignModal = () => { setAssignForm(defaultAssignForm()); setAssignTouched(false); setAssignOpen(true); };
-  const closeAssignModal = () => { setAssignOpen(false); setAssignTouched(false); };
+  const openAssignModal = () => {
+    setAssignForm(defaultAssignForm());
+    setAssignTouched(false);
+    setAssignError("");
+    setAssignOpen(true);
+  };
+  const closeAssignModal = () => {
+    setAssignOpen(false);
+    setAssignTouched(false);
+    setAssignError("");
+  };
 
   // ── Reassign Modal ─────────────────────────────────────────────────────────
   const openReassignModal = (asgn) => {
@@ -771,9 +841,22 @@ export default function AssignedChecklist() {
   // ── Assign Submit ──────────────────────────────────────────────────────────
   const handleAssign = async () => {
     setAssignTouched(true);
-    if (!assignForm.checklistIds.length) { toast("Select at least one checklist", "error"); return; }
-    if (isSuperAdmin && !assignForm.adminId) { toast("Please select an admin", "error"); return; }
-    if (!isSuperAdmin && !assignForm.teamMemberIds.length) { toast("Select at least one team member", "error"); return; }
+    setAssignError("");
+    if (!assignForm.checklistIds.length) {
+      const message = "Select at least one checklist";
+      setAssignError(message);
+      return;
+    }
+    if (isSuperAdmin && !assignForm.adminId) {
+      const message = "Please select an admin";
+      setAssignError(message);
+      return;
+    }
+    if (!isSuperAdmin && !assignForm.teamMemberIds.length) {
+      const message = "Select at least one team member";
+      setAssignError(message);
+      return;
+    }
     setSubmitting(true);
     try {
       let result;
@@ -782,9 +865,20 @@ export default function AssignedChecklist() {
       } else {
         result = await assignToTeam({ checklistIds: assignForm.checklistIds, assetIds: assignForm.assetIds, teamMemberIds: assignForm.teamMemberIds, dueDate: assignForm.dueDate, priority: assignForm.priority, notes: assignForm.notes });
       }
-      if (result?.success) { toast("Checklist assigned successfully!"); closeAssignModal(); setAssignForm(defaultAssignForm()); fetchAssignments(); fetchStats(); }
-      else toast(result?.error || "Assignment failed", "error");
-    } catch (err) { toast(err?.message || "Assignment failed", "error"); }
+      if (result?.success) {
+        toast(result?.message || "Checklist assigned successfully!");
+        closeAssignModal();
+        setAssignForm(defaultAssignForm());
+        fetchAssignments();
+        fetchStats();
+      } else {
+        const message = getResultMessage(result, "Assignment failed");
+        setAssignError(formatToastMessage(message));
+      }
+    } catch (err) {
+      const message = getResultMessage(err, "Assignment failed");
+      setAssignError(formatToastMessage(message));
+    }
     finally { setSubmitting(false); }
   };
 
@@ -803,9 +897,9 @@ export default function AssignedChecklist() {
       } else {
         result = await reassignToTeam(selected._id, { teamMemberIds: reassignForm.teamMemberIds, dueDate: reassignForm.dueDate, priority: reassignForm.priority, notes: reassignForm.notes, reason: reassignForm.reason, assetIds: reassignForm.assetIds });
       }
-      if (result?.success) { toast("Re-assigned successfully!"); closeReassignModal(); setReassignForm(defaultReassignForm()); fetchAssignments(); fetchStats(); }
-      else toast(result?.error || "Re-assignment failed", "error");
-    } catch (err) { toast(err?.message || "Re-assignment failed", "error"); }
+      if (result?.success) { toast(result?.message || "Re-assigned successfully!"); closeReassignModal(); setReassignForm(defaultReassignForm()); fetchAssignments(); fetchStats(); }
+      else toast(getResultMessage(result, "Re-assignment failed"), "error");
+    } catch (err) { toast(getResultMessage(err, "Re-assignment failed"), "error"); }
     finally { setSubmitting(false); }
   };
 
@@ -876,7 +970,25 @@ export default function AssignedChecklist() {
                 </Box>
                 <Stack direction="row" spacing={1} flexWrap="wrap">
                   <Tooltip title="Refresh">
-                    <IconButton onClick={fetchAssignments} disabled={loading} sx={{ bgcolor: "white", border: "1px solid #e2e8f0", borderRadius: 2 }}>
+                    <IconButton
+                      onClick={fetchAssignments}
+                      disabled={loading}
+                      sx={{
+                        bgcolor: "background.paper",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 2,
+                        color: "primary.main",
+                        "&:hover": {
+                          bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                          borderColor: "primary.main",
+                        },
+                        "&.Mui-disabled": {
+                          bgcolor: "background.paper",
+                          color: "text.disabled",
+                        },
+                      }}
+                    >
                       <RefreshIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
@@ -1022,6 +1134,7 @@ export default function AssignedChecklist() {
                           InputLabelProps={{ shrink: true }}
                           inputProps={{ max: rawDateTo || undefined }}
                           InputProps={{ startAdornment: (<InputAdornment position="start"><CalendarMonthIcon sx={{ fontSize: 16, color: "#94a3b8" }} /></InputAdornment>) }}
+                          sx={dateFieldSx}
                           fullWidth
                         />
                         <TextField
@@ -1033,6 +1146,7 @@ export default function AssignedChecklist() {
                           InputLabelProps={{ shrink: true }}
                           inputProps={{ min: rawDateFrom || undefined }}
                           InputProps={{ startAdornment: (<InputAdornment position="start"><CalendarMonthIcon sx={{ fontSize: 16, color: "#94a3b8" }} /></InputAdornment>) }}
+                          sx={dateFieldSx}
                           fullWidth
                         />
                         {hasFilters && (
@@ -1088,7 +1202,7 @@ export default function AssignedChecklist() {
                   onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   inputProps={{ max: rawDateTo || undefined }}
-                  sx={{ minWidth: 155 }}
+                  sx={dateFieldSx}
                 />
                 <TextField
                   size="small"
@@ -1098,7 +1212,7 @@ export default function AssignedChecklist() {
                   onChange={(e) => handleFilterChange("dateTo", e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   inputProps={{ min: rawDateFrom || undefined }}
-                  sx={{ minWidth: 155 }}
+                  sx={dateFieldSx}
                 />
                 {hasFilters && (
                   <Button onClick={clearFilters} startIcon={<ClearIcon />} sx={{ color: "#ef4444", whiteSpace: "nowrap" }}>
@@ -1341,9 +1455,29 @@ export default function AssignedChecklist() {
         </Box>
         <DialogContent sx={{ p: { xs: 2, md: 3 }, flex: 1, overflowY: "auto" }}>
           <Stack spacing={2.5}>
+            {assignError && (
+              <Alert
+                severity="error"
+                onClose={() => setAssignError("")}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 700,
+                  fontSize: 13,
+                  alignItems: "center",
+                  bgcolor: isDark ? "rgba(127, 29, 29, 0.45)" : undefined,
+                  color: isDark ? "#fecaca" : undefined,
+                  border: isDark ? "1px solid rgba(248, 113, 113, 0.35)" : undefined,
+                  "& .MuiAlert-icon": {
+                    color: isDark ? "#f87171" : undefined,
+                  },
+                }}
+              >
+                {assignError}
+              </Alert>
+            )}
             <Box>
               <Button
-                variant="outlined" fullWidth onClick={() => openModal("checklist")} startIcon={<DescriptionIcon />}
+                variant="outlined" fullWidth onClick={() => { setAssignError(""); openModal("checklist"); }} startIcon={<DescriptionIcon />}
                 sx={{ borderColor: assignTouched && assignForm.checklistIds.length === 0 ? "#ef4444" : undefined, color: assignTouched && assignForm.checklistIds.length === 0 ? "#ef4444" : undefined }}
               >
                 {assignForm.checklistIds.length === 0 ? "Select Checklists (Required)" : ` ${assignForm.checklistIds.length} selected`}
@@ -1353,7 +1487,7 @@ export default function AssignedChecklist() {
             {isSuperAdmin && (
               <Box>
                 <Button
-                  variant="outlined" fullWidth onClick={() => openModal("admin")} startIcon={<PersonAddIcon />}
+                  variant="outlined" fullWidth onClick={() => { setAssignError(""); openModal("admin"); }} startIcon={<PersonAddIcon />}
                   sx={{ borderColor: assignTouched && !assignForm.adminId ? "#ef4444" : undefined, color: assignTouched && !assignForm.adminId ? "#ef4444" : undefined }}
                 >
                   {assignForm.adminId ? `✓ ${admins.find((a) => (a._id || a.id) === assignForm.adminId)?.customerName || "Admin selected"}` : "Select Admin (Required)"}
@@ -1364,7 +1498,7 @@ export default function AssignedChecklist() {
             {!isSuperAdmin && (
               <Box>
                 <Button
-                  variant="outlined" fullWidth onClick={() => openModal("team")} startIcon={<PeopleIcon />}
+                  variant="outlined" fullWidth onClick={() => { setAssignError(""); openModal("team"); }} startIcon={<PeopleIcon />}
                   sx={{ borderColor: assignTouched && assignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined, color: assignTouched && assignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined }}
                 >
                   {assignForm.teamMemberIds.length === 0 ? "Select Team Members (Required)" : ` ${assignForm.teamMemberIds.length} selected`}
@@ -1373,12 +1507,12 @@ export default function AssignedChecklist() {
               </Box>
             )}
             {!isSuperAdmin && (
-              <Button variant="outlined" fullWidth onClick={() => openModal("asset")} startIcon={<InventoryIcon />}>
+              <Button variant="outlined" fullWidth onClick={() => { setAssignError(""); openModal("asset"); }} startIcon={<InventoryIcon />}>
                 {assignForm.assetIds.length === 0 ? "Select Assets (Optional)" : `${assignForm.assetIds.length} selected`}
               </Button>
             )}
-            <TextField fullWidth type="date" label="Due Date" value={assignForm.dueDate} onChange={(e) => setAssignForm((p) => ({ ...p, dueDate: e.target.value }))} InputLabelProps={{ shrink: true }} required />
-            <TextField fullWidth multiline rows={3} label="Notes" value={assignForm.notes} onChange={(e) => setAssignForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Add instructions or context..." />
+            <TextField fullWidth type="date" label="Due Date" value={assignForm.dueDate} onChange={(e) => { setAssignError(""); setAssignForm((p) => ({ ...p, dueDate: e.target.value })); }} InputLabelProps={{ shrink: true }} required />
+            <TextField fullWidth multiline rows={3} label="Notes" value={assignForm.notes} onChange={(e) => { setAssignError(""); setAssignForm((p) => ({ ...p, notes: e.target.value })); }} placeholder="Add instructions or context..." />
           </Stack>
         </DialogContent>
         <DialogActions
@@ -1484,17 +1618,75 @@ export default function AssignedChecklist() {
       </Dialog>
 
       {/* ── Selection Modals ── */}
-      <SelectionModal open={modalStates.checklist}      onClose={() => closeModal("checklist")}      title="Select Checklists"    items={checklists}   loading={checklistsLoading} selectedIds={assignForm.checklistIds}     onToggle={(id) => setAssignForm((p) => ({ ...p, checklistIds: p.checklistIds.includes(id) ? p.checklistIds.filter((i) => i !== id) : [...p.checklistIds, id] }))} onDone={() => closeModal("checklist")} />
-      <SelectionModal open={modalStates.admin}          onClose={() => closeModal("admin")}          title="Select Admin"         items={admins}       loading={adminsLoading}     selectedIds={assignForm.adminId}         onToggle={(id) => setAssignForm((p) => ({ ...p, adminId: id }))}                                                                                                         onDone={() => closeModal("admin")}      multiSelect={false} />
+      <SelectionModal open={modalStates.checklist}      onClose={() => closeModal("checklist")}      title="Select Checklists"    items={checklists}   loading={checklistsLoading} selectedIds={assignForm.checklistIds}     onToggle={(id) => { setAssignError(""); setAssignForm((p) => ({ ...p, checklistIds: p.checklistIds.includes(id) ? p.checklistIds.filter((i) => i !== id) : [...p.checklistIds, id] })); }} onDone={() => closeModal("checklist")} />
+      <SelectionModal open={modalStates.admin}          onClose={() => closeModal("admin")}          title="Select Admin"         items={admins}       loading={adminsLoading}     selectedIds={assignForm.adminId}         onToggle={(id) => { setAssignError(""); setAssignForm((p) => ({ ...p, adminId: id })); }}                                                                                                         onDone={() => closeModal("admin")}      multiSelect={false} />
       <SelectionModal open={modalStates.reassignAdmin}  onClose={() => closeModal("reassignAdmin")}  title="Select New Admin"     items={admins}       loading={adminsLoading}     selectedIds={reassignForm.newAdminId}    onToggle={(id) => setReassignForm((p) => ({ ...p, newAdminId: id }))}                                                                                                    onDone={() => closeModal("reassignAdmin")} multiSelect={false} />
-      <SelectionModal open={modalStates.team}           onClose={() => closeModal("team")}           title="Select Team Members"  items={activeTeamMembers}  loading={teamLoading}       selectedIds={assignForm.teamMemberIds}   onToggle={(id) => setAssignForm((p) => ({ ...p, teamMemberIds: p.teamMemberIds.includes(id) ? p.teamMemberIds.filter((i) => i !== id) : [...p.teamMemberIds, id] }))}  onDone={() => closeModal("team")} />
-      <SelectionModal open={modalStates.asset}          onClose={() => closeModal("asset")}          title="Select Assets"        items={assets}       loading={assetsLoading}     selectedIds={assignForm.assetIds}        onToggle={(id) => setAssignForm((p) => ({ ...p, assetIds: p.assetIds.includes(id) ? p.assetIds.filter((i) => i !== id) : [...p.assetIds, id] }))}                        onDone={() => closeModal("asset")} />
+      <SelectionModal open={modalStates.team}           onClose={() => closeModal("team")}           title="Select Team Members"  items={activeTeamMembers}  loading={teamLoading}       selectedIds={assignForm.teamMemberIds}   onToggle={(id) => { setAssignError(""); setAssignForm((p) => ({ ...p, teamMemberIds: p.teamMemberIds.includes(id) ? p.teamMemberIds.filter((i) => i !== id) : [...p.teamMemberIds, id] })); }}  onDone={() => closeModal("team")} />
+      <SelectionModal open={modalStates.asset}          onClose={() => closeModal("asset")}          title="Select Assets"        items={assets}       loading={assetsLoading}     selectedIds={assignForm.assetIds}        onToggle={(id) => { setAssignError(""); setAssignForm((p) => ({ ...p, assetIds: p.assetIds.includes(id) ? p.assetIds.filter((i) => i !== id) : [...p.assetIds, id] })); }}                        onDone={() => closeModal("asset")} />
       <SelectionModal open={modalStates.reassignTeam}   onClose={() => closeModal("reassignTeam")}   title="Select Team Members"  items={activeTeamMembers}  loading={teamLoading}       selectedIds={reassignForm.teamMemberIds} onToggle={(id) => setReassignForm((p) => ({ ...p, teamMemberIds: p.teamMemberIds.includes(id) ? p.teamMemberIds.filter((i) => i !== id) : [...p.teamMemberIds, id] }))} onDone={() => closeModal("reassignTeam")} />
       <SelectionModal open={modalStates.reassignAsset}  onClose={() => closeModal("reassignAsset")}  title="Select Assets"        items={assets}       loading={assetsLoading}     selectedIds={reassignForm.assetIds}      onToggle={(id) => setReassignForm((p) => ({ ...p, assetIds: p.assetIds.includes(id) ? p.assetIds.filter((i) => i !== id) : [...p.assetIds, id] }))}                     onDone={() => closeModal("reassignAsset")} />
 
       {/* ── Snackbar ── */}
-      <Snackbar open={snack.open} autoHideDuration={4000} onClose={closeSnack} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
-        <Alert severity={snack.severity} onClose={closeSnack} sx={{ borderRadius: 3, fontWeight: 600 }}>{snack.msg}</Alert>
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={6000}
+        onClose={closeSnack}
+
+        sx={{
+          zIndex: 99999,
+          top: { xs: 16, sm: 24 },
+          right: { xs: 16, sm: 24 },
+          maxWidth: { xs: "calc(100vw - 32px)", sm: 560 },
+        }}
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert
+          severity={snack.severity}
+          onClose={closeSnack}
+          sx={{
+            borderRadius: 3,
+            fontWeight: 700,
+            fontSize: 13,
+            width: "100%",
+            maxWidth: 560,
+            color: isDark
+              ? snack.severity === "success"
+                ? "#bbf7d0"
+                : "#fecaca"
+              : undefined,
+            bgcolor: isDark
+              ? snack.severity === "success"
+                ? "#052e1a"
+                : "#351616"
+              : undefined,
+            border: isDark
+              ? `1px solid ${
+                  snack.severity === "success"
+                    ? "rgba(74, 222, 128, 0.35)"
+                    : "rgba(248, 113, 113, 0.35)"
+                }`
+              : undefined,
+            boxShadow: isDark
+              ? "0 18px 40px rgba(0,0,0,0.45)"
+              : "0 12px 28px rgba(15,23,42,0.16)",
+            "& .MuiAlert-icon": {
+              color: isDark
+                ? snack.severity === "success"
+                  ? "#4ade80"
+                  : "#f87171"
+                : undefined,
+              opacity: 1,
+            },
+            "& .MuiAlert-action .MuiIconButton-root": {
+              color: isDark
+                ? snack.severity === "success"
+                  ? "#bbf7d0"
+                  : "#fecaca"
+                : undefined,
+            },
+          }}
+        >
+          {snack.msg}
+        </Alert>
       </Snackbar>
     </ThemeProvider>
   );

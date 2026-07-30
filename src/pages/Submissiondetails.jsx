@@ -207,7 +207,10 @@ export default function SubmissionDetails() {
     if (photo?._fileType && photo?._fileIndex != null) {
       try {
         const token =
-          localStorage.getItem("accessToken") || localStorage.getItem("token");
+          localStorage.getItem("accessToken") ||
+          localStorage.getItem("token") ||
+          sessionStorage.getItem("accessToken") ||
+          sessionStorage.getItem("token");
         const response = await fetch(
           `https://synversys-backend.onrender.com/api/v1/assignments/submissions/${id}/files/${photo._fileType}/${photo._fileIndex}`,
           {
@@ -876,8 +879,7 @@ export default function SubmissionDetails() {
           open={snackbar.open}
           autoHideDuration={4000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert severity={snackbar.severity} sx={{ borderRadius: 2 }}>
             {snackbar.message}
           </Alert>

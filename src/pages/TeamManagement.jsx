@@ -171,12 +171,26 @@ function StatCard({ title, value, icon: Icon, color, active, onClick }) {
       }}
       sx={{
         borderRadius: "14px",
-        width: {xs:"169px",md:"276px"},
+        width: "100%",
+        minWidth: 0,
+        height: "100%",
+        position: "relative",
+        overflow: "hidden",
         border: `1px solid ${active ? color : C.border}`,
         cursor: onClick ? "pointer" : "default",
-        outline: "none",
-        boxShadow: active ? `0 8px 24px ${alpha(color, 0.14)}` : "none",
-        transition: "all 0.2s",
+        outline: active ? `3px solid ${alpha(color, 0.65)}` : "none",
+        outlineOffset: active ? "-3px" : 0,
+        boxShadow: active ? `0 12px 28px ${alpha(color, 0.18)}` : "none",
+        transition: "border-color 0.2s, box-shadow 0.2s, outline-color 0.2s",
+        "&::before": active
+          ? {
+              content: '""',
+              position: "absolute",
+              inset: "0 auto 0 0",
+              width: 4,
+              bgcolor: color,
+            }
+          : {},
         "&:focus-visible": {
           boxShadow: `0 0 0 3px ${alpha(color, 0.22)}`,
         },
@@ -186,7 +200,7 @@ function StatCard({ title, value, icon: Icon, color, active, onClick }) {
         },
       }}
     >
-      <CardContent sx={{ p: 2.5 }}>
+      <CardContent sx={{ p: { xs: 2, sm: 2.25 } }}>
         <Box
           sx={{
             display: "flex",
@@ -222,7 +236,7 @@ function StatCard({ title, value, icon: Icon, color, active, onClick }) {
         </Box>
         <Typography
           sx={{
-            fontSize: "1.75rem",
+            fontSize: { xs: "1.55rem", sm: "1.75rem" },
             fontWeight: 700,
             color: C.text.primary,
             lineHeight: 1.2,
@@ -1355,9 +1369,19 @@ export default function TeamManagement() {
         </Box>
 
         {/* ── Stats ── */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "repeat(2, minmax(0, 1fr))",
+              md: "repeat(4, minmax(0, 1fr))",
+            },
+            gap: 2,
+            mb: 3,
+          }}
+        >
           {statCards.map((card, i) => (
-            <Grid item xs={6} sm={3} key={i}>
+            <Box key={i} sx={{ minWidth: 0 }}>
               <StatCard
                 {...card}
                 active={
@@ -1370,9 +1394,9 @@ export default function TeamManagement() {
                     : undefined
                 }
               />
-            </Grid>
+            </Box>
           ))}
-        </Grid>
+        </Box>
 
         {/* ── Search + Filter Panel ── */}
         <Paper
@@ -1694,8 +1718,7 @@ export default function TeamManagement() {
         open={toast.open}
         autoHideDuration={4000}
         onClose={closeToast}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={closeToast}
           severity={toast.severity}

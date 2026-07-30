@@ -32,10 +32,9 @@ import {
   ImageList,
   ImageListItem,
   useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
-  createTheme,
-  ThemeProvider,
   styled,
 } from "@mui/material/styles";
 import {
@@ -65,47 +64,6 @@ import {
 } from "../utils/formDraft";
 
 // ─── Theme (simplified, neutral) ───────────────────────────────────────────────
-const theme = createTheme({
-  palette: {
-    primary: { main: "#111827", contrastText: "#fff" },
-    secondary: { main: "#2563EB" },
-    success: { main: "#16A34A" },
-    warning: { main: "#D97706" },
-    error: { main: "#DC2626" },
-    background: { default: "#FFFFFF", paper: "#FFFFFF" },
-    text: { primary: "#111827", secondary: "#6B7280" },
-    divider: "#E5E7EB",
-  },
-  shape: { borderRadius: 8 },
-  typography: {
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    h5: { fontWeight: 700 },
-    h6: { fontWeight: 700 },
-    body2: { fontSize: "0.85rem" },
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: { textTransform: "none", fontWeight: 600, borderRadius: 6 },
-      },
-    },
-    MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },
-    MuiTextField: { defaultProps: { size: "small" } },
-    MuiOutlinedInput: {
-      styleOverrides: {
-        root: {
-          borderRadius: 6,
-          fontSize: "0.875rem",
-          "& fieldset": { borderColor: "#D1D5DB" },
-          "&:hover fieldset": { borderColor: "#9CA3AF" },
-          "&.Mui-focused fieldset": { borderColor: "#111827" },
-        },
-      },
-    },
-  },
-});
-
-// ─── Config (neutral labels, single accent) ──────────────────────────────────
 const STATUS_CFG = {
   pending: { label: "Pending" },
   in_progress: { label: "In Progress" },
@@ -122,45 +80,57 @@ const PRIORITY_CFG = {
   critical: { label: "Critical", color: "#dc2626", bg: "#fef2f2" },
 };
 
+const formatDueDate = (value) => {
+  if (!value) return "Not specified";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not specified";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
 // ─── Styled ──────────────────────────────────────────────────────────────────
-const SectionCard = styled(Paper)({
+const SectionCard = styled(Paper)(({ theme }) => ({
   borderRadius: 8,
-  border: "1px solid #E5E7EB",
+  border: `1px solid ${theme.palette.divider}`,
   marginBottom: 20,
   overflow: "hidden",
-});
+  backgroundColor: theme.palette.background.paper,
+}));
 
-const SectionHeader = styled(Box)({
+const SectionHeader = styled(Box)(({ theme }) => ({
   padding: "14px 20px",
-  borderBottom: "1px solid #E5E7EB",
+  borderBottom: `1px solid ${theme.palette.divider}`,
   display: "flex",
   alignItems: "center",
   gap: 10,
-});
+}));
 
-const FieldWrapper = styled(Box)({
+const FieldWrapper = styled(Box)(({ theme }) => ({
   padding: "18px 20px",
-  "&:not(:last-child)": { borderBottom: "1px solid #F3F4F6" },
-});
+  "&:not(:last-child)": { borderBottom: `1px solid ${theme.palette.divider}` },
+}));
 
-const InfoPill = ({ icon: Icon, label, value }) => (
+const InfoPill = ({ icon: Icon, label, value }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
+  return (
   <Box
     sx={{
       display: "flex",
       alignItems: "flex-start",
       gap: 1.25,
       p: 1.5,
-      border: "1px solid #E5E7EB",
+      border: `1px solid ${isDark ? "rgba(217, 226, 239, 0.78)" : "#E5E7EB"}`,
       borderRadius: 1.5,
     }}
   >
-    <Icon sx={{ fontSize: 18, color: "#6B7280", mt: 0.2 }} />
+    <Icon sx={{ fontSize: 18, color: theme.palette.text.secondary, mt: 0.2 }} />
     <Box>
       <Typography
         sx={{
           fontSize: "0.68rem",
           fontWeight: 600,
-          color: "#9CA3AF",
+          color: theme.palette.text.secondary,
           textTransform: "uppercase",
           letterSpacing: "0.06em",
           mb: 0.3,
@@ -168,15 +138,18 @@ const InfoPill = ({ icon: Icon, label, value }) => (
       >
         {label}
       </Typography>
-      <Typography sx={{ fontSize: "0.83rem", fontWeight: 600, color: "#111827" }}>
+      <Typography sx={{ fontSize: "0.83rem", fontWeight: 600, color: theme.palette.text.primary }}>
         {value || "—"}
       </Typography>
     </Box>
   </Box>
-);
+  );
+};
 
 // ─── Signature Canvas ─────────────────────────────────────────────────────────
 function SignatureCanvas({ value, onChange }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const canvasRef = useRef(null);
   const wrapperRef = useRef(null);
   const drawing = useRef(false);
@@ -290,7 +263,8 @@ function SignatureCanvas({ value, onChange }) {
       <Box
         sx={{
           position: "relative",
-          border: "1px dashed #D1D5DB",
+          border: `1px dashed ${isDark ? "rgba(226, 232, 240, 0.78)" : "#D1D5DB"}`,
+          bgcolor: isDark ? "rgba(15, 28, 46, 0.54)" : "transparent",
           borderRadius: 1.5,
           p: 1,
           overflow: "hidden",
@@ -306,6 +280,7 @@ function SignatureCanvas({ value, onChange }) {
             height: 130,
             cursor: "crosshair",
             touchAction: "none",
+            filter: isDark ? "invert(1) brightness(1.35)" : "none",
           }}
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
@@ -325,8 +300,8 @@ function SignatureCanvas({ value, onChange }) {
               gap: 0.75,
             }}
           >
-            <DrawIcon sx={{ fontSize: 22, color: "#D1D5DB" }} />
-            <Typography sx={{ fontSize: "0.75rem", color: "#9CA3AF" }}>
+            <DrawIcon sx={{ fontSize: 22, color: isDark ? "rgba(226, 232, 240, 0.7)" : "#D1D5DB" }} />
+            <Typography sx={{ fontSize: "0.75rem", color: isDark ? "rgba(226, 232, 240, 0.74)" : "#9CA3AF" }}>
               Draw your signature
             </Typography>
           </Box>
@@ -668,7 +643,9 @@ export default function TaskDetails() {
   const openedDraftRef = useRef({ responses: {}, notes: "" });
   const hadDraftOnOpenRef = useRef(false);
   const draftKey = `taskInspectionDraft:${id || "unknown"}`;
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const appTheme = useTheme();
+  const isMobile = useMediaQuery(appTheme.breakpoints.down("sm"));
+  const subtleBorder = appTheme.palette.mode === "dark" ? "rgba(217, 226, 239, 0.78)" : "#E5E7EB";
 
   const [task, setTask] = useState(null);
   const [responses, setResponses] = useState({});
@@ -683,6 +660,7 @@ export default function TaskDetails() {
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [submissionInfo, setSubmissionInfo] = useState(null);
   const [poaDialogOpen, setPoaDialogOpen] = useState(false);
+  const [poaConfirmOpen, setPoaConfirmOpen] = useState(false);
   const [poaFeedback, setPoaFeedback] = useState("");
   const [poaFiles, setPoaFiles] = useState([]);
   const [poaError, setPoaError] = useState("");
@@ -823,16 +801,28 @@ export default function TaskDetails() {
 
   const closePoaDialog = () => {
     if (isSubmitting) return;
+    setPoaConfirmOpen(false);
     setPoaDialogOpen(false);
     setPoaFeedback("");
     setPoaFiles([]);
     setPoaError("");
   };
 
+  const handleReviewPoaSubmit = () => {
+    const feedback = poaFeedback.trim();
+    if (!feedback) {
+      setPoaError("Feedback is required");
+      return;
+    }
+    setPoaError("");
+    setPoaConfirmOpen(true);
+  };
+
   const handleSubmitPoa = async () => {
     const feedback = poaFeedback.trim();
     if (!feedback) {
       setPoaError("Feedback is required");
+      setPoaConfirmOpen(false);
       return;
     }
 
@@ -845,25 +835,34 @@ export default function TaskDetails() {
     formData.append("feedback", feedback);
     poaFiles.forEach((file) => formData.append("attachments", file));
 
-    const result = await submitPoa(id, formData);
-    if (result.success) {
-      toast(result.message || "POA submitted successfully", "success");
-      setTask((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: "submitted",
-              myStatus: "submitted",
-              poaSubmissions: [
-                ...(Array.isArray(prev.poaSubmissions) ? prev.poaSubmissions : []),
-                result.assignment?.poaSubmissions?.at?.(-1) || { feedback, submittedAt: new Date().toISOString() },
-              ],
-            }
-          : prev,
-      );
-      closePoaDialog();
-    } else {
-      toast(result.error || "Failed to submit POA", "error");
+    setLocalSubmitting(true);
+    try {
+      const result = await submitPoa(id, formData);
+      if (result.success) {
+        toast(result.message || "POA submitted successfully", "success");
+        setTask((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: "submitted",
+                myStatus: "submitted",
+                poaSubmissions: [
+                  ...(Array.isArray(prev.poaSubmissions) ? prev.poaSubmissions : []),
+                  result.assignment?.poaSubmissions?.at?.(-1) || { feedback, submittedAt: new Date().toISOString() },
+                ],
+              }
+            : prev,
+        );
+        setPoaConfirmOpen(false);
+        setPoaDialogOpen(false);
+        setPoaFeedback("");
+        setPoaFiles([]);
+        setPoaError("");
+      } else {
+        toast(result.error || "Failed to submit POA", "error");
+      }
+    } finally {
+      setLocalSubmitting(false);
     }
   };
 
@@ -1126,15 +1125,14 @@ export default function TaskDetails() {
   // ── Already Submitted View ──────────────────────────────────────────────────
   if (!isLoading && alreadySubmitted && task) {
     return (
-      <ThemeProvider theme={theme}>
         <Box sx={{ minHeight: "100vh" }}>
-          <Box sx={{ borderBottom: "1px solid #E5E7EB" }}>
+          <Box sx={{ borderBottom: `1px solid ${appTheme.palette.divider}` }}>
             <Container maxWidth="lg" sx={{ py: 3 }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                 <Tooltip title="Back to tasks">
                   <IconButton
                     onClick={handleCloseTask}
-                    sx={{ border: "1px solid #E5E7EB", borderRadius: 1.5 }}
+                    sx={{ border: `1px solid ${subtleBorder}`, borderRadius: 1.5 }}
                   >
                     <ArrowBackIcon sx={{ fontSize: 19 }} />
                   </IconButton>
@@ -1326,7 +1324,7 @@ export default function TaskDetails() {
               </Button>
               <Button
                 variant="contained"
-                onClick={handleSubmitPoa}
+                onClick={handleReviewPoaSubmit}
                 disabled={isSubmitting}
                 startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
                 sx={{
@@ -1340,15 +1338,98 @@ export default function TaskDetails() {
               </Button>
             </DialogActions>
           </Dialog>
+
+          <Dialog
+            open={poaConfirmOpen}
+            onClose={() => !isSubmitting && setPoaConfirmOpen(false)}
+            maxWidth="xs"
+            fullWidth
+            PaperProps={{
+              sx: {
+                borderRadius: 2,
+                border: `1px solid ${subtleBorder}`,
+              },
+            }}
+          >
+            <DialogTitle sx={{ pt: 3, pb: 1.5 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <CheckCircleOutlineIcon sx={{ color: "#16A34A", fontSize: 26 }} />
+                <Box>
+                  <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>
+                    Ready to submit POA?
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", fontWeight: 400 }}>
+                    Review before confirming
+                  </Typography>
+                </Box>
+              </Box>
+            </DialogTitle>
+
+            <DialogContent sx={{ pb: 0 }}>
+              <Typography sx={{ fontSize: "0.84rem", color: "text.secondary", lineHeight: 1.6 }}>
+                You're about to submit proof of action for this inspection. Once submitted, the POA will be sent for admin review.
+              </Typography>
+
+              <Alert severity="warning" icon={<WarningIcon sx={{ fontSize: 17 }} />} sx={{ mt: 2, borderRadius: 1.5 }}>
+                You can keep editing now, or confirm and submit the POA.
+              </Alert>
+
+              <Box sx={{ mt: 2, p: 2, border: `1px solid ${subtleBorder}`, borderRadius: 1.5 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                  <Typography sx={{ fontSize: "0.75rem", fontWeight: 600, color: "text.secondary" }}>
+                    POA feedback
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "#16A34A" }}>
+                    Ready
+                  </Typography>
+                </Box>
+                <LinearProgress
+                  variant="determinate"
+                  value={100}
+                  sx={{
+                    height: 5,
+                    borderRadius: 3,
+                    bgcolor: appTheme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.16)" : "#E5E7EB",
+                    "& .MuiLinearProgress-bar": {
+                      borderRadius: 3,
+                      bgcolor: "#16A34A",
+                    },
+                  }}
+                />
+                <Typography sx={{ fontSize: "0.7rem", color: "text.secondary", mt: 0.75 }}>
+                  {poaFeedback.trim().length} characters entered
+                  {poaFiles.length ? ` · ${poaFiles.length} attachment${poaFiles.length === 1 ? "" : "s"}` : ""}
+                </Typography>
+              </Box>
+            </DialogContent>
+
+            <DialogActions sx={{ px: 3, py: 2.5, gap: 1 }}>
+              <Button
+                onClick={() => setPoaConfirmOpen(false)}
+                disabled={isSubmitting}
+                variant="outlined"
+                sx={{ flex: 1, borderColor: subtleBorder, color: "text.primary" }}
+              >
+                Keep Editing
+              </Button>
+              <Button
+                onClick={handleSubmitPoa}
+                variant="contained"
+                disabled={isSubmitting}
+                startIcon={isSubmitting ? <CircularProgress size={13} color="inherit" /> : null}
+                sx={{ flex: 2, boxShadow: "none", bgcolor: "#0c3d67", "&:hover": { bgcolor: "#082f50" } }}
+              >
+                {isSubmitting ? "Submitting..." : "Confirm & Submit"}
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
-      </ThemeProvider>
     );
   }
 
   // ── Loading state ───────────────────────────────────────────────────────────
   if (isLoading && !task) {
     return (
-      <ThemeProvider theme={theme}>
         <Box
           sx={{
             minHeight: "100vh",
@@ -1364,23 +1445,21 @@ export default function TaskDetails() {
             </Typography>
           </Box>
         </Box>
-      </ThemeProvider>
     );
   }
 
   if (!task) return null;
 
   return (
-    <ThemeProvider theme={theme}>
       <Box sx={{ minHeight: "100vh" }}>
         {/* ── Header ── */}
-        <Box sx={{ borderBottom: "1px solid #E5E7EB" }}>
+        <Box sx={{ borderBottom: `1px solid ${appTheme.palette.divider}` }}>
           <Container maxWidth="lg" sx={{ py: 3 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2.5 }}>
               <Tooltip title="Back to tasks">
                 <IconButton
                   onClick={handleCloseTask}
-                  sx={{ border: "1px solid #E5E7EB", borderRadius: 1.5 }}
+                  sx={{ border: `1px solid ${subtleBorder}`, borderRadius: 1.5 }}
                 >
                   <ArrowBackIcon sx={{ fontSize: 19 }} />
                 </IconButton>
@@ -1427,7 +1506,7 @@ export default function TaskDetails() {
               </Stack>
             </Box>
 
-            <Box sx={{ border: "1px solid #E5E7EB", borderRadius: 1.5, p: 2 }}>
+            <Box sx={{ border: `1px solid ${subtleBorder}`, borderRadius: 1.5, p: 2 }}>
               <Box
                 sx={{
                   display: "flex",
@@ -1454,7 +1533,7 @@ export default function TaskDetails() {
                 sx={{
                   height: 6,
                   borderRadius: 3,
-                  bgcolor: "#E5E7EB",
+                  bgcolor: appTheme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.18)" : "#E5E7EB",
                   "& .MuiLinearProgress-bar": { borderRadius: 3 },
                 }}
               />
@@ -1510,7 +1589,7 @@ export default function TaskDetails() {
                   <InfoPill
                     icon={CalendarIcon}
                     label="Due Date"
-                    value={task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "Not specified"}
+                    value={formatDueDate(task.dueDate)}
                   />
                 </Grid>
               </Grid>
@@ -1854,8 +1933,7 @@ export default function TaskDetails() {
           open={snack.open}
           autoHideDuration={6000}
           onClose={() => setSnack((s) => ({ ...s, open: false }))}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert
             severity={snack.severity}
             onClose={() => setSnack((s) => ({ ...s, open: false }))}
@@ -1865,6 +1943,6 @@ export default function TaskDetails() {
           </Alert>
         </Snackbar>
       </Box>
-    </ThemeProvider>
   );
 }
+

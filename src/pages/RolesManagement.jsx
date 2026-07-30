@@ -36,6 +36,7 @@ import {
   Tab,
   useMediaQuery,
   useTheme,
+  alpha,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -57,6 +58,7 @@ import { useAuth } from "../context/AuthContexts";
 const RolesManagement = () => {
   const navigate = useNavigate(); // Added for navigation
   const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user } = useAuth();
   const {
@@ -343,10 +345,13 @@ const RolesManagement = () => {
               width: { xs: 34, sm: 40 },
               height: { xs: 34, sm: 40 },
               borderRadius: "10px",
-              bgcolor: "#f5f5f5",
-              color: primaryColor,
+              bgcolor: isDark ? "rgba(103, 232, 249, 0.12)" : "#f5f5f5",
+              color: isDark ? "#67e8f9" : primaryColor,
+              border: `1px solid ${
+                isDark ? "rgba(103, 232, 249, 0.22)" : "transparent"
+              }`,
               "&:hover": {
-                bgcolor: "#e0e0e0",
+                bgcolor: isDark ? "rgba(103, 232, 249, 0.18)" : "#e0e0e0",
               },
             }}
           >
@@ -582,15 +587,23 @@ const RolesManagement = () => {
           <Box
             sx={{
               p: 1.5,
-              bgcolor: "#e8f5e9",
+              bgcolor: isDark ? alpha("#4ade80", 0.12) : "#e8f5e9",
+              border: `1px solid ${
+                isDark ? alpha("#4ade80", 0.24) : "transparent"
+              }`,
               borderBottom: 1,
-              borderColor: "#e0e0e0",
+              borderBottomColor: isDark
+                ? "rgba(148, 163, 184, 0.18)"
+                : "#e0e0e0",
               display: "flex",
               alignItems: "center",
               gap: 2,
             }}
           >
-            <Typography variant="body2" sx={{ color: primaryColor }}>
+            <Typography
+              variant="body2"
+              sx={{ color: isDark ? "#bbf7d0" : primaryColor, fontWeight: 600 }}
+            >
               {selectedRoles.length} selected
             </Typography>
             <Button
@@ -598,7 +611,15 @@ const RolesManagement = () => {
               color="error"
               onClick={handleBulkDelete}
               variant="outlined"
-              sx={{ textTransform: "none" }}
+              sx={{
+                textTransform: "none",
+                borderColor: isDark ? alpha("#f87171", 0.5) : undefined,
+                color: isDark ? "#f87171" : undefined,
+                "&:hover": {
+                  borderColor: isDark ? "#f87171" : undefined,
+                  bgcolor: isDark ? alpha("#f87171", 0.08) : undefined,
+                },
+              }}
             >
               Delete Selected
             </Button>
@@ -668,21 +689,9 @@ const RolesManagement = () => {
                       </Box>
                     </Stack>
                   </Box>
-                  <Stack direction="row" spacing={0.25}>
-                    <IconButton size="small" onClick={() => handleViewRole(role)}>
-                      <ViewIcon fontSize="small" sx={{ color: "#666" }} />
-                    </IconButton>
-                    {isEditable && (
-                      <>
-                        <IconButton size="small" onClick={() => handleOpenDialog(role)}>
-                          <EditIcon fontSize="small" sx={{ color: "#666" }} />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => handleDelete(role._id)}>
-                          <DeleteIcon fontSize="small" sx={{ color: "#f44336" }} />
-                        </IconButton>
-                      </>
-                    )}
-                  </Stack>
+                  <IconButton size="small" onClick={(e) => handleMenuOpen(e, role)}>
+                    <MoreVertIcon fontSize="small" sx={{ color: "#666" }} />
+                  </IconButton>
                 </Stack>
               </Paper>
             ))}
@@ -774,57 +783,17 @@ const RolesManagement = () => {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Stack
-                      direction="row"
-                      spacing={0.5}
-                      justifyContent="flex-end"
-                    >
-                      <Tooltip title="View">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleViewRole(role)}
-                        >
-                          <ViewIcon fontSize="small" sx={{ color: "#666" }} />
-                        </IconButton>
-                      </Tooltip>
-                      {isEditable && (
-                        <>
-                          <Tooltip title="Edit">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleOpenDialog(role)}
-                            >
-                              <EditIcon
-                                fontSize="small"
-                                sx={{ color: "#666" }}
-                              />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDelete(role._id)}
-                            >
-                              <DeleteIcon
-                                fontSize="small"
-                                sx={{ color: "#f44336" }}
-                              />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="More">
-                            <IconButton
-                              size="small"
-                              onClick={(e) => handleMenuOpen(e, role)}
-                            >
-                              <MoreVertIcon
-                                fontSize="small"
-                                sx={{ color: "#666" }}
-                              />
-                            </IconButton>
-                          </Tooltip>
-                        </>
-                      )}
-                    </Stack>
+                    <Tooltip title="Actions">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => handleMenuOpen(e, role)}
+                      >
+                        <MoreVertIcon
+                          fontSize="small"
+                          sx={{ color: "#666" }}
+                        />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
@@ -1079,7 +1048,7 @@ const RolesManagement = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Menu */}
+      {/* Menu — single source of truth for row actions now */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -1087,29 +1056,45 @@ const RolesManagement = () => {
       >
         <MenuItem
           onClick={() => {
-            handleToggleStatus(selectedRole);
+            handleViewRole(selectedRole);
             handleMenuClose();
           }}
         >
-          {selectedRole?.isActive ? "Deactivate" : "Activate"}
+          <ViewIcon fontSize="small" sx={{ mr: 1.25, color: "#666" }} />
+          View Details
         </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleOpenDialog(selectedRole);
-            handleMenuClose();
-          }}
-        >
-          Edit
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleDelete(selectedRole?._id);
-            handleMenuClose();
-          }}
-          sx={{ color: "#f44336" }}
-        >
-          Delete
-        </MenuItem>
+        {isEditable && [
+          <MenuItem
+            key="toggle"
+            onClick={() => {
+              handleToggleStatus(selectedRole);
+              handleMenuClose();
+            }}
+          >
+            {selectedRole?.isActive ? "Deactivate" : "Activate"}
+          </MenuItem>,
+          <MenuItem
+            key="edit"
+            onClick={() => {
+              handleOpenDialog(selectedRole);
+              handleMenuClose();
+            }}
+          >
+            <EditIcon fontSize="small" sx={{ mr: 1.25, color: "#666" }} />
+            Edit
+          </MenuItem>,
+          <MenuItem
+            key="delete"
+            onClick={() => {
+              handleDelete(selectedRole?._id);
+              handleMenuClose();
+            }}
+            sx={{ color: "#f44336" }}
+          >
+            <DeleteIcon fontSize="small" sx={{ mr: 1.25, color: "#f44336" }} />
+            Delete
+          </MenuItem>,
+        ]}
       </Menu>
 
       {/* Snackbar */}
@@ -1117,8 +1102,7 @@ const RolesManagement = () => {
         open={snack.open}
         autoHideDuration={4000}
         onClose={() => setSnack({ ...snack, open: false })}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity={snack.severity}
           onClose={() => setSnack({ ...snack, open: false })}
@@ -1134,8 +1118,7 @@ const RolesManagement = () => {
           open={!!error}
           autoHideDuration={6000}
           onClose={clearError}
-          anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert severity="error" onClose={clearError} sx={{ borderRadius: 2 }}>
             {error}
           </Alert>

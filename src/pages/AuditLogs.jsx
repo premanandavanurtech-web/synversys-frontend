@@ -80,18 +80,45 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-/* ─── Design tokens ─── */
-const T = {
+/* ─── Design tokens (dark theme) ─── */
+const DARK_AUDIT_TOKENS = {
   radius: "10px",
   radiusLg: "14px",
   border: "1px solid",
-  borderColor: "#f0f0f0",
-  cardBg: "#ffffff",
-  textPrimary: "#111827",
-  textSecondary: "#6b7280",
-  textMuted: "#9ca3af",
-  accent: "#0f4c61",
+  borderColor: "#1c2e3a",
+  cardBg: "#0f1e29",
+  pageBg: "#0a1620",
+  textPrimary: "#e7eef2",
+  textSecondary: "#8ca0ac",
+  textMuted: "#5c7280",
+  accent: "#1fb6cf",
+  accentDark: "#0d8ba1",
+  accentContrast: "#04141a",
+  hoverRow: alpha("#1fb6cf", 0.06),
   fontMono: "'JetBrains Mono', 'Fira Code', monospace",
+};
+
+const LIGHT_AUDIT_TOKENS = {
+  radius: "10px",
+  radiusLg: "14px",
+  border: "1px solid",
+  borderColor: "#d8e2e8",
+  cardBg: "#ffffff",
+  pageBg: "#f7fafc",
+  textPrimary: "#102a36",
+  textSecondary: "#526575",
+  textMuted: "#7a8a99",
+  accent: "#0f6f86",
+  accentDark: "#0b5265",
+  accentContrast: "#ffffff",
+  hoverRow: alpha("#0f6f86", 0.06),
+  fontMono: "'JetBrains Mono', 'Fira Code', monospace",
+};
+
+const T = { ...DARK_AUDIT_TOKENS };
+
+const applyAuditThemeTokens = (mode) => {
+  Object.assign(T, mode === "light" ? LIGHT_AUDIT_TOKENS : DARK_AUDIT_TOKENS);
 };
 
 /* ─── Shared chip geometry — keeps every badge in the table on the same rhythm ─── */
@@ -142,182 +169,182 @@ const humanize = (value = "") =>
     .replace(/\s+/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
-/* ─── Action config ─── */
+/* ─── Action config (accent colors kept vivid; bg is a translucent tint for dark surfaces) ─── */
 const ACTION_CONFIG = {
   CREATE: {
     label: "Create",
-    bg: "#f0fdf4",
-    color: "#16a34a",
+    color: "#4ade80",
+    bg: alpha("#4ade80", 0.16),
     icon: <CreateIcon sx={{ fontSize: 11 }} />,
   },
   UPDATE: {
     label: "Update",
-    bg: "#eff6ff",
-    color: "#2563eb",
+    color: "#60a5fa",
+    bg: alpha("#60a5fa", 0.16),
     icon: <EditIcon sx={{ fontSize: 11 }} />,
   },
   DELETE: {
     label: "Delete",
-    bg: "#fef2f2",
-    color: "#dc2626",
+    color: "#f87171",
+    bg: alpha("#f87171", 0.16),
     icon: <DeleteIcon sx={{ fontSize: 11 }} />,
   },
   SOFT_DELETE: {
     label: "Soft Del",
-    bg: "#fff7ed",
-    color: "#ea580c",
+    color: "#fb923c",
+    bg: alpha("#fb923c", 0.16),
     icon: <DeleteIcon sx={{ fontSize: 11 }} />,
   },
   LOGIN: {
     label: "Login",
-    bg: "#f5f3ff",
-    color: "#1a5c6b",
+    color: "#5cd3e6",
+    bg: alpha("#5cd3e6", 0.16),
     icon: <LoginIcon sx={{ fontSize: 11 }} />,
   },
   LOGOUT: {
     label: "Logout",
-    bg: "#f9fafb",
-    color: "#6b7280",
+    color: "#94a3b0",
+    bg: alpha("#94a3b0", 0.14),
     icon: <LogoutIcon sx={{ fontSize: 11 }} />,
   },
   PASSWORD_CHANGE: {
     label: "Pwd Change",
-    bg: "#fdf4ff",
-    color: "#7c3aed",
+    color: "#c084fc",
+    bg: alpha("#c084fc", 0.16),
     icon: <HistoryIcon sx={{ fontSize: 11 }} />,
   },
   PASSWORD_RESET: {
     label: "Pwd Reset",
-    bg: "#fdf4ff",
-    color: "#7c3aed",
+    color: "#c084fc",
+    bg: alpha("#c084fc", 0.16),
     icon: <HistoryIcon sx={{ fontSize: 11 }} />,
   },
   STATUS_CHANGE: {
     label: "Status Chg",
-    bg: "#fffbeb",
-    color: "#d97706",
+    color: "#facc15",
+    bg: alpha("#facc15", 0.16),
     icon: <CheckCircleIcon sx={{ fontSize: 11 }} />,
   },
   ASSET_CREATED: {
     label: "Asset Created",
-    bg: "#f0fdf4",
-    color: "#16a34a",
+    color: "#4ade80",
+    bg: alpha("#4ade80", 0.16),
     icon: <CreateIcon sx={{ fontSize: 11 }} />,
   },
   ASSET_UPDATED: {
     label: "Asset Updated",
-    bg: "#eff6ff",
-    color: "#2563eb",
+    color: "#60a5fa",
+    bg: alpha("#60a5fa", 0.16),
     icon: <EditIcon sx={{ fontSize: 11 }} />,
   },
   ASSET_DELETED: {
     label: "Asset Deleted",
-    bg: "#fef2f2",
-    color: "#dc2626",
+    color: "#f87171",
+    bg: alpha("#f87171", 0.16),
     icon: <DeleteIcon sx={{ fontSize: 11 }} />,
   },
   ASSET_CLONED: {
     label: "Asset Cloned",
-    bg: "#e0e7ff",
-    color: "#4f46e5",
+    color: "#818cf8",
+    bg: alpha("#818cf8", 0.16),
     icon: <CreateIcon sx={{ fontSize: 11 }} />,
   },
   ASSET_STATUS_UPDATED: {
     label: "Asset Status",
-    bg: "#fffbeb",
-    color: "#d97706",
+    color: "#facc15",
+    bg: alpha("#facc15", 0.16),
     icon: <CheckCircleIcon sx={{ fontSize: 11 }} />,
   },
   ASSET_REQUEST_CREATED: {
     label: "Asset Req",
-    bg: "#d1fae5",
-    color: "#059669",
+    color: "#34d399",
+    bg: alpha("#34d399", 0.16),
     icon: <CheckCircleIcon sx={{ fontSize: 11 }} />,
   },
   CATEGORY_CREATE: {
     label: "Cat Create",
-    bg: "#f0fdf4",
-    color: "#16a34a",
+    color: "#4ade80",
+    bg: alpha("#4ade80", 0.16),
     icon: <CreateIcon sx={{ fontSize: 11 }} />,
   },
   CATEGORY_UPDATE: {
     label: "Cat Update",
-    bg: "#eff6ff",
-    color: "#2563eb",
+    color: "#60a5fa",
+    bg: alpha("#60a5fa", 0.16),
     icon: <EditIcon sx={{ fontSize: 11 }} />,
   },
   CATEGORY_DELETE: {
     label: "Cat Delete",
-    bg: "#fef2f2",
-    color: "#dc2626",
+    color: "#f87171",
+    bg: alpha("#f87171", 0.16),
     icon: <DeleteIcon sx={{ fontSize: 11 }} />,
   },
   LOCATION_CREATED: {
     label: "Loc Created",
-    bg: "#f0fdf4",
-    color: "#16a34a",
+    color: "#4ade80",
+    bg: alpha("#4ade80", 0.16),
     icon: <CreateIcon sx={{ fontSize: 11 }} />,
   },
   LOCATION_UPDATED: {
     label: "Loc Updated",
-    bg: "#eff6ff",
-    color: "#2563eb",
+    color: "#60a5fa",
+    bg: alpha("#60a5fa", 0.16),
     icon: <EditIcon sx={{ fontSize: 11 }} />,
   },
   LOCATION_DELETED: {
     label: "Loc Deleted",
-    bg: "#fef2f2",
-    color: "#dc2626",
+    color: "#f87171",
+    bg: alpha("#f87171", 0.16),
     icon: <DeleteIcon sx={{ fontSize: 11 }} />,
   },
   ROLE_CREATED: {
     label: "Role Created",
-    bg: "#f0fdf4",
-    color: "#16a34a",
+    color: "#4ade80",
+    bg: alpha("#4ade80", 0.16),
     icon: <CreateIcon sx={{ fontSize: 11 }} />,
   },
   ROLE_UPDATED: {
     label: "Role Updated",
-    bg: "#eff6ff",
-    color: "#2563eb",
+    color: "#60a5fa",
+    bg: alpha("#60a5fa", 0.16),
     icon: <EditIcon sx={{ fontSize: 11 }} />,
   },
   ROLE_DELETED: {
     label: "Role Deleted",
-    bg: "#fef2f2",
-    color: "#dc2626",
+    color: "#f87171",
+    bg: alpha("#f87171", 0.16),
     icon: <DeleteIcon sx={{ fontSize: 11 }} />,
   },
   ASSIGN: {
     label: "Assign",
-    bg: "#e0e7ff",
-    color: "#4f46e5",
+    color: "#818cf8",
+    bg: alpha("#818cf8", 0.16),
     icon: <CheckCircleIcon sx={{ fontSize: 11 }} />,
   },
   SUBMIT: {
     label: "Submit",
-    bg: "#d1fae5",
-    color: "#059669",
+    color: "#34d399",
+    bg: alpha("#34d399", 0.16),
     icon: <CheckCircleIcon sx={{ fontSize: 11 }} />,
   },
   default: {
     label: "Event",
-    bg: "#f9fafb",
-    color: "#6b7280",
+    color: "#94a3b0",
+    bg: alpha("#94a3b0", 0.14),
     icon: <EventIcon sx={{ fontSize: 11 }} />,
   },
 };
 
 const ROLE_CONFIG = {
-  super_admin: { label: "Super Admin", bg: "#fef2f2", color: "#dc2626" },
-  admin: { label: "Admin", bg: "#fff7ed", color: "#ea580c" },
-  team: { label: "Team", bg: "#f0fdf4", color: "#16a34a" },
-  default: { label: "Member", bg: "#f9fafb", color: "#6b7280" },
+  super_admin: { label: "Super Admin", color: "#f87171", bg: alpha("#f87171", 0.16) },
+  admin: { label: "Admin", color: "#fb923c", bg: alpha("#fb923c", 0.16) },
+  team: { label: "Team", color: "#4ade80", bg: alpha("#4ade80", 0.16) },
+  default: { label: "Member", color: "#94a3b0", bg: alpha("#94a3b0", 0.14) },
 };
 
 const STATUS_CONFIG = {
-  success: { label: "Success", bg: "#f0fdf4", color: "#16a34a" },
-  failure: { label: "Failed", bg: "#fef2f2", color: "#dc2626" },
+  success: { label: "Success", color: "#4ade80", bg: alpha("#4ade80", 0.16) },
+  failure: { label: "Failed", color: "#f87171", bg: alpha("#f87171", 0.16) },
 };
 
 /* ─── Helpers ─── */
@@ -348,25 +375,42 @@ function StatCard({
   return (
     <Box
       sx={{
-        bgcolor: T.cardBg,
+        position: "relative",
+        overflow: "hidden",
+        bgcolor: active ? `${alpha(color, 0.14)} !important` : T.cardBg,
         border: T.border,
+        borderColor: active ? `${color} !important` : T.borderColor,
         borderRadius: T.radius,
         p: "14px 16px",
         display: "flex",
         alignItems: "center",
         gap: 1.5,
         cursor: onClick ? "pointer" : "default",
-        outline: "none",
+        outline: active ? `3px solid ${color}` : "none",
+        outlineOffset: "-3px",
         transition: "box-shadow 0.15s, border-color 0.15s",
-        boxShadow: active ? `0 0 0 2px ${alpha(color, 0.18)}` : "none",
-        borderColor: active ? alpha(color, 0.38) : T.borderColor,
+        boxShadow: active
+          ? `inset 0 0 0 1px ${color}, 0 18px 40px ${alpha(color, 0.22)} !important`
+          : "none",
+        "&::before": active
+          ? {
+              content: '""',
+              position: "absolute",
+              inset: "0 auto 0 0",
+              width: 6,
+              bgcolor: color,
+            }
+          : undefined,
         "&:hover": {
           boxShadow: onClick
-            ? `0 2px 12px ${alpha(color, 0.16)}`
-            : "0 2px 12px rgba(0,0,0,0.07)",
+            ? active
+              ? `inset 0 0 0 1px ${color}, 0 20px 44px ${alpha(color, 0.24)} !important`
+              : `0 12px 28px ${alpha(color, 0.16)}`
+            : "0 2px 12px rgba(0,0,0,0.3)",
+          borderColor: onClick ? `${color} !important` : undefined,
         },
         "&:focus-visible": {
-          boxShadow: `0 0 0 3px ${alpha(color, 0.22)}`,
+          boxShadow: `0 0 0 3px ${alpha(color, 0.3)}`,
         },
       }}
       onClick={onClick}
@@ -385,7 +429,7 @@ function StatCard({
           width: 38,
           height: 38,
           borderRadius: "10px",
-          bgcolor: alpha(color, 0.1),
+          bgcolor: alpha(color, 0.16),
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -462,8 +506,8 @@ function StatusChip({ status }) {
     );
   const cfg = STATUS_CONFIG[status] || {
     label: status,
-    bg: "#f9fafb",
-    color: "#6b7280",
+    bg: alpha("#94a3b0", 0.14),
+    color: "#94a3b0",
   };
   return (
     <Box sx={{ ...CHIP_SX, fontSize: 11, bgcolor: cfg.bg, color: cfg.color }}>
@@ -485,7 +529,7 @@ function ResourceChip({ resource }) {
       sx={{
         ...CHIP_SX,
         fontSize: 11,
-        bgcolor: "#f3f4f6",
+        bgcolor: alpha(T.textSecondary, 0.14),
         color: T.textSecondary,
         textTransform: "capitalize",
       }}
@@ -507,9 +551,9 @@ function MobileLogCard({ log, onView }) {
         border: T.border,
         borderColor: T.borderColor,
         borderRadius: T.radius,
-        bgcolor: "#fff",
+        bgcolor: T.cardBg,
         cursor: "pointer",
-        boxShadow: "0 1px 4px rgba(15, 23, 42, 0.04)",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
       }}
     >
       <Box
@@ -546,7 +590,7 @@ function MobileLogCard({ log, onView }) {
             width: 30,
             height: 30,
             borderRadius: "50%",
-            bgcolor: alpha(T.accent, 0.1),
+            bgcolor: alpha(T.accent, 0.16),
             color: T.accent,
             display: "flex",
             alignItems: "center",
@@ -601,7 +645,7 @@ function MobileLogCard({ log, onView }) {
           onView();
         }}
         sx={{
-          borderColor: alpha(T.accent, 0.18),
+          borderColor: alpha(T.accent, 0.35),
           color: T.accent,
           fontSize: 11,
           fontWeight: 700,
@@ -620,9 +664,9 @@ function RoleHeader({ isSuperAdmin, isAdmin }) {
   if (isSuperAdmin)
     return (
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <ShieldIcon sx={{ fontSize: 20, color: "#dc2626" }} />
+        <ShieldIcon sx={{ fontSize: 20, color: "#f87171" }} />
         <Box>
-          <Typography fontSize={13} fontWeight={600} color="#dc2626">
+          <Typography fontSize={13} fontWeight={600} color="#f87171">
             Super Admin Access
           </Typography>
           <Typography fontSize={11} color={T.textMuted}>
@@ -634,9 +678,9 @@ function RoleHeader({ isSuperAdmin, isAdmin }) {
   if (isAdmin)
     return (
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <BusinessIcon sx={{ fontSize: 20, color: "#ea580c" }} />
+        <BusinessIcon sx={{ fontSize: 20, color: "#fb923c" }} />
         <Box>
-          <Typography fontSize={13} fontWeight={600} color="#ea580c">
+          <Typography fontSize={13} fontWeight={600} color="#fb923c">
             Organization Activity
           </Typography>
           <Typography fontSize={11} color={T.textMuted}>
@@ -647,9 +691,9 @@ function RoleHeader({ isSuperAdmin, isAdmin }) {
     );
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-      <PersonIcon sx={{ fontSize: 20, color: "#16a34a" }} />
+      <PersonIcon sx={{ fontSize: 20, color: "#4ade80" }} />
       <Box>
-        <Typography fontSize={13} fontWeight={600} color="#16a34a">
+        <Typography fontSize={13} fontWeight={600} color="#4ade80">
           My Activity
         </Typography>
         <Typography fontSize={11} color={T.textMuted}>
@@ -705,6 +749,7 @@ function ExportButton({ onExport, exporting, disabled }) {
             borderRadius: T.radius,
             mt: 0.5,
             minWidth: 160,
+            bgcolor: T.cardBg,
           },
         }}
       >
@@ -713,19 +758,19 @@ function ExportButton({ onExport, exporting, disabled }) {
             fmt: "csv",
             label: "Export as CSV",
             Icon: CsvIcon,
-            color: "#16a34a",
+            color: "#4ade80",
           },
           {
             fmt: "excel",
             label: "Export as Excel",
             Icon: ExcelIcon,
-            color: "#2563eb",
+            color: "#60a5fa",
           },
           {
             fmt: "pdf",
             label: "Export as PDF",
             Icon: PdfIcon,
-            color: "#dc2626",
+            color: "#f87171",
           },
         ].map(({ fmt, label, Icon, color }) => (
           <MenuItem
@@ -828,7 +873,7 @@ function FilterBar({
               position: "fixed",
               inset: 0,
               zIndex: (theme) => theme.zIndex.modal,
-              bgcolor: "rgba(15, 23, 42, 0.34)",
+              bgcolor: "rgba(0, 0, 0, 0.55)",
             }}
           />
         )}
@@ -850,7 +895,7 @@ function FilterBar({
               bgcolor: T.cardBg,
               border: 0,
               borderRadius: "24px 24px 0 0",
-              boxShadow: "0 -18px 56px rgba(15, 23, 42, 0.28)",
+              boxShadow: "0 -18px 56px rgba(0, 0, 0, 0.5)",
               p: "14px 16px 18px",
             }),
           }}
@@ -862,7 +907,7 @@ function FilterBar({
                   width: 44,
                   height: 5,
                   borderRadius: 999,
-                  bgcolor: "#dbe3ea",
+                  bgcolor: alpha(T.textSecondary, 0.3),
                   mx: "auto",
                   mb: 2,
                 }}
@@ -1072,6 +1117,8 @@ function FilterBar({
                 textTransform: "none",
                 borderRadius: "8px",
                 bgcolor: T.accent,
+                color: T.accentContrast,
+                "&:hover": { bgcolor: T.accentDark },
               }}
             >
               Apply
@@ -1083,7 +1130,7 @@ function FilterBar({
               disableElevation
               startIcon={
                 loading ? (
-                  <CircularProgress size={11} sx={{ color: "#fff" }} />
+                  <CircularProgress size={11} sx={{ color: T.accentContrast }} />
                 ) : (
                   <RefreshIcon sx={{ fontSize: 13 }} />
                 )
@@ -1096,6 +1143,8 @@ function FilterBar({
                 textTransform: "none",
                 borderRadius: "8px",
                 bgcolor: T.accent,
+                color: T.accentContrast,
+                "&:hover": { bgcolor: T.accentDark },
               }}
             >
               Refresh
@@ -1147,6 +1196,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
           borderRadius: { xs: 0, sm: T.radiusLg },
           border: T.border,
           borderColor: T.borderColor,
+          bgcolor: T.cardBg,
           overflow: "hidden",
           m: { xs: 0, sm: 2 },
           width: { xs: "100vw", sm: "calc(100% - 32px)" },
@@ -1177,7 +1227,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
               width: 30,
               height: 30,
               borderRadius: "8px",
-              bgcolor: alpha(T.accent, 0.08),
+              bgcolor: alpha(T.accent, 0.16),
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1196,7 +1246,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
           sx={{
             color: `${T.textMuted} !important`,
             bgcolor: "transparent !important",
-            "&:hover": { bgcolor: "#f3f4f6 !important" },
+            "&:hover": { bgcolor: `${alpha(T.textSecondary, 0.12)} !important` },
           }}
         >
           <CloseIcon fontSize="small" />
@@ -1288,7 +1338,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
           <Field label="Description">
             <Box
               sx={{
-                bgcolor: "#f9fafb",
+                bgcolor: T.pageBg,
                 border: T.border,
                 borderColor: T.borderColor,
                 borderRadius: "8px",
@@ -1339,9 +1389,9 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
             <Field label="Before changes">
               <Box
                 sx={{
-                  bgcolor: "#fff7ed",
+                  bgcolor: alpha("#fb923c", 0.1),
                   border: T.border,
-                  borderColor: "#fed7aa",
+                  borderColor: alpha("#fb923c", 0.35),
                   borderRadius: "8px",
                   p: "10px 12px",
                   maxHeight: 160,
@@ -1353,7 +1403,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
                     margin: 0,
                     fontSize: 11,
                     fontFamily: T.fontMono,
-                    color: "#92400e",
+                    color: "#fdba74",
                     lineHeight: 1.6,
                   }}
                 >
@@ -1366,9 +1416,9 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
             <Field label="After changes">
               <Box
                 sx={{
-                  bgcolor: "#f0fdf4",
+                  bgcolor: alpha("#4ade80", 0.1),
                   border: T.border,
-                  borderColor: "#bbf7d0",
+                  borderColor: alpha("#4ade80", 0.35),
                   borderRadius: "8px",
                   p: "10px 12px",
                   maxHeight: 160,
@@ -1380,7 +1430,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
                     margin: 0,
                     fontSize: 11,
                     fontFamily: T.fontMono,
-                    color: "#14532d",
+                    color: "#86efac",
                     lineHeight: 1.6,
                   }}
                 >
@@ -1395,9 +1445,9 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
             <Field label="Metadata">
               <Box
                 sx={{
-                  bgcolor: "#f8faff",
+                  bgcolor: alpha("#818cf8", 0.1),
                   border: T.border,
-                  borderColor: "#c7d2fe",
+                  borderColor: alpha("#818cf8", 0.35),
                   borderRadius: "8px",
                   p: "10px 12px",
                   maxHeight: 120,
@@ -1409,7 +1459,7 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
                     margin: 0,
                     fontSize: 11,
                     fontFamily: T.fontMono,
-                    color: "#3730a3",
+                    color: "#a5b4fc",
                     lineHeight: 1.6,
                   }}
                 >
@@ -1446,14 +1496,14 @@ function DetailDialog({ open, onClose, log, onExportSingle }) {
           variant="contained"
           disableElevation
           sx={{
-            bgcolor: T.textPrimary,
-            color: "#fff",
+            bgcolor: T.accent,
+            color: T.accentContrast,
             borderRadius: "8px",
             fontSize: 12,
             fontWeight: 600,
             px: 2,
             textTransform: "none",
-            "&:hover": { bgcolor: "#1f2937" },
+            "&:hover": { bgcolor: T.accentDark },
           }}
         >
           Close
@@ -1564,7 +1614,7 @@ function exportPDF(logs, filename, includeActor, roleLabel) {
     body: rows,
     startY: 75,
     styles: { fontSize: 8, cellPadding: 4, overflow: "linebreak" },
-    headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: "bold" },
+    headStyles: { fillColor: [31, 182, 207], textColor: 255, fontStyle: "bold" },
     alternateRowStyles: { fillColor: [247, 248, 250] },
     columnStyles: header.reduce((acc, h, i) => {
       if (h === "Description") acc[i] = { cellWidth: 120 };
@@ -1611,6 +1661,7 @@ const AuditLogs = () => {
   } = useAudit();
 
   const theme = useTheme();
+  applyAuditThemeTokens(theme.palette.mode);
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [page, setPage] = useState(0);
@@ -1640,10 +1691,10 @@ const AuditLogs = () => {
 
   /* ── Fetch on mount / page / filter change ── */
   useEffect(() => {
-    fetchAuditLogs(page + 1, rowsPerPage);
-    fetchAuditStats(effectiveFilters);
+    fetchAuditLogs(page + 1, rowsPerPage, effectiveFilters);
+    fetchAuditStats(filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, rowsPerPage, effectiveFilters]);
+  }, [page, rowsPerPage, effectiveFilters, filters]);
 
   useEffect(() => {
     setDraftFilters(filters);
@@ -1663,19 +1714,16 @@ const AuditLogs = () => {
     const total = pagination?.total ?? auditLogs?.length ?? 0;
     return {
       total,
-      today: activeStatFilter === "today" ? total : todayCount,
+      today: todayCount,
       unique,
       types,
     };
-  }, [activeStatFilter, auditLogs, pagination]);
+  }, [auditLogs, pagination]);
 
   /* ── Stats display values ── */
   // Super admin: real API stats shape → { total, byAction, byResource, today }
   // Others: derived from current page data
-  const statsMatchCurrentResult =
-    stats && Number(stats.total ?? 0) === Number(pagination?.total ?? 0);
-
-  const displayStats = statsMatchCurrentResult
+  const displayStats = isSuperAdmin
     ? {
         total: stats?.total,
         today: stats?.today,
@@ -1684,6 +1732,58 @@ const AuditLogs = () => {
         types: stats?.byAction?.length,
       }
     : derivedStats;
+
+  const uniqueUserDetails = useMemo(() => {
+    if (isSuperAdmin && Array.isArray(stats?.byActor)) {
+      return stats.byActor.map((item) => ({
+        key: item._id || item.email || "unknown",
+        label: item.name || item.email || "Unknown user",
+        sub:
+          item.email && item.name
+            ? item.email
+            : humanize(item.role || "unknown"),
+        count: item.count || 0,
+      }));
+    }
+
+    const grouped = new Map();
+    (auditLogs || []).forEach((log) => {
+      const key = log.actor?.email || "Unknown user";
+      const current = grouped.get(key) || {
+        key,
+        label: log.actor?.name || key,
+        sub:
+          log.actor?.email && log.actor?.name
+            ? log.actor.email
+            : humanize(log.actorRole || "unknown"),
+        count: 0,
+      };
+      current.count += 1;
+      grouped.set(key, current);
+    });
+
+    return Array.from(grouped.values()).sort((a, b) => b.count - a.count);
+  }, [auditLogs, isSuperAdmin, stats?.byActor]);
+
+  const actionTypeDetails = useMemo(() => {
+    if (isSuperAdmin && Array.isArray(stats?.byAction)) {
+      return stats.byAction.map((item) => ({
+        key: item._id || "unknown",
+        label: humanize(item._id || "Unknown"),
+        count: item.count || 0,
+      }));
+    }
+
+    const grouped = new Map();
+    (auditLogs || []).forEach((log) => {
+      const key = log.action || "Unknown";
+      grouped.set(key, (grouped.get(key) || 0) + 1);
+    });
+
+    return Array.from(grouped.entries())
+      .map(([key, count]) => ({ key, label: humanize(key), count }))
+      .sort((a, b) => b.count - a.count);
+  }, [auditLogs, isSuperAdmin, stats?.byAction]);
 
   /* ── Sort (client-side on current page) ── */
   const handleSort = (col) => {
@@ -1735,7 +1835,7 @@ const AuditLogs = () => {
 
   const handleRefresh = () => {
     fetchAuditLogs(page + 1, rowsPerPage, effectiveFilters);
-    fetchAuditStats(effectiveFilters);
+    fetchAuditStats(filters);
   };
 
   const handleTodayStatClick = () => {
@@ -1743,7 +1843,7 @@ const AuditLogs = () => {
     setPage(0);
     const todayFilters = getTodayAuditFilters();
     fetchAuditLogs(1, rowsPerPage, todayFilters);
-    fetchAuditStats(todayFilters);
+    fetchAuditStats(filters);
   };
 
   const handleTotalStatClick = () => {
@@ -1893,7 +1993,7 @@ const AuditLogs = () => {
     fontSize: 12,
     py: "10px",
     px: "12px",
-    borderBottom: "1px solid #f3f4f6",
+    borderBottom: `1px solid ${T.borderColor}`,
     color: T.textPrimary,
     overflow: "hidden",
   };
@@ -1904,7 +2004,7 @@ const AuditLogs = () => {
     color: T.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.4,
-    bgcolor: "#fafafa",
+    bgcolor: alpha("#000", 0.18),
     py: "8px",
   };
 
@@ -1914,6 +2014,7 @@ const AuditLogs = () => {
         p: { xs: 1.5, sm: 2.5, md: 3 },
         maxWidth: "100%",
         overflow: "hidden",
+        bgcolor: T.pageBg,
       }}
     >
       {/* Page header */}
@@ -1967,16 +2068,17 @@ const AuditLogs = () => {
           label="Total Actions"
           value={displayStats?.total}
           icon={<TrendingUpIcon sx={{ fontSize: 16 }} />}
-          color="#4f46e5"
+          color="#818cf8"
           loading={statsLoading && !stats}
           subtitle={activeStatFilter === "today" ? "clear today view" : !isSuperAdmin ? "in current view" : undefined}
+          active={!activeStatFilter}
           onClick={handleTotalStatClick}
         />
         <StatCard
           label="Today"
           value={displayStats?.today}
           icon={<TodayIcon sx={{ fontSize: 16 }} />}
-          color="#16a34a"
+          color="#4ade80"
           loading={statsLoading && !stats}
           active={activeStatFilter === "today"}
           onClick={handleTodayStatClick}
@@ -1985,7 +2087,7 @@ const AuditLogs = () => {
           label="Unique Users"
           value={displayStats?.unique}
           icon={<PeopleIcon sx={{ fontSize: 16 }} />}
-          color="#ea580c"
+          color="#fb923c"
           loading={statsLoading && !stats}
           subtitle={activeStatFilter === "uniqueUsers" ? "sorted by user" : undefined}
           active={activeStatFilter === "uniqueUsers"}
@@ -1995,13 +2097,122 @@ const AuditLogs = () => {
           label="Action Types"
           value={displayStats?.types}
           icon={<CategoryIcon sx={{ fontSize: 16 }} />}
-          color="#d97706"
+          color="#facc15"
           loading={statsLoading && !stats}
           subtitle={activeStatFilter === "actionTypes" ? "sorted by action" : undefined}
           active={activeStatFilter === "actionTypes"}
           onClick={handleActionTypesStatClick}
         />
       </Box>
+
+      {(activeStatFilter === "uniqueUsers" ||
+        activeStatFilter === "actionTypes") && (
+        <Box
+          sx={{
+            mb: 2,
+            bgcolor: T.cardBg,
+            border: T.border,
+            borderColor: T.borderColor,
+            borderRadius: T.radius,
+            p: { xs: 1.5, sm: 2 },
+          }}
+        >
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            gap={1}
+            mb={1.5}
+          >
+            <Box>
+              <Typography fontSize={13} fontWeight={800} color={T.textPrimary}>
+                {activeStatFilter === "uniqueUsers"
+                  ? "Unique Users Details"
+                  : "Action Types Details"}
+              </Typography>
+              <Typography fontSize={11.5} color={T.textMuted}>
+                {activeStatFilter === "uniqueUsers"
+                  ? "Users grouped by audit activity"
+                  : "Actions grouped by type"}
+              </Typography>
+            </Box>
+            <Chip
+              size="small"
+              label={`${
+                activeStatFilter === "uniqueUsers"
+                  ? uniqueUserDetails.length
+                  : actionTypeDetails.length
+              } shown`}
+              sx={{
+                bgcolor: alpha(T.accent, 0.16),
+                color: T.accent,
+                fontWeight: 700,
+                fontSize: 11,
+              }}
+            />
+          </Stack>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "repeat(2, minmax(0, 1fr))",
+                md: "repeat(3, minmax(0, 1fr))",
+              },
+              gap: 1,
+            }}
+          >
+            {(activeStatFilter === "uniqueUsers"
+              ? uniqueUserDetails
+              : actionTypeDetails
+            ).map((item) => (
+              <Box
+                key={item.key}
+                sx={{
+                  border: T.border,
+                  borderColor: alpha(T.accent, 0.2),
+                  borderRadius: "9px",
+                  p: 1.25,
+                  bgcolor: alpha(T.accent, 0.06),
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1,
+                  minWidth: 0,
+                }}
+              >
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography
+                    fontSize={12}
+                    fontWeight={700}
+                    color={T.textPrimary}
+                    noWrap
+                  >
+                    {item.label}
+                  </Typography>
+                  {item.sub && (
+                    <Typography fontSize={10.5} color={T.textMuted} noWrap>
+                      {item.sub}
+                    </Typography>
+                  )}
+                </Box>
+                <Chip
+                  size="small"
+                  label={item.count}
+                  sx={{
+                    flexShrink: 0,
+                    bgcolor: alpha(T.accent, 0.16),
+                    color: T.accent,
+                    fontWeight: 800,
+                    minWidth: 34,
+                  }}
+                />
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
 
       {/* Total chip */}
       {pagination && (
@@ -2022,7 +2233,7 @@ const AuditLogs = () => {
             label={`${(pagination.total || 0).toLocaleString()} total entries`}
             size="small"
             sx={{
-              bgcolor: alpha(T.accent, 0.08),
+              bgcolor: alpha(T.accent, 0.16),
               color: T.accent,
               fontWeight: 600,
               fontSize: 11,
@@ -2068,7 +2279,7 @@ const AuditLogs = () => {
                 <HistoryIcon
                   sx={{
                     fontSize: 32,
-                    color: "#d1d5db",
+                    color: alpha(T.textSecondary, 0.4),
                     mb: 1,
                     display: "block",
                     mx: "auto",
@@ -2140,7 +2351,7 @@ const AuditLogs = () => {
                     <HistoryIcon
                       sx={{
                         fontSize: 32,
-                        color: "#d1d5db",
+                        color: alpha(T.textSecondary, 0.4),
                         mb: 1,
                         display: "block",
                         mx: "auto",
@@ -2159,7 +2370,7 @@ const AuditLogs = () => {
                   <TableRow
                     key={log._id}
                     sx={{
-                      "&:hover": { bgcolor: "#fafafa" },
+                      "&:hover": { bgcolor: T.hoverRow },
                       "&:last-child td": { borderBottom: "none" },
                       cursor: "pointer",
                     }}
@@ -2209,7 +2420,7 @@ const AuditLogs = () => {
                               width: 26,
                               height: 26,
                               borderRadius: "50%",
-                              bgcolor: alpha(T.accent, 0.1),
+                              bgcolor: alpha(T.accent, 0.16),
                               color: T.accent,
                               display: "flex",
                               alignItems: "center",
@@ -2289,10 +2500,10 @@ const AuditLogs = () => {
                             width: 28,
                             height: 28,
                             borderRadius: "8px",
-                            bgcolor: `${alpha(T.accent, 0.08)} !important`,
+                            bgcolor: `${alpha(T.accent, 0.16)} !important`,
                             color: `${T.accent} !important`,
                             "&:hover": {
-                              bgcolor: `${alpha(T.accent, 0.16)} !important`,
+                              bgcolor: `${alpha(T.accent, 0.26)} !important`,
                             },
                           }}
                           aria-label="View log details"
@@ -2311,7 +2522,7 @@ const AuditLogs = () => {
 
         {/* Pagination */}
         {pagination && pagination.total > 0 && (
-          <Box sx={{ borderTop: "1px solid #f3f4f6" }}>
+          <Box sx={{ borderTop: `1px solid ${T.borderColor}` }}>
             <TablePagination
               rowsPerPageOptions={[10, 20, 50, 100]}
               component="div"
@@ -2324,6 +2535,7 @@ const AuditLogs = () => {
                 setPage(0);
               }}
               sx={{
+                color: T.textSecondary,
                 "& .MuiTablePagination-toolbar": {
                   minHeight: 44,
                   px: 1.5,
@@ -2355,8 +2567,7 @@ const AuditLogs = () => {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
+  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity={snackbar.severity}
           onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
