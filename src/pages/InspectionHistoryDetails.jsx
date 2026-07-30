@@ -323,7 +323,7 @@ export default function InspectionHistoryDetails() {
         : filePath;
     if (typeof raw !== "string" || !raw.trim()) return "";
 
-    const value = raw.trim();
+    const value = raw.trim().replace(/^https\/\//i, "https://");
     if (/^(data:|https?:\/\/|blob:)/i.test(value)) return value;
     const normalizedPath = value.replace(/\\/g, "/").replace(/^\/+/, "");
     return `https://synversys-backend.onrender.com/${normalizedPath}`;

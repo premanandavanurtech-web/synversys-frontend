@@ -79,6 +79,14 @@ const requesterName = (user) =>
   user?.email ||
   "User";
 
+const attachmentUrl = (file) => {
+  let path = file?.url || file?.secure_url || file?.filePath || file?.path || "";
+  if (!path) return "";
+  path = String(path).trim().replace(/^https\/\//i, "https://");
+  if (/^(https?:|blob:|data:)/i.test(path)) return path;
+  return `https://synversys-backend.onrender.com/${path.replace(/^\/+/, "")}`;
+};
+
 const formatDateTime = (value) => {
   if (!value) return "Not available";
   const date = new Date(value);
@@ -86,7 +94,7 @@ const formatDateTime = (value) => {
   return date.toLocaleString();
 };
 
-function TicketDialog({ open, onClose, onSubmit, loading }) {
+function TicketDialog({ open, onClose, onSubmit, onInvalid, loading }) {
   const [form, setForm] = useState({
     subject: "",
     category: "technical",
@@ -94,8 +102,7 @@ function TicketDialog({ open, onClose, onSubmit, loading }) {
     priority: "medium",
   });
   const [files, setFiles] = useState([]);
-  const canSubmit =
-    form.subject.trim() && form.category && form.description.trim() && form.priority;
+  const canSubmit = form.subject.trim() && form.category && form.priority;
 
   const reset = () => {
     setForm({ subject: "", category: "technical", description: "", priority: "medium" });
@@ -151,7 +158,6 @@ function TicketDialog({ open, onClose, onSubmit, loading }) {
             minRows={4}
             multiline
             fullWidth
-            required
           />
           <Button
             component="label"
@@ -181,10 +187,14 @@ function TicketDialog({ open, onClose, onSubmit, loading }) {
           Cancel
         </Button>
         <Button
-          disabled={!canSubmit || loading}
+          disabled={loading}
           variant="contained"
           startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Send />}
           onClick={async () => {
+            if (!canSubmit) {
+              onInvalid?.("Subject is required");
+              return;
+            }
             await onSubmit(form, files);
             reset();
           }}
@@ -564,7 +574,7 @@ export default function Tickets() {
                           label={file.originalName || file.fileName}
                           size="small"
                           component="a"
-                          href={`https://synversys-backend.onrender.com${file.filePath}`}
+                          href={attachmentUrl(file)}
                           clickable
                           target="_blank"
                         />
@@ -611,12 +621,23 @@ export default function Tickets() {
         open={ticketOpen}
         loading={loading}
         onClose={() => setTicketOpen(false)}
+        onInvalid={(message) =>
+          setSnack({ open: true, message, severity: "error" })
+        }
         onSubmit={async (form, files) => {
-          const createdTicket = await createTicket(form, files);
-          applyTicketUpdate(createdTicket);
-          setTicketOpen(false);
-          setSnack({ open: true, message: "Ticket raised successfully", severity: "success" });
-          await loadTickets({ silent: true });
+          try {
+            const createdTicket = await createTicket(form, files);
+            applyTicketUpdate(createdTicket);
+            setTicketOpen(false);
+            setSnack({ open: true, message: "Ticket raised successfully", severity: "success" });
+            await loadTickets({ silent: true });
+          } catch (err) {
+            setSnack({
+              open: true,
+              message: err?.response?.data?.message || err?.message || "Failed to raise ticket",
+              severity: "error",
+            });
+          }
         }}
       />
 
@@ -637,8 +658,22 @@ export default function Tickets() {
         open={snack.open}
         autoHideDuration={4000}
         onClose={() => setSnack((prev) => ({ ...prev, open: false }))}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert severity={snack.severity} onClose={() => setSnack((prev) => ({ ...prev, open: false }))}>
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{ zIndex: (theme) => theme.zIndex.modal + 500 }}
+      >
+        <Alert
+          severity={snack.severity}
+          onClose={() => setSnack((prev) => ({ ...prev, open: false }))}
+          sx={{
+            boxShadow: "0 12px 30px rgba(0,0,0,0.32)",
+            ...(snack.severity === "error" && {
+              bgcolor: "#3b0d0d",
+              color: "#fee2e2",
+              "& .MuiAlert-icon": { color: "#ff6b5f" },
+              "& .MuiAlert-action": { color: "#fee2e2" },
+            }),
+          }}
+        >
           {snack.message}
         </Alert>
       </Snackbar>

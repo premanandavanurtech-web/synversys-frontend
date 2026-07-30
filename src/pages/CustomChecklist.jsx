@@ -128,13 +128,15 @@ const theme = createTheme({
 
 // ── Section Header ─────────────────────────────────────────────────────────
 function SectionHeader({ title, isCollapsed, onToggle }) {
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
+  const isDark = muiTheme.palette.mode === "dark";
 
   return (
     <Box
       onClick={onToggle}
       sx={{
-        background: "#f0f4f6",
+        background: isDark ? "rgba(148, 163, 184, 0.12)" : "#f0f4f6",
         borderRadius: "10px",
         px: { xs: 1.5, sm: 2.25 },
         py: { xs: 1, sm: 1.5 },
@@ -144,14 +146,16 @@ function SectionHeader({ title, isCollapsed, onToggle }) {
         justifyContent: "space-between",
         cursor: onToggle ? "pointer" : "default",
         transition: "background 0.2s",
-        "&:hover": onToggle ? { background: "#e8ecef" } : {},
+        "&:hover": onToggle
+          ? { background: isDark ? "rgba(148, 163, 184, 0.18)" : "#e8ecef" }
+          : {},
       }}
     >
       <Typography
         sx={{
           fontSize: { xs: "0.8125rem", sm: "0.9375rem" },
           fontWeight: 700,
-          color: "#1a3a47",
+          color: isDark ? "#f8fafc" : "#1a3a47",
         }}
       >
         {title}
@@ -189,6 +193,8 @@ function FieldLabel({ label, required }) {
 
 // ── Signature Pad (Touch Optimized) ──────────────────────────────────────────
 function SignaturePad({ value, onChange }) {
+  const muiTheme = useTheme();
+  const isDark = muiTheme.palette.mode === "dark";
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const drawingRef = useRef(false);   // use ref instead of state to avoid re-render lag
@@ -331,9 +337,14 @@ function SignaturePad({ value, onChange }) {
   return (
     <Box
       ref={containerRef}
-      sx={{ border: "1px solid #dde3e8", borderRadius: "10px", background: "#fff", overflow: "hidden" }}
+      sx={{
+        border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.24)" : "#dde3e8"}`,
+        borderRadius: "10px",
+        background: isDark ? "rgba(15, 28, 46, 0.9)" : "#fff",
+        overflow: "hidden",
+      }}
     >
-      <Box sx={{ position: "relative", bgcolor: "#fafafa" }}>
+      <Box sx={{ position: "relative", bgcolor: isDark ? "#0b1524" : "#fafafa" }}>
         {!hasSig && (
           <Typography
             sx={{
@@ -359,7 +370,7 @@ function SignaturePad({ value, onChange }) {
             width: "100%",
             height: isMobile ? 100 : 120,
             touchAction: "none",
-            backgroundColor: "#ffffff",
+            backgroundColor: isDark ? "#0b1524" : "#ffffff",
           }}
         />
       </Box>
@@ -384,7 +395,12 @@ function SignaturePad({ value, onChange }) {
 // ── Dynamic Field Renderer (Mobile Optimized) ─────────────────────────────────
 function DynamicField({ field, value, onChange }) {
   const handleChange = (val) => onChange(field._id || field.label, val);
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
+  const isDark = muiTheme.palette.mode === "dark";
+  const fieldBorder = isDark ? "rgba(148, 163, 184, 0.24)" : "#dde3e8";
+  const fieldSurface = isDark ? "rgba(15, 28, 46, 0.9)" : "#fff";
+  const fieldText = isDark ? "#e5e7eb" : "#374151";
   const [filePreview, setFilePreview] = useState([]);
   const fileInputRef = useRef(null);
 
@@ -475,11 +491,11 @@ useEffect(() => {
         <Box
           sx={{
             width: "100%",
-            border: "1px solid #dde3e8",
+            border: `1px solid ${fieldBorder}`,
             borderRadius: "10px",
             px: { xs: 1.5, sm: 2 },
             py: { xs: 1, sm: 1.5 },
-            background: "#fff",
+            background: fieldSurface,
           }}
         >
           <Stack spacing={1}>
@@ -510,7 +526,7 @@ useEffect(() => {
                   <Typography
                     sx={{
                       fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                      color: "#374151",
+                      color: fieldText,
                     }}
                   >
                     {item}
@@ -529,11 +545,11 @@ useEffect(() => {
         <Box
           sx={{
             width: "100%",
-            border: "1px solid #dde3e8",
+            border: `1px solid ${fieldBorder}`,
             borderRadius: "10px",
             px: { xs: 1.5, sm: 2 },
             py: { xs: 1, sm: 1.5 },
-            background: "#fff",
+            background: fieldSurface,
             display: "flex",
             alignItems: "center",
             gap: 1.5,
@@ -594,9 +610,12 @@ useEffect(() => {
               py: { xs: 3, sm: 5 },
               px: { xs: 2, sm: 3 },
               textAlign: "center",
-              background: "#fff",
+              background: fieldSurface,
               cursor: "pointer",
-              "&:hover": { borderColor: "#144c5c", background: "#f0f9fb" },
+              "&:hover": {
+                borderColor: "#144c5c",
+                background: isDark ? "rgba(20, 76, 92, 0.24)" : "#f0f9fb",
+              },
               transition: "all 0.2s",
             }}
           >
@@ -760,7 +779,12 @@ useEffect(() => {
 
 // ── Sidebar Detail Row (Mobile Optimized) ─────────────────────────────────────
 function DetailRow({ iconEl, label, value, isTag }) {
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
+  const isDark = muiTheme.palette.mode === "dark";
+  const iconBg = isDark ? "rgba(20, 184, 166, 0.16)" : "#e8f4f7";
+  const rowBorder = isDark ? "rgba(148, 163, 184, 0.24)" : "#f0f1f2";
+  const valueColor = isDark ? "#f8fafc" : "#1a3a47";
 
   return (
     <Box
@@ -769,7 +793,7 @@ function DetailRow({ iconEl, label, value, isTag }) {
         gap: 1.5,
         alignItems: "flex-start",
         py: 1.25,
-        borderBottom: "1px solid #f0f1f2",
+        borderBottom: `1px solid ${rowBorder}`,
       }}
     >
       <Box
@@ -777,7 +801,8 @@ function DetailRow({ iconEl, label, value, isTag }) {
           width: { xs: 32, sm: 34 },
           height: { xs: 32, sm: 34 },
           borderRadius: "8px",
-          background: "#e8f4f7",
+          background: iconBg,
+          color: isDark ? "#67e8f9" : "#144c5c",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -804,8 +829,8 @@ function DetailRow({ iconEl, label, value, isTag }) {
                 label={t}
                 size="small"
                 sx={{
-                  background: "#e8f4f7",
-                  color: "#144c5c",
+                  background: iconBg,
+                  color: isDark ? "#67e8f9" : "#144c5c",
                   fontWeight: 500,
                   fontSize: { xs: "0.625rem", sm: "0.6875rem" },
                 }}
@@ -817,7 +842,7 @@ function DetailRow({ iconEl, label, value, isTag }) {
             sx={{
               fontSize: { xs: "0.75rem", sm: "0.8125rem" },
               fontWeight: 500,
-              color: "#1a3a47",
+              color: valueColor,
               wordBreak: "break-word",
             }}
           >
@@ -1016,6 +1041,14 @@ export default function CustomChecklist({ checklistId }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+  const isDark = theme.palette.mode === "dark";
+  const pageBg = isDark ? "#08111f" : "#f5f6f7";
+  const surfaceBg = isDark ? "#0f1c2e" : "#fff";
+  const surfaceAlt = isDark ? "rgba(148, 163, 184, 0.12)" : "#f0f4f6";
+  const borderColor = isDark ? "rgba(148, 163, 184, 0.24)" : "#e5e7eb";
+  const textPrimary = isDark ? "#f8fafc" : "#111827";
+  const textSecondary = isDark ? "#cbd5e1" : "#6b7280";
+  const brandText = isDark ? "#67e8f9" : "#144c5c";
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({});
 
@@ -1485,7 +1518,7 @@ export default function CustomChecklist({ checklistId }) {
         <Box
           sx={{
             mt: 2,
-            background: "#f0f4f6",
+            background: surfaceAlt,
             borderRadius: "10px",
             px: 2,
             py: 1.5,
@@ -1496,7 +1529,7 @@ export default function CustomChecklist({ checklistId }) {
               sx={{
                 fontSize: { xs: "0.6875rem", sm: "0.75rem" },
                 fontWeight: 600,
-                color: "#1a3a47",
+                color: textPrimary,
               }}
             >
               Completion
@@ -1504,7 +1537,7 @@ export default function CustomChecklist({ checklistId }) {
             <Typography
               sx={{
                 fontSize: { xs: "0.6875rem", sm: "0.75rem" },
-                color: "#144c5c",
+                color: brandText,
                 fontWeight: 700,
               }}
             >
@@ -1515,7 +1548,7 @@ export default function CustomChecklist({ checklistId }) {
             sx={{
               height: 6,
               borderRadius: 3,
-              background: "#dde3e8",
+              background: isDark ? "rgba(148, 163, 184, 0.2)" : "#dde3e8",
               overflow: "hidden",
             }}
           >
@@ -1546,7 +1579,7 @@ export default function CustomChecklist({ checklistId }) {
       <Box
         sx={{
           mt: 2,
-          background: "#f0f4f6",
+          background: surfaceAlt,
           borderRadius: "10px",
           px: 2,
           py: 1.5,
@@ -1555,7 +1588,9 @@ export default function CustomChecklist({ checklistId }) {
           justifyContent: "center",
           gap: 1,
           cursor: "pointer",
-          "&:hover": { background: alpha("#144c5c", 0.08) },
+          "&:hover": {
+            background: isDark ? "rgba(20, 184, 166, 0.16)" : alpha("#144c5c", 0.08),
+          },
           transition: "background 0.2s",
         }}
       >
@@ -1564,7 +1599,7 @@ export default function CustomChecklist({ checklistId }) {
           sx={{
             fontSize: { xs: "0.75rem", sm: "0.8125rem" },
             fontWeight: 500,
-            color: "#144c5c",
+            color: brandText,
           }}
         >
           Ready to Submit
@@ -1575,12 +1610,12 @@ export default function CustomChecklist({ checklistId }) {
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ minHeight: "100vh", bgcolor: "#f5f6f7", pb: 4 }}>
+      <Box sx={{ minHeight: "100vh", bgcolor: pageBg, pb: 4 }}>
         {/* AppBar - Sticky with mobile optimizations */}
         <AppBar
           position="sticky"
           elevation={0}
-          sx={{ background: "#fff", borderBottom: "1px solid #e5e7eb" }}
+          sx={{ background: surfaceBg, borderBottom: `1px solid ${borderColor}` }}
         >
           <Toolbar
             sx={{
@@ -1598,7 +1633,7 @@ export default function CustomChecklist({ checklistId }) {
               <IconButton
                 size="small"
                 sx={{
-                  border: "1px solid #e5e7eb",
+                  border: `1px solid ${borderColor}`,
                   borderRadius: "8px",
                   width: { xs: 28, sm: 32 },
                   height: { xs: 28, sm: 32 },
@@ -1608,7 +1643,7 @@ export default function CustomChecklist({ checklistId }) {
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                   <path
                     d="M10 3L5 8l5 5"
-                    stroke="#374151"
+                    stroke={textSecondary}
                     strokeWidth="1.6"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -1620,7 +1655,7 @@ export default function CustomChecklist({ checklistId }) {
                   sx={{
                     fontSize: { xs: "0.875rem", sm: "1rem" },
                     fontWeight: 700,
-                    color: "#111827",
+                    color: textPrimary,
                     lineHeight: 1.3,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -1682,8 +1717,8 @@ export default function CustomChecklist({ checklistId }) {
             sx={{
               px: 1.5,
               py: 1,
-              bgcolor: "#fff",
-              borderBottom: "1px solid #e5e7eb",
+              bgcolor: surfaceBg,
+              borderBottom: `1px solid ${borderColor}`,
             }}
           >
             <Button
@@ -1702,9 +1737,14 @@ export default function CustomChecklist({ checklistId }) {
 
         {/* Main Content */}
         <Box sx={{ p: { xs: 1.5, sm: 2, md: 3.5 } }}>
-          <Grid container spacing={{ xs: 2, sm: 2.5 }} alignItems="flex-start" sx={{ minWidth: 0 }}>
+          <Grid
+            container
+            spacing={{ xs: 2, sm: 2.5 }}
+            alignItems="flex-start"
+            sx={{ minWidth: 0, maxWidth: "100%", mx: 0 }}
+          >
             {/* Form Column */}
-            <Grid item xs={12} md={9} sx={{ minWidth: 0 }}>
+            <Grid item xs={12} md sx={{ minWidth: 0, flexGrow: 1 }}>
               {fetchError && (
                 <Paper sx={{ borderRadius: "14px", p: 4, textAlign: "center" }}>
                   <Typography
@@ -1943,7 +1983,12 @@ export default function CustomChecklist({ checklistId }) {
 
             {/* Sidebar - Desktop */}
             {!isMobile && (
-              <Grid item xs={12} md={3}>
+              <Grid
+                item
+                xs={12}
+                md="auto"
+                sx={{ width: { md: 320, lg: 340 }, flexShrink: 0 }}
+              >
                 <Box sx={{ position: { md: "sticky" }, top: { md: 76 } }}>
                   {sidebarContent}
                 </Box>

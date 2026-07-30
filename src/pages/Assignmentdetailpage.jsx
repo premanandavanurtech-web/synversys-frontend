@@ -134,6 +134,7 @@ const fileUrl = (file) => {
       ? file
       : file?.url || file?.filePath || file?.path || file?.originalName || file?.name;
   if (!path) return "";
+  path = String(path).trim().replace(/^https\/\//i, "https://");
   if (/^(https?:|blob:|data:)/i.test(path)) return path;
   path = path.replace(/\\/g, "/");
   const publicIndex = path.indexOf("/public/uploads/");

@@ -28,6 +28,7 @@ import {
   Select,
   FormControl,
   useMediaQuery,
+  useTheme,
   Drawer,
   Fab,
 } from "@mui/material";
@@ -797,8 +798,14 @@ function FieldCard({
 // Main Component
 export default function GlobalChecklistBuilder() {
   const navigate = useNavigate();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+  const appTheme = useTheme();
+  const isMobile = useMediaQuery(appTheme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(appTheme.breakpoints.between("sm", "md"));
+  const isDark = appTheme.palette.mode === "dark";
+  const headerBg = isDark ? "#0f1c2e" : "#fff";
+  const headerBorder = isDark ? "rgba(148, 163, 184, 0.24)" : "#e5e7eb";
+  const headerText = isDark ? "#f8fafc" : "#111827";
+  const headerSubText = isDark ? "#cbd5e1" : "#6b7280";
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const {
@@ -1001,8 +1008,8 @@ export default function GlobalChecklistBuilder() {
         {/* Top Bar */}
         <Box
           sx={{
-            bgcolor: "#fff",
-            border: "1px solid #e5e7eb",
+            bgcolor: headerBg,
+            border: `1px solid ${headerBorder}`,
             px: { xs: 2, sm: 3, md: 4 },
             py: { xs: 1.5, sm: 1.8 },
             borderRadius: "12px",
@@ -1019,8 +1026,8 @@ export default function GlobalChecklistBuilder() {
               size="small"
               onClick={() => navigate("/admin/checklists")}
               sx={{
-                color: "#374151",
-                border: "1px solid #e5e7eb",
+                color: headerSubText,
+                border: `1px solid ${headerBorder}`,
                 borderRadius: "8px",
                 p: 0.6,
               }}
@@ -1029,12 +1036,12 @@ export default function GlobalChecklistBuilder() {
             </IconButton>
             <Box>
               <Typography
-                sx={{ fontSize: { xs: 16, sm: 18 }, fontWeight: 700 }}
+                sx={{ fontSize: { xs: 16, sm: 18 }, fontWeight: 700, color: headerText }}
               >
                 Global Checklist Builder
               </Typography>
               <Typography
-                sx={{ fontSize: { xs: 11, sm: 12 }, color: "#6b7280" }}
+                sx={{ fontSize: { xs: 11, sm: 12 }, color: headerSubText }}
               >
                 Create global checklists for organization-wide use
               </Typography>
