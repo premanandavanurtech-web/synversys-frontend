@@ -101,6 +101,14 @@ const getTokens = (mode = "light") => {
     childColor: dark ? "#61d7ed" : "#0d4f63",
     parentBg: dark ? "rgba(96, 165, 250, 0.14)" : "#eef6ff",
     parentColor: dark ? "#93c5fd" : "#1d4ed8",
+    // Theme-aware colors for the "Original / Clone" type badge in the list
+    // view. Previously this used hardcoded hex (#0369a1/#e0f2fe and
+    // #0f766e/#f0fdf4) which only had contrast against a light background,
+    // so on dark mode the pill rendered as a near-blank white box.
+    cloneTypeBg: dark ? "rgba(56, 189, 248, 0.16)" : "#e0f2fe",
+    cloneTypeColor: dark ? "#7dd3fc" : "#0369a1",
+    originalTypeBg: dark ? "rgba(74, 222, 128, 0.14)" : "#f0fdf4",
+    originalTypeColor: dark ? "#4ade80" : "#0f766e",
     radius: {
       card: "14px",
       pill: "999px",
@@ -2106,8 +2114,8 @@ export default function AssetManagement() {
                               sx={{
                                 fontSize: "0.6rem",
                                 fontWeight: 700,
-                                color: "#0369a1",
-                                bgcolor: "#e0f2fe",
+                                color: T.cloneTypeColor,
+                                bgcolor: T.cloneTypeBg,
                                 px: "4px",
                                 py: "1px",
                                 borderRadius: "3px",
@@ -2167,8 +2175,15 @@ export default function AssetManagement() {
                             sx={{
                               fontSize: "0.68rem",
                               fontWeight: 700,
-                              color: asset.isClone ? "#0369a1" : "#0f766e",
-                              bgcolor: asset.isClone ? "#e0f2fe" : "#f0fdf4",
+                              // Was hardcoded to #0369a1/#e0f2fe and
+                              // #0f766e/#f0fdf4 — near-white on dark mode,
+                              // which made the pill look blank/invisible.
+                              color: asset.isClone
+                                ? T.cloneTypeColor
+                                : T.originalTypeColor,
+                              bgcolor: asset.isClone
+                                ? T.cloneTypeBg
+                                : T.originalTypeBg,
                               px: "7px",
                               py: "2px",
                               borderRadius: "4px",
@@ -3177,4 +3192,3 @@ export default function AssetManagement() {
     </Box>
   );
 }
-  
