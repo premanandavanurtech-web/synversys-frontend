@@ -12,21 +12,28 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
+  Pagination,
   Paper,
   Select,
   Snackbar,
   Stack,
   TextField,
   Typography,
+  useMediaQuery,
   useTheme,
 } from "@mui/material";
 import {
   AccessTime,
   Attachment,
+  CheckCircle,
   ConfirmationNumber,
+  Close as CloseIcon,
+  FilterAlt as FilterIcon,
   Send,
   TaskAlt,
   UploadFile,
@@ -47,6 +54,8 @@ const C = {
   green: "#059669",
   blue: "#2563eb",
 };
+
+const TICKETS_PER_PAGE = 6;
 
 const categories = [
   { value: "technical", label: "Technical" },
@@ -94,7 +103,29 @@ const formatDateTime = (value) => {
   return date.toLocaleString();
 };
 
+// Returns true when a ticket's createdAt falls within the [from, to] date
+// range (inclusive, based on calendar day, not exact time).
+const isWithinDateRange = (createdAt, from, to) => {
+  if (!from && !to) return true;
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return false;
+
+  if (from) {
+    const fromDate = new Date(from);
+    fromDate.setHours(0, 0, 0, 0);
+    if (created < fromDate) return false;
+  }
+  if (to) {
+    const toDate = new Date(to);
+    toDate.setHours(23, 59, 59, 999);
+    if (created > toDate) return false;
+  }
+  return true;
+};
+
 function TicketDialog({ open, onClose, onSubmit, onInvalid, loading }) {
+  const theme = useTheme();
+  const isMobileDialog = useMediaQuery(theme.breakpoints.down("sm"));
   const [form, setForm] = useState({
     subject: "",
     category: "technical",
@@ -110,7 +141,18 @@ function TicketDialog({ open, onClose, onSubmit, onInvalid, loading }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      fullScreen={isMobileDialog}
+      PaperProps={{
+        sx: isMobileDialog
+          ? { m: 0, width: "100%", height: "100%", maxHeight: "100%", borderRadius: 0 }
+          : { borderRadius: 2 },
+      }}
+    >
       <DialogTitle sx={{ fontWeight: 800 }}>Raise Ticket</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} sx={{ pt: 0.5 }}>
@@ -244,9 +286,102 @@ function RaiseDialog({ open, onClose, onSubmit, loading }) {
   );
 }
 
+function ResolveDialog({ open, onClose, onSubmit, loading }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (open) setNotes("");
+  }, [open]);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={() => !loading && onClose()}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3 } }}
+    >
+      <DialogTitle sx={{ fontWeight: 800, fontSize: "1rem", pb: 1 }}>
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: 2,
+              bgcolor: "#dcfce7",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CheckCircle sx={{ color: C.green, fontSize: 20 }} />
+          </Box>
+          Resolve Ticket
+        </Stack>
+      </DialogTitle>
+      <Divider />
+      <DialogContent sx={{ pt: 2.5 }}>
+        <Alert
+          severity="info"
+          sx={{
+            mb: 2.5,
+            borderRadius: 2,
+            fontSize: 13,
+            bgcolor: isDark ? "rgba(8, 47, 73, 0.65)" : "rgba(21, 87, 106, 0.08)",
+            color: isDark ? "#c7f3ff" : C.text,
+            "& .MuiAlert-icon": {
+              color: isDark ? "#38bdf8" : C.teal,
+            },
+          }}
+        >
+          This will mark the ticket as resolved and notify the requester.
+        </Alert>
+        <TextField
+          fullWidth
+          multiline
+          rows={3}
+          size="small"
+          label="Resolution Notes (Optional)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Add resolution details for the requester..."
+          sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+        />
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+        <Button
+          onClick={onClose}
+          disabled={loading}
+          sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700 }}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={() => onSubmit(notes)}
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <TaskAlt />}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 800,
+            bgcolor: C.teal,
+            "&:hover": { bgcolor: "#0f4554" },
+          }}
+        >
+          Resolve Ticket
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 export default function Tickets() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { user } = useAuth();
   const { fetchTickets, createTicket, raiseToSuperAdmin, updateTicketStatus, loading } = useTickets();
   const [tickets, setTickets] = useState([]);
@@ -256,10 +391,15 @@ export default function Tickets() {
     status: "all",
     category: "all",
     priority: "all",
+    dateFrom: "",
+    dateTo: "",
   });
   const [ticketOpen, setTicketOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [raiseTarget, setRaiseTarget] = useState(null);
+  const [resolveTarget, setResolveTarget] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
+  const [page, setPage] = useState(1);
 
   const isSuperAdmin = user?.role === "super_admin";
   const isAdmin = user?.role === "admin";
@@ -294,6 +434,12 @@ export default function Tickets() {
     return () => window.clearInterval(intervalId);
   }, [loadTickets]);
 
+  // Reset back to page 1 whenever the active filters change so the user
+  // isn't left stranded on a page that no longer has results.
+  useEffect(() => {
+    setPage(1);
+  }, [filters.search, filters.status, filters.category, filters.priority, filters.dateFrom, filters.dateTo]);
+
   const applyTicketUpdate = useCallback((updatedTicket) => {
     const ticket = updatedTicket?.data || updatedTicket;
     if (!ticket?._id) return;
@@ -303,6 +449,7 @@ export default function Tickets() {
         (filters.status === "all" || ticket.status === filters.status) &&
         (filters.category === "all" || ticket.category === filters.category) &&
         (filters.priority === "all" || ticket.priority === filters.priority) &&
+        isWithinDateRange(ticket.createdAt, filters.dateFrom, filters.dateTo) &&
         (!filters.search ||
           [ticket.ticketId, ticket.subject, ticket.description]
             .filter(Boolean)
@@ -320,19 +467,91 @@ export default function Tickets() {
     });
   }, [filters]);
 
+  const hasDateFilter = Boolean(filters.dateFrom || filters.dateTo);
+
+  // Client-side date-range filtering, layered on top of whatever the
+  // backend already returned for the other filters/search term.
+  const filteredTickets = useMemo(() => {
+    if (!hasDateFilter) return tickets;
+    return tickets.filter((ticket) => isWithinDateRange(ticket.createdAt, filters.dateFrom, filters.dateTo));
+  }, [tickets, hasDateFilter, filters.dateFrom, filters.dateTo]);
+
+  // The backend `stats` totals don't account for the client-side date
+  // range filter, so once a date range is active we recompute the tile
+  // counts from the (already date-filtered) ticket list instead.
+  const dateFilteredStats = useMemo(() => {
+    if (!hasDateFilter) return null;
+    const counts = { total: 0, open: 0, raised_to_super_admin: 0, resolved: 0, closed: 0 };
+    filteredTickets.forEach((ticket) => {
+      counts.total += 1;
+      if (counts[ticket.status] !== undefined) counts[ticket.status] += 1;
+    });
+    return counts;
+  }, [filteredTickets, hasDateFilter]);
+
+  const activeStats = dateFilteredStats || stats;
+
   const statCards = useMemo(
     () => [
-      { key: "total", label: "Total Tickets", value: stats.total || 0, color: C.teal },
-      { key: "open", label: "Open Tickets", value: stats.open || 0, color: C.amber },
+      { key: "total", label: "Total Tickets", value: activeStats.total || 0, color: C.teal },
+      { key: "open", label: "Open Tickets", value: activeStats.open || 0, color: C.amber },
       {
         key: "raised_to_super_admin",
         label: "Raised Tickets",
-        value: stats.raised_to_super_admin || 0,
+        value: activeStats.raised_to_super_admin || 0,
         color: C.blue,
       },
-      { key: "resolved", label: "Resolved Tickets", value: stats.resolved || 0, color: C.green },
+      { key: "resolved", label: "Resolved Tickets", value: activeStats.resolved || 0, color: C.green },
     ],
-    [stats],
+    [activeStats],
+  );
+
+  const filterOptions = useMemo(
+    () => [
+      [
+        "status",
+        "Status",
+        [
+          { value: "all", label: "All Status" },
+          ...Object.entries(statusMeta).map(([value, meta]) => ({ value, label: meta.label })),
+        ],
+      ],
+      ["category", "Category", [{ value: "all", label: "All Categories" }, ...categories]],
+      ["priority", "Priority", [{ value: "all", label: "All Priority" }, ...priorities]],
+    ],
+    [],
+  );
+
+  const pageCount = Math.max(1, Math.ceil(filteredTickets.length / TICKETS_PER_PAGE));
+  const currentPage = Math.min(page, pageCount);
+  const pagedTickets = useMemo(
+    () => filteredTickets.slice((currentPage - 1) * TICKETS_PER_PAGE, currentPage * TICKETS_PER_PAGE),
+    [filteredTickets, currentPage],
+  );
+
+  const dateFilterFields = (
+    <>
+      <TextField
+        type="date"
+        label="From"
+        size="small"
+        value={filters.dateFrom}
+        onChange={(e) => setFilters((prev) => ({ ...prev, dateFrom: e.target.value }))}
+        InputLabelProps={{ shrink: true }}
+        inputProps={{ max: filters.dateTo || undefined }}
+        sx={{ minWidth: 150 }}
+      />
+      <TextField
+        type="date"
+        label="To"
+        size="small"
+        value={filters.dateTo}
+        onChange={(e) => setFilters((prev) => ({ ...prev, dateTo: e.target.value }))}
+        InputLabelProps={{ shrink: true }}
+        inputProps={{ min: filters.dateFrom || undefined }}
+        sx={{ minWidth: 150 }}
+      />
+    </>
   );
 
   return (
@@ -430,41 +649,62 @@ export default function Tickets() {
       </Box>
 
       <Paper sx={{ p: 2, mb: 3, border: `1px solid ${C.border}`, boxShadow: "none", borderRadius: 2 }}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           <AssetSearchField
             value={filters.search}
             placeholder="Search ticket ID, subject, description..."
             onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
             onClear={() => setFilters((prev) => ({ ...prev, search: "" }))}
-            sx={{ flex: 2 }}
+            sx={{ flex: 1, minWidth: 200 }}
           />
-          {[
-            [
-              "status",
-              "Status",
-              [
-                { value: "all", label: "All Status" },
-                ...Object.entries(statusMeta).map(([value, meta]) => ({ value, label: meta.label })),
-              ],
-            ],
-            ["category", "Category", [{ value: "all", label: "All Categories" }, ...categories]],
-            ["priority", "Priority", [{ value: "all", label: "All Priority" }, ...priorities]],
-          ].map(([key, label, options]) => (
-            <FormControl key={key} size="small" sx={{ minWidth: 150 }}>
-              <InputLabel>{label}</InputLabel>
-              <Select
-                label={label}
-                value={filters[key]}
-                onChange={(e) => setFilters((prev) => ({ ...prev, [key]: e.target.value }))}
-              >
-                {options.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          ))}
+          {isMobile && (
+            <IconButton
+              aria-label="Open filters"
+              onClick={() => setFilterOpen(true)}
+              sx={{
+                width: 42,
+                height: 42,
+                flexShrink: 0,
+                borderRadius: 2,
+                border: `1px solid ${isDark ? "rgba(77, 208, 225, 0.22)" : alpha(C.teal, 0.18)}`,
+                bgcolor: isDark ? "rgba(21, 87, 106, 0.35)" : alpha(C.teal, 0.08),
+                color: isDark ? "#4dd0e1" : C.teal,
+              }}
+            >
+              <FilterIcon />
+            </IconButton>
+          )}
+          {!isMobile && (
+            <>
+              {filterOptions.map(([key, label, options]) => (
+                <FormControl key={key} size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel sx={{ color: isDark ? "#c3d0d8" : undefined, "&.Mui-focused": { color: isDark ? "#4dd0e1" : undefined } }}>{label}</InputLabel>
+                  <Select
+                    label={label}
+                    value={filters[key]}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, [key]: e.target.value }))}
+                  >
+                    {options.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              ))}
+              {dateFilterFields}
+              {hasDateFilter && (
+                <Button
+                  size="small"
+                  color="inherit"
+                  onClick={() => setFilters((prev) => ({ ...prev, dateFrom: "", dateTo: "" }))}
+                  sx={{ color: C.muted, textTransform: "none", fontWeight: 700 }}
+                >
+                  Clear dates
+                </Button>
+              )}
+            </>
+          )}
         </Stack>
       </Paper>
 
@@ -472,72 +712,49 @@ export default function Tickets() {
         <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
           <CircularProgress />
         </Box>
-      ) : tickets.length ? (
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr", xl: "1fr 1fr 1fr" }, gap: 2 }}>
-          {tickets.map((ticket) => {
-            const status = statusMeta[ticket.status] || statusMeta.open;
-            const isTeamRaisedTicket = ticket.raisedByRole === "team";
-            const canAdminActOnTicket = isAdmin && isTeamRaisedTicket;
-            const canResolveTicket = (canAdminActOnTicket || isSuperAdmin) && ticket.status !== "resolved";
-            return (
-              <Card key={ticket._id} sx={{ border: `1px solid ${C.border}`, boxShadow: "none", borderRadius: 2 }}>
-                <CardContent>
-                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2}>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Chip
-                        icon={<ConfirmationNumber />}
-                        label={ticket.ticketId}
-                        size="small"
-                        sx={{ bgcolor: C.tealSoft, color: C.teal, fontWeight: 800, mb: 1 }}
-                      />
-                      <Typography sx={{ fontWeight: 800, color: C.text, wordBreak: "break-word" }}>
-                        {ticket.subject}
-                      </Typography>
-                    </Box>
-                    <Chip label={status.label} size="small" sx={{ bgcolor: `${status.color}15`, color: status.color, fontWeight: 800 }} />
-                  </Stack>
+      ) : filteredTickets.length ? (
+        <>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr", xl: "1fr 1fr 1fr" }, gap: 2 }}>
+            {pagedTickets.map((ticket) => {
+              const status = statusMeta[ticket.status] || statusMeta.open;
+              const isTeamRaisedTicket = ticket.raisedByRole === "team";
+              const canAdminActOnTicket = isAdmin && isTeamRaisedTicket;
+              const canResolveTicket = (canAdminActOnTicket || isSuperAdmin) && ticket.status !== "resolved";
+              return (
+                <Card key={ticket._id} sx={{ border: `1px solid ${C.border}`, boxShadow: "none", borderRadius: 2 }}>
+                  <CardContent>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2}>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Chip
+                          icon={<ConfirmationNumber />}
+                          label={ticket.ticketId}
+                          size="small"
+                          sx={{ bgcolor: C.tealSoft, color: C.teal, fontWeight: 800, mb: 1 }}
+                        />
+                        <Typography sx={{ fontWeight: 800, color: C.text, wordBreak: "break-word" }}>
+                          {ticket.subject}
+                        </Typography>
+                      </Box>
+                      <Chip label={status.label} size="small" sx={{ bgcolor: `${status.color}15`, color: status.color, fontWeight: 800 }} />
+                    </Stack>
 
-                  <Typography sx={{ color: C.muted, fontSize: 13, mt: 1.5, minHeight: 40 }}>
-                    {ticket.description}
-                  </Typography>
+                    <Typography sx={{ color: C.muted, fontSize: 13, mt: 1.5, minHeight: 40 }}>
+                      {ticket.description}
+                    </Typography>
 
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap mt={2}>
-                    <Chip label={titleCase(ticket.category)} size="small" />
-                    <Chip label={`${titleCase(ticket.priority)} Priority`} size="small" />
-                  </Stack>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap mt={2}>
+                      <Chip label={titleCase(ticket.category)} size="small" />
+                      <Chip label={`${titleCase(ticket.priority)} Priority`} size="small" />
+                    </Stack>
 
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: { xs: "1fr", sm: ticket.status === "resolved" ? "1fr 1fr" : "1fr" },
-                      gap: 1,
-                      mt: 1.5,
-                    }}
-                  >
-                    <Stack
-                      direction="row"
-                      spacing={0.75}
-                      alignItems="center"
+                    <Box
                       sx={{
-                        minWidth: 0,
-                        px: 1.25,
-                        py: 0.75,
-                        borderRadius: 2,
-                        bgcolor: isDark
-                          ? "rgba(21, 87, 106, 0.35)"
-                          : alpha(C.teal, 0.1),
-                        color: isDark ? "#4dd0e1" : C.teal,
-                        border: `1px solid ${
-                          isDark ? "rgba(77, 208, 225, 0.18)" : alpha(C.teal, 0.18)
-                        }`,
+                        display: "grid",
+                        gridTemplateColumns: { xs: "1fr", sm: ticket.status === "resolved" ? "1fr 1fr" : "1fr" },
+                        gap: 1,
+                        mt: 1.5,
                       }}
                     >
-                      <AccessTime sx={{ fontSize: 18, flexShrink: 0 }} />
-                      <Typography sx={{ fontSize: 12, fontWeight: 800, lineHeight: 1.35, overflowWrap: "anywhere" }}>
-                        Raised: {formatDateTime(ticket.createdAt)}
-                      </Typography>
-                    </Stack>
-                    {ticket.status === "resolved" && (
                       <Stack
                         direction="row"
                         spacing={0.75}
@@ -547,68 +764,146 @@ export default function Tickets() {
                           px: 1.25,
                           py: 0.75,
                           borderRadius: 2,
-                          bgcolor: alpha(C.green, isDark ? 0.18 : 0.1),
-                          color: C.green,
-                          border: `1px solid ${alpha(C.green, isDark ? 0.24 : 0.16)}`,
+                          bgcolor: isDark
+                            ? "rgba(21, 87, 106, 0.35)"
+                            : alpha(C.teal, 0.1),
+                          color: isDark ? "#4dd0e1" : C.teal,
+                          border: `1px solid ${
+                            isDark ? "rgba(77, 208, 225, 0.18)" : alpha(C.teal, 0.18)
+                          }`,
                         }}
                       >
-                        <TaskAlt sx={{ fontSize: 18, flexShrink: 0 }} />
+                        <AccessTime sx={{ fontSize: 18, flexShrink: 0 }} />
                         <Typography sx={{ fontSize: 12, fontWeight: 800, lineHeight: 1.35, overflowWrap: "anywhere" }}>
-                          Resolved: {formatDateTime(ticket.resolvedAt || ticket.updatedAt)}
+                          Raised: {formatDateTime(ticket.createdAt)}
                         </Typography>
                       </Stack>
-                    )}
-                  </Box>
+                      {ticket.status === "resolved" && (
+                        <Stack
+                          direction="row"
+                          spacing={0.75}
+                          alignItems="center"
+                          sx={{
+                            minWidth: 0,
+                            px: 1.25,
+                            py: 0.75,
+                            borderRadius: 2,
+                            bgcolor: alpha(C.green, isDark ? 0.18 : 0.1),
+                            color: C.green,
+                            border: `1px solid ${alpha(C.green, isDark ? 0.24 : 0.16)}`,
+                          }}
+                        >
+                          <TaskAlt sx={{ fontSize: 18, flexShrink: 0 }} />
+                          <Typography sx={{ fontSize: 12, fontWeight: 800, lineHeight: 1.35, overflowWrap: "anywhere" }}>
+                            Resolved: {formatDateTime(ticket.resolvedAt || ticket.updatedAt)}
+                          </Typography>
+                        </Stack>
+                      )}
+                    </Box>
 
-                  <Typography sx={{ mt: 2, color: C.muted, fontSize: 12 }}>
-                    Raised by {requesterName(ticket.raisedBy)}
-                    {ticket.adminId ? ` | Admin: ${requesterName(ticket.adminId)}` : ""}
-                  </Typography>
-
-                  {ticket.attachments?.length > 0 && (
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap mt={1.5}>
-                      {ticket.attachments.map((file) => (
-                        <Chip
-                          key={file.filePath}
-                          icon={<Attachment />}
-                          label={file.originalName || file.fileName}
-                          size="small"
-                          component="a"
-                          href={attachmentUrl(file)}
-                          clickable
-                          target="_blank"
-                        />
-                      ))}
-                    </Stack>
-                  )}
-
-                  <Stack direction="row" spacing={1} justifyContent="flex-end" mt={2}>
-                    {canAdminActOnTicket && ticket.status === "open" && (
-                      <Button size="small" variant="contained" startIcon={<Send />} onClick={() => setRaiseTarget(ticket)}>
-                        Raise to Super Admin
-                      </Button>
-                    )}
-                    {canResolveTicket && (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<TaskAlt />}
-                        onClick={async () => {
-                          const updatedTicket = await updateTicketStatus(ticket._id, "resolved");
-                          applyTicketUpdate(updatedTicket);
-                          setSnack({ open: true, message: "Ticket marked as resolved", severity: "success" });
-                          await loadTickets({ silent: true });
+                    {ticket.status === "resolved" && ticket.resolutionNotes && (
+                      <Box
+                        sx={{
+                          mt: 1.5,
+                          px: 1.5,
+                          py: 1.25,
+                          borderRadius: 2,
+                          bgcolor: alpha(C.green, isDark ? 0.16 : 0.08),
+                          border: `1px solid ${alpha(C.green, isDark ? 0.26 : 0.16)}`,
                         }}
                       >
-                        Resolve
-                      </Button>
+                        <Typography
+                          sx={{
+                            color: isDark ? "#86efac" : C.green,
+                            fontSize: 12,
+                            fontWeight: 800,
+                            mb: 0.35,
+                          }}
+                        >
+                          Resolution Message
+                        </Typography>
+                        <Typography
+                          sx={{
+                            color: isDark ? "#dcfce7" : C.text,
+                            fontSize: 13,
+                            lineHeight: 1.45,
+                            whiteSpace: "pre-wrap",
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {ticket.resolutionNotes}
+                        </Typography>
+                      </Box>
                     )}
-                  </Stack>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </Box>
+
+                    <Typography sx={{ mt: 2, color: C.muted, fontSize: 12 }}>
+                      Raised by {requesterName(ticket.raisedBy)}
+                      {ticket.adminId ? ` | Admin: ${requesterName(ticket.adminId)}` : ""}
+                    </Typography>
+
+                    {ticket.attachments?.length > 0 && (
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap mt={1.5}>
+                        {ticket.attachments.map((file) => (
+                          <Chip
+                            key={file.filePath}
+                            icon={<Attachment />}
+                            label={file.originalName || file.fileName}
+                            size="small"
+                            component="a"
+                            href={attachmentUrl(file)}
+                            clickable
+                            target="_blank"
+                          />
+                        ))}
+                      </Stack>
+                    )}
+
+                    <Stack direction="row" spacing={1} justifyContent="flex-end" mt={2}>
+                      {canAdminActOnTicket && ticket.status === "open" && (
+                        <Button size="small" variant="contained" startIcon={<Send />} onClick={() => setRaiseTarget(ticket)}>
+                          Raise to Super Admin
+                        </Button>
+                      )}
+                      {canResolveTicket && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<TaskAlt />}
+                          onClick={() => setResolveTarget(ticket)}
+                        >
+                          Resolve
+                        </Button>
+                      )}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </Box>
+
+          {pageCount > 1 && (
+            <Stack direction="row" justifyContent="center" mt={3}>
+              <Pagination
+                count={pageCount}
+                page={currentPage}
+                onChange={(_, value) => setPage(value)}
+                shape="rounded"
+                color="standard"
+                sx={{
+                  "& .MuiPaginationItem-root": {
+                    fontWeight: 700,
+                    color: isDark ? "#c3d0d8" : C.text,
+                  },
+                  "& .MuiPaginationItem-root.Mui-selected": {
+                    bgcolor: C.teal,
+                    color: "#fff",
+                    "&:hover": { bgcolor: "#0f4554" },
+                  },
+                }}
+              />
+            </Stack>
+          )}
+        </>
       ) : (
         <Paper sx={{ p: 5, textAlign: "center", border: `1px solid ${C.border}`, boxShadow: "none", borderRadius: 2 }}>
           <ConfirmationNumber sx={{ color: C.muted, fontSize: 42, mb: 1 }} />
@@ -616,6 +911,103 @@ export default function Tickets() {
           <Typography sx={{ color: C.muted, fontSize: 13 }}>Raise a ticket or adjust the filters.</Typography>
         </Paper>
       )}
+
+
+      <Dialog
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            m: 0,
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: "100%",
+            maxWidth: "none",
+            borderRadius: "24px 24px 0 0",
+            border: `1px solid ${isDark ? "rgba(77, 208, 225, 0.18)" : C.border}`,
+            bgcolor: isDark ? "#0f1e29" : "background.paper",
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between", fontWeight: 900 }}>
+          Filters
+          <IconButton aria-label="Close filters" onClick={() => setFilterOpen(false)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2.5, pb: 3 }}>
+          <Stack spacing={2.5}>
+            {filterOptions.map(([key, label, options]) => (
+              <FormControl key={key} fullWidth size="small" sx={{ mt: 0.5 }}>
+                <Typography sx={{ mb: 0.75, color: isDark ? "#c3d0d8" : C.muted, fontSize: 12, fontWeight: 700 }}>
+                  {label}
+                </Typography>
+                <Select
+                  value={filters[key]}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, [key]: e.target.value }))}
+                >
+                  {options.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ))}
+            <Box>
+              <Typography sx={{ mb: 0.75, color: isDark ? "#c3d0d8" : C.muted, fontSize: 12, fontWeight: 700 }}>
+                Date Range
+              </Typography>
+              <Stack direction="row" spacing={1.5}>
+                <TextField
+                  type="date"
+                  size="small"
+                  fullWidth
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, dateFrom: e.target.value }))}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ max: filters.dateTo || undefined }}
+                  label="From"
+                />
+                <TextField
+                  type="date"
+                  size="small"
+                  fullWidth
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, dateTo: e.target.value }))}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ min: filters.dateFrom || undefined }}
+                  label="To"
+                />
+              </Stack>
+              {hasDateFilter && (
+                <Button
+                  size="small"
+                  color="inherit"
+                  onClick={() => setFilters((prev) => ({ ...prev, dateFrom: "", dateTo: "" }))}
+                  sx={{ mt: 1, color: C.muted, textTransform: "none", fontWeight: 700, px: 0 }}
+                >
+                  Clear dates
+                </Button>
+              )}
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 0 }}>
+          <Button
+            fullWidth
+            variant="contained"
+            onClick={() => setFilterOpen(false)}
+            sx={{ bgcolor: C.teal, borderRadius: 2, py: 1.1, fontWeight: 800, "&:hover": { bgcolor: "#0f4554" } }}
+          >
+            Apply Filters
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <TicketDialog
         open={ticketOpen}
@@ -650,6 +1042,19 @@ export default function Tickets() {
           applyTicketUpdate(updatedTicket);
           setRaiseTarget(null);
           setSnack({ open: true, message: "Ticket raised to Super Admin", severity: "success" });
+          await loadTickets({ silent: true });
+        }}
+      />
+
+      <ResolveDialog
+        open={Boolean(resolveTarget)}
+        loading={loading}
+        onClose={() => setResolveTarget(null)}
+        onSubmit={async (notes) => {
+          const updatedTicket = await updateTicketStatus(resolveTarget._id, "resolved", notes);
+          applyTicketUpdate(updatedTicket);
+          setResolveTarget(null);
+          setSnack({ open: true, message: "Ticket marked as resolved", severity: "success" });
           await loadTickets({ silent: true });
         }}
       />

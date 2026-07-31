@@ -68,9 +68,9 @@ export const TicketProvider = ({ children }) => {
   );
 
   const updateTicketStatus = useCallback(
-    (id, status) =>
+    (id, status, notes = "") =>
       run(async () => {
-        const res = await api.patch(`/tickets/${id}/status`, { status });
+        const res = await api.patch(`/tickets/${id}/status`, { status, notes });
         return res.data?.data || res.data;
       }),
     [run],

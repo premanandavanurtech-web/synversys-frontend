@@ -41,6 +41,7 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Collapse,
+  Drawer,
 } from "@mui/material";
 import {
   TrendingUp as TrendingUpIcon,
@@ -70,6 +71,8 @@ import {
   Category as CategoryIcon,
   ConfirmationNumber as ConfirmationNumberIcon,
   Search as SearchIcon,
+  ExpandMore as ExpandMoreIcon,
+  FilterAlt as FilterIcon,
 } from "@mui/icons-material";
 import CurrencyRupeeIcon from "@mui/icons-material/CurrencyRupee";
 import SimCardDownloadIcon from "@mui/icons-material/SimCardDownload";
@@ -94,7 +97,7 @@ import {
   Area,
 } from "recharts";
 
-// â”€â”€â”€ Design Tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Design Tokens ---------------------------------------------------------
 const C = {
   primary: "#002631",
   primaryLight: "#003d4d",
@@ -113,6 +116,26 @@ const C = {
   white: "#ffffff",
 };
 
+const getChartTooltipProps = (isDark = false) => ({
+  contentStyle: {
+    backgroundColor: isDark ? "#0f1e29" : C.white,
+    border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.28)" : alpha(C.outlineVariant, 0.5)}`,
+    borderRadius: 10,
+    boxShadow: `0 8px 24px ${isDark ? alpha("#000", 0.32) : alpha(C.primary, 0.12)}`,
+    color: isDark ? "#e2e8f0" : C.primary,
+    fontSize: "0.75rem",
+    padding: "10px 12px",
+  },
+  labelStyle: {
+    color: isDark ? "#94a3b8" : C.secondary,
+    fontWeight: 700,
+  },
+  itemStyle: {
+    color: isDark ? "#e2e8f0" : C.primary,
+    fontWeight: 600,
+  },
+});
+
 const PIE_COLORS = [
   "#003d4d",
   "#df8f00",
@@ -124,15 +147,15 @@ const PIE_COLORS = [
 
 const FILTER_PRESETS = [
   { label: "Today", value: "today" },
-  { label: "Week", value: "7d" }, // âœ… fixed typo (was "Weak")
+  { label: "Week", value: "7d" }, // ? fixed typo (was "Weak")
   // { label: "30 Days", value: "30d" },
   { label: "Monthly", value: "monthly" },
   { label: "Yearly", value: "yearly" },
   { label: "Custom", value: "custom" },
 ];
 
-// â”€â”€â”€ Quick actions shown inline in the filter bar, per role â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// âœ… Moved out of SuperAdminDashboard's standalone "Quick Actions" Paper so the
+// --- Quick actions shown inline in the filter bar, per role -----------------
+// ? Moved out of SuperAdminDashboard's standalone "Quick Actions" Paper so the
 // pill buttons render to the right of the Period filter bar instead.
 const QUICK_ACTIONS_BY_ROLE = {
   super_admin: [
@@ -148,19 +171,19 @@ const QUICK_ACTIONS_BY_ROLE = {
   ],
 };
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Helpers -------------------------------------------------------------
 const num = (n, fallback = 0) => {
   const value = Number(n);
   return Number.isFinite(value) ? value : fallback;
 };
 const fmt = (n) => {
-  if (n === undefined || n === null) return "â€”";
+  if (n === undefined || n === null) return "—";
   const value = Number(n);
-  return Number.isFinite(value) ? value.toLocaleString("en-IN") : "â€”";
+  return Number.isFinite(value) ? value.toLocaleString("en-IN") : "—";
 };
 const fmtStat = (n) => fmt(n ?? 0);
 const pct = (n) => `${n ?? 0}%`;
-const fmtRs = (n) => `â‚¹${fmt(n)}`;
+const fmtRs = (n) => `?${fmt(n)}`;
 const titleize = (key = "") =>
   String(key)
     .replace(/[_-]+/g, " ")
@@ -270,7 +293,7 @@ const doPDF = async (overview, filename) => {
   doc.save(`${filename}.pdf`);
 };
 
-// â”€â”€â”€ Reusable Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Reusable Components -------------------------------------------------
 
 const StatCard = ({
   icon: Icon,
@@ -282,6 +305,9 @@ const StatCard = ({
   trendUp,
   active,
   onClick,
+  compact,
+  expandable,
+  expanded,
 }) => {
   return (
     <Zoom in style={{ transitionDelay: "60ms" }}>
@@ -303,7 +329,9 @@ const StatCard = ({
           p: { xs: 1.5, sm: 2.5 },
           borderRadius: { xs: 2.5, sm: 3 },
           height: "100%",
-          minHeight: { xs: 132, sm: 174, lg: 190, xl: 176 },
+          minHeight: compact
+            ? { xs: 110, sm: 150, lg: 160 }
+            : { xs: 132, sm: 174, lg: 190, xl: 176 },
           width: "100%",
           minWidth: 0,
           background: `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryLight} 100%)`,
@@ -361,27 +389,39 @@ const StatCard = ({
             >
               <Icon sx={{ fontSize: { xs: 18, sm: 20 }, color: "#ffffff" }} />
             </Box>
-            {trend && (
-              <Chip
-                icon={
-                  trendUp ? (
-                    <TrendingUpIcon sx={{ fontSize: "12px !important" }} />
-                  ) : (
-                    <TrendingDownIcon sx={{ fontSize: "12px !important" }} />
-                  )
-                }
-                label={trend}
-                size="small"
-                sx={{
-                  height: 22,
-                  fontSize: "0.65rem",
-                  fontWeight: 700,
-                  bgcolor: alpha("#ffffff", 0.12),
-                  color: trendUp ? "#7fd99a" : "#ff9d94",
-                  "& .MuiChip-icon": { color: "inherit" },
-                }}
-              />
-            )}
+            <Box display="flex" alignItems="center" gap={0.5}>
+              {trend && (
+                <Chip
+                  icon={
+                    trendUp ? (
+                      <TrendingUpIcon sx={{ fontSize: "12px !important" }} />
+                    ) : (
+                      <TrendingDownIcon sx={{ fontSize: "12px !important" }} />
+                    )
+                  }
+                  label={trend}
+                  size="small"
+                  sx={{
+                    height: 22,
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    bgcolor: alpha("#ffffff", 0.12),
+                    color: trendUp ? "#7fd99a" : "#ff9d94",
+                    "& .MuiChip-icon": { color: "inherit" },
+                  }}
+                />
+              )}
+              {expandable && (
+                <ExpandMoreIcon
+                  sx={{
+                    color: alpha("#ffffff", 0.75),
+                    fontSize: 20,
+                    transition: "transform 0.25s ease",
+                    transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
+                />
+              )}
+            </Box>
           </Box>
 
           <Typography
@@ -452,7 +492,7 @@ const SectionTitle = ({ icon: Icon, title, chip }) => (
   </Box>
 );
 
-// âœ… ChartCard: removed fixed width, now fully fluid
+// ? ChartCard: removed fixed width, now fully fluid
 const ChartCard = ({ title, sub, children, minH = 280, action }) => (
   <Paper
     elevation={0}
@@ -464,7 +504,7 @@ const ChartCard = ({ title, sub, children, minH = 280, action }) => (
       minWidth: 0,
       bgcolor: C.white,
       border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
-      minHeight: { xs: 240, sm: minH }, // âœ… smaller minimum on mobile
+      minHeight: { xs: 240, sm: minH }, // ? smaller minimum on mobile
     }}
   >
     <Box
@@ -477,7 +517,7 @@ const ChartCard = ({ title, sub, children, minH = 280, action }) => (
         sx={{
           fontWeight: 700,
           color: C.primary,
-          fontSize: { xs: "0.8rem", sm: "0.85rem" }, // âœ… fluid
+          fontSize: { xs: "0.8rem", sm: "0.85rem" }, // ? fluid
         }}
       >
         {title}
@@ -499,8 +539,8 @@ const EmptyChart = ({ msg = "No data available" }) => (
   </Box>
 );
 
-// âœ… ActivityTable: wrapped in overflow scroll container for mobile
-// â”€â”€â”€ REPLACE ActivityTable â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ? ActivityTable: wrapped in overflow scroll container for mobile
+// --- REPLACE ActivityTable -------------------------------------------------
 const ActivityTable = ({ activities }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -568,20 +608,20 @@ const ActivityTable = ({ activities }) => {
                         month: "short",
                         year: "numeric",
                       })
-                    : "â€”"}
+                    : "—"}
                 </Typography>
               </Box>
               {/* Row 2: Description */}
               <Typography sx={{ fontSize: "0.72rem", color: activityText, mb: 0.5 }}>
-                {act.description || act.desc || "â€”"}
+                {act.description || act.desc || "—"}
               </Typography>
               {/* Row 3: User + Role chip */}
               <Box display="flex" justifyContent="space-between" alignItems="center">
                 <Typography sx={{ fontSize: "0.7rem", color: activityStrong, fontWeight: 600 }}>
-                  {act.actor?.email || act.actor || "â€”"}
+                  {act.actor?.email || act.actor || "—"}
                 </Typography>
                 <Chip
-                  label={act.actor?.role || act.role || "â€”"}
+                  label={act.actor?.role || act.role || "—"}
                   size="small"
                   sx={{
                     height: 16,
@@ -623,7 +663,7 @@ const ActivityTable = ({ activities }) => {
     );
   }
 
-  // â”€â”€ Desktop: original table, unchanged â”€â”€
+  // -- Desktop: original table, unchanged --
   return (
     <TableContainer sx={{ maxHeight: 500, overflowX: "auto" }}>
       <Table stickyHeader size="small" sx={{ minWidth: 1130 }}>
@@ -683,7 +723,7 @@ const ActivityTable = ({ activities }) => {
                 </TableCell>
                 <TableCell sx={{ maxWidth: { xs: 140, sm: 220 } }}>
                   <Typography sx={{ fontSize: "0.72rem", color: C.secondary }}>
-                    {act.description || act.desc || "â€”"}
+                    {act.description || act.desc || "—"}
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -695,12 +735,12 @@ const ActivityTable = ({ activities }) => {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {act.actor?.email || act.actor || "â€”"}
+                    {act.actor?.email || act.actor || "—"}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Chip
-                    label={act.actor?.role || act.role || "â€”"}
+                    label={act.actor?.role || act.role || "—"}
                     size="small"
                     sx={{
                       height: 18,
@@ -725,7 +765,7 @@ const ActivityTable = ({ activities }) => {
                           month: "short",
                           year: "numeric",
                         })
-                      : "â€”"}
+                      : "—"}
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -745,7 +785,7 @@ const ActivityTable = ({ activities }) => {
   );
 };
 
-// â”€â”€â”€ REPLACE NotifList â€” only change: remove width: "1090px" â†’ width: "100%" â”€â”€
+// --- REPLACE NotifList • only change: remove width: "1090px" ? width: "100%" --
 const NotifList = ({ notifications }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -818,16 +858,17 @@ const NotifList = ({ notifications }) => {
   );
 };
 
-// â”€â”€â”€ Filter Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// âœ… Now accepts an `actions` prop â€” when present, quick-action pill buttons
+// --- Filter Bar -------------------------------------------------------------
+// ? Now accepts an `actions` prop • when present, quick-action pill buttons
 // render right-aligned next to the Period filters (previously a separate
 // "Quick Actions" Paper block lower on the page for super_admin).
-const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [], minDate }) => {
+const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [], minDate, mobileSheet = false }) => {
   const navigate = useNavigate();
   const theme = useTheme();
   const [showCustom, setShowCustom] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handlePreset = (preset) => {
     if (preset === "custom") {
@@ -843,7 +884,7 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [], minDat
     onFilterChange({ preset: "custom", startDate, endDate });
   };
 
-  return (
+  const content = (
     <Paper
       elevation={0}
       sx={{
@@ -854,7 +895,7 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [], minDat
         border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
       }}
     >
-      {/* âœ… Period filters (left) + quick-action pills (right), wraps on small screens */}
+      {/* ? Period filters (left) + quick-action pills (right), wraps on small screens */}
       <Box
         display="flex"
         alignItems="center"
@@ -978,7 +1019,7 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [], minDat
       </Box>
 
       <Collapse in={showCustom}>
-        {/* âœ… Date pickers stack vertically on xs */}
+        {/* ? Date pickers stack vertically on xs */}
         <Box
           display="flex"
           alignItems={{ xs: "stretch", sm: "center" }}
@@ -1071,9 +1112,13 @@ const FilterBar = ({ activeFilter, onFilterChange, loading, actions = [], minDat
       </Collapse>
     </Paper>
   );
+
+  if (mobileSheet) return content;
+
+  return <Box sx={{ display: { xs: "none", sm: "block" } }}>{content}</Box>;
 };
 
-// â”€â”€â”€ Responsive chart height hook â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Responsive chart height hook -----------------------------------------
 // Returns a chart height appropriate to screen width
 const useChartHeight = (defaultH = 240, mobileH = 200) => {
   const theme = useTheme();
@@ -1081,18 +1126,21 @@ const useChartHeight = (defaultH = 240, mobileH = 200) => {
   return isMobile ? mobileH : defaultH;
 };
 
-// â”€â”€â”€ SUPER ADMIN VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const SuperAdminDashboard = ({ data, loading, searchQuery = "" }) => {
+// --- SUPER ADMIN VIEW -------------------------------------------------------
+const SuperAdminDashboard = ({ data, loading, searchQuery = "", activeFilter }) => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const chartH = useChartHeight(240, 190);
 
-  // Server returns nested under data.data or flat â€” handle both shapes
+  // Server returns nested under data.data or flat • handle both shapes
   const payload = data?.data || data || {};
   const summary = payload.summary || {};
   const distribution = payload.distribution || {};
   const charts_ = payload.charts || {};
   const activities = payload.recentActivities || [];
   const notifications = payload.notifications || [];
+  const isTodayPeriod = activeFilter?.preset === "today";
 
   const clientsByPlan = useMemo(
     () =>
@@ -1144,119 +1192,417 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "" }) => {
     [assignTrend],
   );
 
+  // ? Category tree: Level 1 = category tiles, Level 2 = KPI sub-tiles.
+  // Clicking a category tile expands to show its sub-tiles below it; each
+  // sub-tile is independently clickable and navigates to the relevant page.
+  const [expandedCategory, setExpandedCategory] = useState(null);
+  const activityOverview = useMemo(() => {
+    if (isTodayPeriod) {
+      return {
+        title: "Daily Active Users",
+        value: fmtStat(summary.dailyActiveUsers),
+        sub: "Active in the last 24h",
+      };
+    }
 
-
-  const statCards = [
-    {
-      icon: PeopleIcon,
-      title: "Total Customers",
-      value: fmtStat(summary.totalClients),
-      sub: `${fmtStat(summary.activeSubscriptions)} Active · ${fmtStat(summary.inactiveCustomers15Days ?? summary.inactiveCustomers)} Inactive Customers (15 Days)`,
-      trend: summary.clientGrowth ? `${summary.clientGrowth}%` : null,
-      trendUp: (summary.clientGrowth ?? 0) >= 0,
-      onClick: () => navigate("/admin/clients"),
-    },
-    {
-      icon: HourglassIcon,
-      title: "Trial & Onboarding",
-      value: fmtStat(num(summary.trialCustomers) + num(summary.onboardingCustomers)),
-      sub: `${fmtStat(summary.trialCustomers)} Trial · ${fmtStat(summary.onboardingCustomers)} Onboarding · ${fmtStat(summary.pendingCustomerApprovals)} Pending Approval`,
-      onClick: () => navigate("/admin/clients"),
-    },
-    // {
-    //   icon: InventoryIcon,
-    //   title: "Total Assets",
-    //   value: fmtStat(summary.totalAssets),
-    //   sub: `${fmtStat(summary.averageAssetsPerCustomer)} Avg Assets Per Customer`,
-    //   onClick: () => navigate("/admin/assets"),
-    // },
-    {
-      icon: CalendarIcon,
-      title: "Subscription Lifecycle",
-      value: fmtStat(summary.activeSubscriptions),
-      sub: `${fmtStat(summary.upcomingRenewals)} Upcoming Renewals · ${fmtStat(summary.expiringSoon)} Expiring Soon`,
-      onClick: () => navigate("/admin/clients"),
-    },
-    {
-      icon: WarningIcon,
-      title: "Capacity Alerts",
-      value: fmtStat(summary.accountsApproachingLimits),
-      sub: "Accounts approaching asset/user plan limits",
-      onClick: () => navigate("/admin/clients"),
-    },
-    {
-      icon: ErrorIcon,
-      title: "Security Alerts",
-      value: fmtStat(num(summary.failedLogins) + num(summary.flaggedIps) + num(summary.recentRoleChanges)),
-      sub: `${fmtStat(summary.activeSessions)} Active Sessions · ${fmtStat(summary.failedLogins)} Failed Login · ${fmtStat(summary.flaggedIps)} Flagged IPs · ${fmtStat(summary.recentRoleChanges)} Role Changes · ${pct(summary.twoFactorAdoptionRate)} 2FA`,
-      onClick: () => navigate("/admin/audit-logs"),
-    },
-    {
-      icon: GroupIcon,
-      title: "Active Users",
+    return {
+      title: "User Activity",
       value: fmtStat(summary.dailyActiveUsers),
-      sub: `${fmtStat(summary.dailyActiveUsers)} Daily Active Users · ${fmtStat(summary.monthlyActiveUsers)} Monthly Active Users`,
-      onClick: () => navigate("/admin/audit-logs"),
-    },
-    {
-      icon: ConfirmationNumberIcon,
-      title: "Customer Support",
-      value: fmtStat(summary.criticalTickets),
-      sub: `${fmtStat(summary.avgResponseTimeHours)}h Avg Response · ${fmtStat(summary.resolvedToday)} Resolved Today · ${fmtStat(summary.systemOutages)} System Outages`,
-      onClick: () => navigate("/admin/tickets-raised"),
-    },
-    {
-      icon: AssignmentIcon,
-      title: "Checklist Builder",
+      sub: `${fmtStat(summary.monthlyActiveUsers)} monthly active users`,
+    };
+  }, [isTodayPeriod, summary.dailyActiveUsers, summary.monthlyActiveUsers]);
+
+  const operationsOverview = useMemo(() => {
+    if (isTodayPeriod) {
+      const periodChecklists = summary.periodChecklists ?? 0;
+      const periodPublished = summary.periodPublishedChecklists ?? 0;
+      const periodAssignments = summary.periodAssignments ?? 0;
+      return {
+        title: "Today Checklists & Assignments",
+        value: fmtStat(periodChecklists),
+        sub: `${fmtStat(periodPublished)} published today`,
+        checklistValue: fmtStat(periodChecklists),
+        checklistSub: `${fmtStat(periodPublished)} published today`,
+        assignmentValue: fmtStat(periodAssignments),
+        assignmentSub: `${fmtStat(summary.periodPendingAssignments ?? 0)} pending today • ${fmtStat(summary.periodSubmittedAssignments ?? 0)} submitted today`,
+      };
+    }
+
+    return {
+      title: "Checklists & Assignments",
       value: fmtStat(summary.totalChecklists),
       sub: `${fmtStat(summary.publishedChecklists)} published`,
-      onClick: () => navigate("/admin/checklists"),
-    },
-    {
-      icon: TaskAltIcon,
-      title: "Assignments",
-      onClick: () => navigate("/admin/assigned-checklists"),
-      value: fmt(
+      checklistValue: fmtStat(summary.totalChecklists),
+      checklistSub: `${fmtStat(summary.publishedChecklists)} published`,
+      assignmentValue: fmt(
         summary.totalAssignments ??
           num(summary.pendingAssignments) + num(summary.completedAssignments),
       ),
-      sub: `${fmtStat(summary.pendingAssignments)} Pending · ${fmtStat(summary.pendingApprovalAssignments)} Pending Approval · ${fmtStat(summary.submittedAssignments)} Submission`,
-    },
-  ];
+      assignmentSub: `${fmtStat(summary.pendingAssignments)} pending • ${fmtStat(summary.submittedAssignments)} submitted`,
+    };
+  }, [
+    isTodayPeriod,
+    summary.periodChecklists,
+    summary.periodPublishedChecklists,
+    summary.periodAssignments,
+    summary.periodPendingAssignments,
+    summary.periodSubmittedAssignments,
+    summary.totalChecklists,
+    summary.publishedChecklists,
+    summary.totalAssignments,
+    summary.pendingAssignments,
+    summary.completedAssignments,
+    summary.submittedAssignments,
+  ]);
+
+  const customerOverview = useMemo(() => {
+    if (isTodayPeriod) {
+      return {
+        title: "Today Customers",
+        value: fmtStat(summary.newClients),
+        sub: `${fmtStat(summary.pendingCustomerApprovals)} pending approval total`,
+      };
+    }
+
+    return {
+      title: "Customer & Asset",
+      value: fmtStat(summary.totalClients),
+      sub: `${fmtStat(summary.activeSubscriptions)} active • ${fmtStat(summary.pendingCustomerApprovals)} pending approval`,
+    };
+  }, [
+    isTodayPeriod,
+    summary.newClients,
+    summary.pendingCustomerApprovals,
+    summary.totalClients,
+    summary.activeSubscriptions,
+  ]);
+
+  const planOverview = useMemo(() => {
+    if (isTodayPeriod) {
+      return {
+        title: "Today Renewals",
+        value: fmtStat(summary.periodRenewals),
+        sub: `${fmtStat(summary.activeSubscriptions)} active subscriptions total`,
+      };
+    }
+
+    return {
+      title: "Plan & Subscriptions",
+      value: fmtStat(summary.activeSubscriptions),
+      sub: `${fmtStat(summary.upcomingRenewals)} renewing • ${fmtStat(summary.expiringSoon)} expiring soon`,
+    };
+  }, [
+    isTodayPeriod,
+    summary.periodRenewals,
+    summary.activeSubscriptions,
+    summary.upcomingRenewals,
+    summary.expiringSoon,
+  ]);
+
+  const supportOverview = useMemo(() => {
+    if (isTodayPeriod) {
+      return {
+        title: "Today Support",
+        value: fmtStat(summary.resolvedToday),
+        sub: `${fmtStat(summary.criticalTickets)} open critical total`,
+      };
+    }
+
+    return {
+      title: "Customer Support",
+      value: fmtStat(summary.criticalTickets),
+      sub: `${fmtStat(summary.avgResponseTimeHours)}h avg response • ${fmtStat(summary.resolvedToday)} resolved today`,
+    };
+  }, [
+    isTodayPeriod,
+    summary.resolvedToday,
+    summary.criticalTickets,
+    summary.avgResponseTimeHours,
+  ]);
+
+  const categories = useMemo(
+    () => [
+      {
+        key: "customer",
+        icon: PeopleIcon,
+        title: customerOverview.title,
+        value: customerOverview.value,
+        sub: customerOverview.sub,
+        items: [
+          {
+            icon: PeopleIcon,
+            title: "Active vs Inactive",
+            value: fmtStat(summary.activeSubscriptions),
+            sub: `${fmtStat(summary.inactiveCustomers15Days ?? summary.inactiveCustomers)} inactive (15 days)`,
+            onClick: () => navigate("/admin/clients"),
+          },
+          {
+            icon: HourglassIcon,
+            title: "Trial vs Onboarding",
+            value: fmtStat(num(summary.trialCustomers) + num(summary.onboardingCustomers)),
+            sub: `${fmtStat(summary.trialCustomers)} trial • ${fmtStat(summary.onboardingCustomers)} onboarding`,
+            onClick: () => navigate("/admin/clients"),
+          },
+          {
+            icon: AssignmentTurnedInIcon,
+            title: "Pending Approvals",
+            value: fmtStat(summary.pendingCustomerApprovals),
+            sub: "Awaiting customer approval",
+            onClick: () => navigate("/admin/clients"),
+          },
+          // {
+          //   icon: InventoryIcon,
+          //   title: "Total Assets",
+          //   value: fmtStat(summary.totalAssets),
+          //   sub: `${fmtStat(summary.averageAssetsPerCustomer)} avg per customer`,
+          //   onClick: () => navigate("/admin/assets"),
+          // },
+        ],
+      },
+      {
+        key: "plan",
+        icon: CalendarIcon,
+        title: planOverview.title,
+        value: planOverview.value,
+        sub: planOverview.sub,
+        items: [
+          {
+            icon: CalendarIcon,
+            title: "Subscription Lifecycle",
+            value: fmtStat(summary.activeSubscriptions),
+            sub: `${fmtStat(summary.upcomingRenewals)} upcoming renewals`,
+            onClick: () => navigate("/admin/clients"),
+          },
+          {
+            icon: WarningIcon,
+            title: "Capacity Alerts",
+            value: fmtStat(summary.accountsApproachingLimits),
+            sub: "Accounts nearing plan limits",
+            onClick: () => navigate("/admin/clients"),
+          },
+          {
+            icon: HourglassIcon,
+            title: "Expiring Soon",
+            value: fmtStat(summary.expiringSoon),
+            sub: "Subscriptions expiring shortly",
+            onClick: () => navigate("/admin/clients"),
+          },
+        ],
+      },
+      {
+        key: "security",
+        icon: ErrorIcon,
+        title: "Security Alerts",
+        value: fmtStat(num(summary.failedLogins) + num(summary.flaggedIps) + num(summary.recentRoleChanges)),
+        sub: `${fmtStat(summary.activeSessions)} active sessions • ${pct(summary.twoFactorAdoptionRate)} 2FA`,
+        items: [
+          {
+            icon: GroupIcon,
+            title: "Active Sessions",
+            value: fmtStat(summary.activeSessions),
+            sub: `${pct(summary.twoFactorAdoptionRate)} 2FA adoption`,
+            onClick: () => navigate("/admin/audit-logs"),
+          },
+          {
+            icon: ErrorIcon,
+            title: "Failed Logins",
+            value: fmtStat(summary.failedLogins),
+            sub: "Failed login attempts",
+            onClick: () => navigate("/admin/audit-logs"),
+          },
+          {
+            icon: WarningIcon,
+            title: "Flagged IPs",
+            value: fmtStat(summary.flaggedIps),
+            sub: "Suspicious activity flagged",
+            onClick: () => navigate("/admin/audit-logs"),
+          },
+          {
+            icon: HistoryIcon,
+            title: "Role Changes",
+            value: fmtStat(summary.recentRoleChanges),
+            sub: "Recent permission changes",
+            onClick: () => navigate("/admin/audit-logs"),
+          },
+        ],
+      },
+      {
+        key: "support",
+        icon: ConfirmationNumberIcon,
+        title: supportOverview.title,
+        value: supportOverview.value,
+        sub: supportOverview.sub,
+        items: [
+          {
+            icon: ConfirmationNumberIcon,
+            title: "Critical Tickets",
+            value: fmtStat(summary.criticalTickets),
+            sub: "Needs immediate attention",
+            onClick: () => navigate("/admin/tickets-raised"),
+          },
+          {
+            icon: HourglassIcon,
+            title: "Avg Response Time",
+            value: `${fmtStat(summary.avgResponseTimeHours)}h`,
+            sub: "Average first response",
+            onClick: () => navigate("/admin/tickets-raised"),
+          },
+          {
+            icon: CheckCircleOutlineIcon,
+            title: "Resolved Today",
+            value: fmtStat(summary.resolvedToday),
+            sub: "Tickets closed today",
+            onClick: () => navigate("/admin/tickets-raised"),
+          },
+          {
+            icon: WarningIcon,
+            title: "System Outages",
+            value: fmtStat(summary.systemOutages),
+            sub: "Active or recent outages",
+            onClick: () => navigate("/admin/tickets-raised"),
+          },
+        ],
+      },
+      {
+        key: "activity",
+        icon: GroupIcon,
+        title: activityOverview.title,
+        value: activityOverview.value,
+        sub: activityOverview.sub,
+        items: [
+          {
+            icon: GroupIcon,
+            title: "Daily Active Users",
+            value: fmtStat(summary.dailyActiveUsers),
+            sub: "Active in the last 24h",
+            onClick: () => navigate("/admin/audit-logs"),
+          },
+          {
+            icon: GroupIcon,
+            title: "Monthly Active Users",
+            value: fmtStat(summary.monthlyActiveUsers),
+            sub: "Active in the last 30 days",
+            onClick: () => navigate("/admin/audit-logs"),
+          },
+        ],
+      },
+      {
+        key: "operations",
+        icon: AssignmentIcon,
+        title: operationsOverview.title,
+        value: operationsOverview.value,
+        sub: operationsOverview.sub,
+        items: [
+          {
+            icon: AssignmentIcon,
+            title: isTodayPeriod ? "Today Checklist Builder" : "Checklist Builder",
+            value: operationsOverview.checklistValue,
+            sub: operationsOverview.checklistSub,
+            onClick: () => navigate("/admin/checklists"),
+          },
+          {
+            icon: TaskAltIcon,
+            title: isTodayPeriod ? "Today Assignments" : "Assignments",
+            value: operationsOverview.assignmentValue,
+            sub: operationsOverview.assignmentSub,
+            onClick: () => navigate("/admin/assigned-checklists"),
+          },
+        ],
+      },
+    ],
+    [summary, navigate, activityOverview, operationsOverview, customerOverview, planOverview, supportOverview, isTodayPeriod],
+  );
+
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const matchesSearch = (value) => String(value || "").toLowerCase().includes(normalizedSearch);
-  const visibleStatCards = normalizedSearch
-    ? statCards.filter((card) => matchesSearch(card.title) || matchesSearch(card.sub))
-    : statCards;
+  const visibleCategories = normalizedSearch
+    ? categories.filter(
+        (cat) =>
+          matchesSearch(cat.title) ||
+          matchesSearch(cat.sub) ||
+          cat.items.some((item) => matchesSearch(item.title) || matchesSearch(item.sub)),
+      )
+    : categories;
 
-  // âœ… NOTE: the standalone "Quick Actions" Paper block (Manage Clients /
-  // Checklists / Reports) that used to render here has been removed.
-  // Those same pill buttons now render inline in the FilterBar, to the
-  // right of the Period filters â€” see QUICK_ACTIONS_BY_ROLE.super_admin
-  // and the <FilterBar actions={...} /> usage in the root Dashboard component.
+  const activeCategory = categories.find((cat) => cat.key === expandedCategory);
 
   return (
     <Box>
-      {/* âœ… 2-col on small screens, 5-col on desktop */}
+      {/* Level 1: category tiles */}
       <Box
         sx={{
           display: "grid",
           gridTemplateColumns: {
             xs: "repeat(2, minmax(0, 1fr))",
-            sm: "repeat(2, minmax(0, 1fr))",
-            lg: "repeat(5, minmax(0, 1fr))",
+            sm: "repeat(3, minmax(0, 1fr))",
+            lg: "repeat(6, minmax(0, 1fr))",
           },
           gap: { xs: 1.5, sm: 2 },
-          mb: 3,
+          mb: expandedCategory ? 1.5 : 3,
         }}
       >
-        {visibleStatCards.map((s, i) => (
-          <StatCard {...s} loading={loading} key={i} />
+        {visibleCategories.map((cat) => (
+          <StatCard
+            key={cat.key}
+            icon={cat.icon}
+            title={cat.title}
+            value={cat.value}
+            sub={cat.sub}
+            loading={loading}
+            expandable
+            expanded={expandedCategory === cat.key}
+            active={expandedCategory === cat.key}
+            onClick={() =>
+              setExpandedCategory((current) => (current === cat.key ? null : cat.key))
+            }
+          />
         ))}
       </Box>
 
+      {/* Level 2: KPI sub-tiles for the selected category, each clickable */}
+      <Collapse in={Boolean(activeCategory)} unmountOnExit>
+        {activeCategory && (
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 1.5, sm: 2 },
+              borderRadius: 3,
+              mb: 3,
+              bgcolor: C.surfaceContainerLow,
+              border: `1px solid ${alpha(C.outlineVariant, 0.5)}`,
+            }}
+          >
+            <SectionTitle icon={activeCategory.icon} title={`${activeCategory.title} • details`} />
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "repeat(2, minmax(0, 1fr))",
+                  sm: "repeat(auto-fit, minmax(200px, 1fr))",
+                },
+                justifyContent: "center",
+                gap: { xs: 1.5, sm: 2 },
+              }}
+            >
+              {activeCategory.items.map((item, i) => (
+                <StatCard
+                  key={i}
+                  icon={item.icon}
+                  title={item.title}
+                  value={item.value}
+                  sub={item.sub}
+                  loading={loading}
+                  compact
+                  onClick={item.onClick}
+                />
+              ))}
+            </Box>
+          </Paper>
+        )}
+      </Collapse>
+
       {/* Revenue trend + Clients by plan */}
-      {/* âœ… Both charts full-width on mobile, split on md+ */}
+      {/* ? Both charts full-width on mobile, split on md+ */}
       <Box
         sx={{
           display: "grid",
@@ -1298,12 +1644,8 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "" }) => {
                   />
                   <YAxis tick={{ fontSize: 10, fill: C.secondary }} width={48} />
                   <RTooltip
-                    contentStyle={{
-                      borderRadius: 8,
-                      border: `1px solid ${C.outlineVariant}`,
-                      fontSize: "0.75rem",
-                    }}
-                    formatter={(v) => [`â‚¹${v.toLocaleString()}`, "Revenue"]}
+                    {...getChartTooltipProps(isDark)}
+                    formatter={(v) => [`Rs. ${v.toLocaleString()}`, "Revenue"]}
                   />
                   <Area
                     type="monotone"
@@ -1350,7 +1692,7 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "" }) => {
                     }}
                     wrapperStyle={{ fontSize: 12, color: C.secondary }}
                   />
-                  <RTooltip />
+                  <RTooltip {...getChartTooltipProps(isDark)} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -1391,7 +1733,7 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "" }) => {
                     allowDecimals={false}
                     width={32}
                   />
-                  <RTooltip contentStyle={{ borderRadius: 8, fontSize: "0.75rem" }} />
+                  <RTooltip {...getChartTooltipProps(isDark)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar
                     dataKey="created"
@@ -1435,7 +1777,7 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "" }) => {
                       <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <RTooltip />
+                  <RTooltip {...getChartTooltipProps(isDark)} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -1446,7 +1788,7 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "" }) => {
       </Box>
 
       {/* Activities + Notifications side by side */}
-      {/* âœ… Stack vertically on mobile */}
+      {/* ? Stack vertically on mobile */}
       <Box
         sx={{
           display: "grid",
@@ -1505,8 +1847,8 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "" }) => {
   );
 };
 
-// â”€â”€â”€ ADMIN VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const AdminDashboard = ({ data, loading }) => {
+// --- ADMIN VIEW -------------------------------------------------------------
+const AdminDashboard = ({ data, loading, activeFilter }) => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -1537,6 +1879,7 @@ const AdminDashboard = ({ data, loading }) => {
   const activities = payload.recentActivities || [];
   const notifications = payload.notifications || [];
   const amcExpiryManagement = payload.amcExpiryManagement || {};
+  const isTodayPeriod = activeFilter?.preset === "today";
   const expiryByType = amcExpiryManagement.byType || {};
   const expiryItems = amcExpiryManagement.items || [];
   const emptyExpirySummary = {
@@ -1558,11 +1901,11 @@ const AdminDashboard = ({ data, loading }) => {
 
   const assetByCategory = useMemo(
     () =>
-      (distribution.assetByStatus || []).map((a) => ({
+      ((isTodayPeriod ? distribution.periodAssetByStatus : distribution.assetByStatus) || []).map((a) => ({
         name: a.name,
         value: a.value,
       })),
-    [distribution],
+    [distribution, isTodayPeriod],
   );
   const assetStatusTotal = useMemo(
     () => assetByCategory.reduce((sum, item) => sum + num(item.value), 0),
@@ -1605,44 +1948,51 @@ const AdminDashboard = ({ data, loading }) => {
   const topPerformers = useMemo(() => payload.topPerformers || [], [payload]);
   const hasAssetTypeBreakdown =
     summary.parentAssets !== undefined || summary.childAssets !== undefined;
-  const parentAssetCount = Number(summary.parentAssets || 0);
-  const childAssetCount = Number(summary.childAssets || 0);
+  const parentAssetCount = Number((isTodayPeriod ? summary.periodParentAssets : summary.parentAssets) || 0);
+  const childAssetCount = Number((isTodayPeriod ? summary.periodChildAssets : summary.childAssets) || 0);
   const totalAssetCount = hasAssetTypeBreakdown
     ? parentAssetCount + childAssetCount
     : summary.totalAssets;
+  const activeAssetCount = isTodayPeriod ? summary.periodActiveAssets : summary.activeAssets;
 
   const statCards = [
     {
       icon: GroupIcon,
-      title: "Team Members",
-      value: fmtStat(summary.totalTeamMembers),
-      sub: `${fmtStat(summary.activeTeamMembers)} active`,
-      trend: summary.teamGrowth ? `${summary.teamGrowth}%` : null,
+      title: isTodayPeriod ? "Today Team Members" : "Team Members",
+      value: fmtStat(isTodayPeriod ? summary.periodTeamMembers : summary.totalTeamMembers),
+      sub: isTodayPeriod
+        ? `${fmtStat(summary.activeTeamMembers)} active total`
+        : `${fmtStat(summary.activeTeamMembers)} active`,
+      trend: !isTodayPeriod && summary.teamGrowth ? `${summary.teamGrowth}%` : null,
       trendUp: true,
       onClick: () => navigate("/admin/team"),
     },
     {
       icon: InventoryIcon,
-      title: "Total Assets",
+      title: isTodayPeriod ? "Today Assets" : "Total Assets",
       onClick: () => navigate("/admin/assets"),
-      value: fmtStat(totalAssetCount),
+      value: fmtStat(isTodayPeriod ? summary.periodAssets : totalAssetCount),
       sub: hasAssetTypeBreakdown
-        ? `${fmtStat(parentAssetCount)} parent · ${fmtStat(childAssetCount)} child · ${fmtStat(summary.activeAssets)} active`
-        : `${fmtStat(summary.activeAssets)} active · ${fmtStat(summary.assetsNeedingAttention)} need attention`,
+        ? `${fmtStat(parentAssetCount)} parent • ${fmtStat(childAssetCount)} child • ${fmtStat(activeAssetCount)} active`
+        : `${fmtStat(activeAssetCount)} active • ${fmtStat(summary.assetsNeedingAttention)} need attention`,
     },
     {
       icon: AssignmentIcon,
-      title: "Checklists",
+      title: isTodayPeriod ? "Today Checklists" : "Checklists",
       onClick: () => navigate("/admin/checklists"),
-      value: fmtStat(summary.totalChecklists),
-      sub: `${fmtStat(summary.publishedChecklists)} published`,
+      value: fmtStat(isTodayPeriod ? summary.periodChecklists : summary.totalChecklists),
+      sub: isTodayPeriod
+        ? `${fmtStat(summary.periodPublishedChecklists)} published today`
+        : `${fmtStat(summary.publishedChecklists)} published`,
     },
     {
       icon: TaskAltIcon,
-      title: "Submissions",
+      title: isTodayPeriod ? "Today Submissions" : "Submissions",
       onClick: () => navigate("/admin/assigned-checklists"),
-      value: fmtStat(summary.submittedAssignments),
-      sub: `${fmtStat(summary.pendingReviewsCount)} pending review`,
+      value: fmtStat(isTodayPeriod ? summary.periodSubmissions : summary.submittedAssignments),
+      sub: isTodayPeriod
+        ? `${fmtStat(summary.periodPendingSubmissions)} pending review today`
+        : `${fmtStat(summary.pendingReviewsCount)} pending review`,
       accent: true,
     },
     {
@@ -1667,7 +2017,7 @@ const AdminDashboard = ({ data, loading }) => {
 
   return (
     <Box>
-      {/* âœ… Stat cards: 1-col xs, 2-col sm, 4-col lg */}
+      {/* ? Stat cards: 1-col xs, 2-col sm, 4-col lg */}
       <Box
         sx={{
           display: "grid",
@@ -1687,9 +2037,9 @@ const AdminDashboard = ({ data, loading }) => {
         ))}
       </Box>
 
-      {/* Quick Actions â€” unchanged: this is the larger card-style grid,
+      {/* Quick Actions • unchanged: this is the larger card-style grid,
           a different pattern from the super_admin pill buttons that moved
-          into the FilterBar. Left as-is here. */} 
+          into the FilterBar. Left as-is here. */}
 
       <Paper
         elevation={0}
@@ -1870,11 +2220,7 @@ const AdminDashboard = ({ data, loading }) => {
                     width={32}
                   />
                   <RTooltip
-                    contentStyle={{
-                      borderRadius: 8,
-                      border: `1px solid ${C.outlineVariant}`,
-                      fontSize: "0.75rem",
-                    }}
+                    {...getChartTooltipProps(isDark)}
                   />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Area
@@ -1922,7 +2268,7 @@ const AdminDashboard = ({ data, loading }) => {
                           <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                         ))}
                       </Pie>
-                      <RTooltip />
+                      <RTooltip {...getChartTooltipProps(isDark)} />
                     </PieChart>
                   </ResponsiveContainer>
                 </Box>
@@ -2130,7 +2476,7 @@ const AdminDashboard = ({ data, loading }) => {
                       <Typography
                         sx={{ fontSize: "0.62rem", color: C.outline, mt: 0.3 }}
                       >
-                        {m.role} Â· {m.totalCompleted}/{m.totalAssigned} tasks
+                        {m.role} • {m.totalCompleted}/{m.totalAssigned} tasks
                       </Typography>
                     </Box>
                   </Box>
@@ -2157,7 +2503,7 @@ const AdminDashboard = ({ data, loading }) => {
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <RTooltip />
+                    <RTooltip {...getChartTooltipProps(isDark)} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -2226,7 +2572,7 @@ const AdminDashboard = ({ data, loading }) => {
   );
 };
 
-// â”€â”€â”€ TEAM VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- TEAM VIEW --------------------------------------------------------------
 const TeamDashboard = ({ data, loading }) => {
   const navigate = useNavigate();
   const chartH = useChartHeight(220, 180);
@@ -2259,7 +2605,7 @@ const TeamDashboard = ({ data, loading }) => {
           border: "none",
         }}
       >
-        {/* âœ… Banner: stack on xs, row on sm */}
+        {/* ? Banner: stack on xs, row on sm */}
         <Box
           display="flex"
           alignItems={{ xs: "flex-start", sm: "center" }}
@@ -2292,7 +2638,7 @@ const TeamDashboard = ({ data, loading }) => {
             </Typography>
             <Typography sx={{ color: alpha("#fff", 0.7), fontSize: "0.75rem" }}>
               {member.role}
-              {member.department ? ` Â· ${member.department}` : ""}
+              {member.department ? ` • ${member.department}` : ""}
             </Typography>
           </Box>
           <Box textAlign="right" flexShrink={0} ml={{ xs: "auto" }}>
@@ -2350,7 +2696,7 @@ const TeamDashboard = ({ data, loading }) => {
         <Grid item xs={12} md={7}>
           <ChartCard
             title="Weekly activity"
-            sub="Completed vs pending â€” last 7 days"
+            sub="Completed vs pending • last 7 days"
           >
             <ResponsiveContainer width="100%" height={chartH}>
               <BarChart data={weeklyTrend} barSize={20}>
@@ -2368,7 +2714,7 @@ const TeamDashboard = ({ data, loading }) => {
                   allowDecimals={false}
                   width={32}
                 />
-                <RTooltip contentStyle={{ borderRadius: 8, fontSize: "0.75rem" }} />
+                <RTooltip {...getChartTooltipProps(isDark)} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar
                   dataKey="completed"
@@ -2408,7 +2754,7 @@ const TeamDashboard = ({ data, loading }) => {
                       <Cell key={i} fill={d.fill} />
                     ))}
                   </Pie>
-                  <RTooltip />
+                  <RTooltip {...getChartTooltipProps(isDark)} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -2418,7 +2764,7 @@ const TeamDashboard = ({ data, loading }) => {
         </Grid>
       </Grid>
 
-      {/* âœ… Upcoming tasks table: horizontally scrollable on mobile */}
+      {/* ? Upcoming tasks table: horizontally scrollable on mobile */}
       {upcoming.length > 0 && (
         <Paper
           elevation={0}
@@ -2476,14 +2822,14 @@ const TeamDashboard = ({ data, loading }) => {
                       <Typography
                         sx={{ fontSize: "0.72rem", color: C.secondary, whiteSpace: "nowrap" }}
                       >
-                        {t.assetName || "â€”"}
+                        {t.assetName || "—"}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Typography sx={{ fontSize: "0.72rem", whiteSpace: "nowrap" }}>
                         {t.dueDate
                           ? new Date(t.dueDate).toLocaleDateString("en-IN")
-                          : "â€”"}
+                          : "—"}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -2545,7 +2891,7 @@ const TeamDashboard = ({ data, loading }) => {
       )}
 
       <SectionTitle icon={BoltIcon} title="Quick Actions" />
-      {/* âœ… 3 equal columns on all sizes, full-width buttons */}
+      {/* ? 3 equal columns on all sizes, full-width buttons */}
       <Grid container spacing={{ xs: 1.5, sm: 2 }}>
         {[
           {
@@ -2617,7 +2963,7 @@ const TeamDashboard = ({ data, loading }) => {
   );
 };
 
-// â”€â”€â”€ Root Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Root Dashboard ---------------------------------------------------------
 export default function Dashboard() {
   const theme = useTheme();
   const { user } = useAuth();
@@ -2633,6 +2979,7 @@ export default function Dashboard() {
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [dashboardSearch, setDashboardSearch] = useState("");
   const [toast, setToast] = useState({
     open: false,
@@ -2663,7 +3010,7 @@ export default function Dashboard() {
 
   const handleRefresh = useCallback(() => {
     refresh();
-    toast$("Refreshing dashboardâ€¦", "info");
+    toast$("Refreshing dashboard…", "info");
   }, [refresh, toast$]);
 
   const handleExport = useCallback(
@@ -2718,9 +3065,9 @@ export default function Dashboard() {
     <Box
       sx={{
         minHeight: "100%",
-        // âœ… Fluid padding: tighter on mobile, comfortable on desktop
+        // ? Fluid padding: tighter on mobile, comfortable on desktop
         p: { xs: 1.5, sm: 2, md: 3 },
-        // âœ… Prevent horizontal overflow at any viewport
+        // ? Prevent horizontal overflow at any viewport
         overflowX: "hidden",
         boxSizing: "border-box",
       }}
@@ -2754,12 +3101,12 @@ export default function Dashboard() {
             sx={{
               fontWeight: 800,
               color: C.primary,
-              fontSize: { xs: "1.1rem", sm: "1.35rem", md: "1.5rem" }, // âœ… fluid heading
+              fontSize: { xs: "1.1rem", sm: "1.35rem", md: "1.5rem" }, // ? fluid heading
             }}
           >
             {role === "team" ? "My Dashboard" : "Dashboard"}
           </Typography>
-          {/* âœ… Date/filter label: wrap on xs */}
+          {/* ? Date/filter label: wrap on xs */}
           <Box
             display="flex"
             alignItems="center"
@@ -2778,7 +3125,7 @@ export default function Dashboard() {
           </Box>
         </Box>
 
-        {/* âœ… Action buttons stay on the right even on mobile, shrink gracefully */}
+        {/* ? Action buttons stay on the right even on mobile, shrink gracefully */}
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexShrink={0} sx={{ width: { xs: "100%", sm: "auto" } }}>
           <TextField
             size="small"
@@ -2863,6 +3210,37 @@ export default function Dashboard() {
               )}
             </IconButton>
           </Tooltip>
+          {role !== "team" && (
+            <Tooltip title="Filters">
+              <IconButton
+                onClick={() => setMobileFilterOpen(true)}
+                disabled={loading}
+                size="small"
+                sx={{
+                  display: { xs: "inline-flex", sm: "none" },
+                  bgcolor: theme.palette.mode === "dark" ? "#0f1e29" : C.white,
+                  border: `1px solid ${
+                    theme.palette.mode === "dark"
+                      ? "rgba(148, 163, 184, 0.18)"
+                      : alpha(C.outlineVariant, 0.5)
+                  }`,
+                  "&:hover": {
+                    bgcolor:
+                      theme.palette.mode === "dark"
+                        ? alpha("#1fb6cf", 0.12)
+                        : alpha(C.primaryLight, 0.08),
+                  },
+                }}
+              >
+                <FilterIcon
+                  sx={{
+                    fontSize: 20,
+                    color: theme.palette.mode === "dark" ? "#67e8f9" : C.primaryLight,
+                  }}
+                />
+              </IconButton>
+            </Tooltip>
+          )}
           <Menu
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
@@ -2915,8 +3293,8 @@ export default function Dashboard() {
         </Stack>
       </Box>
 
-      {/* Filter bar â€” shown for admin and super_admin.
-          âœ… `actions` injects the role-specific quick-action pills
+      {/* Filter bar • shown for admin and super_admin.
+          ? `actions` injects the role-specific quick-action pills
           (currently only super_admin: Manage Clients / Checklists / Reports) */}
       {role !== "team" && (
         <FilterBar
@@ -2928,12 +3306,45 @@ export default function Dashboard() {
         />
       )}
 
+      <Drawer
+        anchor="bottom"
+        open={mobileFilterOpen}
+        onClose={() => setMobileFilterOpen(false)}
+        PaperProps={{
+          sx: {
+            display: { xs: "block", sm: "none" },
+            borderTopLeftRadius: 22,
+            borderTopRightRadius: 22,
+            bgcolor: theme.palette.mode === "dark" ? "#08131f" : C.white,
+            border: `1px solid ${alpha(C.outlineVariant, 0.35)}`,
+            p: 1.25,
+          },
+        }}
+      >
+        <Box sx={{ width: 44, height: 4, borderRadius: 2, bgcolor: alpha("#fff", 0.7), mx: "auto", mb: 1.25 }} />
+        <FilterBar
+          activeFilter={activeFilter}
+          onFilterChange={(filters) => {
+            handleFilterChange(filters);
+            if (filters?.preset !== "custom") setMobileFilterOpen(false);
+          }}
+          loading={loading}
+          actions={QUICK_ACTIONS_BY_ROLE[role] || []}
+          minDate={systemActivatedDate}
+          mobileSheet
+        />
+      </Drawer>
       {/* Role-specific content */}
       {role === "super_admin" && (
-        <SuperAdminDashboard data={dashboardData} loading={loading} searchQuery={dashboardSearch} />
+        <SuperAdminDashboard
+          data={dashboardData}
+          loading={loading}
+          searchQuery={dashboardSearch}
+          activeFilter={activeFilter}
+        />
       )}
       {role === "admin" && (
-        <AdminDashboard data={dashboardData} loading={loading} />
+        <AdminDashboard data={dashboardData} loading={loading} activeFilter={activeFilter} />
       )}
       {role === "team" && (
         <TeamDashboard data={dashboardData} loading={loading} />
@@ -2943,7 +3354,8 @@ export default function Dashboard() {
         open={toast.open}
         autoHideDuration={4000}
         onClose={closeToast}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
         <Alert
           onClose={closeToast}
           severity={toast.severity}
@@ -2957,7 +3369,7 @@ export default function Dashboard() {
   );
 }
 
-// â”€â”€â”€ Skeleton / Error â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Skeleton / Error -------------------------------------------------------
 const LoadingSkeleton = () => (
   <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
     <Skeleton variant="text" width={220} height={44} sx={{ mb: 2 }} />

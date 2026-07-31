@@ -63,6 +63,20 @@ import AssetSearchField from "../components/AssetSearchField";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RTooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  LineChart,
+  Line,
+} from "recharts";
 
 // ─── Design tokens (dark theme — matches AuditLogs.jsx) ─────────────────────
 const DARK_REPORT_TOKENS = {
@@ -120,6 +134,16 @@ const LIGHT_REPORT_TOKENS = {
 };
 
 const T = { ...DARK_REPORT_TOKENS };
+const CHART_COLORS = [
+  "#1fb6cf",
+  "#4ade80",
+  "#fb923c",
+  "#c084fc",
+  "#f87171",
+  "#60a5fa",
+  "#facc15",
+  "#34d399",
+];
 
 const applyReportThemeTokens = (mode) => {
   Object.assign(T, mode === "light" ? LIGHT_REPORT_TOKENS : DARK_REPORT_TOKENS);
@@ -129,7 +153,7 @@ const applyReportThemeTokens = (mode) => {
 // MUI's outlined Select/TextField pull border/label/text colors from the
 // active theme palette, which may not match our dark tokens. These sx blocks
 // pin them explicitly so they render correctly regardless of the app theme.
-const darkFieldSx = {
+const darkFieldSx = () => ({
   "& .MuiOutlinedInput-root": {
     color: T.ink,
     bgcolor: T.surface,
@@ -140,19 +164,19 @@ const darkFieldSx = {
   "& .MuiInputLabel-root": { color: T.inkLight },
   "& .MuiInputLabel-root.Mui-focused": { color: T.brand },
   "& .MuiSvgIcon-root": { color: T.inkLight },
-};
+});
 
-const darkMenuProps = {
+const darkMenuProps = () => ({
   PaperProps: {
     sx: {
       bgcolor: T.surface,
       border: `1px solid ${T.border}`,
       "& .MuiMenuItem-root": { color: T.ink, fontSize: 13 },
-      "& .MuiMenuItem-root:hover": { bgcolor: alpha("#1fb6cf", 0.1) },
-      "& .MuiMenuItem-root.Mui-selected": { bgcolor: alpha("#1fb6cf", 0.16) },
+      "& .MuiMenuItem-root:hover": { bgcolor: alpha(T.brand, 0.1) },
+      "& .MuiMenuItem-root.Mui-selected": { bgcolor: alpha(T.brand, 0.16) },
     },
   },
-};
+});
 
 // ─── Role configuration ────────────────────────────────────────────────────────
 const ROLE_REPORTS = {
@@ -233,12 +257,33 @@ const fmtShort = (s, max = 30) =>
   s ? (s.length > max ? s.substring(0, max) + "..." : s) : "—";
 
 // ─── Export Functions (unchanged — exported PDF/Excel stay light/print-friendly) ─
+const flattenRecord = (record = {}, prefix = "") =>
+  Object.entries(record || {}).reduce((acc, [key, value]) => {
+    const nextKey = prefix ? `${prefix}.${key}` : key;
+    if (value == null || value instanceof Date) {
+      acc[nextKey] = value;
+    } else if (Array.isArray(value)) {
+      acc[nextKey] = value
+        .map((item) =>
+          typeof item === "object" && item !== null
+            ? JSON.stringify(item)
+            : String(item),
+        )
+        .join(", ");
+    } else if (typeof value === "object") {
+      Object.assign(acc, flattenRecord(value, nextKey));
+    } else {
+      acc[nextKey] = value;
+    }
+    return acc;
+  }, {});
+
 const exportPDF = async (reportData, reportType) => {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const W = 297;
   const meta = REPORT_META[reportType] || {};
   const ts = new Date().toLocaleString("en-IN");
-  const data = reportData?.data || [];
+  const data = (reportData?.data || []).map((row) => flattenRecord(row));
   const summary = reportData?.summary || {};
 
   doc.setFillColor(13, 43, 53);
@@ -336,7 +381,7 @@ const exportPDF = async (reportData, reportType) => {
 
 const exportExcel = (reportData, reportType) => {
   const wb = XLSX.utils.book_new();
-  const data = reportData?.data || [];
+  const data = (reportData?.data || []).map((row) => flattenRecord(row));
   const summary = reportData?.summary || {};
 
   if (data.length) {
@@ -591,11 +636,12 @@ const StatCard = ({ label, value, icon: Icon, color, loading }) => {
     return (
       <Box
         sx={{
-          p: { xs: 1.5, sm: 2 },
-          borderRadius: "12px",
+          p: { xs: 1.15, sm: 1.35 },
+          borderRadius: "10px",
           bgcolor: T.surfaceAlt,
           border: `1px solid ${T.border}`,
           height: "100%",
+          minHeight: { xs: 66, sm: 74 },
         }}
       >
         <Skeleton width="55%" height={12} />
@@ -605,14 +651,15 @@ const StatCard = ({ label, value, icon: Icon, color, loading }) => {
   return (
     <Box
       sx={{
-        p: { xs: 1.5, sm: 2 },
-        borderRadius: "12px",
+        p: { xs: 1.15, sm: 1.35 },
+        borderRadius: "10px",
         bgcolor: T.surface,
         border: `1px solid ${T.border}`,
         display: "flex",
         flexDirection: "column",
-        gap: 0.5,
+        gap: 0.35,
         height: "100%",
+        minHeight: { xs: 66, sm: 74 },
         width: "100%",
         minWidth: 0,
       }}
@@ -661,7 +708,7 @@ const StatCard = ({ label, value, icon: Icon, color, loading }) => {
       </Box>
       <Typography
         sx={{
-          fontSize: { xs: "1.1rem", sm: "1.4rem" },
+          fontSize: { xs: "1rem", sm: "1.25rem" },
           fontWeight: 800,
           color: T.ink,
           lineHeight: 1,
@@ -730,6 +777,187 @@ const EmptyState = ({ icon: Icon = ReportIcon, title, desc, action }) => (
 );
 
 // ─── Tables ────────────────────────────────────────────────────────────────────
+
+const objectToChartData = (obj = {}) =>
+  Object.entries(obj)
+    .filter(([, value]) => Number.isFinite(Number(value)))
+    .map(([name, value]) => ({ name: reportLabel(name), value: Number(value) }))
+    .filter((item) => item.value > 0);
+
+const getDateBucket = (row) => {
+  const value =
+    row.createdAt ||
+    row.joinDate ||
+    row.submittedAt ||
+    row.completedAt ||
+    row.updatedAt ||
+    row.dueDate;
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-IN", { month: "short", day: "2-digit" });
+};
+
+const buildTrendData = (rows = []) => {
+  const buckets = new Map();
+  rows.forEach((row) => {
+    const bucket = getDateBucket(row);
+    if (!bucket) return;
+    buckets.set(bucket, (buckets.get(bucket) || 0) + 1);
+  });
+  return Array.from(buckets, ([name, value]) => ({ name, value })).slice(-8);
+};
+
+const buildFieldDistribution = (rows = [], fields = []) => {
+  for (const field of fields) {
+    const counts = rows.reduce((acc, row) => {
+      const value = row[field];
+      if (!value || typeof value === "object") return acc;
+      const key = String(value).replace(/_/g, " ");
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const data = objectToChartData(counts);
+    if (data.length > 1) return { field, data };
+  }
+  return null;
+};
+
+const ReportChartCard = ({ title, chip, children }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: { xs: 1.5, sm: 2 },
+      borderRadius: "12px",
+      border: `1px solid ${T.border}`,
+      bgcolor: alpha(T.surfaceAlt, 0.72),
+      minHeight: 250,
+      overflow: "hidden",
+    }}
+  >
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5, gap: 1 }}>
+      <Typography sx={{ fontSize: "0.82rem", color: T.ink, fontWeight: 700 }}>
+        {title}
+      </Typography>
+      {chip && (
+        <Chip
+          label={chip}
+          size="small"
+          sx={{
+            height: 22,
+            borderRadius: "8px",
+            fontSize: "0.62rem",
+            fontWeight: 700,
+            bgcolor: T.brandLight,
+            color: T.brand,
+          }}
+        />
+      )}
+    </Box>
+    <Box sx={{ height: 190 }}>{children}</Box>
+  </Paper>
+);
+
+const ReportsAnalytics = ({ reportData, reportType }) => {
+  const summary = reportData?.summary || {};
+  const rows = reportData?.data || [];
+
+  const charts = useMemo(() => {
+    const objectCharts = Object.entries(summary)
+      .map(([key, value]) => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+        const data = objectToChartData(value);
+        return data.length > 1 ? { key, title: reportLabel(key), data } : null;
+      })
+      .filter(Boolean);
+
+    const fieldDistribution = buildFieldDistribution(rows, [
+      "status",
+      "priority",
+      "membershipPlan",
+      "reviewStatus",
+      "requestType",
+      "urgency",
+      "assetCondition",
+    ]);
+    const trendData = buildTrendData(rows);
+    const result = [...objectCharts];
+
+    if (fieldDistribution && !result.some((chart) => chart.key === fieldDistribution.field)) {
+      result.push({
+        key: fieldDistribution.field,
+        title: `${reportLabel(fieldDistribution.field)} Distribution`,
+        data: fieldDistribution.data,
+      });
+    }
+    if (trendData.length > 1) {
+      result.push({ key: "activityTrend", title: "Records by Date", data: trendData, type: "bar" });
+    }
+
+    return result.slice(0, 3);
+  }, [rows, summary]);
+
+  if (!charts.length) return null;
+
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "1fr",
+          md: charts.length === 1 ? "1fr" : "repeat(2, minmax(0, 1fr))",
+          xl: `repeat(${Math.min(charts.length, 3)}, minmax(0, 1fr))`,
+        },
+        gap: { xs: 1.25, sm: 1.5 },
+        mb: 2.5,
+      }}
+    >
+      {charts.map((chart, index) => {
+        const usePie = index === 0 && chart.type !== "line" && chart.type !== "bar";
+        return (
+          <ReportChartCard
+            key={`${reportType}-${chart.key}`}
+            title={chart.title}
+            chip={usePie ? "Pie" : chart.type === "line" ? "Trend" : "Bar"}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              {chart.type === "line" ? (
+                <LineChart data={chart.data} margin={{ top: 8, right: 12, left: -22, bottom: 0 }}>
+                  <CartesianGrid stroke={alpha(T.inkLight, 0.14)} strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fill: T.inkLight, fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: T.inkLight, fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <RTooltip contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, color: T.ink }} labelStyle={{ color: T.ink, fontWeight: 700 }} itemStyle={{ color: T.ink, fontWeight: 600 }} />
+                  <Line type="monotone" dataKey="value" stroke={CHART_COLORS[index]} strokeWidth={3} dot={{ r: 4, fill: CHART_COLORS[index] }} />
+                </LineChart>
+              ) : usePie ? (
+                <PieChart>
+                  <Pie data={chart.data} dataKey="value" nameKey="name" outerRadius={72} innerRadius={36} paddingAngle={2}>
+                    {chart.data.map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RTooltip contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, color: T.ink }} labelStyle={{ color: T.ink, fontWeight: 700 }} itemStyle={{ color: T.ink, fontWeight: 600 }} />
+                </PieChart>
+              ) : (
+                <BarChart data={chart.data.slice(0, 8)} margin={{ top: 8, right: 12, left: -22, bottom: 0 }}>
+                  <CartesianGrid stroke={alpha(T.inkLight, 0.14)} strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fill: T.inkLight, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
+                  <YAxis tick={{ fill: T.inkLight, fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <RTooltip cursor={false} formatter={(value) => [`${value} records`, "Records"]} contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, color: T.ink }} labelStyle={{ color: T.ink, fontWeight: 700 }} itemStyle={{ color: T.ink, fontWeight: 600 }} />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                    {chart.data.slice(0, 8).map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[(i + index) % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              )}
+            </ResponsiveContainer>
+          </ReportChartCard>
+        );
+      })}
+    </Box>
+  );
+};
 
 const ClientsTable = ({ data }) => {
   const [pg, setPg] = useState(0);
@@ -2383,10 +2611,14 @@ const ReportsDashboard = () => {
             onChange={(e) => setCustomStart(e.target.value)}
             InputLabelProps={{ shrink: true }}
             sx={{
-              width: { xs: "100%", sm: 148 },
-              ...darkFieldSx,
-              "& input": { color: T.ink },
-            }}
+  width: { xs: "100%", sm: 148 },
+  ...darkFieldSx(),
+  "& input": { color: T.ink, colorScheme: theme.palette.mode },
+  "& input::-webkit-calendar-picker-indicator": {
+    cursor: "pointer",
+    filter: theme.palette.mode === "dark" ? "invert(1)" : "none",
+  },
+}}
           />
           <TextField
             type="date"
@@ -2396,10 +2628,14 @@ const ReportsDashboard = () => {
             onChange={(e) => setCustomEnd(e.target.value)}
             InputLabelProps={{ shrink: true }}
             sx={{
-              width: { xs: "100%", sm: 148 },
-              ...darkFieldSx,
-              "& input": { color: T.ink },
-            }}
+  width: { xs: "100%", sm: 148 },
+  ...darkFieldSx(),
+  "& input": { color: T.ink, colorScheme: theme.palette.mode },
+  "& input::-webkit-calendar-picker-indicator": {
+    cursor: "pointer",
+    filter: theme.palette.mode === "dark" ? "invert(1)" : "none",
+  },
+}}
           />
         </Paper>
       </Collapse>
@@ -2648,12 +2884,20 @@ const ReportsDashboard = () => {
                   }}
                 >
                  {Object.entries(reportData.summary)
-  .filter(([k, v]) => typeof v !== "object" && v !== null && k !== "suspendedClients")
+  .filter(([k, v]) => {
+                      const hiddenAssignmentTiles = ["inProgress", "in_progress", "completed"];
+                      return (
+                        typeof v !== "object" &&
+                        v !== null &&
+                        k !== "suspendedClients" &&
+                        (reportType !== "assignments" || !hiddenAssignmentTiles.includes(k))
+                      );
+                    })
   .slice(0, 6)
   .map(([k, v]) => (
                       <Box key={k}>
                         <StatCard
-                          label={reportLabel(k)}
+                          label={reportType === "assignments" && k === "approved" ? "Pending Approval" : reportLabel(k)}
                           value={String(v)}
                           loading={false}
                           small
@@ -2662,6 +2906,7 @@ const ReportsDashboard = () => {
                     ))}
                 </Box>
               )}
+              <ReportsAnalytics reportData={reportData} reportType={reportType} />
               {renderTable()}
             </>
           )}
