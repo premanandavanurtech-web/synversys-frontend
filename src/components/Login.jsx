@@ -246,6 +246,8 @@ const FEATURES = [
   "Audit-ready reports with one click",
 ];
 
+const RESEND_COOLDOWN_SECONDS = 30;
+
 const getRedirectPath = (role) => {
   if (!role) return "/dashboard";
   const r = role.toLowerCase();
@@ -612,6 +614,7 @@ export default function LoginPage() {
   const isMounted = useRef(true);
   const redirectInProgress = useRef(false);
   const redirectTimerRef = useRef(null);
+  const resendIntervalRef = useRef(null);
 
   const {
     login,
@@ -634,6 +637,7 @@ export default function LoginPage() {
   const [otpEmail, setOtpEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -649,6 +653,30 @@ export default function LoginPage() {
   const [initialCheckDone, setInitialCheckDone] = useState(false);
 
   const isDisabled = submitting || forgotLoading;
+
+  // Start (or restart) the resend-code cooldown timer
+  const startResendCooldown = useCallback((seconds = RESEND_COOLDOWN_SECONDS) => {
+    setResendCooldown(seconds);
+    if (resendIntervalRef.current) clearInterval(resendIntervalRef.current);
+    resendIntervalRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(resendIntervalRef.current);
+          resendIntervalRef.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  const clearResendCooldown = useCallback(() => {
+    if (resendIntervalRef.current) {
+      clearInterval(resendIntervalRef.current);
+      resendIntervalRef.current = null;
+    }
+    setResendCooldown(0);
+  }, []);
 
   // Load remembered email
   useEffect(() => {
@@ -720,6 +748,9 @@ export default function LoginPage() {
       if (redirectTimerRef.current) {
         clearTimeout(redirectTimerRef.current);
       }
+      if (resendIntervalRef.current) {
+        clearInterval(resendIntervalRef.current);
+      }
     };
   }, []);
 
@@ -732,6 +763,7 @@ export default function LoginPage() {
         setOtp("");
         setOtpError("");
         setOtpEmail("");
+        clearResendCooldown();
       }
       if (fieldTouched[name]) {
         setFieldErrors((p) => ({
@@ -743,7 +775,7 @@ export default function LoginPage() {
       if (errorMsg) setErrorMsg("");
       if (shakeField === name) setShakeField(null);
     },
-    [fieldTouched, errorMsg, shakeField, otpStep],
+    [fieldTouched, errorMsg, shakeField, otpStep, clearResendCooldown],
   );
 
   const handleBlur = useCallback((e) => {
@@ -811,6 +843,7 @@ export default function LoginPage() {
           setSuccessMsg(result.message || "Verification code sent to your email.");
           setOkOpen(true);
           setSubmitting(false);
+          startResendCooldown();
           return;
         }
 
@@ -890,6 +923,7 @@ export default function LoginPage() {
         setSuccessMsg(result.message || "Login verified! Redirecting...");
         setOkOpen(true);
         redirectInProgress.current = true;
+        clearResendCooldown();
 
         if (redirectTimerRef.current) {
           clearTimeout(redirectTimerRef.current);
@@ -921,6 +955,8 @@ export default function LoginPage() {
   };
 
   const handleResendOtp = async () => {
+    if (resendCooldown > 0) return; // guard against spamming while disabled
+
     setSubmitting(true);
     setOtpError("");
     setErrorMsg("");
@@ -935,6 +971,7 @@ export default function LoginPage() {
       setOtp("");
       setSuccessMsg(result.message || "New verification code sent.");
       setOkOpen(true);
+      startResendCooldown();
     } else {
       setErrorMsg(result.error || "Unable to resend code. Please try again.");
       setErrOpen(true);
@@ -1647,6 +1684,7 @@ export default function LoginPage() {
                               setOtpStep(false);
                               setOtp("");
                               setOtpError("");
+                              clearResendCooldown();
                             }}
                             underline="hover"
                             disabled={isDisabled}
@@ -1668,19 +1706,26 @@ export default function LoginPage() {
                             type="button"
                             onClick={handleResendOtp}
                             underline="hover"
-                            disabled={isDisabled}
+                            disabled={isDisabled || resendCooldown > 0}
                             sx={{
                               fontSize: { xs: "0.72rem", sm: "0.78rem" },
-                              color: C.brand,
+                              color: resendCooldown > 0 ? C.inkMut : C.brand,
                               fontWeight: 700,
                               fontFamily: C.font,
-                              cursor: isDisabled ? "default" : "pointer",
+                              fontVariantNumeric: "tabular-nums",
+                              cursor:
+                                isDisabled || resendCooldown > 0
+                                  ? "default"
+                                  : "pointer",
                               background: "none",
                               border: "none",
                               p: 0,
+                              transition: "color 0.2s ease",
                             }}
                           >
-                            Resend code
+                            {resendCooldown > 0
+                              ? `Resend in ${resendCooldown}s`
+                              : "Resend code"}
                           </Link>
                         </Stack>
 
