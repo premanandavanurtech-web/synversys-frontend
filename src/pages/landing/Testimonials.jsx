@@ -161,8 +161,8 @@ const Testimonials = () => {
       id="testimonials"
       component="section"
       sx={{
-        py: { xs: 5, sm: 6, md: 8, lg: 10, xl: 12 },
-        px: { xs: 1.5, sm: 2, md: 3, lg: 4, xl: 5 },
+        py: { xs: 4.5, sm: 6, md: 8, lg: 10, xl: 12 },
+        px: { xs: 1, sm: 2, md: 3, lg: 4, xl: 5 },
         bgcolor: "background.default",
         position: "relative",
         overflow: "hidden",
@@ -200,7 +200,7 @@ const Testimonials = () => {
       <Container
         maxWidth="xl"
         sx={{
-          px: { xs: 1, sm: 1.5, md: 2, lg: 2.5, xl: 3 },
+          px: { xs: 1.25, sm: 1.5, md: 2, lg: 2.5, xl: 3 },
           position: "relative",
           zIndex: 1,
           maxWidth: {
@@ -219,7 +219,7 @@ const Testimonials = () => {
           viewport={{ once: true, amount: 0.2 }}
           variants={fadeInUp}
         >
-          <Box sx={{ textAlign: "center", mb: { xs: 4, sm: 5, md: 6, lg: 7, xl: 8 } }}>
+          <Box sx={{ textAlign: "center", mb: { xs: 3, sm: 5, md: 6, lg: 7, xl: 8 } }}>
             <Chip
               label="TESTIMONIALS"
               size="small"
@@ -239,7 +239,7 @@ const Testimonials = () => {
               variant="h2"
               sx={{
                 fontSize: {
-                  xs: "1.6rem",
+                  xs: "1.85rem",
                   sm: "1.9rem",
                   md: "2.2rem",
                   lg: "2.5rem",
@@ -340,7 +340,7 @@ const Testimonials = () => {
               display: "flex",
               justifyContent: "center",
               alignItems: "stretch",
-              minHeight: { xs: 360, sm: 380, md: 400, lg: 420 },
+              minHeight: { xs: "auto", sm: 380, md: 400, lg: 420 },
             }}
           >
             <AnimatePresence mode="wait">
@@ -355,7 +355,7 @@ const Testimonials = () => {
                   flexWrap: "wrap",
                   justifyContent: "center",
                   alignItems: "stretch",
-                  gap: { xs: 16, sm: 20, md: 24, lg: 28 },
+                  gap: isMobile ? 16 : isTablet ? 20 : isDesktop ? 28 : 24,
                   width: "100%",
                 }}
               >
@@ -367,8 +367,8 @@ const Testimonials = () => {
                     transition={{ duration: 0.4, delay: idx * 0.1 }}
                     style={{
                       flex: "1 1 auto",
-                      minWidth: itemsPerView === 1 ? "100%" : itemsPerView === 2 ? "calc(50% - 8px)" : "calc(33.333% - 16px)",
-                      maxWidth: itemsPerView === 1 ? "100%" : itemsPerView === 2 ? "calc(50% - 8px)" : "calc(33.333% - 16px)",
+                      minWidth: itemsPerView === 1 ? "100%" : itemsPerView === 2 ? "calc(50% - 10px)" : "calc(33.333% - 19px)",
+                      maxWidth: itemsPerView === 1 ? 420 : itemsPerView === 2 ? "calc(50% - 10px)" : "calc(33.333% - 19px)",
                       display: "flex",
                     }}
                   >
@@ -427,6 +427,7 @@ const Testimonials = () => {
                             fontStyle: "italic",
                             minHeight: { xs: 80, sm: 90, md: 100, lg: 110 },
                             flex: 1,
+                            overflowWrap: "anywhere",
                           }}
                         >
                           "{testimonial.content}"
@@ -450,7 +451,7 @@ const Testimonials = () => {
                               border: `2px solid ${alpha(theme.palette.primary.main, 0.15)}`,
                             }}
                           />
-                          <Box>
+                          <Box sx={{ minWidth: 0, pr: { xs: 9, sm: 10 } }}>
                             <Typography
                               variant="subtitle2"
                               sx={{
@@ -459,6 +460,7 @@ const Testimonials = () => {
                                 color: "text.primary",
                                 lineHeight: 1.3,
                                 mb: 0.25,
+                                overflowWrap: "anywhere",
                               }}
                             >
                               {testimonial.name}
@@ -470,6 +472,7 @@ const Testimonials = () => {
                                 color: theme.palette.primary.main,
                                 fontWeight: 600,
                                 letterSpacing: "0.02em",
+                                overflowWrap: "anywhere",
                               }}
                             >
                               {testimonial.role}

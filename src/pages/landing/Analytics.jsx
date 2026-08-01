@@ -142,8 +142,8 @@ const Analytics = () => {
       id="analytics"
       component="section"
       sx={{
-        py: { xs: 5, sm: 6, md: 8, lg: 10, xl: 12 },
-        px: { xs: 1.5, sm: 2, md: 3, lg: 4, xl: 5 },
+        py: { xs: 4.5, sm: 6, md: 8, lg: 10, xl: 12 },
+        px: { xs: 1, sm: 2, md: 3, lg: 4, xl: 5 },
         bgcolor: "background.default",
         position: "relative",
         display: "flex",
@@ -184,15 +184,15 @@ const Analytics = () => {
       <Container
         maxWidth="xl"
         sx={{
-          px: { xs: 1, sm: 1.5, md: 2, lg: 2.5, xl: 3 },
+          px: { xs: 1.25, sm: 1.5, md: 2, lg: 2.5, xl: 3 },
           position: "relative",
           zIndex: 1,
           maxWidth: {
             xs: "100%",
             sm: "100%",
             md: "90%",
-            lg: "1200px",
-            xl: "1400px",
+            lg: "1500px",
+            xl: "1600px",
           },
         }}
       >
@@ -207,7 +207,7 @@ const Analytics = () => {
           <Box
             sx={{
               textAlign: "center",
-              mb: { xs: 4, sm: 5, md: 6, lg: 7, xl: 8 },
+              mb: { xs: 3, sm: 5, md: 6, lg: 7, xl: 8 },
             }}
           >
             <Chip
@@ -234,7 +234,7 @@ const Analytics = () => {
               variant="h2"
               sx={{
                 fontSize: {
-                  xs: "1.6rem",
+                  xs: "1.85rem",
                   sm: "1.9rem",
                   md: "2.2rem",
                   lg: "2.5rem",
@@ -287,8 +287,26 @@ const Analytics = () => {
         >
           <Grid
             container
-            spacing={{ xs: 1.5, sm: 2, md: 2.5, lg: 3 }}
-            sx={{ mb: { xs: 3, sm: 4, md: 5, lg: 6 } }}
+            spacing={{ xs: 1.5, sm: 2.5, md: 3, lg: 3.5 }}
+            sx={{
+              mb: { xs: 3, sm: 4, md: 5, lg: 6 },
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                sm: "repeat(4, minmax(150px, 1fr))",
+                md: "repeat(4, minmax(190px, 1fr))",
+                lg: "repeat(4, minmax(230px, 1fr))",
+              },
+              gap: { xs: 1.5, sm: 2, md: 2.5, lg: 3 },
+              maxWidth: { xs: 300, sm: 760, md: 980, lg: 1180, xl: 1320 },
+              mx: "auto",
+              "& > .MuiGrid-item": {
+                pl: "0 !important",
+                pt: "0 !important",
+                maxWidth: "100% !important",
+                flexBasis: "auto !important",
+              },
+            }}
             justifyContent="center"
           >
             {metrics.map((metric, index) => (
@@ -301,6 +319,7 @@ const Analytics = () => {
                 sx={{
                   display: "flex",
                   justifyContent: "center",
+                  minWidth: 0,
                 }}
               >
                 <motion.div
@@ -316,14 +335,18 @@ const Analytics = () => {
                     elevation={0}
                     sx={{
                       borderRadius: {
-                        xs: "1rem",
+                        xs: "0.9rem",
                         sm: "1.125rem",
                         md: "1.25rem",
                         lg: "1.375rem",
                       },
                       border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                       bgcolor: "background.paper",
-                      width: { xs: "100%", sm: "320px", md: "250px" },
+                      width: "100%",
+                      maxWidth: {
+                        xs: "100%",
+                        sm: "100%",
+                      },
                       transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                       cursor: "pointer",
                       "&:hover": {
@@ -334,18 +357,19 @@ const Analytics = () => {
                       },
                     }}
                   >
-                    <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+                    <CardContent sx={{ p: { xs: 1.3, sm: 2.6, md: 3, lg: 3.4 } }}>
                       <Stack
-                        direction="row"
+                        direction={{ xs: "column", sm: "row" }}
                         justifyContent="space-between"
-                        alignItems="center"
+                        alignItems={{ xs: "flex-start", sm: "center" }}
                         mb={1.5}
+                        spacing={{ xs: 1, sm: 0 }}
                       >
                         <Avatar
                           sx={{
                             bgcolor: metric.bgColor,
-                            width: { xs: 32, sm: 36, md: 40 },
-                            height: { xs: 32, sm: 36, md: 40 },
+                            width: { xs: 32, sm: 40, md: 44, lg: 48 },
+                            height: { xs: 32, sm: 40, md: 44, lg: 48 },
                             borderRadius: {
                               xs: "0.75rem",
                               sm: "0.875rem",
@@ -396,7 +420,7 @@ const Analytics = () => {
                         variant="h4"
                         sx={{
                           fontSize: {
-                            xs: "1.25rem",
+                          xs: "1.12rem",
                             sm: "1.4rem",
                             md: "1.5rem",
                             lg: "1.6rem",
@@ -412,7 +436,7 @@ const Analytics = () => {
                         variant="caption"
                         sx={{
                           fontSize: {
-                            xs: "0.6rem",
+                            xs: "0.58rem",
                             sm: "0.65rem",
                             md: "0.7rem",
                           },
@@ -437,6 +461,17 @@ const Analytics = () => {
           sx={{
             width: "100%",
             justifyContent: "center",
+            display: { xs: "flex", md: "grid" },
+            gridTemplateColumns: { md: "repeat(2, minmax(0, 1fr))" },
+            gap: { md: 4, lg: 5 },
+            maxWidth: { xs: 340, sm: "100%", md: 1120, lg: 1300, xl: 1450 },
+            mx: "auto",
+            "& > .MuiGrid-item": {
+              pl: { md: "0 !important" },
+              pt: { md: "0 !important" },
+              maxWidth: { md: "100% !important" },
+              flexBasis: { md: "auto !important" },
+            },
           }}
         >
           {/* Asset Health Chart */}
@@ -446,6 +481,9 @@ const Analytics = () => {
             md={6}
             sx={{
               display: "flex",
+              justifyContent: "center",
+              width: { xs: "100%", md: "auto" },
+              px: { xs: "0 !important", sm: undefined },
             }}
           >
             <motion.div
@@ -467,7 +505,8 @@ const Analytics = () => {
                   border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                   bgcolor: "background.paper",
                   height: "100%",
-                  width:{ xs: "100%", sm: "400px", md: "500px" },
+                  width: "100%",
+                  maxWidth: { xs: 340, sm: "100%" },
                   minHeight: { xs: "auto", sm: 400, md: 420, lg: 450 },
                   transition: "all 0.3s ease",
                   "&:hover": {
@@ -475,12 +514,12 @@ const Analytics = () => {
                   },
                 }}
               >
-                <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
+                <CardContent sx={{ p: { xs: 1.6, sm: 2, md: 2.5, lg: 3 } }}>
                   <Stack
-                    direction="row"
+                    direction={{ xs: "column", sm: "row" }}
                     justifyContent="space-between"
-                    alignItems="center"
-                    mb={2.5}
+                    alignItems={{ xs: "flex-start", sm: "center" }}
+                    mb={{ xs: 2, sm: 2.5 }}
                     flexWrap="wrap"
                     gap={1}
                   >
@@ -489,7 +528,7 @@ const Analytics = () => {
                       sx={{
                         fontWeight: 700,
                         fontSize: {
-                          xs: "0.85rem",
+                          xs: "0.88rem",
                           sm: "0.9rem",
                           md: "0.95rem",
                           lg: "1rem",
@@ -509,7 +548,7 @@ const Analytics = () => {
                     />
                   </Stack>
 
-                  <Stack spacing={{ xs: 1.5, sm: 2, md: 2.5 }}>
+                  <Stack spacing={{ xs: 1.7, sm: 2, md: 2.5 }}>
                     {assetCategories.map((category, idx) => (
                       <Box key={idx}>
                         <Stack
@@ -582,16 +621,16 @@ const Analytics = () => {
                   </Stack>
 
                   <Stack
-                    direction="row"
+                    direction={{ xs: "column", sm: "row" }}
                     justifyContent="space-between"
-                    alignItems="center"
+                    alignItems={{ xs: "stretch", sm: "center" }}
                     sx={{
                       mt: { xs: 2.5, sm: 3, md: 3.5 },
                       pt: { xs: 2, sm: 2.5, md: 3 },
                       borderTop: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                     }}
                     flexWrap="wrap"
-                    gap={1}
+                    gap={{ xs: 1.25, sm: 1 }}
                   >
                     <Typography
                       variant="caption"
@@ -607,13 +646,21 @@ const Analytics = () => {
                     >
                       Overall Health Score
                     </Typography>
-                    <Stack direction="row" spacing={1} alignItems="center">
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      justifyContent={{ xs: "space-between", sm: "flex-start" }}
+                      sx={{
+                        width: { xs: "100%", sm: "auto" },
+                      }}
+                    >
                       <Typography
                         variant="h6"
                         sx={{
                           fontWeight: 800,
                           fontSize: {
-                            xs: "1rem",
+                          xs: "1.1rem",
                             sm: "1.1rem",
                             md: "1.2rem",
                             lg: "1.3rem",
@@ -643,6 +690,9 @@ const Analytics = () => {
             md={6}
             sx={{
               display: "flex",
+              justifyContent: "center",
+              width: { xs: "100%", md: "auto" },
+              px: { xs: "0 !important", sm: undefined },
             }}
           >
             <motion.div
@@ -664,7 +714,8 @@ const Analytics = () => {
                   border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                   bgcolor: "background.paper",
                   height: "100%",
-                  width: { xs: "100%", sm: "400px", md: "500px" },
+                  width: "100%",
+                  maxWidth: { xs: 340, sm: "100%" },
                   minHeight: { xs: "auto", sm: 400, md: 420, lg: 450 },
                   transition: "all 0.3s ease",
                   "&:hover": {
@@ -672,12 +723,12 @@ const Analytics = () => {
                   },
                 }}
               >
-                <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
+                <CardContent sx={{ p: { xs: 1.6, sm: 2, md: 2.5, lg: 3 } }}>
                   <Stack
                     direction="row"
                     justifyContent="space-between"
                     alignItems="center"
-                    mb={2.5}
+                    mb={{ xs: 2, sm: 2.5 }}
                     flexWrap="wrap"
                     gap={1}
                   >
@@ -686,7 +737,7 @@ const Analytics = () => {
                       sx={{
                         fontWeight: 700,
                         fontSize: {
-                          xs: "0.85rem",
+                          xs: "0.88rem",
                           sm: "0.9rem",
                           md: "0.95rem",
                           lg: "1rem",
@@ -747,8 +798,7 @@ const Analytics = () => {
                           spacing={{ xs: 1.5, sm: 2 }}
                           alignItems="center"
                           sx={{
-                            flexDirection: { xs: "column", sm: "row" },
-                            alignItems: { xs: "flex-start", sm: "center" },
+                            alignItems: "center",
                           }}
                         >
                           <Avatar
@@ -769,7 +819,7 @@ const Analytics = () => {
                           </Avatar>
                           <Box
                             flex={1}
-                            sx={{ width: { xs: "100%", sm: "auto" } }}
+                            sx={{ width: { xs: "100%", sm: "auto" }, minWidth: 0 }}
                           >
                             <Typography
                               variant="body2"
@@ -782,6 +832,7 @@ const Analytics = () => {
                                 },
                                 color: "text.primary",
                                 mb: 0.25,
+                                overflowWrap: "anywhere",
                               }}
                             >
                               {alert.title}

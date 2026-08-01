@@ -206,8 +206,8 @@ const Pricing = () => {
       id="pricing"
       component="section"
       sx={{
-        py: { xs: 5, sm: 6, md: 8, lg: 10, xl: 12 },
-        px: { xs: 1.5, sm: 2, md: 3, lg: 4, xl: 5 },
+        py: { xs: 4.5, sm: 6, md: 8, lg: 10, xl: 12 },
+        px: { xs: 1, sm: 2, md: 3, lg: 4, xl: 5 },
         bgcolor: "background.default",
         position: "relative",
         overflow: "hidden",
@@ -245,7 +245,7 @@ const Pricing = () => {
       <Container
         maxWidth="xl"
         sx={{
-          px: { xs: 1, sm: 1.5, md: 2, lg: 2.5, xl: 3 },
+          px: { xs: 0.75, sm: 1.5, md: 2, lg: 2.5, xl: 3 },
           position: "relative",
           zIndex: 1,
           maxWidth: {
@@ -267,7 +267,7 @@ const Pricing = () => {
           <Box
             sx={{
               textAlign: "center",
-              mb: { xs: 4, sm: 5, md: 6, lg: 7, xl: 8 },
+              mb: { xs: 3, sm: 5, md: 6, lg: 7, xl: 8 },
             }}
           >
             <Chip
@@ -294,7 +294,7 @@ const Pricing = () => {
               variant="h2"
               sx={{
                 fontSize: {
-                  xs: "1.6rem",
+                  xs: "1.85rem",
                   sm: "1.9rem",
                   md: "2.2rem",
                   lg: "2.5rem",
@@ -322,7 +322,7 @@ const Pricing = () => {
                 },
                 maxWidth: {
                   xs: "95%",
-                  sm: "85%,",
+                  sm: "85%",
                   md: "75%",
                   lg: "65%",
                   xl: "60%",
@@ -350,7 +350,11 @@ const Pricing = () => {
             spacing={{ xs: 1, sm: 1.5, md: 2 }}
             alignItems="center"
             justifyContent="center"
-            sx={{ mb: { xs: 4, sm: 5, md: 6, lg: 7 } }}
+            sx={{
+              mb: { xs: 3, sm: 5, md: 6, lg: 7 },
+              flexWrap: "wrap",
+              rowGap: 1,
+            }}
           >
             <Typography
               variant="caption"
@@ -429,6 +433,21 @@ const Pricing = () => {
             spacing={{ xs: 2, sm: 2.5, md: 3, lg: 3.5 }}
             justifyContent="center"
             alignItems="stretch"
+            sx={{
+              display: { xs: "flex", sm: "grid" },
+              gridTemplateColumns: {
+                sm: "repeat(3, minmax(0, 1fr))",
+              },
+              gap: { sm: 2.5, md: 3, lg: 3.5 },
+              maxWidth: { xs: 340, sm: 1180, md: 1280, lg: 1420, xl: 1520 },
+              mx: "auto",
+              "& > .MuiGrid-item": {
+                pl: { xs: "0 !important", sm: "0 !important" },
+                pt: { sm: "0 !important" },
+                maxWidth: { sm: "100% !important" },
+                flexBasis: { sm: "auto !important" },
+              },
+            }}
           >
             {plans.map((plan, index) => (
               <Grid
@@ -439,6 +458,9 @@ const Pricing = () => {
                 key={index}
                 sx={{
                   display: "flex",
+                  justifyContent: "center",
+                  width: "100%",
+                  px: { xs: "0 !important", sm: undefined },
                 }}
               >
                 <motion.div
@@ -464,7 +486,8 @@ const Pricing = () => {
                       bgcolor: "background.paper",
                       transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                       height: "100%",
-                      width: { xs: "100%", sm: "350px", md: "360px" },
+                      width: "100%",
+                      maxWidth: { xs: 340, sm: "100%" },
                       display: "flex",
                       flexDirection: "column",
                       position: "relative",
@@ -531,7 +554,7 @@ const Pricing = () => {
 
                     <CardContent
                       sx={{
-                        p: { xs: 2, sm: 2.5, md: 3, lg: 3.5 },
+                        p: { xs: 1.6, sm: 2.5, md: 3, lg: 3.5 },
                         flex: 1,
                         display: "flex",
                         flexDirection: "column",
@@ -566,7 +589,7 @@ const Pricing = () => {
                           variant="h3"
                           sx={{
                             fontSize: {
-                              xs: "1.6rem",
+                              xs: "1.45rem",
                               sm: "1.8rem",
                               md: "2rem",
                               lg: "2.2rem",
@@ -624,7 +647,7 @@ const Pricing = () => {
                             md: "0.8rem",
                           },
                           color: "text.secondary",
-                          mb: 1.5,
+                          mb: 1.25,
                           lineHeight: 1.4,
                         }}
                       >
@@ -636,12 +659,12 @@ const Pricing = () => {
                         sx={{
                           height: "1px",
                           bgcolor: alpha(theme.palette.divider, 0.08),
-                          my: 1.5,
+                          my: 1.25,
                         }}
                       />
 
                       {/* Features List */}
-                      <Stack spacing={1.25} sx={{ mb: 2.5, flex: 1 }}>
+                      <Stack spacing={1} sx={{ mb: 2, flex: 1 }}>
                         {plan.features.map((feature, idx) => (
                           <Stack
                             key={idx}
@@ -673,6 +696,7 @@ const Pricing = () => {
                               direction="row"
                               spacing={0.5}
                               alignItems="center"
+                              sx={{ minWidth: 0 }}
                             >
                               <Typography
                                 variant="body2"
@@ -685,6 +709,8 @@ const Pricing = () => {
                                   color: feature.included
                                     ? "text.primary"
                                     : alpha(theme.palette.text.disabled, 0.7),
+                                  overflowWrap: "anywhere",
+                                  lineHeight: 1.35,
                                 }}
                               >
                                 {feature.name}
@@ -716,7 +742,7 @@ const Pricing = () => {
                         variant={plan.popular ? "contained" : "outlined"}
                         size={isMobile ? "medium" : "large"}
                         sx={{
-                          py: { xs: 0.875, sm: 1, md: 1.125 },
+                          py: { xs: 0.8, sm: 1, md: 1.125 },
                           borderRadius: {
                             xs: "0.75rem",
                             sm: "0.875rem",

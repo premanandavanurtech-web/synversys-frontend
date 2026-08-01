@@ -53,7 +53,7 @@ const Hero = ({ scrollToSection }) => {
       component="section"
       sx={{
         position: "relative",
-        minHeight: { xs: "auto", sm: "90vh", md: "100vh" },
+        minHeight: { xs: "100svh", sm: "90vh", md: "100vh" },
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -61,7 +61,7 @@ const Hero = ({ scrollToSection }) => {
         backgroundImage: `url('https://t3.ftcdn.net/jpg/05/01/45/40/360_F_501454093_29sFKROmzh6ZQvX6JUiFv4SrJzI63Byv.jpg')`,
         backgroundSize: "cover",
         backgroundPosition: { xs: "70% center", sm: "center" },
-        backgroundAttachment: { xs: "initial", sm: "fixed", md: "fixed" },
+        backgroundAttachment: { xs: "scroll", sm: "scroll", lg: "fixed" },
         backgroundRepeat: "no-repeat",
         "&::before": {
           content: '""',
@@ -75,8 +75,8 @@ const Hero = ({ scrollToSection }) => {
             : "linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(30,41,59,0.92) 100%)",
           zIndex: 1,
         },
-        pt: { xs: 8, sm: 10, md: 12, lg: 14, xl: 16 },
-        pb: { xs: 6, sm: 8, md: 10, lg: 12, xl: 14 },
+        pt: { xs: 9, sm: 10, md: 12, lg: 14, xl: 16 },
+        pb: { xs: 4.5, sm: 8, md: 10, lg: 12, xl: 14 },
       }}
     >
       {/* Animated Gradient Overlay - Optimized for performance */}
@@ -133,13 +133,13 @@ const Hero = ({ scrollToSection }) => {
       <Container
         maxWidth="xl"
         sx={{
-          px: { xs: 2, sm: 3, md: 4, lg: 5, xl: 6 },
+          px: { xs: 2.25, sm: 3, md: 4, lg: 5, xl: 6 },
           position: "relative",
           zIndex: 3,
         }}
       >
         <Stack
-          spacing={{ xs: 2.5, sm: 3.5, md: 4.5, lg: 5.5, xl: 6.5 }}
+          spacing={{ xs: 2, sm: 3.5, md: 4.5, lg: 5.5, xl: 6.5 }}
           alignItems="center"
           textAlign="center"
         >
@@ -191,14 +191,14 @@ const Hero = ({ scrollToSection }) => {
               variant="h1"
               sx={{
                 fontSize: {
-                  xs: "1.5rem",
-                  sm: "1.8rem",
+                  xs: "2.15rem",
+                  sm: "2.35rem",
                   md: "2.5rem",
                   lg: "3rem",
                   xl: "3.5rem",
                 },
                 fontWeight: 800,
-                lineHeight: { xs: 1.3, sm: 1.25, md: 1.2 },
+                lineHeight: { xs: 1.12, sm: 1.25, md: 1.2 },
                 mb: { xs: 1, sm: 1.25, md: 1.5, lg: 1.75 },
                 letterSpacing: "-0.02em",
                 color: "white",
@@ -228,8 +228,8 @@ const Hero = ({ scrollToSection }) => {
               sx={{
                 color: alpha("#fff", 0.85),
                 fontSize: {
-                  xs: "0.7rem",
-                  sm: "0.8rem",
+                  xs: "0.88rem",
+                  sm: "0.95rem",
                   md: "0.9rem",
                   lg: "1rem",
                   xl: "1.1rem",
@@ -237,14 +237,14 @@ const Hero = ({ scrollToSection }) => {
                 lineHeight: { xs: 1.5, sm: 1.55, md: 1.6, lg: 1.65 },
                 mb: { xs: 2, sm: 2.5, md: 3, lg: 3.5, xl: 4 },
                 maxWidth: {
-                  xs: "100%",
+                  xs: 360,
                   sm: "90%",
                   md: "85%",
                   lg: "80%",
                   xl: "75%",
                 },
                 mx: "auto",
-                px: { xs: 1, sm: 2, md: 3 },
+                px: { xs: 0, sm: 2, md: 3 },
               }}
             >
               The intelligent platform that gives you complete visibility and
@@ -258,7 +258,7 @@ const Hero = ({ scrollToSection }) => {
               spacing={{ xs: 1.5, sm: 2, md: 2.5 }}
               justifyContent="center"
               alignItems="center"
-              sx={{ mb: { xs: 3, sm: 4, md: 5, lg: 6 } }}
+              sx={{ width: { xs: "100%", sm: "auto" }, mb: { xs: 2.5, sm: 4, md: 5, lg: 6 } }}
             >
               <Button
              onClick={() => navigate("/login", { replace: true })}
@@ -287,6 +287,8 @@ const Hero = ({ scrollToSection }) => {
                     boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
                   },
                   transition: "all 0.2s ease",
+                  width: { xs: "100%", sm: "auto" },
+                  maxWidth: { xs: 280, sm: "none" },
                 }}
               >
                 Get Started
@@ -319,6 +321,8 @@ const Hero = ({ scrollToSection }) => {
                     transform: "translateY(-2px)",
                   },
                   transition: "all 0.2s ease",
+                  width: { xs: "100%", sm: "auto" },
+                  maxWidth: { xs: 280, sm: "none" },
                 }}
               >
                 Watch Demo
@@ -327,11 +331,18 @@ const Hero = ({ scrollToSection }) => {
 
             {/* Stats Section - Responsive Grid Layout */}
             <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={{ xs: 1.5, sm: 2, md: 3, lg: 4, xl: 5 }}
+              direction="row"
+              spacing={{ xs: 0, sm: 2, md: 3, lg: 4, xl: 5 }}
               justifyContent="center"
-              alignItems="center"
-              sx={{ mb: { xs: 2.5, sm: 3, md: 4, lg: 5 } }}
+              alignItems="stretch"
+              sx={{
+                width: "100%",
+                maxWidth: { xs: 360, sm: "none" },
+                mx: "auto",
+                mb: { xs: 2, sm: 3, md: 4, lg: 5 },
+                display: { xs: "grid", sm: "flex" },
+                gridTemplateColumns: { xs: "repeat(3, minmax(0, 1fr))", sm: "none" },
+              }}
             >
               {stats.map((stat, index) => (
                 <motion.div
@@ -351,7 +362,7 @@ const Hero = ({ scrollToSection }) => {
                         fontWeight: 800,
                         color: theme.palette.primary.light,
                         fontSize: {
-                          xs: "1rem",
+                          xs: "1.2rem",
                           sm: "1.2rem",
                           md: "1.4rem",
                           lg: "1.6rem",
@@ -367,7 +378,7 @@ const Hero = ({ scrollToSection }) => {
                       sx={{
                         color: alpha("#fff", 0.7),
                         fontSize: {
-                          xs: "0.5rem",
+                          xs: "0.55rem",
                           sm: "0.55rem",
                           md: "0.6rem",
                           lg: "0.65rem",
@@ -393,7 +404,7 @@ const Hero = ({ scrollToSection }) => {
             >
               <Stack
                 direction={{ xs: "column", sm: "row" }}
-                spacing={{ xs: 0.75, sm: 1, md: 1.5 }}
+              spacing={{ xs: 0.75, sm: 1, md: 1.5 }}
                 alignItems="center"
                 justifyContent="center"
                 sx={{ mb: { xs: 2, sm: 2.5, md: 3, lg: 3.5 } }}
@@ -433,8 +444,8 @@ const Hero = ({ scrollToSection }) => {
               spacing={{ xs: 1.5, sm: 2, md: 2.5, lg: 3 }}
               justifyContent="center"
               sx={{
-                maxWidth: {
-                  xs: "100%",
+                  maxWidth: {
+                  xs: 360,
                   sm: "90%",
                   md: "85%",
                   lg: "80%",

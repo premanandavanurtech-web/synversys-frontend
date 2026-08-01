@@ -119,8 +119,8 @@ const Features = () => {
       id="features"
       component="section"
       sx={{
-        py: { xs: 5, sm: 6, md: 8, lg: 10, xl: 12 },
-        px: { xs: 1.5, sm: 2, md: 3, lg: 4, xl: 5 },
+        py: { xs: 4.5, sm: 6, md: 8, lg: 10, xl: 12 },
+        px: { xs: 1, sm: 2, md: 3, lg: 4, xl: 5 },
         bgcolor: "background.default",
         position: "relative",
         overflow: "hidden",
@@ -158,7 +158,7 @@ const Features = () => {
       <Container
         maxWidth="xl"
         sx={{
-          px: { xs: 1, sm: 1.5, md: 2, lg: 2.5, xl: 3 },
+          px: { xs: 1.25, sm: 1.5, md: 2, lg: 2.5, xl: 3 },
           position: "relative",
           zIndex: 1,
           maxWidth: {
@@ -180,7 +180,7 @@ const Features = () => {
           <Box
             sx={{
               textAlign: "center",
-              mb: { xs: 4, sm: 5, md: 6, lg: 7, xl: 8 },
+              mb: { xs: 3, sm: 5, md: 6, lg: 7, xl: 8 },
             }}
           >
             <Chip
@@ -207,7 +207,7 @@ const Features = () => {
               variant="h2"
               sx={{
                 fontSize: {
-                  xs: "1.6rem",
+                  xs: "1.85rem",
                   sm: "1.9rem",
                   md: "2.2rem",
                   lg: "2.5rem",
@@ -259,8 +259,17 @@ const Features = () => {
         >
           <Grid
             container
-            spacing={{ xs: 1.5, sm: 2, md: 2.5, lg: 3, xl: 3.5 }}
+            spacing={{ xs: 2, sm: 2, md: 2.5, lg: 3, xl: 3.5 }}
             justifyContent="center"
+            sx={{
+              display: { xs: "flex", sm: "grid" },
+              gridTemplateColumns: { sm: "repeat(3, minmax(0, 1fr))" },
+              gap: { sm: 2, md: 2.5, lg: 3, xl: 3.5 },
+              "& > .MuiGrid-item": {
+                pl: { sm: "0 !important" },
+                pt: { sm: "0 !important" },
+              },
+            }}
           >
             {features.map((feature, index) => (
               <Grid
@@ -272,6 +281,11 @@ const Features = () => {
                 key={index}
                 sx={{
                   display: "flex",
+                  justifyContent: "center",
+                  width: "100%",
+                  flexBasis: { sm: "auto" },
+                  maxWidth: "100%",
+                  minWidth: 0,
                 }}
               >
                 <motion.div
@@ -292,7 +306,9 @@ const Features = () => {
                       bgcolor: "background.paper",
                       transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                       height: "100%",
-                      width: { xs: "100%", sm: "300px", md: "350px" },
+                      width: "100%",
+                      maxWidth: { xs: 420, sm: "100%" },
+                      minHeight: { sm: 250, md: 270, lg: 290 },
                       display: "flex",
                       flexDirection: "column",
                       position: "relative",
@@ -383,6 +399,7 @@ const Features = () => {
                           mb: 0.75,
                           color: "text.primary",
                           lineHeight: 1.3,
+                          pr: { xs: 6, sm: 7 },
                         }}
                       >
                         {feature.title}
@@ -402,6 +419,7 @@ const Features = () => {
                           lineHeight: 1.5,
                           flex: 1,
                           mb: 1.5,
+                          overflowWrap: "anywhere",
                         }}
                       >
                         {feature.description}

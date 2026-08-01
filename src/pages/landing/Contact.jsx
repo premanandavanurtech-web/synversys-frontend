@@ -380,8 +380,8 @@ const Contact = () => {
       id="contact"
       component="section"
       sx={{
-        py: { xs: 5, sm: 6, md: 8, lg: 10, xl: 12 },
-        px: { xs: 1.5, sm: 2, md: 3, lg: 4, xl: 5 },
+        py: { xs: 4.5, sm: 6, md: 8, lg: 10, xl: 12 },
+        px: { xs: 1, sm: 2, md: 3, lg: 4, xl: 5 },
         bgcolor: "background.default",
         position: "relative",
         overflow: "hidden",
@@ -424,7 +424,7 @@ const Contact = () => {
         sx={{
           position: "relative",
           zIndex: 1,
-          px: { xs: 1, sm: 1.5, md: 2, lg: 2.5, xl: 3 },
+          px: { xs: 0.75, sm: 1.5, md: 2, lg: 2.5, xl: 3 },
           maxWidth: {
             xs: "100%",
             sm: "100%",
@@ -446,7 +446,7 @@ const Contact = () => {
             <Box
               sx={{
                 textAlign: "center",
-                mb: { xs: 4, sm: 5, md: 6, lg: 7, xl: 8 },
+                mb: { xs: 3, sm: 5, md: 6, lg: 7, xl: 8 },
               }}
             >
               <Chip
@@ -474,7 +474,7 @@ const Contact = () => {
                 variant="h2"
                 sx={{
                   fontSize: {
-                    xs: "1.6rem",
+                    xs: "1.85rem",
                     sm: "1.9rem",
                     md: "2.2rem",
                     lg: "2.6rem",
@@ -521,13 +521,33 @@ const Contact = () => {
           {/* Two Column Layout - Responsive Grid */}
           <Grid
             container
-            spacing={{ xs: 2, sm: 2.5, md: 3, lg: 3.5, xl: 4 }}
+            spacing={{ xs: 1.75, sm: 2.5, md: 3, lg: 3.5, xl: 4 }}
             justifyContent="center"
             alignItems="stretch"
+            sx={{
+              maxWidth: { xs: 340, sm: "none" },
+              mx: "auto",
+              "& > .MuiGrid-item": {
+                pl: { xs: "0 !important", sm: undefined },
+              },
+            }}
           >
             {/* Contact Information Column */}
-            <Grid item xs={12} md={6}>
-              <motion.div variants={fadeInUp} style={{ height: "100%" }}>
+            <Grid
+              item
+              xs={12}
+              md={6}
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                width: { xs: "100%", md: "auto" },
+                px: { xs: "0 !important", sm: undefined },
+              }}
+            >
+              <motion.div
+                variants={fadeInUp}
+                style={{ width: "100%", height: "100%" }}
+              >
                 <Card
                   elevation={0}
                   sx={{
@@ -540,6 +560,9 @@ const Contact = () => {
                     border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                     bgcolor: "background.paper",
                     height: "100%",
+                    width: "100%",
+                    maxWidth: { xs: 340, sm: "100%" },
+                    mx: { xs: "auto", sm: 0 },
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                     "&:hover": {
                       transform: isDesktop
@@ -551,7 +574,7 @@ const Contact = () => {
                 >
                   <CardContent
                     sx={{
-                      p: { xs: 2, sm: 2.5, md: 3, lg: 3.5, xl: 4 },
+                      p: { xs: 1.6, sm: 2.5, md: 3, lg: 3.5, xl: 4 },
                     }}
                   >
                     <Typography
@@ -617,9 +640,9 @@ const Contact = () => {
                         >
                           <Box
                             sx={{
-                              width: { xs: 40, sm: 44, md: 48, lg: 52, xl: 56 },
+                              width: { xs: 36, sm: 44, md: 48, lg: 52, xl: 56 },
                               height: {
-                                xs: 40,
+                                xs: 36,
                                 sm: 44,
                                 md: 48,
                                 lg: 52,
@@ -645,7 +668,7 @@ const Contact = () => {
                           >
                             {item.icon}
                           </Box>
-                          <Box>
+                          <Box sx={{ minWidth: 0 }}>
                             <Typography
                               variant="subtitle2"
                               sx={{
@@ -676,6 +699,7 @@ const Contact = () => {
                                   },
                                   color: "text.secondary",
                                   lineHeight: 1.4,
+                                  overflowWrap: "anywhere",
                                 }}
                               >
                                 {line}
@@ -753,6 +777,8 @@ const Contact = () => {
                         alignItems: "center",
                         justifyContent: "center",
                         gap: 1,
+                        flexWrap: "wrap",
+                        textAlign: "center",
                       }}
                     >
                       <CheckCircleIcon
@@ -778,8 +804,21 @@ const Contact = () => {
             </Grid>
 
             {/* Contact Form Column */}
-            <Grid item xs={12} md={6}>
-              <motion.div variants={fadeInUp} style={{ height: "100%" }}>
+            <Grid
+              item
+              xs={12}
+              md={6}
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                width: { xs: "100%", md: "auto" },
+                px: { xs: "0 !important", sm: undefined },
+              }}
+            >
+              <motion.div
+                variants={fadeInUp}
+                style={{ width: "100%", height: "100%" }}
+              >
                 <Card
                   elevation={0}
                   component="form"
@@ -794,6 +833,9 @@ const Contact = () => {
                     border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                     bgcolor: "background.paper",
                     height: "100%",
+                    width: "100%",
+                    maxWidth: { xs: 340, sm: "100%" },
+                    mx: { xs: "auto", sm: 0 },
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                     "&:hover": {
                       transform: isDesktop
@@ -805,7 +847,7 @@ const Contact = () => {
                 >
                   <CardContent
                     sx={{
-                      p: { xs: 2, sm: 2.5, md: 3, lg: 3.5, xl: 4 },
+                      p: { xs: 1.6, sm: 2.5, md: 3, lg: 3.5, xl: 4 },
                     }}
                   >
                     <Typography
@@ -841,7 +883,7 @@ const Contact = () => {
                       Fill out the form and we'll respond within 24 hours
                     </Typography>
 
-                    <Stack spacing={{ xs: 2, sm: 2.5, md: 3 }}>
+                    <Stack spacing={{ xs: 1.5, sm: 2.5, md: 3 }}>
                       <TextField
                         fullWidth
                         label="Full Name *"
@@ -868,6 +910,7 @@ const Contact = () => {
                               sm: "0.85rem",
                               md: "0.9rem",
                             },
+                            minHeight: { xs: 48, sm: 56 },
                           },
                           "& .MuiFormHelperText-root": {
                             fontSize: {
@@ -905,6 +948,7 @@ const Contact = () => {
                               sm: "0.85rem",
                               md: "0.9rem",
                             },
+                            minHeight: { xs: 48, sm: 56 },
                           },
                           "& .MuiFormHelperText-root": {
                             fontSize: {
@@ -950,6 +994,7 @@ const Contact = () => {
                               sm: "0.85rem",
                               md: "0.9rem",
                             },
+                            minHeight: { xs: 48, sm: 56 },
                           },
                           "& .MuiFormHelperText-root": {
                             fontSize: {
@@ -988,6 +1033,8 @@ const Contact = () => {
                               sm: "0.85rem",
                               md: "0.9rem",
                             },
+                            alignItems: "flex-start",
+                            minHeight: { xs: 92, sm: 120 },
                           },
                           "& .MuiFormHelperText-root": {
                             fontSize: {
@@ -1014,7 +1061,7 @@ const Contact = () => {
                           ) : null
                         }
                         sx={{
-                          py: { xs: 1.2, sm: 1.3, md: 1.4, lg: 1.5 },
+                          py: { xs: 1, sm: 1.3, md: 1.4, lg: 1.5 },
                           borderRadius: {
                             xs: "0.875rem",
                             sm: "1rem",

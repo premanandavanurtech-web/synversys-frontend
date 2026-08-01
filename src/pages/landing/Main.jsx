@@ -226,7 +226,7 @@ function Main() {
   return (
     <ThemeProvider theme={isDarkMode ? darkTheme : lightTheme}>
       <CssBaseline />
-      <Box sx={{ bgcolor: "background.default", minHeight: "100vh" }}>
+      <Box sx={{ bgcolor: "background.default", minHeight: "100vh", overflowX: "hidden" }}>
         <Navbar
           activeSection={activeSection}
           scrollToSection={scrollToSection}

@@ -252,7 +252,7 @@ const Navbar = ({
                     display: { xs: "block", sm: "none" },
                   }}
                 >
-                  AssetFlow
+                  AssetMach
                 </Typography>
               </Box>
             </motion.div>
@@ -463,7 +463,7 @@ const Navbar = ({
                           color: "white",
                         }}
                       >
-                        AssetFlow
+                        AssetMach
                       </Typography>
                       <Typography
                         sx={{
