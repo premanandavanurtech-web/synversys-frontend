@@ -2919,15 +2919,50 @@ const ReportsDashboard = () => {
         onClose={() => setFilterOpen(false)}
         maxWidth="xs"
         fullWidth
-        fullScreen={isMobile}
+        fullScreen={false}
+        sx={{
+          zIndex: 9999,
+          "& .MuiBackdrop-root": {
+            bgcolor: "rgba(2, 6, 23, 0.72)",
+            backdropFilter: "blur(6px)",
+          },
+          "& .MuiDialog-container": {
+            alignItems: { xs: "flex-end", sm: "center" },
+          },
+        }}
         PaperProps={{
           sx: {
-            borderRadius: isMobile ? 0 : "18px",
+            m: { xs: 0, sm: 2 },
+            width: { xs: "100%", sm: "calc(100% - 64px)" },
+            maxWidth: { xs: "100%", sm: 420 },
+            height: { xs: "auto", sm: "auto" },
+            maxHeight: { xs: "78dvh", sm: "90vh" },
+            borderRadius: { xs: "24px 24px 0 0", sm: "18px" },
             border: `1px solid ${T.border}`,
+            borderBottom: { xs: 0, sm: `1px solid ${T.border}` },
             bgcolor: T.surface,
+            boxShadow: {
+              xs: "0 -18px 56px rgba(0, 0, 0, 0.5)",
+              sm: "0 22px 70px rgba(0, 0, 0, 0.42)",
+            },
+            overflow: "hidden",
           },
         }}
       >
+        {isMobile && (
+          <Box
+            sx={{
+              width: 44,
+              height: 5,
+              borderRadius: 999,
+              bgcolor: alpha(T.inkLight, 0.5),
+              mx: "auto",
+              mt: 1.25,
+              mb: 0.25,
+              flexShrink: 0,
+            }}
+          />
+        )}
         <DialogTitle sx={{ pb: 0.1, pt: { xs: 2, sm: 1.5 } }}>
           <Box
             sx={{
@@ -2940,16 +2975,19 @@ const ReportsDashboard = () => {
               <Typography
                 sx={{
                   fontWeight: 700,
-                  fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                  fontSize: { xs: "1.12rem", sm: "0.95rem" },
                   color: T.ink,
+                  lineHeight: 1.25,
                 }}
               >
                 Report filters
               </Typography>
               <Typography
                 sx={{
-                  fontSize: { xs: "0.6rem", sm: "0.66rem" },
+                  fontSize: { xs: "0.86rem", sm: "0.66rem" },
                   color: T.inkLight,
+                  lineHeight: 1.35,
+                  mt: 0.25,
                 }}
               >
                 Narrow results before generating
@@ -2965,39 +3003,67 @@ const ReportsDashboard = () => {
           </Box>
         </DialogTitle>
 
-        <DialogContent sx={{ pt: 2 }}>
-          <Stack spacing={2}>
-            <FormControl size="small" fullWidth sx={{ mt: 1.5, ...darkFieldSx }}>
-              <InputLabel sx={{ fontSize: "0.82rem" }}>Report type</InputLabel>
-              <Select
-                value={reportType}
-                onChange={(e) => setReportType(e.target.value)}
-                label="Report type"
-                MenuProps={darkMenuProps}
+        <DialogContent
+          sx={{
+            pt: { xs: 2.25, sm: 2 },
+            maxHeight: { xs: "calc(78dvh - 148px)", sm: "70vh" },
+            overflowY: "auto",
+          }}
+        >
+          <Stack spacing={1.5}>
+            <Box sx={{ mt: 0.75 }}>
+              <Typography
+                sx={{
+                  color: T.inkLight,
+                  fontSize: { xs: "0.82rem", sm: "0.72rem" },
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  mb: 0.6,
+                }}
               >
-                {allowed.map((rt) => (
-                  <MenuItem key={rt} value={rt}>
-                    {REPORT_META[rt]?.label || rt}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                Report type
+              </Typography>
+              <FormControl size="small" fullWidth sx={darkFieldSx}>
+                <Select
+                  value={reportType}
+                  onChange={(e) => setReportType(e.target.value)}
+                  MenuProps={darkMenuProps}
+                >
+                  {allowed.map((rt) => (
+                    <MenuItem key={rt} value={rt}>
+                      {REPORT_META[rt]?.label || rt}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
 
-            <FormControl size="small" fullWidth sx={darkFieldSx}>
-              <InputLabel sx={{ fontSize: "0.82rem" }}>Date range</InputLabel>
-              <Select
-                value={datePreset}
-                onChange={(e) => setDatePreset(e.target.value)}
-                label="Date range"
-                MenuProps={darkMenuProps}
+            <Box>
+              <Typography
+                sx={{
+                  color: T.inkLight,
+                  fontSize: { xs: "0.82rem", sm: "0.72rem" },
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  mb: 0.6,
+                }}
               >
-                {DATE_PRESETS.map((p) => (
-                  <MenuItem key={p.value} value={p.value}>
-                    {p.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                Date range
+              </Typography>
+              <FormControl size="small" fullWidth sx={darkFieldSx}>
+                <Select
+                  value={datePreset}
+                  onChange={(e) => setDatePreset(e.target.value)}
+                  MenuProps={darkMenuProps}
+                >
+                  {DATE_PRESETS.map((p) => (
+                    <MenuItem key={p.value} value={p.value}>
+                      {p.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
 
             {datePreset === "custom" && (
               <>
@@ -3048,7 +3114,9 @@ const ReportsDashboard = () => {
             {reportType === "clients" && isSuperAdmin && (
               <>
                 <FormControl size="small" fullWidth sx={darkFieldSx}>
-                  <InputLabel sx={{ fontSize: "0.82rem" }}>Plan</InputLabel>
+                  <InputLabel sx={{ fontSize: { xs: "0.95rem", sm: "0.82rem" } }}>
+                    Plan
+                  </InputLabel>
                   <Select
                     value={filters.membershipPlan || ""}
                     onChange={(e) =>
@@ -3073,7 +3141,9 @@ const ReportsDashboard = () => {
                   </Select>
                 </FormControl>
                 <FormControl size="small" fullWidth sx={darkFieldSx}>
-                  <InputLabel sx={{ fontSize: "0.82rem" }}>Status</InputLabel>
+                  <InputLabel sx={{ fontSize: { xs: "0.95rem", sm: "0.82rem" } }}>
+                    Status
+                  </InputLabel>
                   <Select
                     value={filters.status || ""}
                     onChange={(e) =>
@@ -3100,7 +3170,9 @@ const ReportsDashboard = () => {
             {reportType === "assets" && (
               <>
                 <FormControl size="small" fullWidth sx={darkFieldSx}>
-                  <InputLabel sx={{ fontSize: "0.82rem" }}>Status</InputLabel>
+                  <InputLabel sx={{ fontSize: { xs: "0.95rem", sm: "0.82rem" } }}>
+                    Status
+                  </InputLabel>
                   <Select
                     value={filters.status || ""}
                     onChange={(e) =>
@@ -3134,7 +3206,9 @@ const ReportsDashboard = () => {
             {reportType === "team" && (
               <>
                 <FormControl size="small" fullWidth sx={darkFieldSx}>
-                  <InputLabel sx={{ fontSize: "0.82rem" }}>Role</InputLabel>
+                  <InputLabel sx={{ fontSize: { xs: "0.95rem", sm: "0.82rem" } }}>
+                    Role
+                  </InputLabel>
                   <Select
                     value={filters.teamRole || ""}
                     onChange={(e) =>
@@ -3157,7 +3231,9 @@ const ReportsDashboard = () => {
                   </Select>
                 </FormControl>
                 <FormControl size="small" fullWidth sx={darkFieldSx}>
-                  <InputLabel sx={{ fontSize: "0.82rem" }}>Status</InputLabel>
+                  <InputLabel sx={{ fontSize: { xs: "0.95rem", sm: "0.82rem" } }}>
+                    Status
+                  </InputLabel>
                   <Select
                     value={filters.status || ""}
                     onChange={(e) =>
@@ -3180,7 +3256,9 @@ const ReportsDashboard = () => {
             {(reportType === "assignments" || reportType === "inspections") && (
               <>
                 <FormControl size="small" fullWidth sx={darkFieldSx}>
-                  <InputLabel sx={{ fontSize: "0.82rem" }}>Status</InputLabel>
+                  <InputLabel sx={{ fontSize: { xs: "0.95rem", sm: "0.82rem" } }}>
+                    Status
+                  </InputLabel>
                   <Select
                     value={filters.status || ""}
                     onChange={(e) =>
@@ -3205,7 +3283,9 @@ const ReportsDashboard = () => {
                   </Select>
                 </FormControl>
                 <FormControl size="small" fullWidth sx={darkFieldSx}>
-                  <InputLabel sx={{ fontSize: "0.82rem" }}>Priority</InputLabel>
+                  <InputLabel sx={{ fontSize: { xs: "0.95rem", sm: "0.82rem" } }}>
+                    Priority
+                  </InputLabel>
                   <Select
                     value={filters.priority || ""}
                     onChange={(e) =>
@@ -3233,10 +3313,15 @@ const ReportsDashboard = () => {
 
         <DialogActions
           sx={{
-            p: { xs: 1.5, sm: 2 },
+            p: {
+              xs: "12px 16px calc(12px + env(safe-area-inset-bottom))",
+              sm: 2,
+            },
             pt: { xs: 1, sm: 1 },
             gap: 1,
             flexWrap: "wrap",
+            borderTop: `1px solid ${alpha(T.border, 0.7)}`,
+            bgcolor: T.surface,
           }}
         >
           <Button

@@ -42,6 +42,7 @@ import {
   Menu,
   ListItemIcon,
   ListItemText,
+  Portal,
 } from "@mui/material";
 import {
   Refresh as RefreshIcon,
@@ -809,6 +810,7 @@ function FilterBar({
   showReset,
 }) {
   const isMobile = useMediaQuery("(max-width:600px)");
+  const FilterSurface = isMobile ? Portal : React.Fragment;
   const placeholder = isSuperAdmin
     ? "Search logs…"
     : isAdmin
@@ -832,48 +834,84 @@ function FilterBar({
           alignItems: "center",
           justifyContent: "space-between",
           mb: open && !isMobile ? 1.5 : 0,
-          flexWrap: "wrap",
+          flexWrap: isMobile ? "nowrap" : "wrap",
           gap: 1,
         }}
       >
-        <Button
-          size="small"
-          startIcon={<FilterListIcon sx={{ fontSize: 14 }} />}
-          onClick={onToggle}
-          sx={{
-            px: 0,
-            minWidth: 0,
-            fontSize: 12,
-            fontWeight: 600,
-            color: T.textSecondary,
-            textTransform: "none",
-            "&:hover": { bgcolor: "transparent", color: T.accent },
-          }}
-        >
-          Filters
-        </Button>
-        {showReset && (
-          <Button
-            size="small"
-            startIcon={<ClearIcon sx={{ fontSize: 12 }} />}
-            onClick={onReset}
-            sx={{ fontSize: 11, color: T.textMuted, textTransform: "none" }}
-          >
-            Reset
-          </Button>
+        {isMobile ? (
+          <>
+            <AssetSearchField
+              placeholder={placeholder}
+              value={filters.search || ""}
+              onChange={(e) => onChange("search", e.target.value)}
+              onClear={() => onChange("search", "")}
+              sx={{ flex: "1 1 auto", minWidth: 0 }}
+              inputSx={{ fontSize: 12 }}
+              searchIconSx={{ fontSize: 14, color: T.textMuted }}
+            />
+            <IconButton
+              aria-label="Open filters"
+              onClick={onToggle}
+              sx={{
+                width: 40,
+                height: 40,
+                flex: "0 0 auto",
+                borderRadius: "10px",
+                border: `1px solid ${showReset ? T.accent : T.borderColor}`,
+                color: showReset ? T.accent : T.textSecondary,
+                bgcolor: showReset ? alpha(T.accent, 0.12) : T.cardBg,
+                "&:hover": {
+                  bgcolor: alpha(T.accent, 0.16),
+                  color: T.accent,
+                },
+              }}
+            >
+              <FilterListIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </>
+        ) : (
+          <>
+            <Button
+              size="small"
+              startIcon={<FilterListIcon sx={{ fontSize: 14 }} />}
+              onClick={onToggle}
+              sx={{
+                px: 0,
+                minWidth: 0,
+                fontSize: 12,
+                fontWeight: 600,
+                color: T.textSecondary,
+                textTransform: "none",
+                "&:hover": { bgcolor: "transparent", color: T.accent },
+              }}
+            >
+              Filters
+            </Button>
+            {showReset && (
+              <Button
+                size="small"
+                startIcon={<ClearIcon sx={{ fontSize: 12 }} />}
+                onClick={onReset}
+                sx={{ fontSize: 11, color: T.textMuted, textTransform: "none" }}
+              >
+                Reset
+              </Button>
+            )}
+          </>
         )}
       </Box>
 
       {open && (
-        <>
+        <FilterSurface>
         {isMobile && (
           <Box
             onClick={onToggle}
             sx={{
               position: "fixed",
               inset: 0,
-              zIndex: (theme) => theme.zIndex.modal,
-              bgcolor: "rgba(0, 0, 0, 0.55)",
+              zIndex: 9998,
+              bgcolor: "rgba(2, 6, 23, 0.72)",
+              backdropFilter: "blur(6px)",
             }}
           />
         )}
@@ -888,15 +926,16 @@ function FilterBar({
               left: 0,
               right: 0,
               bottom: 0,
-              zIndex: (theme) => theme.zIndex.modal + 1,
+              zIndex: 9999,
               width: "100%",
-              maxHeight: "82vh",
+              maxHeight: "76dvh",
               overflowY: "auto",
               bgcolor: T.cardBg,
-              border: 0,
+              border: `1px solid ${T.borderColor}`,
+              borderBottom: 0,
               borderRadius: "24px 24px 0 0",
               boxShadow: "0 -18px 56px rgba(0, 0, 0, 0.5)",
-              p: "14px 16px 18px",
+              p: "14px 16px calc(18px + env(safe-area-inset-bottom))",
             }),
           }}
         >
@@ -1151,7 +1190,7 @@ function FilterBar({
             </Button>
           </Box>
         </Box>
-        </>
+        </FilterSurface>
       )}
     </Box>
   );

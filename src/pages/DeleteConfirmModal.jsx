@@ -58,22 +58,31 @@ const DeleteConfirmModal = ({ open, onClose, onConfirm, member, loading: parentL
       maxWidth="sm"
       fullWidth
       PaperProps={{
-        sx: { borderRadius: 2, overflow: 'hidden' }
+        sx: {
+          borderRadius: 2,
+          overflow: 'hidden',
+          bgcolor: "#0c1726",
+          color: "#f8fafc",
+          border: "1px solid rgba(148, 163, 184, 0.18)",
+        }
       }}
     >
       <DialogTitle sx={{ 
         pb: 1, 
         pt: 2.5, 
         px: { xs: 2, sm: 2.5 },
-        bgcolor: permanent ? "#fff1f0" : "#fef9e6",
-        borderBottom: "1px solid #e2e8f0"
+        bgcolor: permanent ? "rgba(127, 29, 29, 0.28)" : "#0f1d2e",
+        borderBottom: "1px solid rgba(148, 163, 184, 0.18)"
       }}>
         <Box display="flex" alignItems="center" gap={1.5}>
           <Box sx={{ 
             width: 40, 
             height: 40, 
             borderRadius: "50%", 
-            bgcolor: permanent ? "#fee2e2" : "#fef3c7",
+            bgcolor: permanent ? "rgba(239, 68, 68, 0.14)" : "rgba(234, 179, 8, 0.14)",
+            border: permanent
+              ? "1px solid rgba(239, 68, 68, 0.32)"
+              : "1px solid rgba(234, 179, 8, 0.32)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center"
@@ -88,7 +97,7 @@ const DeleteConfirmModal = ({ open, onClose, onConfirm, member, loading: parentL
             <Typography variant="h6" fontWeight={700} fontSize={{ xs: '0.95rem', sm: '1rem' }}>
               {permanent ? "Permanently Delete Member" : "Remove Team Member"}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: "#cbd5e1" }}>
               {permanent 
                 ? "This action cannot be undone" 
                 : "The member will be archived but data will be preserved"}
@@ -97,7 +106,7 @@ const DeleteConfirmModal = ({ open, onClose, onConfirm, member, loading: parentL
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ px: { xs: 2, sm: 2.5 }, pt: 2.5 }}>
+      <DialogContent sx={{ px: { xs: 2, sm: 2.5 }, pt: 2.5, bgcolor: "#0c1726" }}>
         {/* Warning Alert for members with data */}
         {hasData && !permanent && (
           <Alert severity="warning" sx={{ mb: 2, fontSize: '0.75rem' }}>
@@ -108,7 +117,7 @@ const DeleteConfirmModal = ({ open, onClose, onConfirm, member, loading: parentL
           </Alert>
         )}
 
-        <DialogContentText sx={{ color: '#64748b', fontSize: '0.85rem', mb: 2 }}>
+        <DialogContentText sx={{ color: '#f8fafc', fontSize: '0.85rem', mb: 2 }}>
           Are you sure you want to {permanent ? "permanently delete" : "remove"}{' '}
           <strong>{fullName}</strong>?
         </DialogContentText>
@@ -116,15 +125,20 @@ const DeleteConfirmModal = ({ open, onClose, onConfirm, member, loading: parentL
         {/* Member Info Card */}
         <Box sx={{ 
           p: 2, 
-          bgcolor: "#f8fafc", 
+          bgcolor: "rgba(15, 28, 46, 0.86)", 
           borderRadius: 2, 
           mb: 2,
-          border: "1px solid #e2e8f0"
+          border: "1px solid rgba(148, 163, 184, 0.18)"
         }}>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
+          <Typography variant="caption" sx={{ mb: 1, display: "block", color: "#94a3b8" }}>
             Member Information:
           </Typography>
-          <Box display="flex" flexDirection="column" gap={0.5}>
+          <Box
+            display="flex"
+            flexDirection="column"
+            gap={0.5}
+            sx={{ "& .MuiTypography-root": { color: "#e2e8f0" } }}
+          >
             <Typography variant="body2">
               <strong>Name:</strong> {fullName}
             </Typography>
@@ -148,6 +162,12 @@ const DeleteConfirmModal = ({ open, onClose, onConfirm, member, loading: parentL
         {/* Permanent Deletion Option */}
         <Box sx={{ mb: 2 }}>
           <FormControlLabel
+            sx={{
+              alignItems: "flex-start",
+              color: "#e2e8f0",
+              "& .MuiTypography-root": { color: "#e2e8f0" },
+              "& .MuiTypography-caption": { color: "#cbd5e1" },
+            }}
             control={
               <Checkbox
                 checked={permanent}
@@ -198,10 +218,11 @@ const DeleteConfirmModal = ({ open, onClose, onConfirm, member, loading: parentL
         <Box sx={{ 
           mt: 2, 
           p: 1.5, 
-          bgcolor: permanent ? "#fee2e2" : "#f1f5f9", 
-          borderRadius: 1.5 
+          bgcolor: permanent ? "rgba(127, 29, 29, 0.28)" : "rgba(15, 28, 46, 0.86)", 
+          borderRadius: 1.5,
+          border: "1px solid rgba(148, 163, 184, 0.18)",
         }}>
-          <Typography variant="caption" display="block" color="text.secondary">
+          <Typography variant="caption" display="block" sx={{ color: "#cbd5e1" }}>
             {permanent ? (
               <>
                 • All inspection records will be permanently deleted<br />
@@ -219,7 +240,7 @@ const DeleteConfirmModal = ({ open, onClose, onConfirm, member, loading: parentL
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: { xs: 2, sm: 2.5 }, pb: 2.5, pt: 2, gap: 1.5 }}>
+      <DialogActions sx={{ px: { xs: 2, sm: 2.5 }, pb: 2.5, pt: 2, gap: 1.5, bgcolor: "#0c1726" }}>
         <Button
           onClick={handleClose}
           disabled={parentLoading}
@@ -229,8 +250,8 @@ const DeleteConfirmModal = ({ open, onClose, onConfirm, member, loading: parentL
             borderRadius: 1.5, 
             fontSize: '0.8rem', 
             py: 0.75,
-            borderColor: '#e2e8f0',
-            color: '#64748b'
+            borderColor: 'rgba(148, 163, 184, 0.32)',
+            color: '#cbd5e1'
           }}
         >
           Cancel

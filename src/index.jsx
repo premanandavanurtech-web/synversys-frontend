@@ -104,6 +104,105 @@ function Root() {
             zIndex: "20000 !important",
             maxWidth: "calc(100vw - 40px)",
           },
+          ".MuiSnackbar-root .MuiAlert-root": {
+            width: "100% !important",
+            minWidth: "320px",
+            maxWidth: "420px",
+            borderRadius: "10px !important",
+            fontFamily:
+              "'Sora', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important",
+            fontSize: "0.84rem !important",
+            fontWeight: "700 !important",
+            letterSpacing: "0 !important",
+            alignItems: "center !important",
+            boxShadow:
+              resolvedMode === "dark"
+                ? "0 18px 40px rgba(0,0,0,0.45) !important"
+                : "0 18px 40px rgba(15,23,42,0.14) !important",
+          },
+          ".MuiSnackbar-root .MuiAlert-standardSuccess, .MuiSnackbar-root .MuiAlert-filledSuccess": {
+            color:
+              resolvedMode === "dark"
+                ? "#bbf7d0 !important"
+                : "#14532d !important",
+            backgroundColor:
+              resolvedMode === "dark"
+                ? "#10281f !important"
+                : "#ecfdf5 !important",
+            border:
+              resolvedMode === "dark"
+                ? "1px solid rgba(74, 222, 128, 0.42) !important"
+                : "1px solid rgba(22, 163, 74, 0.28) !important",
+          },
+          ".MuiSnackbar-root .MuiAlert-standardError, .MuiSnackbar-root .MuiAlert-filledError": {
+            color:
+              resolvedMode === "dark"
+                ? "#fecaca !important"
+                : "#7f1d1d !important",
+            backgroundColor:
+              resolvedMode === "dark"
+                ? "#351616 !important"
+                : "#fef2f2 !important",
+            border:
+              resolvedMode === "dark"
+                ? "1px solid rgba(248, 113, 113, 0.42) !important"
+                : "1px solid rgba(220, 38, 38, 0.28) !important",
+          },
+          ".MuiSnackbar-root .MuiAlert-standardWarning, .MuiSnackbar-root .MuiAlert-filledWarning": {
+            color:
+              resolvedMode === "dark"
+                ? "#fde68a !important"
+                : "#78350f !important",
+            backgroundColor:
+              resolvedMode === "dark"
+                ? "#33250c !important"
+                : "#fffbeb !important",
+            border:
+              resolvedMode === "dark"
+                ? "1px solid rgba(251, 191, 36, 0.42) !important"
+                : "1px solid rgba(217, 119, 6, 0.28) !important",
+          },
+          ".MuiSnackbar-root .MuiAlert-standardInfo, .MuiSnackbar-root .MuiAlert-filledInfo": {
+            color:
+              resolvedMode === "dark"
+                ? "#bae6fd !important"
+                : "#0c4a6e !important",
+            backgroundColor:
+              resolvedMode === "dark"
+                ? "#0c2735 !important"
+                : "#f0f9ff !important",
+            border:
+              resolvedMode === "dark"
+                ? "1px solid rgba(56, 189, 248, 0.42) !important"
+                : "1px solid rgba(2, 132, 199, 0.28) !important",
+          },
+          ".MuiSnackbar-root .MuiAlert-icon": {
+            opacity: "1 !important",
+            marginRight: "10px !important",
+          },
+          ".MuiSnackbar-root .MuiAlert-standardSuccess .MuiAlert-icon, .MuiSnackbar-root .MuiAlert-filledSuccess .MuiAlert-icon": {
+            color: "#4ade80 !important",
+          },
+          ".MuiSnackbar-root .MuiAlert-standardError .MuiAlert-icon, .MuiSnackbar-root .MuiAlert-filledError .MuiAlert-icon": {
+            color: "#f87171 !important",
+          },
+          ".MuiSnackbar-root .MuiAlert-standardWarning .MuiAlert-icon, .MuiSnackbar-root .MuiAlert-filledWarning .MuiAlert-icon": {
+            color: "#fbbf24 !important",
+          },
+          ".MuiSnackbar-root .MuiAlert-standardInfo .MuiAlert-icon, .MuiSnackbar-root .MuiAlert-filledInfo .MuiAlert-icon": {
+            color: "#38bdf8 !important",
+          },
+          ".MuiSnackbar-root .MuiAlert-message": {
+            paddingTop: "2px !important",
+            paddingBottom: "2px !important",
+          },
+          ".MuiSnackbar-root .MuiAlert-action": {
+            paddingLeft: "8px !important",
+            marginRight: "-6px !important",
+          },
+          ".MuiSnackbar-root .MuiAlert-action .MuiIconButton-root": {
+            color: "inherit !important",
+          },
           "@media (max-width: 600px)": {
             ".MuiSnackbar-root": {
               top: "12px !important",
@@ -111,6 +210,11 @@ function Root() {
               bottom: "auto !important",
               left: "auto !important",
               maxWidth: "calc(100vw - 24px)",
+            },
+            ".MuiSnackbar-root .MuiAlert-root": {
+              minWidth: "auto",
+              maxWidth: "calc(100vw - 24px)",
+              fontSize: "0.8rem !important",
             },
           },
           "input[type='date'], input[type='time'], input[type='datetime-local'], input[type='month']": {

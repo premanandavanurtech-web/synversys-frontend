@@ -38,6 +38,45 @@ import { useTeamAssignment } from "../context/TeamAssignmentcontext";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
+const REPORT_EXPORT_STYLES = `
+  #inspection-print-content.export-mode,
+  .print-container {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  #inspection-print-content.export-mode .MuiPaper-root,
+  .print-container .MuiPaper-root {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: none !important;
+  }
+
+  #inspection-print-content.export-mode .MuiBox-root,
+  .print-container .MuiBox-root {
+    background-color: transparent !important;
+  }
+
+  #inspection-print-content.export-mode .MuiTypography-root,
+  #inspection-print-content.export-mode .MuiSvgIcon-root,
+  .print-container .MuiTypography-root,
+  .print-container .MuiSvgIcon-root {
+    color: #334155 !important;
+  }
+
+  #inspection-print-content.export-mode .MuiChip-root,
+  .print-container .MuiChip-root {
+    color: #ffffff !important;
+  }
+
+  #inspection-print-content.export-mode .MuiDivider-root,
+  .print-container .MuiDivider-root {
+    border-color: #e5e7eb !important;
+  }
+`;
+
 const theme = createTheme({
   palette: {
     primary: { main: "#0d3d52" },
@@ -150,6 +189,7 @@ export default function InspectionHistoryDetails() {
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [snack, setSnack] = useState({
     open: false,
     msg: "",
@@ -185,13 +225,34 @@ export default function InspectionHistoryDetails() {
     if (!printRef.current) return;
 
     setExporting(true);
+    let exportRoot = null;
     try {
       const element = printRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 2,
+      const captureScale = window.innerWidth < 600 ? 1.25 : 2;
+
+      exportRoot = document.createElement("div");
+      exportRoot.className = "print-container";
+      exportRoot.style.position = "fixed";
+      exportRoot.style.left = "-10000px";
+      exportRoot.style.top = "0";
+      exportRoot.style.width = `${element.scrollWidth}px`;
+      exportRoot.style.background = "#ffffff";
+      exportRoot.style.pointerEvents = "none";
+
+      const clonedReport = element.cloneNode(true);
+      clonedReport.removeAttribute("id");
+      clonedReport.classList.add("export-mode");
+      exportRoot.appendChild(clonedReport);
+      document.body.appendChild(exportRoot);
+
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const canvas = await html2canvas(clonedReport, {
+        scale: captureScale,
         backgroundColor: "#ffffff",
         logging: false,
         useCORS: true,
+        windowWidth: clonedReport.scrollWidth,
+        windowHeight: clonedReport.scrollHeight,
       });
 
       const imgData = canvas.toDataURL("image/png");
@@ -223,6 +284,7 @@ export default function InspectionHistoryDetails() {
       console.error("PDF export error:", error);
       toast("Failed to export PDF", "error");
     } finally {
+      exportRoot?.remove();
       setExporting(false);
     }
   };
@@ -234,11 +296,7 @@ export default function InspectionHistoryDetails() {
 
     if (!printContent) return;
 
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      toast("Please allow pop-ups to print", "error");
-      return;
-    }
+    setPrinting(true);
 
     const styles = document.querySelectorAll("link[rel='stylesheet'], style");
     let stylesHTML = "";
@@ -250,18 +308,42 @@ export default function InspectionHistoryDetails() {
       }
     });
 
-    printWindow.document.write(`
+    const printFrame = document.createElement("iframe");
+    printFrame.title = "Inspection print preview";
+    printFrame.style.position = "fixed";
+    printFrame.style.right = "0";
+    printFrame.style.bottom = "0";
+    printFrame.style.width = "0";
+    printFrame.style.height = "0";
+    printFrame.style.border = "0";
+    printFrame.style.opacity = "0";
+    document.body.appendChild(printFrame);
+
+    const frameDocument =
+      printFrame.contentDocument || printFrame.contentWindow?.document;
+
+    if (!frameDocument) {
+      printFrame.remove();
+      setPrinting(false);
+      toast("Unable to prepare print preview", "error");
+      return;
+    }
+
+    frameDocument.open();
+    frameDocument.write(`
       <!DOCTYPE html>
       <html>
         <head>
           <title>Inspection Report - ${inspection?.inspectionId || "Report"}</title>
           ${stylesHTML}
           <style>
+            ${REPORT_EXPORT_STYLES}
             body {
               font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
               padding: 20px;
               margin: 0;
               background: white;
+              color: #0f172a;
             }
             .no-print {
               display: none !important;
@@ -285,18 +367,31 @@ export default function InspectionHistoryDetails() {
           <div class="print-container">
             ${printContent.outerHTML}
           </div>
-          <script>
-            window.onload = () => {
-              window.print();
-              window.onafterprint = () => window.close();
-            };
-          <\/script>
         </body>
       </html>
     `);
 
-    printWindow.document.close();
-    document.title = originalTitle;
+    frameDocument.close();
+    document.title = `Inspection Report - ${inspection?.inspectionId || "Report"}`;
+
+    const cleanup = () => {
+      document.title = originalTitle;
+      setPrinting(false);
+      setTimeout(() => printFrame.remove(), 300);
+    };
+
+    setTimeout(() => {
+      try {
+        printFrame.contentWindow?.focus();
+        printFrame.contentWindow?.print();
+        toast("Print preview opened", "success");
+      } catch (error) {
+        console.error("Print error:", error);
+        toast("Failed to print", "error");
+      } finally {
+        cleanup();
+      }
+    }, 300);
   };
 
   // ─── Backend Export ─────────────────────────────────────────────────────────
@@ -396,6 +491,7 @@ export default function InspectionHistoryDetails() {
 
   return (
     <ThemeProvider theme={theme}>
+      <style>{REPORT_EXPORT_STYLES}</style>
       <Box sx={{ minHeight: "100vh", bgcolor: D.page }}>
         <Container maxWidth="lg" sx={{ py: { xs: 1.5, sm: 2, md: 3 } }}>
           {/* Header - No Print */}
@@ -451,11 +547,20 @@ export default function InspectionHistoryDetails() {
                 flexWrap: "wrap",
                 width: { xs: "100%", sm: "auto" },
                 gap: 1,
+                "& .MuiButton-startIcon": {
+                  mr: { xs: 0.75, sm: 0.8 },
+                },
               }}
             >
               <Button
                 size="small"
-                startIcon={<PdfIcon sx={{ fontSize: 16, color: "inherit" }} />}
+                startIcon={
+                  exporting ? (
+                    <CircularProgress size={16} sx={{ color: "inherit" }} />
+                  ) : (
+                    <PdfIcon sx={{ fontSize: 18, color: "inherit" }} />
+                  )
+                }
                 onClick={handleExportPDF}
                 disabled={exporting}
                 variant="outlined"
@@ -463,9 +568,14 @@ export default function InspectionHistoryDetails() {
                   borderColor: D.borderStrong,
                   color: D.text,
                   bgcolor: D.surface,
-                  fontSize: "0.7rem",
-                  py: 0.5,
+                  fontSize: { xs: "0.72rem", sm: "0.7rem" },
+                  minHeight: { xs: 44, sm: 34 },
+                  px: { xs: 1.25, sm: 1.5 },
+                  py: { xs: 0.85, sm: 0.5 },
+                  borderRadius: 1.5,
                   flex: { xs: "1 1 145px", sm: "0 0 auto" },
+                  minWidth: { xs: 0, sm: 150 },
+                  whiteSpace: "nowrap",
                   "&:hover": {
                     bgcolor: D.surfaceSoft,
                     borderColor: D.brand,
@@ -480,23 +590,39 @@ export default function InspectionHistoryDetails() {
               </Button>
               <Button
                 size="small"
-                startIcon={<PrintIcon sx={{ fontSize: 16, color: "inherit" }} />}
+                startIcon={
+                  printing ? (
+                    <CircularProgress size={16} sx={{ color: "inherit" }} />
+                  ) : (
+                    <PrintIcon sx={{ fontSize: 18, color: "inherit" }} />
+                  )
+                }
                 onClick={handlePrint}
+                disabled={printing}
                 variant="outlined"
                 sx={{
                   borderColor: D.borderStrong,
                   color: D.text,
                   bgcolor: D.surface,
-                  fontSize: "0.7rem",
-                  py: 0.5,
+                  fontSize: { xs: "0.72rem", sm: "0.7rem" },
+                  minHeight: { xs: 44, sm: 34 },
+                  px: { xs: 1.25, sm: 1.5 },
+                  py: { xs: 0.85, sm: 0.5 },
+                  borderRadius: 1.5,
                   flex: { xs: "1 1 145px", sm: "0 0 auto" },
+                  minWidth: { xs: 0, sm: 150 },
+                  whiteSpace: "nowrap",
                   "&:hover": {
                     bgcolor: D.surfaceSoft,
                     borderColor: D.brand,
                   },
+                  "&.Mui-disabled": {
+                    color: D.muted,
+                    borderColor: D.border,
+                  },
                 }}
               >
-                Print the Data
+                {printing ? "Preparing..." : "Print the Data"}
               </Button>
               {/* <Button
                 size="small"
@@ -516,7 +642,11 @@ export default function InspectionHistoryDetails() {
           </Box>
 
           {/* Printable Content */}
-          <Box ref={printRef} sx={{ width: "100%", minWidth: 0 }}>
+          <Box
+            id="inspection-print-content"
+            ref={printRef}
+            sx={{ width: "100%", minWidth: 0 }}
+          >
             {/* Top Row: Overall Score + Inspection Summary */}
             <Box
               sx={{

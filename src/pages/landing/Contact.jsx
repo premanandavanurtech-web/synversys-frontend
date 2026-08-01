@@ -40,6 +40,7 @@ import axios from "axios";
 
 const Contact = () => {
   const theme = useTheme();
+  const isDarkMode = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
@@ -68,6 +69,7 @@ const Contact = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [emailSentDialogOpen, setEmailSentDialogOpen] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState("");
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
   const [snackbar, setSnackbar] = useState({
@@ -184,6 +186,7 @@ const Contact = () => {
     setIsSubmitting(true);
     setProgress(0);
     setProgressMessage("Starting...");
+    const contactEmail = formData.email.trim();
 
     try {
       // First, send the API request to save the inquiry
@@ -191,7 +194,7 @@ const Contact = () => {
         `https://synversys-backend.onrender.com/api/v1/contact`,
         {
           fullName: formData.fullName.trim(),
-          email: formData.email.trim(),
+          email: contactEmail,
           phone: formData.phone.replace(/\s/g, ""),
           message: formData.message.trim(),
         },
@@ -211,6 +214,7 @@ const Contact = () => {
       ) {
         setProgress(100);
         setProgressMessage("Message sent successfully!");
+        setSubmittedEmail(contactEmail);
 
         // Reset form
         setFormData({
@@ -1150,6 +1154,11 @@ const Contact = () => {
           sx: {
             borderRadius: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
             overflow: "hidden",
+            bgcolor: isDarkMode ? "#0b1626" : "#fff",
+            color: isDarkMode ? "#f8fafc" : "#1f2937",
+            border: isDarkMode
+              ? `1px solid ${alpha("#94a3b8", 0.16)}`
+              : "none",
           },
         }}
       >
@@ -1234,45 +1243,73 @@ const Contact = () => {
             Message Sent Successfully!
           </Typography>
         </Box>
-        <DialogContent sx={{ p: 3, textAlign: "center" }}>
+        <DialogContent
+          sx={{
+            p: 3,
+            textAlign: "center",
+            bgcolor: isDarkMode ? "#0b1626" : "#fff",
+          }}
+        >
           <Typography
             variant="body1"
-            sx={{ mb: 2, fontWeight: 500, color: "#1f2937" }}
+            sx={{
+              mb: 2,
+              fontWeight: 500,
+              color: isDarkMode ? "#f8fafc" : "#1f2937",
+            }}
           >
             Thank you for reaching out to us!
           </Typography>
           <Typography
             variant="body2"
-            sx={{ color: "#6b7280", lineHeight: 1.6 }}
+            sx={{
+              color: isDarkMode ? alpha("#e2e8f0", 0.78) : "#6b7280",
+              lineHeight: 1.6,
+            }}
           >
             We have received your message and our support team will respond to
             you within 24 hours. A confirmation email has been sent to{" "}
-            <strong>{formData.email}</strong>.
+            <strong>{submittedEmail}</strong>.
           </Typography>
           <Box
             sx={{
               mt: 3,
               p: 2,
-              bgcolor: "#f0fdf4",
+              bgcolor: isDarkMode ? alpha("#10b981", 0.12) : "#f0fdf4",
               borderRadius: "1rem",
-              border: "1px solid #86efac",
+              border: `1px solid ${
+                isDarkMode ? alpha("#34d399", 0.38) : "#86efac"
+              }`,
             }}
           >
             <Typography
               variant="caption"
-              sx={{ color: "#166534", display: "block" }}
+              sx={{
+                color: isDarkMode ? "#bbf7d0" : "#166534",
+                display: "block",
+              }}
             >
               📧 Check your inbox for a confirmation email
             </Typography>
             <Typography
               variant="caption"
-              sx={{ color: "#166534", display: "block", mt: 0.5 }}
+              sx={{
+                color: isDarkMode ? "#bbf7d0" : "#166534",
+                display: "block",
+                mt: 0.5,
+              }}
             >
               ⏱️ Average response time: 2 hours
             </Typography>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2.5, justifyContent: "center" }}>
+        <DialogActions
+          sx={{
+            p: 2.5,
+            justifyContent: "center",
+            bgcolor: isDarkMode ? "#0b1626" : "#fff",
+          }}
+        >
           <Button
             onClick={handleCloseSuccessDialog}
             variant="contained"
