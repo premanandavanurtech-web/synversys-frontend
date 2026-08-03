@@ -267,11 +267,11 @@ const StatTile = ({
           {sub}
         </Typography>
       )}
-      {onClick && (
-        <Typography sx={{ fontSize: "0.65rem", color: C.primary, mt: 0.75 }}>
-          View all forms →
-        </Typography>
-      )}
+        {/* {onClick && (
+          <Typography sx={{ fontSize: "0.65rem", color: C.primary, mt: 0.75 }}>
+            View all forms →
+          </Typography>
+        )} */}
     </Box>
   );
 };
@@ -1903,7 +1903,7 @@ export default function ClientDetails() {
               icon={InventoryIcon}
               label="Assets"
               value={clientAssetsTotal}
-              sub="View all assets →"
+              sub=""
               color="#0889cf"
               loading={isFetching || assetsLoading}
               onClick={() => setTab(assetsTabIndex)}
