@@ -33,6 +33,7 @@ const initialState = {
     active: 0,
     expiringSoon: 0,
     expiredCustomers: 0,
+    pendingApprovalCustomers: 0,
     byPlan: {
       free: 0,
       standard: 0,
@@ -277,6 +278,8 @@ export const ClientProvider = ({ children }) => {
           : state.filters.membershipPlan;
         const expiringSoon = params.expiringSoon;
         const expired = params.expired;
+        const pendingApproval = params.pendingApproval;
+        const capacityAlerts = params.capacityAlerts;
         const sortBy = params.sortBy || state.filters.sortBy;
         const sortOrder = params.sortOrder || state.filters.sortOrder;
 
@@ -296,6 +299,10 @@ export const ClientProvider = ({ children }) => {
           queryParams.append("expiringSoon", "true");
         if (expired === true || expired === "true")
           queryParams.append("expired", "true");
+        if (pendingApproval === true || pendingApproval === "true")
+          queryParams.append("pendingApproval", "true");
+        if (capacityAlerts === true || capacityAlerts === "true")
+          queryParams.append("capacityAlerts", "true");
 
         const url = `${API_BASE_URL}/clients?${queryParams.toString()}`;
         const headers = getCurrentAuthHeaders();
@@ -353,6 +360,7 @@ export const ClientProvider = ({ children }) => {
             active: activeCustomersTotal,
             expiringSoon: summaryData.expiringSoon || 0,
             expiredCustomers: summaryData.expiredCustomers || 0,
+            pendingApprovalCustomers: summaryData.pendingApprovalCustomers || 0,
             byPlan: summaryData.byPlan || {
               free: 0,
               standard: 0,

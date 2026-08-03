@@ -691,12 +691,31 @@ const headCellSx = {
   ...cellSx,
   fontSize: 11,
   fontWeight: 700,
-  color: T.textMuted,
+  color: "#ffffff !important",
   textTransform: "uppercase",
   letterSpacing: "0.5px",
-  bgcolor: alpha("#000", 0.18),
+  bgcolor: "#15576A !important",
+  backgroundColor: "#15576A !important",
   py: "9px",
-  borderBottom: `1px solid ${T.borderColor}`,
+  borderBottom: "1px solid #15576A",
+  "& .MuiCheckbox-root": {
+    color: "rgba(255, 255, 255, 0.78)",
+    "&.Mui-checked, &.MuiCheckbox-indeterminate": {
+      color: "#ffffff",
+    },
+  },
+  "& .MuiTableSortLabel-root": {
+    color: "#ffffff !important",
+    "&:hover": {
+      color: "#ffffff !important",
+    },
+    "&.Mui-active": {
+      color: "#ffffff !important",
+    },
+  },
+  "& .MuiTableSortLabel-icon": {
+    color: "#ffffff !important",
+  },
 };
 
 export default function ContactInquiries() {

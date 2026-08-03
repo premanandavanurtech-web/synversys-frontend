@@ -516,7 +516,7 @@ const Contact = () => {
                   px: { xs: 1, sm: 0 },
                 }}
               >
-                Have questions about AssetFlow? We'd love to hear from you and
+                Have questions about AssetMach? We'd love to hear from you and
                 help with any inquiries about our asset management solutions.
               </Typography>
             </Box>

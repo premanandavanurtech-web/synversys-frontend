@@ -40,6 +40,7 @@ import {
   DialogActions,
   Fade,
   LinearProgress,
+  Portal,
   alpha,
 } from "@mui/material";
 import {
@@ -68,8 +69,9 @@ import {
   Email as EmailIcon,
   Phone as PhoneIcon,
   Language as LanguageIcon,
+  WorkspacePremium as WorkspacePremiumIcon,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useClient } from "../context/ClientContext";
 import { useAuth } from "../context/AuthContexts";
 import AssetSearchField from "../components/AssetSearchField";
@@ -115,6 +117,17 @@ const ACCESS_TYPES = [
 
 const getAccessTypeLabel = (value) =>
   ACCESS_TYPES.find((option) => option.value === value)?.label || "Read only";
+
+const URL_STAT_FILTERS = new Set([
+  "all",
+  "active",
+  "inactive",
+  "freePlan",
+  "expiringSoon",
+  "expired",
+  "pendingApproval",
+  "capacityAlerts",
+]);
 
 const getAccountCopy = (role) => {
   const isSuperAdmin = role === "super_admin";
@@ -526,7 +539,15 @@ const ClientManagementSkeleton = () => (
 );
 
 // Client Card Component
-const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true, palette = C }) => {
+const ClientCard = ({
+  client,
+  onEdit,
+  onDelete,
+  onView,
+  canModify = true,
+  palette = C,
+  viewerRole,
+}) => {
   const [anchor, setAnchor] = useState(null);
   const plan = PLAN_META[client.membershipPlan] || PLAN_META.free;
   const isActive = client.status === "active";
@@ -536,8 +557,8 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true, palett
   const pct = Math.min(100, Math.round((used / limit) * 100));
   const expiring = daysLeft > 0 && daysLeft <= 7;
   const isSubAdmin = Boolean(client.adminId);
-
-  console.log("client====>>>>",client)
+  const canViewAssetCreatedCount = viewerRole === "super_admin";
+  const assetCreatedCount = client.stats?.assetCount ?? client.assetCount ?? 0;
 
   return (
     <Card
@@ -713,6 +734,19 @@ const ClientCard = ({ client, onEdit, onDelete, onView, canModify = true, palett
           </Box>
         </Box>
 
+        {canViewAssetCreatedCount && (
+          <Typography
+            sx={{
+              mb: 2,
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              color: palette.text.secondary,
+            }}
+          >
+            Asset Created :- {assetCreatedCount}
+          </Typography>
+        )}
+
         <Divider sx={{ mb: 1.5 }} />
 
         <Box
@@ -852,14 +886,14 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
   const draftReadyRef = useRef(false);
   const openedFormRef = useRef({});
   const hadDraftOnOpenRef = useRef(false);
-  const draftKey = "customerCreateDraft";
+  const draftKey = "customerCreateDraft:v2";
 
   const blank = {
     customerName: "",
     email: "",
     phone: "",
     website: "",
-    membershipPlan: "standard",
+    membershipPlan: "free",
     licenseLimit: 10,
     assetLimit: 100,
     duration: 30,
@@ -1644,6 +1678,7 @@ const StatusDialog = ({ open, client, onClose, onConfirm, loading, copy = getAcc
 export default function ClientManagement() {
   const theme = useTheme();
   const nav = useNavigate();
+  const location = useLocation();
   const isDark = theme.palette.mode === "dark";
   const pageColors = useMemo(
     () =>
@@ -1702,6 +1737,7 @@ export default function ClientManagement() {
   const searchTimer = useRef(null);
   const lastFetchedSearch = useRef(filters.search || "");
   const isInitMount = useRef(true);
+  const appliedUrlStatRef = useRef("");
 
   const canManageCustomers = useMemo(
     () => user?.role === "super_admin" || user?.role === "admin",
@@ -1745,25 +1781,78 @@ export default function ClientManagement() {
   const getStatFilterParams = useCallback(
     (nextFilter = statFilter) => {
       if (nextFilter === "active") {
-        return { status: "active", membershipPlan: "all", expiringSoon: false, expired: false };
+        return { status: "active", membershipPlan: "all", expiringSoon: false, expired: false, pendingApproval: false, capacityAlerts: false };
       }
       if (nextFilter === "inactive") {
-        return { status: "inactive", membershipPlan: "all", expiringSoon: false, expired: false };
+        return { status: "inactive", membershipPlan: "all", expiringSoon: false, expired: false, pendingApproval: false, capacityAlerts: false };
+      }
+      if (nextFilter === "freePlan") {
+        return { status: "all", membershipPlan: "free", expiringSoon: false, expired: false, pendingApproval: false, capacityAlerts: false };
       }
       if (nextFilter === "expiringSoon") {
-        return { status: "all", membershipPlan: "all", expiringSoon: true, expired: false };
+        return { status: "all", membershipPlan: "all", expiringSoon: true, expired: false, pendingApproval: false, capacityAlerts: false };
       }
       if (nextFilter === "expired") {
-        return { status: "all", membershipPlan: "all", expiringSoon: false, expired: true };
+        return { status: "all", membershipPlan: "all", expiringSoon: false, expired: true, pendingApproval: false, capacityAlerts: false };
       }
-      return { status: "all", membershipPlan: "all", expiringSoon: false, expired: false };
+      if (nextFilter === "pendingApproval") {
+        return { status: "all", membershipPlan: "all", expiringSoon: false, expired: false, pendingApproval: true, capacityAlerts: false };
+      }
+      if (nextFilter === "capacityAlerts") {
+        return { status: "all", membershipPlan: "all", expiringSoon: false, expired: false, pendingApproval: false, capacityAlerts: true };
+      }
+      return { status: "all", membershipPlan: "all", expiringSoon: false, expired: false, pendingApproval: false, capacityAlerts: false };
     },
     [statFilter],
+  );
+
+  const syncStatQuery = useCallback(
+    (nextFilter) => {
+      const params = new URLSearchParams(location.search);
+      if (nextFilter && nextFilter !== "all") {
+        params.set("stat", nextFilter);
+      } else {
+        params.delete("stat");
+      }
+
+      const query = params.toString();
+      const nextUrl = `${location.pathname}${query ? `?${query}` : ""}`;
+      const currentUrl = `${location.pathname}${location.search}`;
+      if (nextUrl !== currentUrl) {
+        nav(nextUrl, { replace: true });
+      }
+    },
+    [location.pathname, location.search, nav],
   );
 
   useEffect(() => {
     if (filters.search !== search) setSearch(filters.search);
   }, [filters.search]);
+
+  useEffect(() => {
+    const requestedStat = new URLSearchParams(location.search).get("stat");
+    if (!requestedStat) {
+      setStatFilter("all");
+      appliedUrlStatRef.current = "";
+      return;
+    }
+    if (!URL_STAT_FILTERS.has(requestedStat)) return;
+
+    setStatFilter(requestedStat);
+
+    if (initialLoading) return;
+    const nextSearch = search.trim();
+    const requestKey = `${requestedStat}:${nextSearch}`;
+    if (appliedUrlStatRef.current === requestKey) return;
+
+    appliedUrlStatRef.current = requestKey;
+    lastFetchedSearch.current = nextSearch;
+    fetchClients({
+      page: 1,
+      search: nextSearch,
+      ...getStatFilterParams(requestedStat),
+    });
+  }, [fetchClients, getStatFilterParams, initialLoading, location.search, search]);
 
   useEffect(() => {
     if (isInitMount.current) {
@@ -1881,10 +1970,12 @@ export default function ClientManagement() {
   const handleFilterChange = useCallback(
     (type, value) => {
       setStatFilter("all");
+      appliedUrlStatRef.current = "";
+      syncStatQuery("all");
       updateFilters({ [type]: value });
-      fetchClients({ [type]: value, page: 1, expiringSoon: false, expired: false });
+      fetchClients({ [type]: value, page: 1, expiringSoon: false, expired: false, pendingApproval: false, capacityAlerts: false });
     },
-    [updateFilters, fetchClients],
+    [updateFilters, fetchClients, syncStatQuery],
   );
 
   const handleClearFilters = useCallback(() => {
@@ -1892,15 +1983,19 @@ export default function ClientManagement() {
     setSearch("");
     lastFetchedSearch.current = "";
     setStatFilter("all");
+    appliedUrlStatRef.current = "";
+    syncStatQuery("all");
     fetchClients({
       search: "",
       status: "all",
       membershipPlan: "all",
       expiringSoon: false,
       expired: false,
+      pendingApproval: false,
+      capacityAlerts: false,
       page: 1,
     });
-  }, [resetFilters, fetchClients]);
+  }, [resetFilters, fetchClients, syncStatQuery]);
 
   const handleRefresh = useCallback(() => {
     fetchClients({ page: pagination.page, ...getStatFilterParams() });
@@ -1918,10 +2013,12 @@ export default function ClientManagement() {
     (nextFilter) => {
       setStatFilter(nextFilter);
       const nextSearch = search.trim();
+      appliedUrlStatRef.current = `${nextFilter}:${nextSearch}`;
       lastFetchedSearch.current = nextSearch;
+      syncStatQuery(nextFilter);
       fetchClients({ page: 1, search: nextSearch, ...getStatFilterParams(nextFilter) });
     },
-    [fetchClients, getStatFilterParams, search],
+    [fetchClients, getStatFilterParams, search, syncStatQuery],
   );
 
   const hasFilters =
@@ -1953,6 +2050,17 @@ export default function ClientManagement() {
         color: C.error,
         filterKey: "inactive",
       },
+      ...(user?.role === "super_admin"
+        ? [
+            {
+              icon: StoreIcon,
+              label: "Trial vs Onboarding",
+              value: stats?.byPlan?.free || 0,
+              color: C.primary,
+              filterKey: "freePlan",
+            },
+          ]
+        : []),
       {
         icon: WarningIcon,
         label: "Expiring Soon",
@@ -1967,8 +2075,19 @@ export default function ClientManagement() {
         color: C.error,
         filterKey: "expired",
       },
+      ...(user?.role === "super_admin"
+        ? [
+            {
+              icon: WorkspacePremiumIcon,
+              label: "Pending Approval Customers",
+              value: stats?.pendingApprovalCustomers || 0,
+              color: C.warning,
+              filterKey: "pendingApproval",
+            },
+          ]
+        : []),
     ],
-    [stats, copy],
+    [stats, copy, user?.role],
   );
 
   if (!isAuthenticated) {
@@ -2070,23 +2189,34 @@ export default function ClientManagement() {
             xs: "repeat(2, minmax(0, 1fr))",
             sm: "repeat(2, minmax(0, 1fr))",
             md: "repeat(5, minmax(0, 1fr))",
+            lg: `repeat(${statCards.length}, minmax(0, 1fr))`,
           },
           gap: { xs: 1.5, sm: 2 },
           mb: 3,
           width: "100%",
         }}
       >
-        {statCards.map((s, i) => (
-          <Box key={i} sx={{ minWidth: 0 }}>
-            <StatCard
-              {...s}
-              loading={initialLoading}
-              active={statFilter === s.filterKey}
-              onClick={() => handleStatCardClick(s.filterKey)}
-              palette={pageColors}
-            />
-          </Box>
-        ))}
+        {statCards.map((s, i) => {
+          const isLastOddStat = statCards.length % 2 === 1 && i === statCards.length - 1;
+
+          return (
+            <Box
+              key={i}
+              sx={{
+                minWidth: 0,
+                gridColumn: isLastOddStat ? { xs: "1 / -1", md: "auto" } : "auto",
+              }}
+            >
+              <StatCard
+                {...s}
+                loading={initialLoading}
+                active={statFilter === s.filterKey}
+                onClick={() => handleStatCardClick(s.filterKey)}
+                palette={pageColors}
+              />
+            </Box>
+          );
+        })}
       </Box>
 
       <Paper
@@ -2299,6 +2429,7 @@ export default function ClientManagement() {
               }}
               onView={(id) => nav(`/admin/clients-details/${id}`)}
               palette={pageColors}
+              viewerRole={user?.role}
             />
           ))}
         </Box>
@@ -2411,19 +2542,29 @@ export default function ClientManagement() {
         copy={copy}
       />
 
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={5000}
-        onClose={closeToast}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert
+      <Portal>
+        <Snackbar
+          open={toast.open}
+          autoHideDuration={5000}
           onClose={closeToast}
-          severity={toast.severity}
-          sx={{ borderRadius: 2 }}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+          sx={{
+            zIndex: 2147483647,
+            "& .MuiAlert-root": {
+              position: "relative",
+              zIndex: 2147483647,
+            },
+          }}
         >
-          {toast.message}
-        </Alert>
-      </Snackbar>
+          <Alert
+            onClose={closeToast}
+            severity={toast.severity}
+            sx={{ borderRadius: 2 }}
+          >
+            {toast.message}
+          </Alert>
+        </Snackbar>
+      </Portal>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </Box>

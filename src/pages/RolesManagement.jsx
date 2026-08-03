@@ -101,6 +101,37 @@ const RolesManagement = () => {
 
   const isEditable = user?.role === "super_admin" || user?.role === "admin";
   const primaryColor = "#0d4f63";
+  const getStatAccent = (color) =>
+    isDark && color === primaryColor ? "#1fb6cf" : color;
+  const getStatCardSx = (color, isActive, extra = {}) => {
+    const accent = getStatAccent(color);
+
+    return {
+      p: 2,
+      minWidth: 0,
+      width: "100%",
+      position: "relative",
+      overflow: "hidden",
+      border: "1px solid",
+      borderColor: isActive ? `${accent} !important` : "divider",
+      borderLeft: `4px solid ${accent}`,
+      bgcolor: isActive ? `${alpha(accent, isDark ? 0.16 : 0.08)} !important` : undefined,
+      cursor: "pointer",
+      boxShadow: isActive
+        ? `inset 0 0 0 1px ${accent}, 0 18px 40px ${alpha(accent, isDark ? 0.22 : 0.16)}`
+        : undefined,
+      outline: isActive ? `3px solid ${accent}` : "none",
+      outlineOffset: "-3px",
+      transition: "all 0.2s ease",
+      "&:hover": {
+        transform: "translateY(-2px)",
+        borderColor: `${accent} !important`,
+        boxShadow: `0 8px 20px ${alpha(accent, isDark ? 0.24 : 0.16)}`,
+      },
+      "&:focus-visible": { outline: `2px solid ${accent}`, outlineOffset: 2 },
+      ...extra,
+    };
+  };
 
   useEffect(() => {
     fetchRoles({ page: 1, limit: 10 });
@@ -400,22 +431,13 @@ const RolesManagement = () => {
             }
           }}
           sx={{
-            p: 2,
-            minWidth: 0,
-            width: "100%",
-            borderLeft: `4px solid ${primaryColor}`,
-            cursor: "pointer",
-            boxShadow: activeTab === 0 ? "0 8px 20px rgba(13,79,99,0.16)" : undefined,
-            outline: activeTab === 0 ? `2px solid rgba(13,79,99,0.18)` : "none",
-            transition: "all 0.2s ease",
-            "&:hover": { transform: "translateY(-2px)", boxShadow: "0 8px 20px rgba(13,79,99,0.16)" },
-            "&:focus-visible": { outline: `2px solid ${primaryColor}` },
+            ...getStatCardSx(primaryColor, activeTab === 0),
           }}
         >
           <Typography
             variant="caption"
             sx={{
-              color: "#666",
+              color: isDark ? "text.secondary" : "#666",
               textTransform: "uppercase",
               letterSpacing: 0.5,
               fontWeight: 700,
@@ -425,7 +447,7 @@ const RolesManagement = () => {
           </Typography>
           <Typography
             variant="h6"
-            sx={{ fontWeight: 700, color: primaryColor }}
+            sx={{ fontWeight: 700, color: getStatAccent(primaryColor) }}
           >
             {stats.total}
           </Typography>
@@ -441,22 +463,13 @@ const RolesManagement = () => {
             }
           }}
           sx={{
-            p: 2,
-            minWidth: 0,
-            width: "100%",
-            borderLeft: "4px solid #4caf50",
-            cursor: "pointer",
-            boxShadow: activeTab === 1 ? "0 8px 20px rgba(76,175,80,0.16)" : undefined,
-            outline: activeTab === 1 ? "2px solid rgba(76,175,80,0.18)" : "none",
-            transition: "all 0.2s ease",
-            "&:hover": { transform: "translateY(-2px)", boxShadow: "0 8px 20px rgba(76,175,80,0.16)" },
-            "&:focus-visible": { outline: "2px solid #4caf50" },
+            ...getStatCardSx("#4caf50", activeTab === 1),
           }}
         >
           <Typography
             variant="caption"
             sx={{
-              color: "#666",
+              color: isDark ? "text.secondary" : "#666",
               textTransform: "uppercase",
               letterSpacing: 0.5,
               fontWeight: 700,
@@ -479,23 +492,15 @@ const RolesManagement = () => {
             }
           }}
           sx={{
-            p: 2,
-            minWidth: 0,
-            width: "100%",
-            gridColumn: { xs: "1 / -1", sm: "auto" },
-            borderLeft: "4px solid #f44336",
-            cursor: "pointer",
-            boxShadow: activeTab === 2 ? "0 8px 20px rgba(244,67,54,0.16)" : undefined,
-            outline: activeTab === 2 ? "2px solid rgba(244,67,54,0.18)" : "none",
-            transition: "all 0.2s ease",
-            "&:hover": { transform: "translateY(-2px)", boxShadow: "0 8px 20px rgba(244,67,54,0.16)" },
-            "&:focus-visible": { outline: "2px solid #f44336" },
+            ...getStatCardSx("#f44336", activeTab === 2, {
+              gridColumn: { xs: "1 / -1", sm: "auto" },
+            }),
           }}
         >
           <Typography
             variant="caption"
             sx={{
-              color: "#666",
+              color: isDark ? "text.secondary" : "#666",
               textTransform: "uppercase",
               letterSpacing: 0.5,
               fontWeight: 700,

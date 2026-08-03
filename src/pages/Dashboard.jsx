@@ -1219,7 +1219,7 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "", activeFilter }) 
       const periodAssignments = summary.periodAssignments ?? 0;
       return {
         title: "Today Checklists & Assignments",
-        value: fmtStat(periodChecklists),
+        value: `${fmtStat(periodChecklists)}`,
         sub: `${fmtStat(periodPublished)} published today`,
         checklistValue: fmtStat(periodChecklists),
         checklistSub: `${fmtStat(periodPublished)} published today`,
@@ -1230,7 +1230,7 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "", activeFilter }) 
 
     return {
       title: "Checklists & Assignments",
-      value: fmtStat(summary.totalChecklists),
+      value: `${fmtStat(summary.totalChecklists)} / ${summary.totalAssignments}`,
       sub: `${fmtStat(summary.publishedChecklists)} published`,
       checklistValue: fmtStat(summary.totalChecklists),
       checklistSub: `${fmtStat(summary.publishedChecklists)} published`,
@@ -1266,7 +1266,7 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "", activeFilter }) 
 
     return {
       title: "Customer & Asset",
-      value: fmtStat(summary.totalClients),
+      value: `${fmtStat(summary.totalClients)} / ${fmtStat(summary.totalAssets)}`,
       sub: `${fmtStat(summary.activeSubscriptions)} active • ${fmtStat(summary.pendingCustomerApprovals)} pending approval`,
     };
   }, [
@@ -1334,29 +1334,29 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "", activeFilter }) 
             title: "Active vs Inactive",
             value: fmtStat(summary.activeSubscriptions),
             sub: `${fmtStat(summary.inactiveCustomers15Days ?? summary.inactiveCustomers)} inactive (15 days)`,
-            onClick: () => navigate("/admin/clients"),
+            onClick: () => navigate("/admin/clients?stat=active"),
           },
           {
             icon: HourglassIcon,
             title: "Trial vs Onboarding",
             value: fmtStat(num(summary.trialCustomers) + num(summary.onboardingCustomers)),
             sub: `${fmtStat(summary.trialCustomers)} trial • ${fmtStat(summary.onboardingCustomers)} onboarding`,
-            onClick: () => navigate("/admin/clients"),
+            onClick: () => navigate("/admin/clients?stat=freePlan"),
           },
           {
             icon: AssignmentTurnedInIcon,
             title: "Pending Approvals",
             value: fmtStat(summary.pendingCustomerApprovals),
             sub: "Awaiting customer approval",
+            onClick: () => navigate("/admin/clients?stat=pendingApproval"),
+          },
+          {
+            icon: InventoryIcon,
+            title: "Total Assets",
+            value: fmtStat(summary.totalAssets),
+            sub: `${fmtStat(summary.averageAssetsPerCustomer)} avg per customer`,
             onClick: () => navigate("/admin/clients"),
           },
-          // {
-          //   icon: InventoryIcon,
-          //   title: "Total Assets",
-          //   value: fmtStat(summary.totalAssets),
-          //   sub: `${fmtStat(summary.averageAssetsPerCustomer)} avg per customer`,
-          //   onClick: () => navigate("/admin/assets"),
-          // },
         ],
       },
       {
@@ -1371,21 +1371,21 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "", activeFilter }) 
             title: "Subscription Lifecycle",
             value: fmtStat(summary.activeSubscriptions),
             sub: `${fmtStat(summary.upcomingRenewals)} upcoming renewals`,
-            onClick: () => navigate("/admin/clients"),
+            onClick: () => navigate("/admin/clients?stat=active"),
           },
           {
             icon: WarningIcon,
             title: "Capacity Alerts",
             value: fmtStat(summary.accountsApproachingLimits),
             sub: "Accounts nearing plan limits",
-            onClick: () => navigate("/admin/clients"),
+            onClick: () => navigate("/admin/clients?stat=capacityAlerts"),
           },
           {
             icon: HourglassIcon,
             title: "Expiring Soon",
             value: fmtStat(summary.expiringSoon),
             sub: "Subscriptions expiring shortly",
-            onClick: () => navigate("/admin/clients"),
+            onClick: () => navigate("/admin/clients?stat=expiringSoon"),
           },
         ],
       },
@@ -1401,28 +1401,28 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "", activeFilter }) 
             title: "Active Sessions",
             value: fmtStat(summary.activeSessions),
             sub: `${pct(summary.twoFactorAdoptionRate)} 2FA adoption`,
-            onClick: () => navigate("/admin/audit-logs"),
+            onClick: () => navigate("/admin/audit-logs?action=LOGIN&status=success"),
           },
           {
             icon: ErrorIcon,
             title: "Failed Logins",
             value: fmtStat(summary.failedLogins),
             sub: "Failed login attempts",
-            onClick: () => navigate("/admin/audit-logs"),
+            onClick: () => navigate("/admin/audit-logs?action=LOGIN&status=failure"),
           },
           {
             icon: WarningIcon,
             title: "Flagged IPs",
             value: fmtStat(summary.flaggedIps),
             sub: "Suspicious activity flagged",
-            onClick: () => navigate("/admin/audit-logs"),
+            onClick: () => navigate("/admin/audit-logs?status=failure"),
           },
           {
             icon: HistoryIcon,
             title: "Role Changes",
             value: fmtStat(summary.recentRoleChanges),
             sub: "Recent permission changes",
-            onClick: () => navigate("/admin/audit-logs"),
+            onClick: () => navigate("/admin/audit-logs?search=role"),
           },
         ],
       },
@@ -1584,18 +1584,30 @@ const SuperAdminDashboard = ({ data, loading, searchQuery = "", activeFilter }) 
                 gap: { xs: 1.5, sm: 2 },
               }}
             >
-              {activeCategory.items.map((item, i) => (
-                <StatCard
-                  key={i}
-                  icon={item.icon}
-                  title={item.title}
-                  value={item.value}
-                  sub={item.sub}
-                  loading={loading}
-                  compact
-                  onClick={item.onClick}
-                />
-              ))}
+              {activeCategory.items.map((item, i) => {
+                const isLastOddItem =
+                  activeCategory.items.length % 2 === 1 && i === activeCategory.items.length - 1;
+
+                return (
+                  <Box
+                    key={i}
+                    sx={{
+                      minWidth: 0,
+                      gridColumn: isLastOddItem ? { xs: "1 / -1", sm: "auto" } : "auto",
+                    }}
+                  >
+                    <StatCard
+                      icon={item.icon}
+                      title={item.title}
+                      value={item.value}
+                      sub={item.sub}
+                      loading={loading}
+                      compact
+                      onClick={item.onClick}
+                    />
+                  </Box>
+                );
+              })}
             </Box>
           </Paper>
         )}

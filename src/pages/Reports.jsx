@@ -167,10 +167,13 @@ const darkFieldSx = () => ({
 });
 
 const darkMenuProps = () => ({
+  sx: { zIndex: 10050 },
   PaperProps: {
     sx: {
+      zIndex: 10051,
       bgcolor: T.surface,
       border: `1px solid ${T.border}`,
+      boxShadow: `0 18px 44px ${alpha("#020617", 0.28)}`,
       "& .MuiMenuItem-root": { color: T.ink, fontSize: 13 },
       "& .MuiMenuItem-root:hover": { bgcolor: alpha(T.brand, 0.1) },
       "& .MuiMenuItem-root.Mui-selected": { bgcolor: alpha(T.brand, 0.16) },
@@ -412,9 +415,10 @@ const ColHead = ({ children, align = "left" }) => (
     sx={{
       fontWeight: 700,
       fontSize: { xs: "0.6rem", sm: "0.65rem" },
-      color: T.inkLight,
-      bgcolor: alpha("#000", 0.18),
-      borderBottom: `1px solid ${T.border}`,
+      color: "#ffffff !important",
+      bgcolor: "#15576A !important",
+      backgroundColor: "#15576A !important",
+      borderBottom: "1px solid #15576A",
       whiteSpace: "nowrap",
       py: { xs: 1, sm: 1.2 },
       px: { xs: 1.25, sm: 1.6 },
@@ -636,32 +640,35 @@ const StatCard = ({ label, value, icon: Icon, color, loading }) => {
     return (
       <Box
         sx={{
-          p: { xs: 1.15, sm: 1.35 },
-          borderRadius: "10px",
+          p: { xs: 1.25, sm: 1.6 },
+          borderRadius: "14px",
           bgcolor: T.surfaceAlt,
           border: `1px solid ${T.border}`,
           height: "100%",
-          minHeight: { xs: 66, sm: 74 },
+          minHeight: { xs: 92, sm: 108 },
         }}
       >
         <Skeleton width="55%" height={12} />
-        <Skeleton width="40%" height={28} sx={{ mt: 0.5 }} />
+        <Skeleton width="40%" height={34} sx={{ mt: 0.75 }} />
       </Box>
     );
   return (
     <Box
       sx={{
-        p: { xs: 1.15, sm: 1.35 },
-        borderRadius: "10px",
-        bgcolor: T.surface,
+        p: { xs: 1.25, sm: 1.7 },
+        borderRadius: "14px",
+        bgcolor: alpha(color || T.brand, 0.09),
         border: `1px solid ${T.border}`,
+        borderLeft: `5px solid ${color || T.brand}`,
         display: "flex",
         flexDirection: "column",
-        gap: 0.35,
+        justifyContent: "space-between",
+        gap: 1.1,
         height: "100%",
-        minHeight: { xs: 66, sm: 74 },
+        minHeight: { xs: 92, sm: 108 },
         width: "100%",
         minWidth: 0,
+        boxShadow: `0 14px 30px ${alpha(color || T.brand, 0.08)}`,
       }}
     >
       <Box
@@ -674,11 +681,11 @@ const StatCard = ({ label, value, icon: Icon, color, loading }) => {
       >
         <Typography
           sx={{
-            fontSize: { xs: "0.5rem", sm: "0.6rem" },
-            fontWeight: 700,
-            color: T.inkLight,
+            fontSize: { xs: "0.58rem", sm: "0.66rem" },
+            fontWeight: 800,
+            color: T.inkSub,
             textTransform: "uppercase",
-            letterSpacing: "0.07em",
+            letterSpacing: "0.06em",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -693,8 +700,8 @@ const StatCard = ({ label, value, icon: Icon, color, loading }) => {
               width: { xs: 22, sm: 26 },
               height: { xs: 22, sm: 26 },
               flexShrink: 0,
-              borderRadius: "7px",
-              bgcolor: alpha(color || T.brand, 0.16),
+              borderRadius: "8px",
+              bgcolor: alpha(color || T.brand, 0.18),
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -708,10 +715,10 @@ const StatCard = ({ label, value, icon: Icon, color, loading }) => {
       </Box>
       <Typography
         sx={{
-          fontSize: { xs: "1rem", sm: "1.25rem" },
-          fontWeight: 800,
+          fontSize: { xs: "1.35rem", sm: "1.65rem" },
+          fontWeight: 900,
           color: T.ink,
-          lineHeight: 1,
+          lineHeight: 0.95,
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
@@ -827,16 +834,17 @@ const ReportChartCard = ({ title, chip, children }) => (
   <Paper
     elevation={0}
     sx={{
-      p: { xs: 1.5, sm: 2 },
-      borderRadius: "12px",
+      p: { xs: 1.5, sm: 2.25 },
+      borderRadius: "14px",
       border: `1px solid ${T.border}`,
-      bgcolor: alpha(T.surfaceAlt, 0.72),
-      minHeight: 250,
+      bgcolor: T.surface,
+      minHeight: 310,
       overflow: "hidden",
+      boxShadow: `0 16px 36px ${alpha("#0f172a", 0.06)}`,
     }}
   >
     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5, gap: 1 }}>
-      <Typography sx={{ fontSize: "0.82rem", color: T.ink, fontWeight: 700 }}>
+      <Typography sx={{ fontSize: "0.9rem", color: T.ink, fontWeight: 800 }}>
         {title}
       </Typography>
       {chip && (
@@ -854,7 +862,7 @@ const ReportChartCard = ({ title, chip, children }) => (
         />
       )}
     </Box>
-    <Box sx={{ height: 190 }}>{children}</Box>
+    <Box sx={{ height: 240 }}>{children}</Box>
   </Paper>
 );
 
@@ -1242,7 +1250,7 @@ const TeamTable = ({ data }) => {
               setPg(0);
             }}
             label="Role"
-            MenuProps={darkMenuProps}
+            MenuProps={darkMenuProps()}
           >
             <MenuItem value="">All roles</MenuItem>
             {[
@@ -1849,7 +1857,7 @@ const AssignmentsTable = ({ data }) => {
               setPg(0);
             }}
             label="Status"
-            MenuProps={darkMenuProps}
+            MenuProps={darkMenuProps()}
           >
             <MenuItem value="">All</MenuItem>
             {[
@@ -2397,6 +2405,8 @@ const ReportsDashboard = () => {
 
   const meta = REPORT_META[reportType] || {};
   const MetaIcon = meta.icon || ReportIcon;
+  const datePresetLabel = DATE_PRESETS.find((item) => item.value === datePreset)?.label || "Date range";
+  const recordCount = reportData?.data?.length ?? 0;
 
   const roleCfg = {
     super_admin: {
@@ -2409,6 +2419,7 @@ const ReportsDashboard = () => {
     team: { icon: TeamIcon, label: "Team", bg: T.greenBg, color: T.green },
   };
   const rc = roleCfg[role] || roleCfg.team;
+  const RoleIcon = rc.icon;
 
   return (
     <Box
@@ -2419,56 +2430,61 @@ const ReportsDashboard = () => {
         bgcolor: T.page,
       }}
     >
-      {/* Header */}
-      <Box
+      <Paper
+        elevation={0}
         sx={{
+          p: { xs: 2, md: 2.5 },
+          mb: 2.5,
+          borderRadius: "16px",
+          border: `1px solid ${T.border}`,
+          bgcolor: T.surface,
           display: "flex",
           justifyContent: "space-between",
           alignItems: { xs: "flex-start", sm: "center" },
-          flexDirection: { xs: "column", sm: "row" },
-          gap: 2,
-          mb: 3,
+          flexDirection: { xs: "column", lg: "row" },
+          gap: 2.5,
+          boxShadow: `0 18px 44px ${alpha("#0f172a", 0.06)}`,
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
-          <Box
+        <Box sx={{ minWidth: 0 }}>
+          <Chip
+            icon={<RoleIcon sx={{ fontSize: 14 }} />}
+            label={rc.label}
+            size="small"
             sx={{
-              width: { xs: 38, sm: 44 },
-              height: { xs: 38, sm: 44 },
-              borderRadius: "13px",
-              background: `linear-gradient(135deg, ${T.brand} 0%, ${T.brandDark} 100%)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: `0 4px 14px ${alpha(T.brand, 0.4)}`,
-              flexShrink: 0,
+              mb: 1,
+              height: 24,
+              borderRadius: "8px",
+              bgcolor: rc.bg,
+              color: rc.color,
+              fontWeight: 800,
+              "& .MuiChip-icon": { color: rc.color },
             }}
-          >
-            <ReportIcon sx={{ color: T.brandContrast, fontSize: { xs: 18, sm: 22 } }} />
-          </Box>
+          />
           <Box sx={{ minWidth: 0 }}>
             <Typography
               sx={{
                 fontWeight: 800,
-                fontSize: { xs: "0.9rem", sm: "1.25rem" },
+                fontSize: { xs: "1.35rem", sm: "1.65rem" },
                 color: T.ink,
-                letterSpacing: "-0.025em",
+                letterSpacing: 0,
+                lineHeight: 1.15,
               }}
             >
-              Reports
+              Reports & Analytics
             </Typography>
             <Typography
               sx={{
-                fontSize: { xs: "0.6rem", sm: "0.68rem" },
-                color: T.inkLight,
-                mt: 0.1,
+                fontSize: { xs: "0.78rem", sm: "0.85rem" },
+                color: T.inkSub,
+                mt: 0.4,
               }}
             >
               {isSuperAdmin
-                ? "Platform-wide reports"
+                ? "Platform-wide reports, exports, and operational performance"
                 : isAdmin
-                  ? "Organisation reports"
-                  : "Your reports"}
+                  ? "Organisation reports, exports, and operational performance"
+                  : "Your reports, activity, and assigned work"}
             </Typography>
           </Box>
         </Box>
@@ -2479,7 +2495,7 @@ const ReportsDashboard = () => {
           flexWrap="wrap"
           gap={1}
           alignItems={{ xs: "stretch", sm: "center" }}
-          width={{ xs: "100%", sm: "auto" }}
+          width={{ xs: "100%", lg: "auto" }}
         >
           <Box
             sx={{
@@ -2490,6 +2506,10 @@ const ReportsDashboard = () => {
               },
               gap: 0.6,
               width: "100%",
+              p: 0.4,
+              border: `1px solid ${T.border}`,
+              borderRadius: "12px",
+              bgcolor: T.surfaceAlt,
             }}
           >
             {DATE_PRESETS.map((p) => (
@@ -2499,7 +2519,7 @@ const ReportsDashboard = () => {
                 sx={{
                   px: { xs: 0.7, sm: 1.3 },
                   py: { xs: 0.5, sm: 0.45 },
-                  borderRadius: "20px",
+                  borderRadius: "9px",
                   cursor: "pointer",
                   fontSize: { xs: "0.66rem", sm: "0.69rem" },
                   fontWeight: 600,
@@ -2507,7 +2527,7 @@ const ReportsDashboard = () => {
                   transition: "all 0.15s",
                   bgcolor: datePreset === p.value ? T.brand : T.surface,
                   color: datePreset === p.value ? T.brandContrast : T.inkSub,
-                  border: `1px solid ${datePreset === p.value ? T.brand : T.border}`,
+                  border: `1px solid ${datePreset === p.value ? T.brand : "transparent"}`,
                   whiteSpace: "nowrap",
                   "&:hover": {
                     bgcolor:
@@ -2571,8 +2591,48 @@ const ReportsDashboard = () => {
           >
             Generate
           </Button>
+          <Button
+            startIcon={<PdfIcon sx={{ fontSize: { xs: 12, sm: 14 } }} />}
+            onClick={() => handleExport("pdf")}
+            disabled={exporting || !recordCount}
+            sx={{
+              bgcolor: `${T.redBg} !important`,
+              border: `1px solid ${alpha(T.red, 0.28)}`,
+              color: T.red,
+              borderRadius: "10px",
+              textTransform: "none",
+              fontSize: { xs: "0.65rem", sm: "0.74rem" },
+              fontWeight: 700,
+              px: { xs: 1.5, sm: 2 },
+              height: { xs: 42, sm: 34 },
+              width: { xs: "100%", sm: "auto" },
+              flexShrink: 0,
+            }}
+          >
+            PDF
+          </Button>
+          <Button
+            startIcon={<ExcelIcon sx={{ fontSize: { xs: 12, sm: 14 } }} />}
+            onClick={() => handleExport("excel")}
+            disabled={exporting || !recordCount}
+            sx={{
+              bgcolor: `${T.greenBg} !important`,
+              border: `1px solid ${alpha(T.green, 0.28)}`,
+              color: T.green,
+              borderRadius: "10px",
+              textTransform: "none",
+              fontSize: { xs: "0.65rem", sm: "0.74rem" },
+              fontWeight: 700,
+              px: { xs: 1.5, sm: 2 },
+              height: { xs: 42, sm: 34 },
+              width: { xs: "100%", sm: "auto" },
+              flexShrink: 0,
+            }}
+          >
+            Excel
+          </Button>
         </Stack>
-      </Box>
+      </Paper>
 
       {/* Custom date range */}
       <Collapse in={datePreset === "custom"}>
@@ -2659,30 +2719,41 @@ const ReportsDashboard = () => {
       <Paper
         elevation={0}
         sx={{
-          p: { xs: 1.5, sm: 2 },
+          p: { xs: 1.25, sm: 1.5 },
           mb: 2.5,
-          borderRadius: "14px",
+          borderRadius: "16px",
           border: `1px solid ${T.border}`,
           bgcolor: T.surface,
+          boxShadow: `0 14px 34px ${alpha("#0f172a", 0.045)}`,
         }}
       >
-        <Typography
-          sx={{
-            fontSize: { xs: "0.55rem", sm: "0.63rem" },
-            fontWeight: 700,
-            color: T.inkLight,
-            textTransform: "uppercase",
-            letterSpacing: "0.07em",
-            mb: 1.2,
-          }}
-        >
-          Report type
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, mb: 1.25 }}>
+          <Box>
+            <Typography sx={{ fontSize: "0.9rem", fontWeight: 800, color: T.ink }}>
+              Report Library
+            </Typography>
+            <Typography sx={{ fontSize: "0.68rem", color: T.inkSub }}>
+              {allowed.length} report views available
+            </Typography>
+          </Box>
+          <Chip
+            size="small"
+            label={datePreset === "custom" ? "Custom range" : datePresetLabel}
+            sx={{
+              height: 24,
+              borderRadius: "8px",
+              bgcolor: T.brandFaint,
+              color: T.brand,
+              fontWeight: 800,
+              fontSize: "0.66rem",
+            }}
+          />
+        </Box>
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(4, minmax(0, 1fr))" },
-            gap: 0.8,
+            gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(3, minmax(0, 1fr))", lg: `repeat(${Math.min(allowed.length, 7)}, minmax(0, 1fr))` },
+            gap: 1,
           }}
         >
           {allowed.map((rt) => {
@@ -2696,42 +2767,61 @@ const ReportsDashboard = () => {
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  gap: 0.5,
-                  px: { xs: 0.8, sm: 1.3 },
-                  py: { xs: 0.5, sm: 0.65 },
-                  borderRadius: "10px",
+                  justifyContent: "flex-start",
+                  gap: 0.9,
+                  px: { xs: 1, sm: 1.15 },
+                  py: { xs: 0.9, sm: 1 },
+                  borderRadius: "12px",
                   cursor: "pointer",
-                  border: `1.5px solid ${sel ? m.color : T.border}`,
+                  border: `1px solid ${sel ? m.color : T.border}`,
                   bgcolor: sel ? alpha(m.color, 0.14) : T.surface,
                   transition: "all 0.15s",
-                  minHeight: { xs: 44, sm: 40 },
+                  minHeight: { xs: 58, sm: 64 },
                   minWidth: 0,
+                  boxShadow: sel ? `inset 0 0 0 1px ${alpha(m.color, 0.32)}` : "none",
                   "&:hover": {
                     bgcolor: alpha(m.color, 0.1),
                     borderColor: m.color,
+                    transform: "translateY(-1px)",
                   },
                 }}
               >
-                <Icon
+                <Box
                   sx={{
-                    fontSize: { xs: 12, sm: 14 },
-                    color: sel ? m.color : T.inkLight,
+                    width: 32,
+                    height: 32,
+                    borderRadius: "9px",
+                    bgcolor: alpha(m.color, sel ? 0.18 : 0.1),
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                     flexShrink: 0,
                   }}
-                />
-                <Typography
-                  sx={{
-                    fontSize: { xs: "0.68rem", sm: "0.8rem" },
-                    fontWeight: sel ? 700 : 500,
-                    color: sel ? m.color : T.inkMid,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
                 >
-                  {m.label}
-                </Typography>
+                  <Icon
+                    sx={{
+                      fontSize: { xs: 15, sm: 16 },
+                      color: sel ? m.color : T.inkSub,
+                    }}
+                  />
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography
+                    sx={{
+                      fontSize: { xs: "0.72rem", sm: "0.78rem" },
+                      fontWeight: 800,
+                      color: sel ? m.color : T.inkMid,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {m.label}
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.6rem", color: T.inkLight, mt: 0.1 }}>
+                    Report
+                  </Typography>
+                </Box>
               </Box>
             );
           })}
@@ -2742,23 +2832,24 @@ const ReportsDashboard = () => {
       <Paper
         elevation={0}
         sx={{
-          borderRadius: "14px",
+          borderRadius: "16px",
           border: `1px solid ${T.border}`,
           bgcolor: T.surface,
           overflow: "hidden",
+          boxShadow: `0 18px 48px ${alpha("#0f172a", 0.055)}`,
         }}
       >
         <Box
           sx={{
             px: { xs: 1.5, sm: 2.5 },
-            py: { xs: 1.5, sm: 2 },
+            py: { xs: 1.5, sm: 2.25 },
             borderBottom: `1px solid ${T.border}`,
             display: "flex",
             justifyContent: "space-between",
             flexWrap: "wrap",
             gap: 1.5,
             alignItems: { xs: "flex-start", sm: "center" },
-            background: `linear-gradient(to right, ${T.brandFaint}, ${T.surface})`,
+            background: `linear-gradient(135deg, ${alpha(meta.color || T.brand, 0.12)} 0%, ${T.surface} 68%)`,
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
@@ -2766,8 +2857,8 @@ const ReportsDashboard = () => {
               sx={{
                 width: { xs: 30, sm: 36 },
                 height: { xs: 30, sm: 36 },
-                borderRadius: "10px",
-                bgcolor: alpha(meta.color || T.brand, 0.16),
+                borderRadius: "11px",
+                bgcolor: alpha(meta.color || T.brand, 0.18),
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2785,7 +2876,7 @@ const ReportsDashboard = () => {
               <Typography
                 sx={{
                   fontWeight: 700,
-                  fontSize: { xs: "0.75rem", sm: "0.9rem" },
+                  fontSize: { xs: "0.85rem", sm: "1rem" },
                   color: T.ink,
                 }}
               >
@@ -2793,12 +2884,12 @@ const ReportsDashboard = () => {
               </Typography>
               <Typography
                 sx={{
-                  fontSize: { xs: "0.55rem", sm: "0.63rem" },
-                  color: T.inkLight,
+                  fontSize: { xs: "0.62rem", sm: "0.7rem" },
+                  color: T.inkSub,
                 }}
               >
                 {reportData
-                  ? `${reportData.data?.length ?? 0} records · ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`
+                  ? `${recordCount} records · updated ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`
                   : "Loading report data..."}
               </Typography>
             </Box>
@@ -2856,7 +2947,7 @@ const ReportsDashboard = () => {
           )}
         </Box>
 
-        <Box sx={{ p: { xs: 1.25, sm: 2.5 } }}>
+        <Box sx={{ p: { xs: 1.25, sm: 2.5 }, bgcolor: alpha(T.surfaceAlt, 0.35) }}>
           {loading && !reportData ? (
             <Box sx={{ py: 4, display: "flex", justifyContent: "center" }}>
               <CircularProgress sx={{ color: T.brand }} />
@@ -2871,40 +2962,43 @@ const ReportsDashboard = () => {
             <>
               {/* Summary KPIs */}
               {Object.keys(reportData.summary || {}).length > 0 && (
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: {
-                      xs: "repeat(2, minmax(0, 1fr))",
-                      sm: "repeat(3, minmax(0, 1fr))",
-                      lg: "repeat(6, minmax(0, 1fr))",
-                    },
-                    gap: { xs: 1, sm: 1.5 },
-                    mb: 2.5,
-                  }}
-                >
-                 {Object.entries(reportData.summary)
-  .filter(([k, v]) => {
-                      const hiddenAssignmentTiles = ["inProgress", "in_progress", "completed"];
-                      return (
-                        typeof v !== "object" &&
-                        v !== null &&
-                        k !== "suspendedClients" &&
-                        (reportType !== "assignments" || !hiddenAssignmentTiles.includes(k))
-                      );
-                    })
-  .slice(0, 6)
-  .map(([k, v]) => (
-                      <Box key={k}>
-                        <StatCard
-                          label={reportType === "assignments" && k === "approved" ? "Pending Approval" : reportLabel(k)}
-                          value={String(v)}
-                          loading={false}
-                          small
-                        />
-                      </Box>
-                    ))}
-                </Box>
+                (() => {
+                  const hiddenAssignmentTiles = ["inProgress", "in_progress", "completed"];
+                  const summaryItems = Object.entries(reportData.summary)
+                    .filter(([k, v]) => (
+                      typeof v !== "object" &&
+                      v !== null &&
+                      k !== "suspendedClients" &&
+                      (reportType !== "assignments" || !hiddenAssignmentTiles.includes(k))
+                    ))
+                    .slice(0, 6);
+
+                  return (
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: {
+                          xs: "repeat(2, minmax(0, 1fr))",
+                          sm: "repeat(auto-fit, minmax(180px, 1fr))",
+                          xl: `repeat(${Math.max(1, summaryItems.length)}, minmax(0, 1fr))`,
+                        },
+                        gap: { xs: 1.1, sm: 1.5 },
+                        mb: 2,
+                      }}
+                    >
+                      {summaryItems.map(([k, v]) => (
+                        <Box key={k}>
+                          <StatCard
+                            label={reportType === "assignments" && k === "approved" ? "Pending Approval" : reportLabel(k)}
+                            value={String(v)}
+                            loading={false}
+                            small
+                          />
+                        </Box>
+                      ))}
+                    </Box>
+                  );
+                })()
               )}
               <ReportsAnalytics reportData={reportData} reportType={reportType} />
               {renderTable()}
@@ -2934,10 +3028,10 @@ const ReportsDashboard = () => {
           sx: {
             m: { xs: 0, sm: 2 },
             width: { xs: "100%", sm: "calc(100% - 64px)" },
-            maxWidth: { xs: "100%", sm: 420 },
+            maxWidth: { xs: "100%", sm: 500 },
             height: { xs: "auto", sm: "auto" },
             maxHeight: { xs: "78dvh", sm: "90vh" },
-            borderRadius: { xs: "24px 24px 0 0", sm: "18px" },
+            borderRadius: { xs: "24px 24px 0 0", sm: "20px" },
             border: `1px solid ${T.border}`,
             borderBottom: { xs: 0, sm: `1px solid ${T.border}` },
             bgcolor: T.surface,
@@ -2963,19 +3057,41 @@ const ReportsDashboard = () => {
             }}
           />
         )}
-        <DialogTitle sx={{ pb: 0.1, pt: { xs: 2, sm: 1.5 } }}>
+        <DialogTitle
+          sx={{
+            p: { xs: "18px 20px 14px", sm: "22px 24px 16px" },
+            background: `linear-gradient(135deg, ${alpha(meta.color || T.brand, 0.14)} 0%, ${T.surface} 70%)`,
+            borderBottom: `1px solid ${T.border}`,
+          }}
+        >
           <Box
             sx={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              gap: 2,
             }}
           >
-            <Box sx={{ minWidth: 0 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.35, minWidth: 0 }}>
+              <Box
+                sx={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: "12px",
+                  bgcolor: alpha(meta.color || T.brand, 0.18),
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <FilterIcon sx={{ color: meta.color || T.brand, fontSize: 20 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
               <Typography
                 sx={{
-                  fontWeight: 700,
-                  fontSize: { xs: "1.12rem", sm: "0.95rem" },
+                  fontWeight: 900,
+                  fontSize: { xs: "1.05rem", sm: "1.08rem" },
                   color: T.ink,
                   lineHeight: 1.25,
                 }}
@@ -2984,41 +3100,96 @@ const ReportsDashboard = () => {
               </Typography>
               <Typography
                 sx={{
-                  fontSize: { xs: "0.86rem", sm: "0.66rem" },
-                  color: T.inkLight,
+                  fontSize: { xs: "0.78rem", sm: "0.76rem" },
+                  color: T.inkSub,
                   lineHeight: 1.35,
                   mt: 0.25,
                 }}
               >
                 Narrow results before generating
               </Typography>
+              </Box>
             </Box>
             <IconButton
               size="small"
               onClick={() => setFilterOpen(false)}
-              sx={{ borderRadius: "8px", flexShrink: 0, color: `${T.inkLight} !important` }}
+              sx={{
+                width: 34,
+                height: 34,
+                borderRadius: "10px",
+                flexShrink: 0,
+                color: `${T.inkSub} !important`,
+                bgcolor: alpha(T.inkLight, 0.08),
+                "&:hover": { bgcolor: alpha(T.inkLight, 0.14) },
+              }}
             >
-              <CloseIcon sx={{ fontSize: 17 }} />
+              <CloseIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Box>
         </DialogTitle>
 
         <DialogContent
           sx={{
-            pt: { xs: 2.25, sm: 2 },
-            maxHeight: { xs: "calc(78dvh - 148px)", sm: "70vh" },
+            p: { xs: 2, sm: 2.5 },
+            maxHeight: { xs: "calc(78dvh - 156px)", sm: "70vh" },
             overflowY: "auto",
+            bgcolor: alpha(T.surfaceAlt, 0.45),
           }}
         >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.25,
+              p: 1.4,
+              mb: 1.5,
+              borderRadius: "14px",
+              border: `1px solid ${alpha(meta.color || T.brand, 0.24)}`,
+              bgcolor: alpha(meta.color || T.brand, 0.08),
+            }}
+          >
+            <Box
+              sx={{
+                width: 34,
+                height: 34,
+                borderRadius: "10px",
+                bgcolor: alpha(meta.color || T.brand, 0.16),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <MetaIcon sx={{ fontSize: 18, color: meta.color || T.brand }} />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontSize: "0.82rem", fontWeight: 800, color: T.ink }}>
+                {meta.label || reportType} Report
+              </Typography>
+              <Typography sx={{ fontSize: "0.68rem", color: T.inkSub }}>
+                {datePreset === "custom" ? "Custom date range" : datePresetLabel}
+              </Typography>
+            </Box>
+          </Box>
+
           <Stack spacing={1.5}>
-            <Box sx={{ mt: 0.75 }}>
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: "14px",
+                border: `1px solid ${T.border}`,
+                bgcolor: T.surface,
+              }}
+            >
               <Typography
                 sx={{
-                  color: T.inkLight,
-                  fontSize: { xs: "0.82rem", sm: "0.72rem" },
-                  fontWeight: 700,
+                  color: T.inkSub,
+                  fontSize: { xs: "0.72rem", sm: "0.7rem" },
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
                   lineHeight: 1.2,
-                  mb: 0.6,
+                  mb: 0.9,
                 }}
               >
                 Report type
@@ -3027,7 +3198,7 @@ const ReportsDashboard = () => {
                 <Select
                   value={reportType}
                   onChange={(e) => setReportType(e.target.value)}
-                  MenuProps={darkMenuProps}
+                  MenuProps={darkMenuProps()}
                 >
                   {allowed.map((rt) => (
                     <MenuItem key={rt} value={rt}>
@@ -3038,14 +3209,23 @@ const ReportsDashboard = () => {
               </FormControl>
             </Box>
 
-            <Box>
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: "14px",
+                border: `1px solid ${T.border}`,
+                bgcolor: T.surface,
+              }}
+            >
               <Typography
                 sx={{
-                  color: T.inkLight,
-                  fontSize: { xs: "0.82rem", sm: "0.72rem" },
-                  fontWeight: 700,
+                  color: T.inkSub,
+                  fontSize: { xs: "0.72rem", sm: "0.7rem" },
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
                   lineHeight: 1.2,
-                  mb: 0.6,
+                  mb: 0.9,
                 }}
               >
                 Date range
@@ -3054,7 +3234,7 @@ const ReportsDashboard = () => {
                 <Select
                   value={datePreset}
                   onChange={(e) => setDatePreset(e.target.value)}
-                  MenuProps={darkMenuProps}
+                  MenuProps={darkMenuProps()}
                 >
                   {DATE_PRESETS.map((p) => (
                     <MenuItem key={p.value} value={p.value}>
@@ -3066,7 +3246,13 @@ const ReportsDashboard = () => {
             </Box>
 
             {datePreset === "custom" && (
-              <>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                  gap: 1.2,
+                }}
+              >
                 <TextField
                   size="small"
                   type="date"
@@ -3107,7 +3293,7 @@ const ReportsDashboard = () => {
                     },
                   }}
                 />
-              </>
+              </Box>
             )}
 
             {/* Conditional filters */}
@@ -3126,7 +3312,7 @@ const ReportsDashboard = () => {
                       }))
                     }
                     label="Plan"
-                    MenuProps={darkMenuProps}
+                    MenuProps={darkMenuProps()}
                   >
                     <MenuItem value="">All</MenuItem>
                     {["free", "standard", "premium", "enterprise"].map((p) => (
@@ -3150,7 +3336,7 @@ const ReportsDashboard = () => {
                       setFilters((p) => ({ ...p, status: e.target.value }))
                     }
                     label="Status"
-                    MenuProps={darkMenuProps}
+                    MenuProps={darkMenuProps()}
                   >
                     <MenuItem value="">All</MenuItem>
                     {["active", "inactive", "suspended"].map((s) => (
@@ -3179,7 +3365,7 @@ const ReportsDashboard = () => {
                       setFilters((p) => ({ ...p, status: e.target.value }))
                     }
                     label="Status"
-                    MenuProps={darkMenuProps}
+                    MenuProps={darkMenuProps()}
                   >
                     <MenuItem value="">All</MenuItem>
                     {["Active", "Maintenance", "Decommissioned", "Retired"].map(
@@ -3215,7 +3401,7 @@ const ReportsDashboard = () => {
                       setFilters((p) => ({ ...p, teamRole: e.target.value }))
                     }
                     label="Role"
-                    MenuProps={darkMenuProps}
+                    MenuProps={darkMenuProps()}
                   >
                     <MenuItem value="">All</MenuItem>
                     {[
@@ -3240,7 +3426,7 @@ const ReportsDashboard = () => {
                       setFilters((p) => ({ ...p, status: e.target.value }))
                     }
                     label="Status"
-                    MenuProps={darkMenuProps}
+                    MenuProps={darkMenuProps()}
                   >
                     <MenuItem value="">All</MenuItem>
                     {["active", "inactive", "on_leave"].map((s) => (
@@ -3265,7 +3451,7 @@ const ReportsDashboard = () => {
                       setFilters((p) => ({ ...p, status: e.target.value }))
                     }
                     label="Status"
-                    MenuProps={darkMenuProps}
+                    MenuProps={darkMenuProps()}
                   >
                     <MenuItem value="">All</MenuItem>
                     {[
@@ -3292,7 +3478,7 @@ const ReportsDashboard = () => {
                       setFilters((p) => ({ ...p, priority: e.target.value }))
                     }
                     label="Priority"
-                    MenuProps={darkMenuProps}
+                    MenuProps={darkMenuProps()}
                   >
                     <MenuItem value="">All</MenuItem>
                     {["low", "medium", "high", "critical"].map((p) => (
@@ -3314,59 +3500,76 @@ const ReportsDashboard = () => {
         <DialogActions
           sx={{
             p: {
-              xs: "12px 16px calc(12px + env(safe-area-inset-bottom))",
-              sm: 2,
+              xs: "14px 20px calc(14px + env(safe-area-inset-bottom))",
+              sm: "16px 24px",
             },
             pt: { xs: 1, sm: 1 },
             gap: 1,
             flexWrap: "wrap",
-            borderTop: `1px solid ${alpha(T.border, 0.7)}`,
+            borderTop: `1px solid ${T.border}`,
             bgcolor: T.surface,
+            justifyContent: "space-between",
           }}
         >
           <Button
             onClick={() => setFilters({})}
             sx={{
               textTransform: "none",
-              fontSize: { xs: "0.7rem", sm: "0.75rem" },
-              color: T.inkLight,
+              fontSize: { xs: "0.72rem", sm: "0.76rem" },
+              color: T.inkSub,
+              fontWeight: 800,
+              borderRadius: "10px",
+              px: 1.5,
               flex: { xs: "1 1 100%", sm: "0 0 auto" },
             }}
           >
             Clear all
           </Button>
-          <Button
-            onClick={() => setFilterOpen(false)}
-            sx={{
-              textTransform: "none",
-              fontSize: { xs: "0.7rem", sm: "0.75rem" },
-              color: T.inkSub,
-              flex: { xs: "1", sm: "0 0 auto" },
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleGenerate}
-            disabled={generating}
-            variant="contained"
-            sx={{
-              background: `linear-gradient(135deg, ${T.brand}, ${T.brandDark})`,
-              color: T.brandContrast,
-              borderRadius: "10px",
-              textTransform: "none",
-              fontSize: { xs: "0.7rem", sm: "0.77rem" },
-              fontWeight: 700,
-              px: { xs: 2, sm: 2.5 },
-              flex: { xs: "1", sm: "0 0 auto" },
-            }}
-          >
-            {generating ? (
-              <CircularProgress size={14} sx={{ color: T.brandContrast }} />
-            ) : (
-              "Generate"
-            )}
-          </Button>
+          <Stack direction="row" spacing={1} sx={{ flex: { xs: "1 1 100%", sm: "0 0 auto" } }}>
+            <Button
+              onClick={() => setFilterOpen(false)}
+              sx={{
+                textTransform: "none",
+                fontSize: { xs: "0.72rem", sm: "0.76rem" },
+                color: T.inkSub,
+                fontWeight: 800,
+                borderRadius: "10px",
+                px: { xs: 2, sm: 2.2 },
+                flex: { xs: 1, sm: "0 0 auto" },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleGenerate}
+              disabled={generating}
+              variant="contained"
+              startIcon={
+                generating ? (
+                  <CircularProgress size={14} sx={{ color: T.brandContrast }} />
+                ) : (
+                  <RunIcon sx={{ fontSize: 15 }} />
+                )
+              }
+              sx={{
+                background: `linear-gradient(135deg, ${T.brand}, ${T.brandDark})`,
+                color: T.brandContrast,
+                borderRadius: "10px",
+                textTransform: "none",
+                fontSize: { xs: "0.72rem", sm: "0.78rem" },
+                fontWeight: 900,
+                px: { xs: 2, sm: 2.6 },
+                minWidth: { xs: 0, sm: 122 },
+                flex: { xs: 1, sm: "0 0 auto" },
+                boxShadow: `0 10px 22px ${alpha(T.brand, 0.26)}`,
+                "&:hover": {
+                  background: `linear-gradient(135deg, ${T.brandDark}, ${T.brand})`,
+                },
+              }}
+            >
+              Generate
+            </Button>
+          </Stack>
         </DialogActions>
       </Dialog>
 

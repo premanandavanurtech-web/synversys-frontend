@@ -165,6 +165,7 @@ const buildSessionFromAuthResponse = (responseData) => {
       backendRole: userData.role,
       name: userData.name || "Super Admin",
       permissions: userData.permissions || [],
+      preferences: userData.preferences,
     };
     userRoleType = "super_admin";
     redirectPath = "/dashboard";
@@ -190,6 +191,7 @@ const buildSessionFromAuthResponse = (responseData) => {
       website: userData.website,
       address: userData.address,
       settings: userData.settings,
+      preferences: userData.preferences,
     };
     userRoleType = "admin";
     redirectPath = "/dashboard";
@@ -216,6 +218,7 @@ const buildSessionFromAuthResponse = (responseData) => {
       roleDisplay: userData.roleDisplay,
       stats: userData.stats,
       permissions: userData.permissions || [],
+      preferences: userData.preferences,
     };
     userRoleType = "team";
     redirectPath = "/team";
@@ -227,6 +230,7 @@ const buildSessionFromAuthResponse = (responseData) => {
       role: userData.role || "team",
       backendRole: userData.role,
       name: userData.name || userData.fullName || "User",
+      preferences: userData.preferences,
     };
     userRoleType = userData.role || "team";
     redirectPath = userData.role === "team" ? "/team" : "/dashboard";

@@ -493,7 +493,29 @@ const SelectionModal = ({ open, onClose, title, items, loading, selectedIds, onT
       maxWidth="sm"
       fullWidth
       fullScreen={isMobile}
-      PaperProps={{ sx: { borderRadius: isMobile ? 0 : 2, overflow: "hidden" } }}
+      sx={{
+        "& .MuiDialog-container": {
+          width: "100%",
+          maxWidth: "100vw",
+        },
+      }}
+      PaperProps={{
+        sx: {
+          borderRadius: isMobile ? 0 : 2,
+          overflow: "hidden",
+          ...(isMobile
+            ? {
+                m: 0,
+                width: "100vw",
+                maxWidth: "100vw",
+                height: "100dvh",
+                maxHeight: "100dvh",
+                display: "flex",
+                flexDirection: "column",
+              }
+            : {}),
+        },
+      }}
     >
       <Box sx={{ background: "linear-gradient(135deg, #0b394a 0%, #114d64 100%)", p: 3 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
@@ -511,7 +533,7 @@ const SelectionModal = ({ open, onClose, title, items, loading, selectedIds, onT
         />
       </Box>
 
-      <Box sx={{ flex: 1, overflow: "auto", maxHeight: isMobile ? "none" : 400 }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", maxHeight: isMobile ? "none" : 400 }}>
         {loading ? (
           <Box sx={{ py: 6, textAlign: "center" }}><CircularProgress size={28} sx={{ color: "#084d68" }} /></Box>
         ) : filtered.length === 0 ? (
@@ -568,7 +590,7 @@ const SelectionModal = ({ open, onClose, title, items, loading, selectedIds, onT
         )}
       </Box>
 
-      <Box sx={{ p: 2.5, borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <Box sx={{ p: 2.5, borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <Typography variant="caption" color="text.secondary">
           {Array.isArray(selectedIds) ? `${selectedIds.length} selected` : selectedIds ? "1 selected" : "None selected"}
         </Typography>
@@ -1627,67 +1649,75 @@ export default function AssignedChecklist() {
       <SelectionModal open={modalStates.reassignAsset}  onClose={() => closeModal("reassignAsset")}  title="Select Assets"        items={assets}       loading={assetsLoading}     selectedIds={reassignForm.assetIds}      onToggle={(id) => setReassignForm((p) => ({ ...p, assetIds: p.assetIds.includes(id) ? p.assetIds.filter((i) => i !== id) : [...p.assetIds, id] }))}                     onDone={() => closeModal("reassignAsset")} />
 
       {/* ── Snackbar ── */}
-      <Snackbar
-        open={snack.open}
-        autoHideDuration={6000}
-        onClose={closeSnack}
-
-        sx={{
-          zIndex: 99999,
-          top: { xs: 16, sm: 24 },
-          right: { xs: 16, sm: 24 },
-          maxWidth: { xs: "calc(100vw - 32px)", sm: 560 },
-        }}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert
-          severity={snack.severity}
+      <Portal>
+        <Snackbar
+          open={snack.open}
+          autoHideDuration={6000}
           onClose={closeSnack}
+          anchorOrigin={{
+            vertical: isXs ? "bottom" : "top",
+            horizontal: isXs ? "center" : "right",
+          }}
           sx={{
-            borderRadius: 3,
-            fontWeight: 700,
-            fontSize: 13,
-            width: "100%",
-            maxWidth: 560,
-            color: isDark
-              ? snack.severity === "success"
-                ? "#bbf7d0"
-                : "#fecaca"
-              : undefined,
-            bgcolor: isDark
-              ? snack.severity === "success"
-                ? "#052e1a"
-                : "#351616"
-              : undefined,
-            border: isDark
-              ? `1px solid ${
-                  snack.severity === "success"
-                    ? "rgba(74, 222, 128, 0.35)"
-                    : "rgba(248, 113, 113, 0.35)"
-                }`
-              : undefined,
-            boxShadow: isDark
-              ? "0 18px 40px rgba(0,0,0,0.45)"
-              : "0 12px 28px rgba(15,23,42,0.16)",
-            "& .MuiAlert-icon": {
-              color: isDark
-                ? snack.severity === "success"
-                  ? "#4ade80"
-                  : "#f87171"
-                : undefined,
-              opacity: 1,
-            },
-            "& .MuiAlert-action .MuiIconButton-root": {
+            zIndex: (theme) => theme.zIndex.tooltip + 10000,
+            top: { xs: "auto !important", sm: 24 },
+            bottom: { xs: "calc(84px + env(safe-area-inset-bottom)) !important", sm: "auto" },
+            left: { xs: "16px !important", sm: "auto" },
+            right: { xs: "16px !important", sm: 24 },
+            width: { xs: "auto", sm: "auto" },
+            maxWidth: { xs: "calc(100vw - 32px)", sm: 560 },
+          }}
+        >
+          <Alert
+            severity={snack.severity}
+            onClose={closeSnack}
+            sx={{
+              borderRadius: 3,
+              fontWeight: 700,
+              fontSize: 13,
+              width: "100%",
+              maxWidth: 560,
               color: isDark
                 ? snack.severity === "success"
                   ? "#bbf7d0"
                   : "#fecaca"
                 : undefined,
-            },
-          }}
-        >
-          {snack.msg}
-        </Alert>
-      </Snackbar>
+              bgcolor: isDark
+                ? snack.severity === "success"
+                  ? "#052e1a"
+                  : "#351616"
+                : undefined,
+              border: isDark
+                ? `1px solid ${
+                    snack.severity === "success"
+                      ? "rgba(74, 222, 128, 0.35)"
+                      : "rgba(248, 113, 113, 0.35)"
+                  }`
+                : undefined,
+              boxShadow: isDark
+                ? "0 18px 40px rgba(0,0,0,0.45)"
+                : "0 12px 28px rgba(15,23,42,0.16)",
+              "& .MuiAlert-icon": {
+                color: isDark
+                  ? snack.severity === "success"
+                    ? "#4ade80"
+                    : "#f87171"
+                  : undefined,
+                opacity: 1,
+              },
+              "& .MuiAlert-action .MuiIconButton-root": {
+                color: isDark
+                  ? snack.severity === "success"
+                    ? "#bbf7d0"
+                    : "#fecaca"
+                  : undefined,
+              },
+            }}
+          >
+            {snack.msg}
+          </Alert>
+        </Snackbar>
+      </Portal>
     </ThemeProvider>
   );
 }

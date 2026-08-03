@@ -34,7 +34,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { styled, keyframes } from "@mui/material/styles";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAsset } from "../context/AssetContext";
 import { useAssetRequest } from "../context/AssetRequestContext";
 import { useAuth } from "../context/AuthContexts";
@@ -2136,7 +2136,9 @@ const filteredParents = parentRequests
 export default function AssetView() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { getAssetById, deleteAsset, loading: assetLoading } = useAsset();
   const { getRequestsByAsset } = useAssetRequest();
   const { user } = useAuth();
@@ -2160,6 +2162,14 @@ export default function AssetView() {
 
   const toast = (msg, sev = "success") =>
     setSnackbar({ open: true, message: msg, severity: sev });
+
+  useEffect(() => {
+    const routeToast = location.state?.toast;
+    if (!routeToast?.message) return;
+
+    toast(routeToast.message, routeToast.severity || "success");
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
     if (document.getElementById("fraunces-font-link")) return;
@@ -2266,8 +2276,14 @@ export default function AssetView() {
     setDeleting(true);
     try {
       await deleteAsset(id);
-      toast("Asset deleted successfully");
-      setTimeout(() => navigate("/admin/assets"), 1500);
+      navigate("/admin/assets", {
+        state: {
+          toast: {
+            message: "Asset deleted successfully",
+            severity: "success",
+          },
+        },
+      });
     } catch (e) {
       toast(e?.response?.data?.message || "Failed to delete", "error");
     } finally {
@@ -2594,7 +2610,13 @@ export default function AssetView() {
               </Button>
             )}
             <Button
-              onClick={() => navigate(`/admin/assets/edit/${id}`)}
+              onClick={() =>
+                navigate(`/admin/assets/edit/${id}`, {
+                  state: {
+                    from: `${location.pathname}${location.search}${location.hash}`,
+                  },
+                })
+              }
               variant="outlined"
               size="small"
               startIcon={<Edit sx={{ fontSize: 15 }} />}
@@ -4249,20 +4271,32 @@ export default function AssetView() {
       {/* ── SNACKBAR ─────────────────────────────────────────────────────── */}
       <Portal>
         <Snackbar
+          key={`${snackbar.severity}-${snackbar.message}`}
           open={snackbar.open}
-          autoHideDuration={5000}
+          autoHideDuration={4000}
           onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-          sx={{ zIndex: (theme) => theme.zIndex.modal + 2 }}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+          anchorOrigin={{ vertical: "top", horizontal: isMobile ? "center" : "right" }}
+          sx={{
+            zIndex: (theme) => theme.zIndex.tooltip + 1000,
+            position: "fixed",
+            top: { xs: "calc(env(safe-area-inset-top, 0px) + 12px)", sm: 24 },
+            left: { xs: 12, sm: "auto" },
+            right: { xs: 12, sm: 24 },
+            width: { xs: "auto", sm: "auto" },
+            alignItems: { xs: "stretch", sm: "flex-end" },
+          }}
+        >
           <Alert
             severity={snackbar.severity}
+            variant="filled"
             onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
             sx={{
-              borderRadius: T.r.sm,
-              fontFamily: T.font,
-              fontSize: "0.8125rem",
-              boxShadow: T.sh.lg,
-              fontWeight: 500,
+              borderRadius: "10px",
+              fontSize: "0.82rem",
+              boxShadow: T.sh.md,
+              width: { xs: "100%", sm: "auto" },
+              alignItems: "center",
+              color: "#fff",
             }}
           >
             {snackbar.message}

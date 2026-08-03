@@ -22,6 +22,7 @@ import {
   Fade,
   Alert,
   Snackbar,
+  Portal,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -2585,20 +2586,33 @@ const AssignmentDetailPage = () => {
         onClose={handleCloseApproveDialog}
         onSubmit={handleApproveAssignment}
       />
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={3000}
-        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert
-          severity={toast.severity}
-          variant="filled"
+      <Portal>
+        <Snackbar
+          open={toast.open}
+          autoHideDuration={3000}
           onClose={() => setToast((prev) => ({ ...prev, open: false }))}
-          sx={{ borderRadius: 2 }}
+          anchorOrigin={{
+            vertical: isMobile ? "bottom" : "top",
+            horizontal: isMobile ? "center" : "right",
+          }}
+          sx={{
+            zIndex: (theme) => theme.zIndex.tooltip + 10000,
+            bottom: { xs: "calc(84px + env(safe-area-inset-bottom)) !important", md: "auto" },
+            left: { xs: "16px !important", md: "auto" },
+            right: { xs: "16px !important", md: 24 },
+            maxWidth: { xs: "calc(100vw - 32px)", sm: 560 },
+          }}
         >
-          {toast.message}
-        </Alert>
-      </Snackbar>
+          <Alert
+            severity={toast.severity}
+            variant="filled"
+            onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+            sx={{ borderRadius: 2, width: "100%" }}
+          >
+            {toast.message}
+          </Alert>
+        </Snackbar>
+      </Portal>
     </Box>
   );
 };

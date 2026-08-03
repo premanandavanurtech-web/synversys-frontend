@@ -12,6 +12,7 @@ import {
   Divider,
   IconButton,
   Snackbar,
+  Portal,
   Alert,
   CircularProgress,
   Skeleton,
@@ -1102,15 +1103,25 @@ export default function AssignmentDetails() {
         </Dialog>
 
         {/* Snackbar */}
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={4000}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-          <Alert severity={snackbar.severity} sx={{ borderRadius: 2 }}>
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
+        <Portal>
+          <Snackbar
+            open={snackbar.open}
+            autoHideDuration={4000}
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+            sx={{
+              zIndex: (theme) => theme.zIndex.tooltip + 10000,
+              bottom: "calc(84px + env(safe-area-inset-bottom)) !important",
+              left: "16px !important",
+              right: "16px !important",
+              maxWidth: "calc(100vw - 32px)",
+            }}
+          >
+            <Alert severity={snackbar.severity} sx={{ borderRadius: 2, width: "100%" }}>
+              {snackbar.message}
+            </Alert>
+          </Snackbar>
+        </Portal>
       </Box>
     </ThemeProvider>
   );

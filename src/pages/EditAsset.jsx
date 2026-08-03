@@ -22,7 +22,7 @@ import {
   Dialog,
 } from "@mui/material";
 import { styled, keyframes } from "@mui/material/styles";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { api, useAsset } from "../context/AssetContext";
 import { useAssetCategory } from "../context/AssetCategoryContexts";
 import { useTeam } from "../context/TeamContext";
@@ -650,6 +650,7 @@ function QuickCategoryDialog({
 export default function EditAsset() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const {
     teamMembers,
@@ -674,6 +675,7 @@ export default function EditAsset() {
   const canViewFinancials = !isTeam;
   const canViewPortfolio = !isTeam;
   const currentUserId = user?._id || user?.id;
+  const returnTo = location.state?.from || `/admin/assets/view/${id}`;
 
   const [pageLoading, setPageLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1037,8 +1039,14 @@ export default function EditAsset() {
         );
         setPortfolioEntryMode("existing");
       }
-      showSnackbar("Asset updated successfully!");
-      setTimeout(() => navigate(`/admin/assets/view/${id}`), 1200);
+      navigate(returnTo, {
+        state: {
+          toast: {
+            message: "Asset updated successfully!",
+            severity: "success",
+          },
+        },
+      });
     } catch (err) {
       showSnackbar(
         err.response?.data?.message || "Failed to update asset",
@@ -1113,7 +1121,7 @@ export default function EditAsset() {
           spacing={1.5}
           flexWrap="wrap"
         >
-          <BackBtn onClick={() => navigate(`/admin/assets/view/${id}`)}>
+          <BackBtn onClick={() => navigate(returnTo)}>
             <ArrowBack sx={{ fontSize: 17 }} />
           </BackBtn>
           <Box>
@@ -1142,7 +1150,7 @@ export default function EditAsset() {
         </Stack>
 
         <Stack direction="row" spacing={1.2}>
-          <CancelBtn onClick={() => navigate(`/admin/assets/view/${id}`)}>
+          <CancelBtn onClick={() => navigate(returnTo)}>
             Cancel
           </CancelBtn>
           <SaveBtn
@@ -1881,7 +1889,7 @@ export default function EditAsset() {
               flexWrap: "wrap",
             }}
           >
-            <CancelBtn onClick={() => navigate(`/admin/assets/view/${id}`)}>
+            <CancelBtn onClick={() => navigate(returnTo)}>
               Cancel
             </CancelBtn>
             <SaveBtn

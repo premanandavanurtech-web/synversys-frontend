@@ -57,13 +57,14 @@ import {
   ContactPageOutlined as ContactPageOutlinedIcon,
   NotesOutlined as NotesOutlinedIcon,
 } from "@mui/icons-material";
+import { useTheme } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTeam } from "../context/TeamContext";
 import EditTeamMemberModal from "./EditMemberModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 
 // ─── Design tokens ────────────────────────────────────────────────────────
-const C = {
+const LIGHT_TOKENS = {
   primary: "#0d4a5c",
   primaryDark: "#0a3a49",
   primaryMuted: "#4f7d89",
@@ -80,6 +81,32 @@ const C = {
   gold: "#a855f7",
   goldBg: "#f5edff",
   text: { primary: "#16202b", secondary: "#5c6b7a", disabled: "#9aa6b2" },
+};
+
+const DARK_TOKENS = {
+  primary: "#1fb6cf",
+  primaryDark: "#0d8ba1",
+  primaryMuted: "#105364",
+  primaryLight: "rgba(31, 182, 207, 0.14)",
+  success: "#4ade80",
+  successBg: "rgba(74, 222, 128, 0.14)",
+  surface: "#132433",
+  card: "#0f1e29",
+  border: "rgba(148, 163, 184, 0.18)",
+  error: "#f87171",
+  errorBg: "rgba(248, 113, 113, 0.14)",
+  warning: "#fbbf24",
+  warningBg: "rgba(251, 191, 36, 0.14)",
+  gold: "#c084fc",
+  goldBg: "rgba(192, 132, 252, 0.16)",
+  text: { primary: "#e7eef2", secondary: "#9fb0bd", disabled: "#728697" },
+};
+
+const C = { ...LIGHT_TOKENS, text: { ...LIGHT_TOKENS.text } };
+
+const applyTeamDetailsThemeTokens = (mode) => {
+  const next = mode === "dark" ? DARK_TOKENS : LIGHT_TOKENS;
+  Object.assign(C, next, { text: { ...next.text } });
 };
 
 const SHADOW = {
@@ -531,6 +558,9 @@ function AssignedAssetsTable({ assets }) {
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 export default function TeamMemberDetails() {
+  const theme = useTheme();
+  applyTeamDetailsThemeTokens(theme.palette.mode);
+
   const navigate = useNavigate();
   const { id } = useParams();
   const {

@@ -7,6 +7,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContexts";
+import { PreferencesProvider } from "./context/PreferencesContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { AuditProvider } from "./context/AuditContext";
 import { AssetProvider } from "./context/AssetContext";
@@ -79,43 +80,45 @@ import Tickets from "./pages/Tickets";
 // ══════════════════════════════════════════════════════════════════════════════
 const AppProviders = ({ children }) => (
   <AuthProvider>
-    <NotificationProvider>
-      <AuditProvider>
-        <ClientProvider>
-          <TeamProvider>
-            <AssetProvider>
-              <AssetCategoryProvider>
-                <ReportProvider>
-                  <AssignmentProvider>
-                    <DashboardProvider>
-                      <ChecklistBuilderProvider>
-                        <RequestChecklistProvider>
-                          <AssetRequestProvider>
-                            <TeamAssignmentProvider>
-                              <ContactInquiryProvider>
-                                <RecycleBinProvider>
-                                  <RoleProvider>
-                                    <DepartmentProvider>
-                                      <TicketProvider>
-                                        {children}
-                                      </TicketProvider>
-                                    </DepartmentProvider>
-                                  </RoleProvider>
-                                </RecycleBinProvider>
-                              </ContactInquiryProvider>
-                            </TeamAssignmentProvider>
-                          </AssetRequestProvider>
-                        </RequestChecklistProvider>
-                      </ChecklistBuilderProvider>
-                    </DashboardProvider>
-                  </AssignmentProvider>
-                </ReportProvider>
-              </AssetCategoryProvider>
-            </AssetProvider>
-          </TeamProvider>
-        </ClientProvider>
-      </AuditProvider>
-    </NotificationProvider>
+    <PreferencesProvider>
+      <NotificationProvider>
+        <AuditProvider>
+          <ClientProvider>
+            <TeamProvider>
+              <AssetProvider>
+                <AssetCategoryProvider>
+                  <ReportProvider>
+                    <AssignmentProvider>
+                      <DashboardProvider>
+                        <ChecklistBuilderProvider>
+                          <RequestChecklistProvider>
+                            <AssetRequestProvider>
+                              <TeamAssignmentProvider>
+                                <ContactInquiryProvider>
+                                  <RecycleBinProvider>
+                                    <RoleProvider>
+                                      <DepartmentProvider>
+                                        <TicketProvider>
+                                          {children}
+                                        </TicketProvider>
+                                      </DepartmentProvider>
+                                    </RoleProvider>
+                                  </RecycleBinProvider>
+                                </ContactInquiryProvider>
+                              </TeamAssignmentProvider>
+                            </AssetRequestProvider>
+                          </RequestChecklistProvider>
+                        </ChecklistBuilderProvider>
+                      </DashboardProvider>
+                    </AssignmentProvider>
+                  </ReportProvider>
+                </AssetCategoryProvider>
+              </AssetProvider>
+            </TeamProvider>
+          </ClientProvider>
+        </AuditProvider>
+      </NotificationProvider>
+    </PreferencesProvider>
   </AuthProvider>
 );
 

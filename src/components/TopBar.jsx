@@ -1,6 +1,6 @@
 // components/TopHeader.jsx - Premium Redesign (Fully Responsive Mobile)
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Box,
   Avatar,
@@ -25,6 +25,16 @@ import {
   Slide,
   Paper,
   ClickAwayListener,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -39,6 +49,17 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
+// ─── Notification type icons (MUI icon set) ───
+import ApartmentIcon from "@mui/icons-material/Apartment";
+import LockIcon from "@mui/icons-material/Lock";
+import GroupsIcon from "@mui/icons-material/Groups";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import EmailIcon from "@mui/icons-material/Email";
+import ArrowCircleUpIcon from "@mui/icons-material/ArrowCircleUp";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useAuth } from "../context/AuthContexts";
 import { useTeam } from "../context/TeamContext";
 import { useNotifications } from "../context/NotificationContext";
@@ -157,21 +178,69 @@ const PRIORITY_CONFIG = {
   low: { color: "#16a34a", label: "Low", dot: "#16a34a" },
 };
 
+/* ─── Notification type icon map (using @mui/icons-material) ─── */
 const TYPE_ICONS = {
-  client_created: { emoji: "🏢", bg: "#eff6ff" },
-  client_deactivated: { emoji: "🔒", bg: "#fef2f2" },
-  team_created: { emoji: "👥", bg: "#f0fdf4" },
-  team_deactivated: { emoji: "⚠️", bg: "#fffbeb" },
-  subscription_expiring: { emoji: "⏳", bg: "#faf5ff" },
-  inactivity_reminder: { emoji: "⏰", bg: "#fff7ed" },
-  contact_inquiry: { emoji: "📧", bg: "#f0f9ff" },
-  default: { emoji: "🔔", bg: "#f8fafc" },
+  client_created: { Icon: ApartmentIcon, bg: "#eff6ff", color: "#1d4ed8" },
+  client_deactivated: { Icon: LockIcon, bg: "#fef2f2", color: "#dc2626" },
+  team_created: { Icon: GroupsIcon, bg: "#f0fdf4", color: "#16a34a" },
+  team_deactivated: { Icon: WarningAmberIcon, bg: "#fffbeb", color: "#ca8a04" },
+  subscription_expiring: { Icon: HourglassEmptyIcon, bg: "#faf5ff", color: "#9333ea" },
+  inactivity_reminder: { Icon: AccessTimeIcon, bg: "#fff7ed", color: "#ea580c" },
+  contact_inquiry: { Icon: EmailIcon, bg: "#f0f9ff", color: "#0284c7" },
+  default: { Icon: NotificationsNoneIcon, bg: "#f8fafc", color: "#475569" },
 };
 
 /* ─── Notification Item (mobile optimized) ─── */
+const formatPlanName = (value) =>
+  String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+function NotificationDetails({ metadata }) {
+  const rows = [
+    metadata?.adminName && ["Admin", metadata.adminName],
+    metadata?.email && ["Email", metadata.email],
+    metadata?.phone && ["Phone", metadata.phone],
+    metadata?.currentPlan && ["Current", formatPlanName(metadata.currentPlan)],
+    metadata?.oldPlan && ["Previous", formatPlanName(metadata.oldPlan)],
+    metadata?.requestedPlan && ["Requested", formatPlanName(metadata.requestedPlan)],
+    metadata?.newPlan && ["New", formatPlanName(metadata.newPlan)],
+  ].filter(Boolean);
+
+  if (!rows.length) return null;
+
+  return (
+    <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mt: 0.75, mb: 0.25 }}>
+      {rows.map(([label, value]) => (
+        <Chip
+          key={`${label}-${value}`}
+          size="small"
+          label={`${label}: ${value}`}
+          sx={{
+            height: 20,
+            maxWidth: "100%",
+            bgcolor: alpha("#1a5c6b", 0.08),
+            color: "#1a5c6b",
+            fontSize: { xs: 9.5, sm: 10.5 },
+            fontWeight: 700,
+            "& .MuiChip-label": {
+              px: 0.75,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            },
+          }}
+        />
+      ))}
+    </Box>
+  );
+}
+
 function NotificationItem({ item, onRead, onDelete, formatTime }) {
   const priority = PRIORITY_CONFIG[item.priority] || PRIORITY_CONFIG.low;
-  const typeConfig = TYPE_ICONS[item.type] || TYPE_ICONS.default;
+  const typeConfig = {
+    upgrade_plan_requested: { Icon: ArrowCircleUpIcon, bg: "#ecfeff", color: "#0891b2" },
+    plan_upgraded: { Icon: CheckCircleIcon, bg: "#f0fdf4", color: "#16a34a" },
+  }[item.type] || TYPE_ICONS[item.type] || TYPE_ICONS.default;
   const [hovered, setHovered] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
@@ -215,11 +284,11 @@ function NotificationItem({ item, onRead, onDelete, formatTime }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: { xs: 16, sm: 18 },
+          color: typeConfig.color,
           mt: 0.25,
         }}
       >
-        {typeConfig.emoji}
+        <typeConfig.Icon sx={{ fontSize: { xs: 18, sm: 20 } }} />
       </Box>
 
       {/* Content */}
@@ -263,6 +332,8 @@ function NotificationItem({ item, onRead, onDelete, formatTime }) {
         >
           {item.message}
         </Typography>
+
+        <NotificationDetails metadata={item.metadata} />
 
         <Box
           sx={{
@@ -743,7 +814,7 @@ function MobileUserMenu({
 export default function TopHeader({ onMenuToggle }) {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === "dark";
-  const { user, logout } = useAuth();
+  const { user, logout, authRequest, updateCurrentUser } = useAuth();
   const { profile } = useTeam();
   const {
     notifications,
@@ -769,6 +840,20 @@ export default function TopHeader({ onMenuToggle }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const prevUnreadRef = useRef(unreadCount);
   const [bellActive, setBellActive] = useState(false);
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [upgradeNotice, setUpgradeNotice] = useState({
+    open: false,
+    severity: "success",
+    message: "",
+  });
+  const [upgradeForm, setUpgradeForm] = useState({
+    requestedPlan: "standard",
+    adminName: "",
+    email: "",
+    phone: "",
+    message: "",
+  });
+  const [upgradeRequests, setUpgradeRequests] = useState([]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -813,6 +898,35 @@ export default function TopHeader({ onMenuToggle }) {
       .slice(0, 2);
 
   const avatarUrl = profile?.avatarUrl || user?.avatarUrl || "";
+  const currentPlan = String(user?.membershipPlan || "free").toLowerCase();
+  const hasActiveUpgradeRequest = upgradeRequests.some((request) =>
+    ["pending", "pending_approval"].includes(request?.status),
+  );
+  const showUpgradeButton =
+    user?.role === "admin" &&
+    currentPlan === "free" &&
+    !hasActiveUpgradeRequest;
+
+  const refreshCurrentAdmin = useCallback(async () => {
+    if (user?.role !== "admin") return;
+    try {
+      const response = await authRequest("get", "/auth/me");
+      const nextUser = response?.data?.user || response?.user;
+      if (!nextUser) return;
+      updateCurrentUser({
+        membershipPlan: nextUser.membershipPlan,
+        daysRemaining: nextUser.daysRemaining,
+        usagePercentage: nextUser.usagePercentage,
+        licenseLimit: nextUser.licenseLimit,
+        assetLimit: nextUser.assetLimit,
+        usersUsed: nextUser.usersUsed,
+        subscriptionStartDate: nextUser.subscriptionStartDate,
+        subscriptionEndDate: nextUser.subscriptionEndDate,
+      });
+    } catch {
+      // Keep the current local session data if the lightweight refresh fails.
+    }
+  }, [authRequest, updateCurrentUser, user?.role]);
 
   const getUserRole = () => {
     const role = user?.role || "member";
@@ -899,6 +1013,101 @@ export default function TopHeader({ onMenuToggle }) {
 
   const handleUserMenuClose = () => setUserMenuAnchor(null);
 
+  const fetchUpgradeRequests = useCallback(async () => {
+    if (user?.role !== "admin") {
+      setUpgradeRequests([]);
+      return;
+    }
+    try {
+      const response = await authRequest("get", "/clients/upgrade-requests");
+      setUpgradeRequests(response?.data?.requests || response?.requests || []);
+    } catch {
+      setUpgradeRequests([]);
+    }
+  }, [authRequest, user?.role]);
+
+  useEffect(() => {
+    refreshCurrentAdmin();
+    fetchUpgradeRequests();
+    const handleUpgradeChange = () => {
+      refreshCurrentAdmin();
+      fetchUpgradeRequests();
+    };
+    const handleFocus = () => {
+      refreshCurrentAdmin();
+      fetchUpgradeRequests();
+    };
+    const refreshTimer = window.setInterval(handleFocus, 30000);
+    window.addEventListener("assetmach-upgrade-request-created", handleUpgradeChange);
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("assetmach-upgrade-request-created", handleUpgradeChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [fetchUpgradeRequests, refreshCurrentAdmin]);
+
+  const openUpgradeDialog = () => {
+    setUpgradeForm({
+      requestedPlan: "standard",
+      adminName:
+        user?.customerName ||
+        user?.name ||
+        `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
+        user?.email?.split("@")[0] ||
+        "",
+      email: user?.email || "",
+      phone: user?.phone || "",
+      message: "",
+    });
+    setUpgradeDialogOpen(true);
+  };
+
+  const closeUpgradeDialog = () => setUpgradeDialogOpen(false);
+
+  const handleUpgradeFormChange = (field) => (event) => {
+    setUpgradeForm((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const handleUpgradeRequestSubmit = async () => {
+    if (!upgradeForm.adminName.trim() || !upgradeForm.email.trim() || !upgradeForm.phone.trim()) {
+      setUpgradeNotice({
+        open: true,
+        severity: "error",
+        message: "Please fill admin name, email, and phone.",
+      });
+      return;
+    }
+
+    try {
+      const response = await authRequest("post", "/clients/upgrade-requests", {
+        requestedPlan: upgradeForm.requestedPlan,
+        message: upgradeForm.message.trim(),
+      });
+      window.dispatchEvent(
+        new CustomEvent("assetmach-upgrade-request-created", {
+          detail: response?.data?.request || response?.request,
+        }),
+      );
+      setUpgradeDialogOpen(false);
+      await fetchUpgradeRequests();
+      setUpgradeNotice({
+        open: true,
+        severity: "success",
+        message: response?.message || "Upgrade request submitted successfully.",
+      });
+    } catch (error) {
+      setUpgradeNotice({
+        open: true,
+        severity: "error",
+        message:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to submit upgrade request.",
+      });
+    }
+  };
+
   const roleConfig = getRoleConfig();
 
   const notifPanelProps = {
@@ -980,6 +1189,63 @@ export default function TopHeader({ onMenuToggle }) {
               onClick={handleNotificationOpen}
             />
           </PulsingBadge>
+
+          {showUpgradeButton && (
+            <Box
+              sx={{
+                display: { xs: "none", sm: "inline-flex" },
+                position: "relative",
+                borderRadius: "999px",
+                p: "1.5px",
+                overflow: "hidden",
+                background:
+                  "linear-gradient(120deg, #f59e0b, #fde68a, #facc15, #f59e0b)",
+                backgroundSize: "240% 240%",
+                animation: "upgradeBorderFlow 2.8s linear infinite",
+                boxShadow:
+                  "0 10px 24px rgba(245, 158, 11, 0.28), 0 0 0 1px rgba(245, 158, 11, 0.12)",
+                "@keyframes upgradeBorderFlow": {
+                  "0%": { backgroundPosition: "0% 50%" },
+                  "100%": { backgroundPosition: "240% 50%" },
+                },
+              }}
+            >
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<WorkspacePremiumIcon sx={{ fontSize: 16 }} />}
+                onClick={openUpgradeDialog}
+                sx={{
+                  minWidth: 0,
+                  borderRadius: "999px",
+                  minHeight: 32,
+                  px: { sm: 1.45, md: 1.7 },
+                  textTransform: "none",
+                  fontWeight: 900,
+                  fontSize: { sm: 12, md: 13 },
+                  letterSpacing: 0,
+                  bgcolor: "#111827",
+                  color: "#fde68a",
+                  background:
+                    "linear-gradient(135deg, #18181b 0%, #272111 52%, #3b2f08 100%)",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
+                  whiteSpace: "nowrap",
+                  "& .MuiButton-startIcon": {
+                    mr: 0.65,
+                    color: "#facc15",
+                  },
+                  "&:hover": {
+                    bgcolor: "#1f2937",
+                    background:
+                      "linear-gradient(135deg, #111827 0%, #3b2f08 48%, #5b4306 100%)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18)",
+                  },
+                }}
+              >
+                Upgrade
+              </Button>
+            </Box>
+          )}
 
           {/* User menu trigger - optimized for touch */}
           <Box
@@ -1087,6 +1353,101 @@ export default function TopHeader({ onMenuToggle }) {
           </Box>
         </Box>
       </Box>
+
+      {/* ─── Upgrade Request Dialog ─── */}
+      <Dialog
+        open={upgradeDialogOpen}
+        onClose={closeUpgradeDialog}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: "18px", sm: "22px" },
+            overflow: "hidden",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            px: { xs: 2, sm: 2.5 },
+            py: 2,
+            background: "linear-gradient(135deg, #18181b 0%, #3b2f08 100%)",
+            color: "#fde68a",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1.5,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+            <WorkspacePremiumIcon sx={{ color: "#facc15" }} />
+            <Box>
+              <Typography sx={{ fontWeight: 900, fontSize: { xs: 17, sm: 19 } }}>
+                Upgrade Plan Request
+              </Typography>
+              <Typography sx={{ fontSize: 12, color: "rgba(253, 230, 138, 0.78)" }}>
+                Send your plan upgrade request to the platform team
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton onClick={closeUpgradeDialog} size="small" sx={{ color: "#fde68a" }}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: { xs: 2, sm: 2.5 }, bgcolor: "#fff" }}>
+          <Stack spacing={1.75} sx={{ mt: 0.5 }}>
+            <TextField label="Current Plan" value={currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} fullWidth size="small" disabled />
+            <FormControl fullWidth size="small">
+              <InputLabel>Select New Plan</InputLabel>
+              <Select label="Select New Plan" value={upgradeForm.requestedPlan} onChange={handleUpgradeFormChange("requestedPlan")}>
+                <MenuItem value="standard">Standard</MenuItem>
+                <MenuItem value="premium">Premium</MenuItem>
+                {/* <MenuItem value="enterprise">Enterprise</MenuItem> */}
+              </Select>
+            </FormControl>
+            <TextField label="Admin Name" value={upgradeForm.adminName} fullWidth size="small" disabled />
+            <TextField label="Email" value={upgradeForm.email} fullWidth size="small" disabled />
+            <TextField label="Phone" value={upgradeForm.phone} fullWidth size="small" disabled />
+            <TextField label="Message" value={upgradeForm.message} onChange={handleUpgradeFormChange("message")} fullWidth multiline minRows={3} />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: { xs: 2, sm: 2.5 }, py: 2, bgcolor: "#fff" }}>
+          <Button onClick={closeUpgradeDialog} sx={{ textTransform: "none", color: "#64748b" }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleUpgradeRequestSubmit}
+            sx={{
+              textTransform: "none",
+              borderRadius: "999px",
+              px: 2.5,
+              fontWeight: 800,
+              color: "#18181b",
+              bgcolor: "#facc15",
+              "&:hover": { bgcolor: "#eab308" },
+            }}
+          >
+            Submit Request
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={upgradeNotice.open}
+        autoHideDuration={3500}
+        onClose={() => setUpgradeNotice((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          severity={upgradeNotice.severity}
+          variant="filled"
+          onClose={() => setUpgradeNotice((prev) => ({ ...prev, open: false }))}
+          sx={{ borderRadius: "10px", fontWeight: 700 }}
+        >
+          {upgradeNotice.message}
+        </Alert>
+      </Snackbar>
 
       {/* ─── Desktop User Menu ─── */}
       <Menu

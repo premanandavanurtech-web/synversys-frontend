@@ -198,7 +198,7 @@ const navItemsConfig = {
     {
       id: "task",
       icon: AssignmentOutlinedIcon,
-      label: "Task",
+      label: "Operations",
       roles: ["super_admin"],
       order: 30,
       section: "task",

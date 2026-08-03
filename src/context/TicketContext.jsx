@@ -11,10 +11,12 @@ export const useTickets = () => {
 
 export const TicketProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const run = useCallback(async (fn) => {
-    setLoading(true);
+  const run = useCallback(async (fn, setOperationLoading = setLoading) => {
+    setOperationLoading(true);
     setError(null);
     try {
       return await fn();
@@ -27,7 +29,7 @@ export const TicketProvider = ({ children }) => {
       setError(message);
       throw err;
     } finally {
-      setLoading(false);
+      setOperationLoading(false);
     }
   }, []);
 
@@ -42,7 +44,7 @@ export const TicketProvider = ({ children }) => {
         });
         const res = await api.get(`/tickets${params.toString() ? `?${params}` : ""}`);
         return res.data?.data || res.data;
-      }),
+      }, setFetchLoading),
     [run],
   );
 
@@ -54,7 +56,7 @@ export const TicketProvider = ({ children }) => {
         files.forEach((file) => formData.append("attachments", file));
         const res = await api.post("/tickets", formData);
         return res.data?.data || res.data;
-      }),
+      }, setActionLoading),
     [run],
   );
 
@@ -63,7 +65,7 @@ export const TicketProvider = ({ children }) => {
       run(async () => {
         const res = await api.patch(`/tickets/${id}/raise-to-super-admin`, { notes });
         return res.data?.data || res.data;
-      }),
+      }, setActionLoading),
     [run],
   );
 
@@ -72,20 +74,22 @@ export const TicketProvider = ({ children }) => {
       run(async () => {
         const res = await api.patch(`/tickets/${id}/status`, { status, notes });
         return res.data?.data || res.data;
-      }),
+      }, setActionLoading),
     [run],
   );
 
   const value = useMemo(
     () => ({
       loading,
+      fetchLoading,
+      actionLoading,
       error,
       fetchTickets,
       createTicket,
       raiseToSuperAdmin,
       updateTicketStatus,
     }),
-    [loading, error, fetchTickets, createTicket, raiseToSuperAdmin, updateTicketStatus],
+    [loading, fetchLoading, actionLoading, error, fetchTickets, createTicket, raiseToSuperAdmin, updateTicketStatus],
   );
 
   return <TicketContext.Provider value={value}>{children}</TicketContext.Provider>;

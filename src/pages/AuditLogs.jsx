@@ -5,7 +5,7 @@
 //
 // npm deps: xlsx, jspdf, jspdf-autotable, date-fns, @mui/x-date-pickers
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Box,
   Typography,
@@ -76,6 +76,7 @@ import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAudit } from "../context/AuditContext";
 import AssetSearchField from "../components/AssetSearchField";
+import { useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -1700,6 +1701,7 @@ const AuditLogs = () => {
   } = useAudit();
 
   const theme = useTheme();
+  const location = useLocation();
   applyAuditThemeTokens(theme.palette.mode);
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -1719,6 +1721,7 @@ const AuditLogs = () => {
     message: "",
     severity: "success",
   });
+  const appliedUrlFiltersRef = useRef("");
 
   const showSnackbar = (message, severity = "success") =>
     setSnackbar({ open: true, message, severity });
@@ -1738,6 +1741,27 @@ const AuditLogs = () => {
   useEffect(() => {
     setDraftFilters(filters);
   }, [filters]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const urlFilters = {
+      action: params.get("action") || "",
+      resource: params.get("resource") || "",
+      actorRole: params.get("actorRole") || "",
+      status: params.get("status") || "",
+      search: params.get("search") || "",
+    };
+    const hasUrlFilters = Object.values(urlFilters).some(Boolean);
+    if (!hasUrlFilters) return;
+
+    const key = JSON.stringify(urlFilters);
+    if (appliedUrlFiltersRef.current === key) return;
+
+    appliedUrlFiltersRef.current = key;
+    setPage(0);
+    setActiveStatFilter(null);
+    updateFilters({ ...EMPTY_AUDIT_FILTERS, ...urlFilters });
+  }, [location.search, updateFilters]);
 
   /* ── Derived stats for non-super-admin (computed from loaded page) ── */
   const derivedStats = useMemo(() => {
@@ -2040,11 +2064,24 @@ const AuditLogs = () => {
     ...cellSx,
     fontSize: 11,
     fontWeight: 700,
-    color: T.textMuted,
+    color: "#ffffff !important",
     textTransform: "uppercase",
     letterSpacing: 0.4,
-    bgcolor: alpha("#000", 0.18),
+    bgcolor: "#15576A !important",
+    backgroundColor: "#15576A !important",
     py: "8px",
+    "& .MuiTableSortLabel-root": {
+      color: "#ffffff !important",
+      "&:hover": {
+        color: "#ffffff !important",
+      },
+      "&.Mui-active": {
+        color: "#ffffff !important",
+      },
+    },
+    "& .MuiTableSortLabel-icon": {
+      color: "#ffffff !important",
+    },
   };
 
   return (

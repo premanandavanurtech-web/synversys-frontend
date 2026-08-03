@@ -19,6 +19,7 @@ import {
   MenuItem,
   Pagination,
   Paper,
+  Portal,
   Select,
   Snackbar,
   Stack,
@@ -383,7 +384,7 @@ export default function Tickets() {
   const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { user } = useAuth();
-  const { fetchTickets, createTicket, raiseToSuperAdmin, updateTicketStatus, loading } = useTickets();
+  const { fetchTickets, createTicket, raiseToSuperAdmin, updateTicketStatus, fetchLoading, actionLoading } = useTickets();
   const [tickets, setTickets] = useState([]);
   const [stats, setStats] = useState({});
   const [filters, setFilters] = useState({
@@ -427,12 +428,14 @@ export default function Tickets() {
   }, [loadTickets]);
 
   useEffect(() => {
+    if (ticketOpen || raiseTarget || resolveTarget) return undefined;
+
     const intervalId = window.setInterval(() => {
       loadTickets({ silent: true });
     }, 5000);
 
     return () => window.clearInterval(intervalId);
-  }, [loadTickets]);
+  }, [loadTickets, ticketOpen, raiseTarget, resolveTarget]);
 
   // Reset back to page 1 whenever the active filters change so the user
   // isn't left stranded on a page that no longer has results.
@@ -708,7 +711,7 @@ export default function Tickets() {
         </Stack>
       </Paper>
 
-      {loading && !tickets.length ? (
+      {fetchLoading && !tickets.length ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
           <CircularProgress />
         </Box>
@@ -1011,7 +1014,7 @@ export default function Tickets() {
 
       <TicketDialog
         open={ticketOpen}
-        loading={loading}
+        loading={actionLoading}
         onClose={() => setTicketOpen(false)}
         onInvalid={(message) =>
           setSnack({ open: true, message, severity: "error" })
@@ -1035,7 +1038,7 @@ export default function Tickets() {
 
       <RaiseDialog
         open={Boolean(raiseTarget)}
-        loading={loading}
+        loading={actionLoading}
         onClose={() => setRaiseTarget(null)}
         onSubmit={async (notes) => {
           const updatedTicket = await raiseToSuperAdmin(raiseTarget._id, notes);
@@ -1048,7 +1051,7 @@ export default function Tickets() {
 
       <ResolveDialog
         open={Boolean(resolveTarget)}
-        loading={loading}
+        loading={actionLoading}
         onClose={() => setResolveTarget(null)}
         onSubmit={async (notes) => {
           const updatedTicket = await updateTicketStatus(resolveTarget._id, "resolved", notes);
@@ -1059,29 +1062,43 @@ export default function Tickets() {
         }}
       />
 
-      <Snackbar
-        open={snack.open}
-        autoHideDuration={4000}
-        onClose={() => setSnack((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        sx={{ zIndex: (theme) => theme.zIndex.modal + 500 }}
-      >
-        <Alert
-          severity={snack.severity}
+      <Portal>
+        <Snackbar
+          key={`${snack.severity}-${snack.message}`}
+          open={snack.open}
+          autoHideDuration={4000}
           onClose={() => setSnack((prev) => ({ ...prev, open: false }))}
+          anchorOrigin={{ vertical: "top", horizontal: isMobile ? "center" : "right" }}
           sx={{
-            boxShadow: "0 12px 30px rgba(0,0,0,0.32)",
-            ...(snack.severity === "error" && {
-              bgcolor: "#3b0d0d",
-              color: "#fee2e2",
-              "& .MuiAlert-icon": { color: "#ff6b5f" },
-              "& .MuiAlert-action": { color: "#fee2e2" },
-            }),
+            zIndex: (theme) => theme.zIndex.tooltip + 1000,
+            position: "fixed",
+            top: { xs: "calc(env(safe-area-inset-top, 0px) + 12px)", sm: 24 },
+            left: { xs: 12, sm: "auto" },
+            right: { xs: 12, sm: 24 },
+            width: { xs: "auto", sm: "auto" },
+            alignItems: { xs: "stretch", sm: "flex-end" },
           }}
         >
-          {snack.message}
-        </Alert>
-      </Snackbar>
+          <Alert
+            severity={snack.severity}
+            variant="filled"
+            onClose={() => setSnack((prev) => ({ ...prev, open: false }))}
+            sx={{
+              boxShadow: "0 12px 30px rgba(0,0,0,0.32)",
+              width: { xs: "100%", sm: "auto" },
+              alignItems: "center",
+              color: "#fff",
+              ...(snack.severity === "error" && {
+                bgcolor: "#b42318",
+                "& .MuiAlert-icon": { color: "#fff" },
+                "& .MuiAlert-action": { color: "#fff" },
+              }),
+            }}
+          >
+            {snack.message}
+          </Alert>
+        </Snackbar>
+      </Portal>
     </Box>
   );
 }

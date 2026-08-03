@@ -56,6 +56,7 @@ import {
   Download as DownloadIcon,
   OpenInNew as OpenInNewIcon,
   Save as SaveIcon,
+  WorkspacePremium as WorkspacePremiumIcon,
 } from "@mui/icons-material";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useClient } from "../context/ClientContext";
@@ -106,18 +107,18 @@ const PLANS = {
       "Advanced analytics",
     ],
   },
-  enterprise: {
-    label: "Enterprise",
-    color: "#7c3aed",
-    bg: "#f5f3ff",
-    price: "$299/mo",
-    features: [
-      "Up to 50 user licenses",
-      "10 GB storage",
-      "Priority support",
-      "Advanced analytics",
-    ],
-  },
+  // enterprise: {
+  //   label: "Enterprise",
+  //   color: "#7c3aed",
+  //   bg: "#f5f3ff",
+  //   price: "$299/mo",
+  //   features: [
+  //     "Up to 50 user licenses",
+  //     "10 GB storage",
+  //     "Priority support",
+  //     "Advanced analytics",
+  //   ],
+  // },
 };
 
 const ACCESS_TYPES = [
@@ -870,6 +871,7 @@ const UpgradeModal = ({
   open,
   client,
   currentPlan,
+  initialPlan,
   onClose,
   onUpgrade,
   loading,
@@ -893,15 +895,15 @@ const UpgradeModal = ({
           secondary: C.text.secondary,
         },
       };
-  const [selectedPlan, setSelectedPlan] = useState(currentPlan);
+  const [selectedPlan, setSelectedPlan] = useState(initialPlan || currentPlan);
   const [extendDays, setExtendDays] = useState(30);
 
   useEffect(() => {
     if (open) {
-      setSelectedPlan(currentPlan);
+      setSelectedPlan(initialPlan || currentPlan);
       setExtendDays(30);
     }
-  }, [open, currentPlan]);
+  }, [open, currentPlan, initialPlan]);
 
   const handleSubmit = () => {
     onUpgrade(selectedPlan, extendDays);
@@ -953,7 +955,7 @@ const UpgradeModal = ({
               onChange={(e) => setSelectedPlan(e.target.value)}
               label="Select New Plan"
             >
-              {Object.entries(PLANS).map(([k, v]) => (
+              {Object.entries(PLANS).filter(([k]) => k !== currentPlan).map(([k, v]) => (
                 <MenuItem key={k} value={k}>
                   <Box
                     sx={{
@@ -994,7 +996,7 @@ const UpgradeModal = ({
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={loading}
+          disabled={loading || !selectedPlan || selectedPlan === currentPlan}
           sx={{
             bgcolor: C.warning,
             textTransform: "none",
@@ -1281,7 +1283,7 @@ export default function ClientDetails() {
     changeClientStatus,
     renewClientMembership,
   } = useClient();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, authRequest } = useAuth();
 
   const clientId = id || location.state?.clientId;
   const canManageCustomers =
@@ -1297,6 +1299,7 @@ export default function ClientDetails() {
   const [editOpen, setEditOpen] = useState(false);
   const [renewOpen, setRenewOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [selectedUpgradeRequest, setSelectedUpgradeRequest] = useState(null);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [toast, setToast] = useState({
     open: false,
@@ -1305,15 +1308,94 @@ export default function ClientDetails() {
   });
   const [fetchError, setFetchError] = useState(null);
   const [isFetching, setIsFetching] = useState(true);
+  const [upgradeRequests, setUpgradeRequests] = useState([]);
+  const [clientAssets, setClientAssets] = useState([]);
+  const [clientAssetsTotal, setClientAssetsTotal] = useState(0);
+  const [assetsLoading, setAssetsLoading] = useState(false);
+  const [assetsError, setAssetsError] = useState(null);
+  const [selectedAssetId, setSelectedAssetId] = useState(null);
 
   const showToast = useCallback((msg, sev = "success") => {
     setToast({ open: true, message: msg, severity: sev });
   }, []);
 
+  const loadUpgradeRequests = useCallback(async () => {
+    if (user?.role !== "super_admin" || !clientId) {
+      setUpgradeRequests([]);
+      return;
+    }
+    try {
+      const response = await authRequest(
+        "get",
+        `/clients/upgrade-requests?adminId=${clientId}`,
+      );
+      setUpgradeRequests(response?.data?.requests || response?.requests || []);
+    } catch (err) {
+      setUpgradeRequests([]);
+    }
+  }, [authRequest, clientId, user?.role]);
+
+  useEffect(() => {
+    loadUpgradeRequests();
+    window.addEventListener("assetmach-upgrade-request-created", loadUpgradeRequests);
+    return () =>
+      window.removeEventListener("assetmach-upgrade-request-created", loadUpgradeRequests);
+  }, [loadUpgradeRequests]);
+
+  const loadClientAssets = useCallback(async () => {
+    if (!clientId || !isAuthenticated || !canManageCustomers) {
+      setClientAssets([]);
+      setClientAssetsTotal(0);
+      return;
+    }
+
+    setAssetsLoading(true);
+    setAssetsError(null);
+    try {
+      const params = new URLSearchParams({
+        adminId: clientId,
+        page: "1",
+        limit: "500",
+        sortBy: "createdAt",
+        sortOrder: "desc",
+      });
+      const response = await authRequest("get", `/assets?${params.toString()}`);
+      const assets = response?.assets || response?.data?.assets || [];
+      const total =
+        response?.pagination?.total ||
+        response?.data?.pagination?.total ||
+        assets.length;
+      setClientAssets(Array.isArray(assets) ? assets : []);
+      setClientAssetsTotal(total);
+      setSelectedAssetId((current) => {
+        if (current && assets.some((asset) => (asset._id || asset.id) === current)) {
+          return current;
+        }
+        return assets[0]?._id || assets[0]?.id || null;
+      });
+    } catch (err) {
+      setClientAssets([]);
+      setClientAssetsTotal(0);
+      setAssetsError(fmtErr(err));
+    } finally {
+      setAssetsLoading(false);
+    }
+  }, [authRequest, canManageCustomers, clientId, isAuthenticated]);
+
   const showPermissionToast = useCallback(
     (action) => showToast(`You don't have permission to ${action}`, "error"),
     [showToast],
   );
+
+  const openUpgradeFromRequest = useCallback((request) => {
+    setSelectedUpgradeRequest(request);
+    setUpgradeOpen(true);
+  }, []);
+
+  const closeUpgradeModal = useCallback(() => {
+    setUpgradeOpen(false);
+    setSelectedUpgradeRequest(null);
+  }, []);
 
   const closeToast = useCallback(() => {
     setToast((p) => ({ ...p, open: false }));
@@ -1376,6 +1458,33 @@ export default function ClientDetails() {
   const usagePct =
     limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const expiring = daysLeft > 0 && daysLeft <= 7;
+  const clientUpgradeRequests = upgradeRequests.filter((request) => {
+    const clientIds = [client?._id, client?.id].filter(Boolean).map(String);
+    const requestAdminId =
+      typeof request.admin === "string"
+        ? request.admin
+        : request.admin?._id || request.admin?.id || request.adminId;
+    return (
+      clientIds.includes(String(requestAdminId || "")) ||
+      String(request.email || "").toLowerCase() === String(client?.email || "").toLowerCase()
+    );
+  });
+  const showUpgradeRequestTab =
+    user?.role === "super_admin" && clientUpgradeRequests.length > 0;
+  const getAssetName = (asset) =>
+    asset?.assetName || asset?.name || asset?.assetId || "Untitled Asset";
+  const getAssetMeta = (asset) =>
+    [
+      asset?.assetId,
+      asset?.tagNumber,
+      asset?.assetCategoryId?.name || asset?.category?.name,
+    ]
+      .filter(Boolean)
+      .join(" • ");
+  const selectedClientAsset =
+    clientAssets.find((asset) => (asset._id || asset.id) === selectedAssetId) ||
+    clientAssets[0] ||
+    null;
 
   const handleEdit = async (formData) => {
     if (!canEditAdmins) {
@@ -1417,8 +1526,9 @@ export default function ClientDetails() {
       showToast(
         `Upgraded to ${newPlan.charAt(0).toUpperCase() + newPlan.slice(1)} plan!`,
       );
-      setUpgradeOpen(false);
+      closeUpgradeModal();
       await loadData();
+      await loadUpgradeRequests();
     } catch (e) {
       showToast(fmtErr(e), "error");
     }
@@ -1519,9 +1629,17 @@ export default function ClientDetails() {
   const TABS = [
     { icon: DashboardIcon, label: "Overview" },
     ...(showPlanLimits ? [{ icon: SubscriptionIcon, label: "Subscription" }] : []),
+    ...(showUpgradeRequestTab
+      ? [{ icon: WorkspacePremiumIcon, label: "Upgrade Plan Request" }]
+      : []),
     { icon: SettingsIcon, label: "Settings" },
   ];
-  const settingsTabIndex = showPlanLimits ? 2 : 1;
+  const upgradeRequestsTabIndex = showUpgradeRequestTab
+    ? TABS.findIndex((item) => item.label === "Upgrade Plan Request")
+    : -1;
+  const settingsTabIndex = TABS.findIndex((item) => item.label === "Settings");
+  const assetsTabIndex = -1;
+  const currentTab = tab >= TABS.length ? 0 : tab;
 
   return (
     <Box sx={{ bgcolor: pageColors.surface, minHeight: "100vh" }}>
@@ -1754,17 +1872,6 @@ export default function ClientDetails() {
           </Box>
           <Box sx={{ minWidth: 0 }}>
             <StatTile
-              icon={InventoryIcon}
-              label="Assets"
-              value={client?.stats?.assets || 0}
-              sub="total managed"
-              color={C.warning}
-              loading={isFetching}
-              palette={pageColors}
-            />
-          </Box>
-          <Box sx={{ minWidth: 0 }}>
-            <StatTile
               icon={TrendingUpIcon}
               label="Submissions"
               value={client?.stats?.submissions || 0}
@@ -1779,7 +1886,7 @@ export default function ClientDetails() {
 
       {/* Tab Bar */}
       <Box sx={{ bgcolor: pageColors.header, borderBottom: `1px solid ${pageColors.border}` }}>
-        <Box sx={{ display: "flex", px: { xs: 2, sm: 3 } }}>
+        <Box sx={{ display: "flex", px: { xs: 2, sm: 3 }, overflowX: "auto" }}>
           {TABS.map((t, i) => (
             <Button
               key={i}
@@ -1789,10 +1896,10 @@ export default function ClientDetails() {
                 py: 1.5,
                 px: { xs: 1.5, sm: 2.5 },
                 textTransform: "none",
-                fontWeight: tab === i ? 700 : 500,
-                color: tab === i ? C.primary : pageColors.text.secondary,
+                fontWeight: currentTab === i ? 700 : 500,
+                color: currentTab === i ? C.primary : pageColors.text.secondary,
                 borderBottom: "2px solid",
-                borderColor: tab === i ? C.primary : "transparent",
+                borderColor: currentTab === i ? C.primary : "transparent",
                 minWidth: "auto",
                 gap: 0.75,
                 "&:hover": { bgcolor: "transparent", color: C.primary },
@@ -1810,7 +1917,7 @@ export default function ClientDetails() {
       {/* Tab Content */}
       <Box sx={{ p: { xs: 2, sm: 3 } }}>
         {/* Overview Tab */}
-        {tab === 0 && (
+        {currentTab === 0 && (
           <Box
             sx={{
               display: "grid",
@@ -1978,7 +2085,7 @@ export default function ClientDetails() {
         )}
 
         {/* Subscription Tab */}
-        {showPlanLimits && tab === 1 && (
+        {showPlanLimits && currentTab === 1 && (
           <Box
             sx={{
               display: "grid",
@@ -2092,7 +2199,10 @@ export default function ClientDetails() {
                       startIcon={
                         <TrendingUpIcon sx={{ fontSize: "0.85rem" }} />
                       }
-                      onClick={() => setUpgradeOpen(true)}
+                      onClick={() => {
+                        setSelectedUpgradeRequest(null);
+                        setUpgradeOpen(true);
+                      }}
                       disabled={actionLoading}
                       sx={{
                         bgcolor: C.warning,
@@ -2189,8 +2299,212 @@ export default function ClientDetails() {
           </Box>
         )}
 
+        {/* Upgrade Plan Request Tab */}
+        {showUpgradeRequestTab && currentTab === upgradeRequestsTabIndex && (
+          <Card
+            sx={{
+              borderRadius: 2,
+              border: `1px solid ${pageColors.border}`,
+              bgcolor: pageColors.card,
+            }}
+            elevation={0}
+          >
+            <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 2,
+                  flexWrap: "wrap",
+                  mb: 2,
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                  <Box
+                    sx={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: "12px",
+                      bgcolor: isDark ? "rgba(245, 158, 11, 0.16)" : "#fef3c7",
+                      color: isDark ? "#fbbf24" : "#b45309",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    <WorkspacePremiumIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontWeight: 800, fontSize: "0.9rem", color: C.text.primary }}>
+                      Upgrade Plan Request
+                    </Typography>
+                    <Typography sx={{ fontSize: "0.72rem", color: C.text.secondary }}>
+                      Requests submitted from the admin navbar upgrade form
+                    </Typography>
+                  </Box>
+                </Box>
+                <Chip
+                  label={`${clientUpgradeRequests.length} request${clientUpgradeRequests.length === 1 ? "" : "s"}`}
+                  size="small"
+                  sx={{
+                    bgcolor: isDark ? "rgba(31, 182, 207, 0.16)" : "#fef3c7",
+                    color: isDark ? "#67e8f9" : "#92400e",
+                    fontWeight: 800,
+                  }}
+                />
+              </Box>
+
+              {clientUpgradeRequests.length === 0 ? (
+                <Box
+                  sx={{
+                    p: 3,
+                    borderRadius: 2,
+                    bgcolor: isDark ? "rgba(15, 28, 46, 0.78)" : C.surface,
+                    textAlign: "center",
+                  }}
+                >
+                  <Typography sx={{ fontWeight: 700, color: C.text.primary, mb: 0.5 }}>
+                    No upgrade requests yet
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.78rem", color: C.text.secondary }}>
+                    Submitted upgrade form details for this customer will appear here.
+                  </Typography>
+                </Box>
+              ) : (
+                <Stack spacing={1.5}>
+                  {clientUpgradeRequests.map((request) => {
+                    const requestedPlan = String(request.requestedPlan || "").toLowerCase();
+                    const isRequestUpgraded =
+                      request.status === "upgraded" ||
+                      (requestedPlan &&
+                        String(client?.membershipPlan || "").toLowerCase() === requestedPlan);
+
+                    return (
+                    <Box
+                      key={request._id || request.id}
+                      sx={{
+                        p: { xs: 1.5, sm: 2 },
+                        borderRadius: 2,
+                        border: `1px solid ${pageColors.border}`,
+                        bgcolor: isDark ? "rgba(15, 28, 46, 0.78)" : "#fff",
+                      }}
+                    >
+                      <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1.5} flexWrap="wrap" sx={{ mb: 1.5 }}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Chip
+                            label={String(request.currentPlan || "free").toUpperCase()}
+                            size="small"
+                            sx={{
+                              bgcolor: isDark ? "rgba(31, 182, 207, 0.12)" : undefined,
+                              color: isDark ? "#67e8f9" : undefined,
+                              fontWeight: 800,
+                            }}
+                          />
+                          <Typography sx={{ color: C.text.muted, fontWeight: 800 }}>to</Typography>
+                          <Chip
+                            label={String(request.requestedPlan || "").toUpperCase()}
+                            size="small"
+                            sx={{
+                              bgcolor: isDark ? "rgba(31, 182, 207, 0.16)" : "#fef3c7",
+                              color: isDark ? "#67e8f9" : "#92400e",
+                              fontWeight: 900,
+                            }}
+                          />
+                          <Chip
+                            label={isRequestUpgraded ? "Upgraded" : "Pending Approval"}
+                            size="small"
+                            sx={{
+                              bgcolor: isRequestUpgraded
+                                ? isDark
+                                  ? "rgba(16, 185, 129, 0.16)"
+                                  : "#dcfce7"
+                                : isDark
+                                  ? "rgba(31, 182, 207, 0.16)"
+                                  : "#e0f2fe",
+                              color: isRequestUpgraded
+                                ? isDark
+                                  ? "#34d399"
+                                  : "#166534"
+                                : isDark
+                                  ? "#67e8f9"
+                                  : "#075985",
+                              fontWeight: 900,
+                            }}
+                          />
+                        </Stack>
+                        <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
+                          {!isRequestUpgraded && request.status === "pending_approval" && (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              startIcon={<TrendingUpIcon sx={{ fontSize: 16 }} />}
+                              onClick={() => openUpgradeFromRequest(request)}
+                              disabled={actionLoading}
+                              sx={{
+                                bgcolor: C.warning,
+                                color: "#fff",
+                                textTransform: "none",
+                                fontWeight: 800,
+                                borderRadius: "8px",
+                                px: 1.5,
+                                py: 0.5,
+                                "&:hover": { bgcolor: "#ea580c" },
+                              }}
+                            >
+                              Upgrade
+                            </Button>
+                          )}
+                          <Typography sx={{ fontSize: "0.7rem", color: C.text.muted }}>
+                            {request.createdAt ? new Date(request.createdAt).toLocaleString("en-IN") : "Date unavailable"}
+                          </Typography>
+                        </Stack>
+                      </Stack>
+
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" },
+                          gap: 1.5,
+                          mb: request.message ? 1.5 : 0,
+                        }}
+                      >
+                        {[
+                          ["Admin Name", request.adminName],
+                          ["Email", request.email],
+                          ["Phone", request.phone],
+                        ].map(([label, value]) => (
+                          <Box key={label}>
+                            <Typography sx={{ fontSize: "0.65rem", color: C.text.muted, fontWeight: 700, mb: 0.25 }}>
+                              {label}
+                            </Typography>
+                            <Typography sx={{ fontSize: "0.78rem", color: C.text.primary, fontWeight: 700, wordBreak: "break-word" }}>
+                              {value || "-"}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+
+                      {request.message && (
+                        <Box sx={{ p: 1.25, borderRadius: 1.5, bgcolor: isDark ? "rgba(2, 6, 23, 0.35)" : C.surface }}>
+                          <Typography sx={{ fontSize: "0.65rem", color: C.text.muted, fontWeight: 700, mb: 0.35 }}>
+                            Message
+                          </Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: C.text.secondary, lineHeight: 1.5 }}>
+                            {request.message}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                    );
+                  })}
+                </Stack>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Settings Tab */}
-        {tab === settingsTabIndex && (
+        {currentTab === settingsTabIndex && (
           <Card
             sx={{ borderRadius: 2, border: `1px solid ${C.border}` }}
             elevation={0}
@@ -2303,6 +2617,217 @@ export default function ClientDetails() {
             </CardContent>
           </Card>
         )}
+
+        {/* Assets Tab */}
+        {currentTab === assetsTabIndex && (
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "360px minmax(0, 1fr)" },
+              gap: 2,
+              alignItems: "start",
+            }}
+          >
+            <Card sx={{ borderRadius: 2, border: `1px solid ${C.border}`, overflow: "hidden" }} elevation={0}>
+              <Box
+                sx={{
+                  px: 2,
+                  py: 1.5,
+                  bgcolor: "#15576A",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1,
+                }}
+              >
+                <Typography sx={{ fontWeight: 800, fontSize: "0.82rem" }}>
+                  Created Assets
+                </Typography>
+                <Chip
+                  label={clientAssetsTotal || clientAssets.length}
+                  size="small"
+                  sx={{
+                    height: 22,
+                    bgcolor: "rgba(255,255,255,0.18)",
+                    color: "#fff",
+                    fontWeight: 800,
+                  }}
+                />
+              </Box>
+
+              <Box sx={{ bgcolor: "#1f1d23", color: "#fff", py: 0.75, maxHeight: 460, overflowY: "auto" }}>
+                {assetsLoading ? (
+                  <Stack spacing={0.75} sx={{ p: 1.25 }}>
+                    {[...Array(7)].map((_, index) => (
+                      <Skeleton
+                        key={index}
+                        variant="rounded"
+                        height={36}
+                        sx={{ bgcolor: "rgba(255,255,255,0.12)" }}
+                      />
+                    ))}
+                  </Stack>
+                ) : assetsError ? (
+                  <Box sx={{ p: 2 }}>
+                    <Typography sx={{ color: "#fecaca", fontSize: "0.78rem", fontWeight: 700 }}>
+                      Failed to load assets
+                    </Typography>
+                    <Typography sx={{ color: "rgba(255,255,255,0.62)", fontSize: "0.7rem", mt: 0.35 }}>
+                      {assetsError}
+                    </Typography>
+                  </Box>
+                ) : clientAssets.length === 0 ? (
+                  <Box sx={{ p: 2.5, textAlign: "center" }}>
+                    <InventoryIcon sx={{ color: "rgba(255,255,255,0.35)", mb: 1 }} />
+                    <Typography sx={{ color: "#fff", fontSize: "0.8rem", fontWeight: 800 }}>
+                      No assets created
+                    </Typography>
+                    <Typography sx={{ color: "rgba(255,255,255,0.58)", fontSize: "0.7rem", mt: 0.35 }}>
+                      Assets created by {client?.customerName || "this account"} will appear here.
+                    </Typography>
+                  </Box>
+                ) : (
+                  clientAssets.map((asset, index) => {
+                    const assetId = asset._id || asset.id;
+                    const selected = assetId === (selectedClientAsset?._id || selectedClientAsset?.id);
+                    const colors = ["#6d45d9", "#ff5538", "#16a3b8", "#1ca89f", "#64748b", "#b455d9", "#4b7180", "#0889cf"];
+
+                    return (
+                      <Box
+                        key={assetId || index}
+                        onClick={() => setSelectedAssetId(assetId)}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1.25,
+                          px: 2,
+                          py: 1,
+                          cursor: "pointer",
+                          bgcolor: selected ? "#3a383d" : "transparent",
+                          "&:hover": { bgcolor: selected ? "#3a383d" : "rgba(255,255,255,0.06)" },
+                        }}
+                      >
+                        <Avatar
+                          sx={{
+                            width: 22,
+                            height: 22,
+                            bgcolor: colors[index % colors.length],
+                            color: "#fff",
+                            fontSize: "0.62rem",
+                            fontWeight: 800,
+                          }}
+                        >
+                          {initials(getAssetName(asset)).slice(0, 1)}
+                        </Avatar>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography sx={{ color: "#fff", fontSize: "0.82rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {getAssetName(asset)}
+                          </Typography>
+                          {getAssetMeta(asset) && (
+                            <Typography sx={{ color: "rgba(255,255,255,0.55)", fontSize: "0.62rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {getAssetMeta(asset)}
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
+                    );
+                  })
+                )}
+              </Box>
+            </Card>
+
+            <Card sx={{ borderRadius: 2, border: `1px solid ${C.border}` }} elevation={0}>
+              <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                {selectedClientAsset ? (
+                  <>
+                    <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={2} sx={{ mb: 2.5 }}>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 800, fontSize: "1rem", color: C.text.primary, wordBreak: "break-word" }}>
+                          {getAssetName(selectedClientAsset)}
+                        </Typography>
+                        <Typography sx={{ color: C.text.secondary, fontSize: "0.75rem", mt: 0.35 }}>
+                          {selectedClientAsset.assetId || selectedClientAsset.tagNumber || "Asset details"}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={selectedClientAsset.status || "Unknown"}
+                        size="small"
+                        sx={{
+                          bgcolor: selectedClientAsset.status === "Active" ? "#dcfce7" : "#f1f5f9",
+                          color: selectedClientAsset.status === "Active" ? "#166534" : C.text.secondary,
+                          fontWeight: 800,
+                        }}
+                      />
+                    </Stack>
+
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+                        gap: 1.5,
+                      }}
+                    >
+                      {[
+                        ["Tag Number", selectedClientAsset.tagNumber || "-"],
+                        ["Serial Number", selectedClientAsset.serialNumber || "-"],
+                        ["Category", selectedClientAsset.assetCategoryId?.name || selectedClientAsset.category?.name || "-"],
+                        ["Location", selectedClientAsset.currentLocation || "-"],
+                        ["Condition", selectedClientAsset.assetCondition || selectedClientAsset.condition || "-"],
+                        ["Created", fmtDate(selectedClientAsset.createdAt)],
+                      ].map(([label, value]) => (
+                        <Box
+                          key={label}
+                          sx={{
+                            p: 1.5,
+                            borderRadius: 1.5,
+                            bgcolor: isDark ? "rgba(15, 28, 46, 0.78)" : C.surface,
+                            border: `1px solid ${pageColors.border}`,
+                            minWidth: 0,
+                          }}
+                        >
+                          <Typography sx={{ fontSize: "0.65rem", color: C.text.muted, fontWeight: 800, textTransform: "uppercase", mb: 0.4 }}>
+                            {label}
+                          </Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: C.text.primary, fontWeight: 700, wordBreak: "break-word" }}>
+                            {value}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+
+                      {/* <Button
+                        variant="outlined"
+                        size="small"
+                        endIcon={<OpenInNewIcon sx={{ fontSize: 15 }} />}
+                        onClick={() => nav(`/admin/assets/view/${selectedClientAsset._id || selectedClientAsset.id}`)}
+                        sx={{
+                          mt: 2,
+                          borderRadius: "8px",
+                          textTransform: "none",
+                          fontWeight: 700,
+                          color: C.primary,
+                          borderColor: C.primary,
+                        }}
+                      >
+                        View Asset
+                      </Button> */}
+                  </>
+                ) : (
+                  <Box sx={{ py: 6, textAlign: "center" }}>
+                    <InventoryIcon sx={{ fontSize: 36, color: C.text.muted, mb: 1 }} />
+                    <Typography sx={{ fontWeight: 800, color: C.text.primary }}>
+                      Select an asset
+                    </Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: C.text.secondary, mt: 0.35 }}>
+                      Asset details will appear here.
+                    </Typography>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </Box>
+        )}
       </Box>
 
       {/* Modals */}
@@ -2326,8 +2851,9 @@ export default function ClientDetails() {
       <UpgradeModal
         open={upgradeOpen}
         client={client}
-        currentPlan={client?.membershipPlan}
-        onClose={() => setUpgradeOpen(false)}
+        currentPlan={selectedUpgradeRequest?.currentPlan || client?.membershipPlan}
+        initialPlan={selectedUpgradeRequest?.requestedPlan}
+        onClose={closeUpgradeModal}
         onUpgrade={handleUpgrade}
         loading={actionLoading}
       />

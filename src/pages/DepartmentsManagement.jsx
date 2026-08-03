@@ -402,6 +402,50 @@ export default function DepartmentManagement() {
   });
   
   const debounceTimerRef = useRef(null);
+  const getStatAccent = (color) => {
+    if (!isDark) return color;
+    if (color === ACCENT) return "#1fb6cf";
+    if (color === C.text.muted) return "#cbd5e1";
+    return color;
+  };
+  const getStatCardSx = (color, isActive, extra = {}) => {
+    const accent = getStatAccent(color);
+
+    return {
+      position: "relative",
+      overflow: "hidden",
+      borderRadius: "14px",
+      border: "1px solid",
+      borderColor: isActive ? `${accent} !important` : "divider",
+      bgcolor: isActive ? `${alpha(accent, isDark ? 0.16 : 0.08)} !important` : undefined,
+      cursor: "pointer",
+      boxShadow: isActive
+        ? `inset 0 0 0 1px ${accent}, 0 18px 40px ${alpha(accent, isDark ? 0.22 : 0.16)}`
+        : "none",
+      outline: isActive ? `3px solid ${accent}` : "none",
+      outlineOffset: "-3px",
+      transition: "all 0.2s",
+      "&::before": isActive
+        ? {
+            content: '""',
+            position: "absolute",
+            inset: "0 auto 0 0",
+            width: 5,
+            bgcolor: accent,
+          }
+        : undefined,
+      "&:hover": {
+        transform: "translateY(-2px)",
+        borderColor: `${accent} !important`,
+        boxShadow: `0 8px 20px ${alpha(accent, isDark ? 0.24 : 0.14)}`,
+      },
+      "&:focus-visible": {
+        outline: `2px solid ${accent}`,
+        outlineOffset: 2,
+      },
+      ...extra,
+    };
+  };
 
   const showToast = useCallback(
     (msg, sev = "success") =>
@@ -684,28 +728,16 @@ export default function DepartmentManagement() {
               }}
               elevation={0}
               sx={{
-                borderRadius: "14px",
-                gridColumn: s.filter === "inactive"
-                  ? { xs: "1 / -1", sm: "auto" }
-                  : "auto",
-                border: `1px solid ${
-                  departmentStatFilter === s.filter ? s.color : C.border
-                }`,
-                cursor: "pointer",
-                boxShadow:
-                  departmentStatFilter === s.filter
-                    ? `0 6px 16px ${alpha(s.color, 0.16)}`
-                    : "none",
-                transition: "all 0.2s",
-                "&:hover": {
-                  transform: "translateY(-2px)",
-                  borderColor: s.color,
-                  boxShadow: `0 4px 12px ${alpha(s.color, 0.1)}`,
-                },
-                "&:focus-visible": {
-                  outline: `2px solid ${s.color}`,
-                  outlineOffset: 2,
-                },
+                ...getStatCardSx(
+                  s.color,
+                  departmentStatFilter === s.filter,
+                  {
+                    gridColumn:
+                      s.filter === "inactive"
+                        ? { xs: "1 / -1", sm: "auto" }
+                        : "auto",
+                  },
+                ),
               }}
             >
               <CardContent sx={{ p: 2.5 }}>
@@ -734,14 +766,14 @@ export default function DepartmentManagement() {
                       height: 32,
                       borderRadius: "10px",
                       bgcolor: isDark
-                        ? alpha(s.color === C.text.muted ? "#cbd5e1" : s.color, 0.18)
+                        ? alpha(getStatAccent(s.color), 0.18)
                         : alpha(s.color, 0.1),
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       border: `1px solid ${
                         isDark
-                          ? alpha(s.color === C.text.muted ? "#cbd5e1" : s.color, 0.28)
+                          ? alpha(getStatAccent(s.color), 0.28)
                           : "transparent"
                       }`,
                     }}
@@ -750,9 +782,7 @@ export default function DepartmentManagement() {
                       sx={{
                         fontSize: 16,
                         color: isDark
-                          ? s.color === C.text.muted
-                            ? "#cbd5e1"
-                            : s.color
+                          ? getStatAccent(s.color)
                           : s.color,
                       }}
                     />

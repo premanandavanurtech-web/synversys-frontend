@@ -50,6 +50,7 @@ import {
 import { useAuth } from "../context/AuthContexts";
 import { useAssignment } from "../context/AssignmentContext";
 import { useAsset } from "../context/AssetContext";
+import { usePreferences } from "../context/PreferencesContext";
 import axios from "axios";
 
 // ── brand tokens ──────────────────────────────────────────────────────────────
@@ -476,6 +477,7 @@ const AssignmentModal = ({
   const modalFooter = isDark ? "#0b1626" : "#fafafa";
   const selectedSummaryBg = isDark ? "rgba(20, 76, 92, 0.2)" : BG_LIGHT;
   const { user, token } = useAuth();
+  const { formatDate } = usePreferences();
   const {
     assignToAdmin,
     assignToTeam,
@@ -521,6 +523,7 @@ const AssignmentModal = ({
   const [selAssets, setSelAssets] = useState([]);
   const [selRecips, setSelRecips] = useState([]);
   const [dueDate, setDueDate] = useState(tomorrow());
+  const dueDatePickerRef = useRef(null);
   const [priority, setPriority] = useState("medium");
   const [notes, setNotes] = useState("");
   const [submitError, setSubmitError] = useState("");
@@ -959,12 +962,44 @@ const AssignmentModal = ({
         </Typography>
         <TextField
           fullWidth
-          type="date"
+          type="text"
           size="small"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          inputProps={{ min: new Date().toISOString().split("T")[0] }}
+          value={formatDate(dueDate)}
+          onClick={() => dueDatePickerRef.current?.showPicker?.()}
+          InputProps={{
+            readOnly: true,
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    dueDatePickerRef.current?.showPicker?.();
+                    dueDatePickerRef.current?.focus();
+                  }}
+                >
+                  <ScheduleIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
           sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+        />
+        <input
+          ref={dueDatePickerRef}
+          type="date"
+          value={dueDate}
+          min={new Date().toISOString().split("T")[0]}
+          onChange={(e) => setDueDate(e.target.value)}
+          style={{
+            position: "absolute",
+            width: 1,
+            height: 1,
+            opacity: 0,
+            pointerEvents: "none",
+          }}
+          aria-hidden="true"
+          tabIndex={-1}
         />
       </Box>
 

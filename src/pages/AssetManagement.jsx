@@ -1,7 +1,7 @@
 // src/pages/AssetManagement.jsx
 // ── Pixel-faithful recreation of the screenshot ──────────────────────────────
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -26,6 +26,7 @@ import {
   Tooltip,
   Checkbox,
   Pagination,
+  Portal,
   Skeleton,
   Alert,
   Snackbar,
@@ -707,6 +708,7 @@ const downloadCsv = (rows, filename) => {
 
 export default function AssetManagement() {
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user } = useAuth();
@@ -772,6 +774,14 @@ export default function AssetManagement() {
   const toast = (msg, sev = "success") =>
     setSnackbar({ open: true, message: msg, severity: sev });
   const allCategoriesRef = useRef(new Map());
+
+  useEffect(() => {
+    const routeToast = location.state?.toast;
+    if (!routeToast?.message) return;
+
+    toast(routeToast.message, routeToast.severity || "success");
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   // ── Debounce search ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -999,9 +1009,13 @@ export default function AssetManagement() {
     setPage(0);
   };
   const handleViewAsset = (a) =>
-    navigate(`/admin/assets/view/${a.id || a._id}`);
+    navigate(`/admin/assets/view/${a.id || a._id}`, {
+      state: { from: `${location.pathname}${location.search}${location.hash}` },
+    });
   const handleEditAsset = (a) =>
-    navigate(`/admin/assets/edit/${a.id || a._id}`);
+    navigate(`/admin/assets/edit/${a.id || a._id}`, {
+      state: { from: `${location.pathname}${location.search}${location.hash}` },
+    });
 
   const openPortfolioDialog = (asset) => {
     if (!canViewPortfolio) return;
@@ -3172,23 +3186,40 @@ export default function AssetManagement() {
       </Dialog>
 
       {/* ── Snackbar ── */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert
-          severity={snackbar.severity}
+      <Portal>
+        <Snackbar
+          key={`${snackbar.severity}-${snackbar.message}`}
+          open={snackbar.open}
+          autoHideDuration={4000}
           onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
+          anchorOrigin={{ vertical: "top", horizontal: isMobile ? "center" : "right" }}
           sx={{
-            borderRadius: "10px",
-            fontSize: "0.82rem",
-            boxShadow: T.shadowMd,
+            zIndex: (theme) => theme.zIndex.tooltip + 1000,
+            position: "fixed",
+            top: { xs: "calc(env(safe-area-inset-top, 0px) + 12px)", sm: 24 },
+            left: { xs: 12, sm: "auto" },
+            right: { xs: 12, sm: 24 },
+            width: { xs: "auto", sm: "auto" },
+            alignItems: { xs: "stretch", sm: "flex-end" },
           }}
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+          <Alert
+            severity={snackbar.severity}
+            variant="filled"
+            onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
+            sx={{
+              borderRadius: "10px",
+              fontSize: "0.82rem",
+              boxShadow: T.shadowMd,
+              width: { xs: "100%", sm: "auto" },
+              alignItems: "center",
+              color: "#fff",
+            }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Portal>
     </Box>
   );
 }

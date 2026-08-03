@@ -27,6 +27,13 @@ import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import { useAuth } from "../context/AuthContexts";
+import {
+  DATE_FORMAT_OPTIONS,
+  LANGUAGE_OPTIONS,
+  TIMEZONE_OPTIONS,
+  DEFAULT_PREFERENCES,
+  usePreferences,
+} from "../context/PreferencesContext";
 
 const settingsTabs = [
   // {
@@ -205,7 +212,12 @@ function SettingsCard({ children }) {
 export default function Settings() {
   const theme = useTheme();
   const { post } = useAuth();
+  const { preferences, savePreferences } = usePreferences();
   const [activeTab, setActiveTab] = useState("security");
+  const [preferenceForm, setPreferenceForm] = useState(() => ({
+    ...DEFAULT_PREFERENCES,
+    ...preferences,
+  }));
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -230,6 +242,10 @@ export default function Settings() {
     () => settingsTabs.find((tab) => tab.id === activeTab) || settingsTabs[0],
     [activeTab],
   );
+
+  React.useEffect(() => {
+    setPreferenceForm({ ...DEFAULT_PREFERENCES, ...preferences });
+  }, [preferences]);
 
   const passwordFields = [
     ["currentPassword", "Current Password", "Enter current password"],
@@ -257,7 +273,23 @@ export default function Settings() {
     showNotice("success", `${mode[0].toUpperCase()}${mode.slice(1)} mode applied.`);
   };
 
+  const handlePreferenceChange = (field) => (event) => {
+    const nextPreferences = { ...preferenceForm, [field]: event.target.value };
+    setPreferenceForm(nextPreferences);
+  };
+
   const handleSaveChanges = async () => {
+    if (activeTab === "preferences") {
+      setSaving(true);
+      const result = await savePreferences(preferenceForm);
+      setSaving(false);
+      showNotice(
+        result.success ? "success" : "error",
+        result.success ? "Preferences applied across the app." : result.error,
+      );
+      return;
+    }
+
     if (activeTab !== "security") {
       showNotice("success", "Settings saved successfully.");
       return;
@@ -482,16 +514,25 @@ export default function Settings() {
             <SettingsCard>
               <SectionHeader icon={activeConfig.icon} title="Preferences" subtitle="Customize your experience" />
               {[
-                ["Language", "English"],
-                ["Timezone", "Eastern Time (EST)"],
-                ["Date Format", "MM/DD/YYYY"],
-              ].map(([label, value]) => (
+                ["Language", "language", LANGUAGE_OPTIONS],
+                ["Timezone", "timezone", TIMEZONE_OPTIONS],
+                ["Date Format", "dateFormat", DATE_FORMAT_OPTIONS],
+              ].map(([label, field, options]) => (
                 <Box key={label} sx={{ mb: 2.5 }}>
                   <Typography sx={{ fontWeight: 600, mb: 1, fontSize: 14 }}>
                     {label}
                   </Typography>
-                  <Select value={value} fullWidth size="small">
-                    <MenuItem value={value}>{value}</MenuItem>
+                  <Select
+                    value={preferenceForm[field]}
+                    onChange={handlePreferenceChange(field)}
+                    fullWidth
+                    size="small"
+                  >
+                    {options.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </Box>
               ))}
