@@ -1382,6 +1382,15 @@ export default function ClientDetails() {
     }
   }, [authRequest, canManageCustomers, clientId, isAuthenticated]);
 
+  // FIX: actually trigger the asset fetch. Previously this function was defined
+  // but never called anywhere, so clientAssets/clientAssetsTotal stayed empty.
+  useEffect(() => {
+    loadClientAssets();
+    window.addEventListener("assetmach-asset-created", loadClientAssets);
+    return () =>
+      window.removeEventListener("assetmach-asset-created", loadClientAssets);
+  }, [loadClientAssets]);
+
   const showPermissionToast = useCallback(
     (action) => showToast(`You don't have permission to ${action}`, "error"),
     [showToast],
@@ -1626,9 +1635,12 @@ export default function ClientDetails() {
     );
   }
 
+  // FIX: added an "Assets" tab entry (was completely missing from TABS,
+  // so there was no button to click and no way to view assetsTabIndex content).
   const TABS = [
     { icon: DashboardIcon, label: "Overview" },
     ...(showPlanLimits ? [{ icon: SubscriptionIcon, label: "Subscription" }] : []),
+    { icon: InventoryIcon, label: "Assets" },
     ...(showUpgradeRequestTab
       ? [{ icon: WorkspacePremiumIcon, label: "Upgrade Plan Request" }]
       : []),
@@ -1638,7 +1650,9 @@ export default function ClientDetails() {
     ? TABS.findIndex((item) => item.label === "Upgrade Plan Request")
     : -1;
   const settingsTabIndex = TABS.findIndex((item) => item.label === "Settings");
-  const assetsTabIndex = -1;
+  // FIX: was hardcoded to -1, which made the Assets tab content unreachable
+  // even after adding the tab button above. Now computed like the other tabs.
+  const assetsTabIndex = TABS.findIndex((item) => item.label === "Assets");
   const currentTab = tab >= TABS.length ? 0 : tab;
 
   return (
@@ -1878,6 +1892,21 @@ export default function ClientDetails() {
               sub="all time"
               color={C.success}
               loading={isFetching}
+              palette={pageColors}
+            />
+          </Box>
+          {/* FIX: Assets stat tile was missing even though the grid reserved
+              a 4th column for it. Now wired to clientAssetsTotal and clicking
+              it jumps straight to the Assets tab. */}
+          <Box sx={{ minWidth: 0 }}>
+            <StatTile
+              icon={InventoryIcon}
+              label="Assets"
+              value={clientAssetsTotal}
+              sub="View all assets →"
+              color="#0889cf"
+              loading={isFetching || assetsLoading}
+              onClick={() => setTab(assetsTabIndex)}
               palette={pageColors}
             />
           </Box>
