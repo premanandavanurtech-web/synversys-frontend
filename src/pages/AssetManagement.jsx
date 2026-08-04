@@ -985,6 +985,11 @@ export default function AssetManagement() {
 
   const toggleAllReadyExistingAssets = () => {
     if (selectableExistingAssetIds.length === 0 || actionLoading) return;
+    if (allReadyExistingAssetsSelected) {
+      setPortfolioOverrideAssetIds((overrideIds) =>
+        overrideIds.filter((assetId) => !selectableExistingAssetIdSet.has(assetId)),
+      );
+    }
     setSelectedExistingAssetIds((prev) => {
       if (allReadyExistingAssetsSelected) {
         return prev.filter((assetId) => !selectableExistingAssetIdSet.has(assetId));
@@ -1046,7 +1051,6 @@ export default function AssetManagement() {
       const res = await api.get(`/assets?${params.toString()}`);
       setExistingAssets(
         (res.data?.assets || []).filter((asset) => {
-          if (isCloneAssetRecord(asset)) return false;
           const currentPortfolio = getAssetPortfolioName(asset);
           return !currentPortfolio || norm(currentPortfolio) !== norm(portfolioFilter);
         }),
@@ -1077,11 +1081,27 @@ export default function AssetManagement() {
   const selectExistingAsset = (asset) => {
     const assetId = asset.id || asset._id;
     if (!assetId) return;
-    setSelectedExistingAssetIds((prev) =>
-      prev.includes(assetId)
-        ? prev.filter((id) => id !== assetId)
-        : [...prev, assetId],
-    );
+    const wasSelected = selectedExistingAssetIds.includes(assetId);
+
+    if (wasSelected) {
+      const currentPortfolio = getAssetPortfolioName(asset);
+      const belongsToOtherPortfolio =
+        currentPortfolio && norm(currentPortfolio) !== norm(portfolioFilter);
+
+      if (belongsToOtherPortfolio) {
+        setPortfolioOverrideAssetIds((overrideIds) =>
+          overrideIds.filter((id) => id !== assetId),
+        );
+      }
+    }
+
+    setSelectedExistingAssetIds((prev) => {
+      if (prev.includes(assetId)) {
+        return prev.filter((id) => id !== assetId);
+      }
+
+      return [...prev, assetId];
+    });
   };
 
   const toggleExistingAsset = (asset) => {
@@ -2577,6 +2597,25 @@ export default function AssetManagement() {
                             <Typography sx={{ color: T.text.muted, fontSize: "0.72rem" }}>
                               Tag: {displayText(asset.tagNumber || asset.serialNumber, "-")}
                             </Typography>
+                            {isCloneAssetRecord(asset) && (
+                              <Box
+                                component="span"
+                                sx={{
+                                  display: "inline-flex",
+                                  mt: 0.75,
+                                  px: 0.9,
+                                  py: 0.2,
+                                  borderRadius: T.radius.pill,
+                                  bgcolor: T.cloneTypeBg,
+                                  color: T.cloneTypeColor,
+                                  fontSize: "0.66rem",
+                                  fontWeight: 800,
+                                  textTransform: "uppercase",
+                                }}
+                              >
+                                Clone
+                              </Box>
+                            )}
                           </Box>
                           <StatusPill status={asset.status} T={T} />
                         </Stack>
@@ -2704,6 +2743,25 @@ export default function AssetManagement() {
                           <Typography sx={{ color: T.text.muted, fontSize: "0.74rem" }}>
                             Tag: {displayText(asset.tagNumber || asset.serialNumber, "-")}
                           </Typography>
+                          {isCloneAssetRecord(asset) && (
+                            <Box
+                              component="span"
+                              sx={{
+                                display: "inline-flex",
+                                mt: 0.75,
+                                px: 0.9,
+                                py: 0.2,
+                                borderRadius: T.radius.pill,
+                                bgcolor: T.cloneTypeBg,
+                                color: T.cloneTypeColor,
+                                fontSize: "0.66rem",
+                                fontWeight: 800,
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              Clone
+                            </Box>
+                          )}
                         </TableCell>
                         <TableCell sx={{ fontSize: "0.82rem", color: T.text.secondary }}>
                           {getAssetCategoryName(asset) || "-"}
