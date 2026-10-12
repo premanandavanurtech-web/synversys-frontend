@@ -1095,19 +1095,144 @@ const DeactivateDialog = ({ open, client, onClose, onConfirm, loading, copy = ge
           </IconButton>
         </Box>
       </DialogTitle>
-      <DialogContent sx={{ px: 2.25, py: 2.25, bgcolor: dialogColors.surface }}>
-        <Typography sx={{ fontSize: "0.9rem", color: dialogColors.text, lineHeight: 1.55 }}>
-          Are you sure you want to {isActive ? "deactivate" : "activate"}{" "}
-          <Box component="strong" sx={{ color: dialogColors.text, fontWeight: 800 }}>
-            {client?.customerName}
+      <DialogContent sx={{ px: 2.5, py: 2.5, bgcolor: dialogColors.surface }}>
+        {/* Customer Identity Card */}
+        <Box
+          sx={{
+            p: 2,
+            borderRadius: "14px",
+            bgcolor: isDark ? "rgba(15, 28, 46, 0.85)" : "#f8fafc",
+            border: `1px solid ${dialogColors.border}`,
+            mb: 2,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.75,
+          }}
+        >
+          <Box
+            sx={{
+              width: 44,
+              height: 44,
+              borderRadius: "12px",
+              background: isDark
+                ? "linear-gradient(135deg, #075971 0%, #0d3b4a 100%)"
+                : "linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)",
+              color: isDark ? "#38bdf8" : "#0369a1",
+              fontWeight: 800,
+              fontSize: "1.1rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              border: `1px solid ${isDark ? "rgba(56, 189, 248, 0.2)" : "#7dd3fc"}`,
+            }}
+          >
+            {(client?.customerName || client?.name || "C").charAt(0).toUpperCase()}
           </Box>
-          ?
-        </Typography>
-        <Typography sx={{ mt: 1, fontSize: "0.78rem", color: dialogColors.muted, lineHeight: 1.5 }}>
-          {isActive
-            ? "They will lose access immediately until the account is reactivated."
-            : "They will regain access to the account immediately."}
-        </Typography>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.25 }}>
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  fontSize: "0.95rem",
+                  color: dialogColors.text,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {client?.customerName || client?.name}
+              </Typography>
+              <Chip
+                label={isActive ? "Active" : "Inactive"}
+                size="small"
+                sx={{
+                  height: 20,
+                  fontSize: "0.68rem",
+                  fontWeight: 600,
+                  bgcolor: isActive
+                    ? isDark ? "rgba(16, 185, 129, 0.15)" : "#ecfdf5"
+                    : isDark ? "rgba(239, 68, 68, 0.15)" : "#fef2f2",
+                  color: isActive ? "#10b981" : "#ef4444",
+                  border: `1px solid ${
+                    isActive
+                      ? isDark ? "rgba(16, 185, 129, 0.3)" : "#a7f3d0"
+                      : isDark ? "rgba(239, 68, 68, 0.3)" : "#fecaca"
+                  }`,
+                }}
+              />
+            </Box>
+            {(client?.email || client?.contactEmail) && (
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: "0.8rem",
+                  color: dialogColors.muted,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {client?.email || client?.contactEmail}
+              </Typography>
+            )}
+          </Box>
+        </Box>
+
+        {/* Impact Warning Notice */}
+        <Box
+          sx={{
+            p: 1.75,
+            borderRadius: "12px",
+            bgcolor: isActive
+              ? isDark ? "rgba(127, 29, 29, 0.2)" : "#fef2f2"
+              : isDark ? "rgba(6, 78, 59, 0.2)" : "#ecfdf5",
+            border: `1px solid ${
+              isActive
+                ? isDark ? "rgba(239, 68, 68, 0.24)" : "#fee2e2"
+                : isDark ? "rgba(16, 185, 129, 0.24)" : "#d1fae5"
+            }`,
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              color: isActive
+                ? isDark ? "#fca5a5" : "#991b1b"
+                : isDark ? "#6ee7b7" : "#065f46",
+              mb: 0.75,
+            }}
+          >
+            {isActive ? "Consequences of deactivation:" : "What happens upon reactivation:"}
+          </Typography>
+          <Box
+            component="ul"
+            sx={{
+              m: 0,
+              pl: 2.25,
+              fontSize: "0.78rem",
+              color: isActive
+                ? isDark ? "#e2e8f0" : "#7f1d1d"
+                : isDark ? "#e2e8f0" : "#047857",
+              lineHeight: 1.6,
+              "& li": { mb: 0.25 },
+            }}
+          >
+            {isActive ? (
+              <>
+                <li>User sessions will be terminated and login access blocked immediately.</li>
+                <li>All team members under this customer will be paused.</li>
+                <li>Inspection data, assets, and historical records remain fully preserved.</li>
+              </>
+            ) : (
+              <>
+                <li>Login and platform privileges will be restored immediately.</li>
+                <li>All associated team members will regain workspace access.</li>
+              </>
+            )}
+          </Box>
+        </Box>
       </DialogContent>
       <DialogActions
         sx={{

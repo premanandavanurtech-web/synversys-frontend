@@ -62,6 +62,7 @@ import {
   Archive as ArchiveIcon,
   KeyboardArrowDown as ArrowDownIcon,
   Reply as ReplyIcon,
+  WhatsApp as WhatsAppIcon,
   Download as DownloadIcon,
   PictureAsPdf as PdfIcon,
   TableChart as ExcelIcon,
@@ -369,14 +370,34 @@ function ExportButton({ list, disabled }) {
   );
 }
 
+const getWhatsAppReplyUrl = (phone, inquiry) => {
+  if (!phone) return null;
+  let digits = String(phone).replace(/\D/g, "");
+  if (!digits) return null;
+  // If 10 digits (standard Indian mobile number), prepend 91
+  if (digits.length === 10) {
+    digits = `91${digits}`;
+  } else if (digits.length === 11 && digits.startsWith("0")) {
+    digits = `91${digits.slice(1)}`;
+  }
+  const clientName = inquiry?.fullName || inquiry?.name || "";
+  const greeting = clientName ? `Hi ${clientName}, ` : "Hi, ";
+  const defaultText = encodeURIComponent(
+    `${greeting}thank you for reaching out regarding your inquiry on AssetMach.${inquiry?.message ? ` (Re: "${inquiry.message.slice(0, 100)}")` : ""}`
+  );
+  return `https://wa.me/${digits}?text=${defaultText}`;
+};
+
 /* ─────────────────────────────────────────────────────
  * View dialog
  * ───────────────────────────────────────────────────── */
 function ViewDialog({ open, onClose, inquiry, onDelete }) {
   if (!inquiry) return null;
   const s = inquiryAge(inquiry.createdAt);
+  const whatsappUrl = getWhatsAppReplyUrl(inquiry.phone, inquiry);
+  const replyHref = whatsappUrl || (inquiry.email ? `mailto:${inquiry.email}` : undefined);
 
-  const Field = ({ icon: Icon, label, value }) => (
+  const Field = ({ icon: Icon, label, value, link }) => (
     <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
       <Box sx={{ mt: "1px", color: T.textMuted, flexShrink: 0 }}>
         <Icon sx={{ fontSize: 15 }} />
@@ -385,7 +406,21 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
         <Typography fontSize={10.5} color={T.textMuted} fontWeight={500} textTransform="uppercase" letterSpacing={0.5} mb={0.25}>
           {label}
         </Typography>
-        <Typography fontSize={13} color={T.textPrimary}>{value || "—"}</Typography>
+        {link ? (
+          <Typography
+            component="a"
+            href={link}
+            target={link.startsWith("http") ? "_blank" : undefined}
+            rel={link.startsWith("http") ? "noopener noreferrer" : undefined}
+            fontSize={13}
+            color={T.accent}
+            sx={{ textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
+          >
+            {value || "—"}
+          </Typography>
+        ) : (
+          <Typography fontSize={13} color={T.textPrimary}>{value || "—"}</Typography>
+        )}
       </Box>
     </Box>
   );
@@ -432,8 +467,8 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
       <DialogContent sx={{ p: 3 }}>
         <Stack spacing={2}>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
-            <Field icon={EmailIcon} label="Email" value={inquiry.email} />
-            <Field icon={PhoneIcon} label="Phone" value={inquiry.phone} />
+            <Field icon={EmailIcon} label="Email" value={inquiry.email} link={inquiry.email ? `mailto:${inquiry.email}` : undefined} />
+            <Field icon={PhoneIcon} label="Phone" value={inquiry.phone} link={whatsappUrl || (inquiry.phone ? `tel:${inquiry.phone}` : undefined)} />
             <Field icon={CalendarIcon} label="Submitted" value={inquiry.createdAt ? new Date(inquiry.createdAt).toLocaleString() : "—"} />
             {inquiry.updatedAt && inquiry.updatedAt !== inquiry.createdAt && (
               <Field icon={ScheduleIcon} label="Updated" value={new Date(inquiry.updatedAt).toLocaleString()} />
@@ -465,9 +500,19 @@ function ViewDialog({ open, onClose, inquiry, onDelete }) {
             size="small"
             variant="contained"
             disableElevation
-            startIcon={<ReplyIcon sx={{ fontSize: 14 }} />}
-            href={`mailto:${inquiry.email}`}
-            sx={{ fontSize: 12, textTransform: "none", borderRadius: "8px", bgcolor: T.accent, color: T.accentContrast, "&:hover": { bgcolor: T.accentDark } }}
+            startIcon={whatsappUrl ? <WhatsAppIcon sx={{ fontSize: 15 }} /> : <ReplyIcon sx={{ fontSize: 14 }} />}
+            href={replyHref}
+            target={whatsappUrl ? "_blank" : undefined}
+            rel={whatsappUrl ? "noopener noreferrer" : undefined}
+            sx={{
+              fontSize: 12,
+              textTransform: "none",
+              borderRadius: "8px",
+              bgcolor: T.accent,
+              color: T.accentContrast,
+              fontWeight: 600,
+              "&:hover": { bgcolor: T.accentDark },
+            }}
           >
             Reply
           </Button>

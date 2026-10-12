@@ -48,8 +48,9 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
+import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
+import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 // ─── Notification type icons (MUI icon set) ───
 import ApartmentIcon from "@mui/icons-material/Apartment";
 import LockIcon from "@mui/icons-material/Lock";
@@ -65,22 +66,25 @@ import { useTeam } from "../context/TeamContext";
 import { useNotifications } from "../context/NotificationContext";
 import { formatDistanceToNow } from "date-fns";
 
+const THEME_STORAGE_KEY = "assetmach-theme-mode";
+const THEME_EXPLICIT_STORAGE_KEY = "assetmach-theme-mode-explicit";
+
 /* ─── Animated badge with pulse ring (mobile optimized) ─── */
-function PulsingBadge({ count, children }) {
+function PulsingBadge({ count, children, isDarkMode }) {
   const hasNew = count > 0;
   const label = count > 99 ? "99+" : String(count);
   const badgeMinW = count > 99 ? 26 : count >= 10 ? 22 : 18;
 
   return (
-    <Box sx={{ position: "relative", display: "inline-flex"  }}>
+    <Box sx={{ position: "relative", display: "inline-flex" }}>
       {children}
       {hasNew && (
         <>
           <Box
             sx={{
               position: "absolute",
-              top: -2,
-              right: -2,
+              top: -4,
+              right: -5,
               width: badgeMinW,
               height: 18,
               borderRadius: 99,
@@ -111,7 +115,7 @@ function PulsingBadge({ count, children }) {
               justifyContent: "center",
               px: "3px",
               lineHeight: 1,
-              boxShadow: "0 0 0 2px #ffffff",
+              boxShadow: isDarkMode ? "0 0 0 2px #07111f" : "0 0 0 2px #ffffff",
               fontFamily: "'DM Sans', sans-serif",
               letterSpacing: 0,
               transition: "min-width 0.15s ease",
@@ -125,8 +129,103 @@ function PulsingBadge({ count, children }) {
   );
 }
 
+/* ─── Theme Toggle Button (Light / Dark Mode) ─── */
+function ThemeToggle({ isDarkMode, onToggle }) {
+  return (
+    <Tooltip
+      title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      arrow
+      enterDelay={200}
+    >
+      <Box
+        onClick={onToggle}
+        role="button"
+        aria-label={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+        sx={{
+          width: { xs: 36, sm: 40, md: 40 },
+          height: { xs: 36, sm: 40, md: 40 },
+          borderRadius: { xs: "12px", sm: "14px" },
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: isDarkMode
+            ? "rgba(255, 255, 255, 0.05)"
+            : "transparent",
+          border: isDarkMode
+            ? "1.5px solid rgba(148, 163, 184, 0.18)"
+            : "1.5px solid transparent",
+          transition: "all 0.22s cubic-bezier(0.2, 0.9, 0.4, 1.1)",
+          cursor: "pointer",
+          userSelect: "none",
+          WebkitTapHighlightColor: "transparent",
+          outline: "none",
+          "&:focus-visible": {
+            boxShadow: `0 0 0 2px ${isDarkMode ? "#61d7ed" : "#1a5c6b"}`,
+          },
+          "&:active": {
+            transform: "scale(0.92)",
+          },
+          "&:hover": {
+            bgcolor: isDarkMode
+              ? "rgba(255, 255, 255, 0.1)"
+              : alpha("#1a5c6b", 0.08),
+            borderColor: isDarkMode
+              ? "rgba(148, 163, 184, 0.3)"
+              : alpha("#1a5c6b", 0.18),
+            transform: "translateY(-1px)",
+            boxShadow: isDarkMode
+              ? "0 4px 14px rgba(0, 0, 0, 0.35)"
+              : "0 4px 12px rgba(26, 92, 107, 0.08)",
+            "& .theme-toggle-icon": {
+              transform: isDarkMode
+                ? "rotate(20deg) scale(1.1)"
+                : "rotate(-20deg) scale(1.1)",
+            },
+          },
+        }}
+      >
+        <Box
+          className="theme-toggle-icon"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+          }}
+        >
+          {isDarkMode ? (
+            <LightModeOutlinedIcon
+              sx={{
+                fontSize: { xs: 19, sm: 21, md: 21 },
+                color: "#facc15",
+                filter: "drop-shadow(0 0 6px rgba(250, 204, 21, 0.55))",
+                transition: "all 0.2s ease",
+              }}
+            />
+          ) : (
+            <DarkModeOutlinedIcon
+              sx={{
+                fontSize: { xs: 19, sm: 21, md: 21 },
+                color: "#64748b",
+                transition: "all 0.2s ease",
+              }}
+            />
+          )}
+        </Box>
+      </Box>
+    </Tooltip>
+  );
+}
+
 /* ─── Bell icon with shake animation (touch-friendly) ─── */
-function BellIcon({ active, onClick }) {
+function BellIcon({ active, onClick, isDarkMode }) {
   return (
     <Box
       onClick={onClick}
@@ -137,10 +236,18 @@ function BellIcon({ active, onClick }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        bgcolor: active ? alpha("#1a5c6b", 0.1) : "transparent",
+        bgcolor: active
+          ? isDarkMode
+            ? alpha("#1aa6c4", 0.18)
+            : alpha("#1a5c6b", 0.1)
+          : isDarkMode
+            ? "rgba(255, 255, 255, 0.04)"
+            : "transparent",
         border: active
-          ? `1.5px solid ${alpha("#1a5c6b", 0.25)}`
-          : "1.5px solid transparent",
+          ? `1.5px solid ${alpha(isDarkMode ? "#1aa6c4" : "#1a5c6b", 0.3)}`
+          : isDarkMode
+            ? "1.5px solid rgba(148, 163, 184, 0.14)"
+            : "1.5px solid transparent",
         transition: "all 0.2s ease",
         cursor: "pointer",
         WebkitTapHighlightColor: "transparent",
@@ -157,12 +264,29 @@ function BellIcon({ active, onClick }) {
             "80%": { transform: "rotate(8deg)" },
           },
         },
+        "&:hover": {
+          bgcolor: isDarkMode
+            ? "rgba(255, 255, 255, 0.08)"
+            : alpha("#1a5c6b", 0.08),
+          borderColor: isDarkMode
+            ? "rgba(148, 163, 184, 0.25)"
+            : alpha("#1a5c6b", 0.15),
+          "& svg": {
+            color: isDarkMode ? "#61d7ed" : "#1a5c6b",
+          },
+        },
       }}
     >
       <NotificationsNoneIcon
         sx={{
           fontSize: { xs: 18, sm: 20, md: 20 },
-          color: active ? "#1a5c6b" : "#64748b",
+          color: active
+            ? isDarkMode
+              ? "#61d7ed"
+              : "#1a5c6b"
+            : isDarkMode
+              ? "#94a3b8"
+              : "#64748b",
         }}
       />
     </Box>
@@ -685,6 +809,8 @@ function MobileUserMenu({
   avatarUrl,
   getUserRole,
   roleConfig,
+  isDarkMode,
+  onToggleTheme,
 }) {
   const theme = useTheme();
 
@@ -698,7 +824,7 @@ function MobileUserMenu({
         sx: {
           borderTopLeftRadius: 28,
           borderTopRightRadius: 28,
-          bgcolor: "#fff",
+          bgcolor: isDarkMode ? "#0d1a29" : "#fff",
           maxHeight: "75vh",
           overflow: "hidden",
           animation: open ? "mobileSheetIn 260ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
@@ -720,7 +846,12 @@ function MobileUserMenu({
       {/* Drag handle */}
       <Box sx={{ display: "flex", justifyContent: "center", pt: 1.5, pb: 0.5 }}>
         <Box
-          sx={{ width: 36, height: 4, borderRadius: 99, bgcolor: "#e2e8f0" }}
+          sx={{
+            width: 36,
+            height: 4,
+            borderRadius: 99,
+            bgcolor: isDarkMode ? "rgba(148, 163, 184, 0.25)" : "#e2e8f0",
+          }}
         />
       </Box>
 
@@ -741,10 +872,18 @@ function MobileUserMenu({
         >
           {getUserInitials()}
         </Avatar>
-        <Typography fontWeight={700} fontSize={18} color="#0f172a">
+        <Typography
+          fontWeight={700}
+          fontSize={18}
+          color={isDarkMode ? "#f8fafc" : "#0f172a"}
+        >
           {getUserDisplayName()}
         </Typography>
-        <Typography fontSize={13} color="#64748b" mt={0.25}>
+        <Typography
+          fontSize={13}
+          color={isDarkMode ? "#94a3b8" : "#64748b"}
+          mt={0.25}
+        >
           {user?.email || "user@example.com"}
         </Typography>
         <Chip
@@ -760,9 +899,72 @@ function MobileUserMenu({
         />
       </Box>
 
-      <Divider sx={{ my: 1 }} />
+      <Divider sx={{ my: 1, borderColor: isDarkMode ? "rgba(148, 163, 184, 0.16)" : "#e2e8f0" }} />
 
-      {/* Menu items */}
+      {/* Theme Toggle row */}
+      <MenuItem
+        onClick={onToggleTheme}
+        sx={{
+          py: 1.25,
+          px: 2,
+          mx: "auto",
+          width: "calc(100% - 32px)",
+          maxWidth: 320,
+          borderRadius: 2.25,
+          mb: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          bgcolor: isDarkMode ? "rgba(255, 255, 255, 0.04)" : "#f8fafc",
+          "&:active": {
+            bgcolor: isDarkMode ? "rgba(255, 255, 255, 0.08)" : alpha("#1a5c6b", 0.08),
+          },
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+          <ListItemIcon sx={{ minWidth: 0 }}>
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: "10px",
+                bgcolor: isDarkMode ? "rgba(250, 204, 21, 0.12)" : alpha("#1a5c6b", 0.1),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {isDarkMode ? (
+                <LightModeOutlinedIcon sx={{ fontSize: 18, color: "#facc15" }} />
+              ) : (
+                <DarkModeOutlinedIcon sx={{ fontSize: 18, color: "#1a5c6b" }} />
+              )}
+            </Box>
+          </ListItemIcon>
+          <ListItemText
+            primary="Theme Mode"
+            primaryTypographyProps={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: isDarkMode ? "#f8fafc" : "#0f172a",
+            }}
+          />
+        </Box>
+        <Chip
+          size="small"
+          label={isDarkMode ? "Dark" : "Light"}
+          sx={{
+            height: 24,
+            fontSize: 12,
+            fontWeight: 700,
+            bgcolor: isDarkMode ? "rgba(250, 204, 21, 0.15)" : alpha("#1a5c6b", 0.1),
+            color: isDarkMode ? "#fde68a" : "#1a5c6b",
+            borderRadius: "8px",
+          }}
+        />
+      </MenuItem>
+
+      {/* Logout */}
       <MenuItem
         onClick={onLogout}
         sx={{
@@ -815,6 +1017,15 @@ export default function TopHeader({ onMenuToggle }) {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === "dark";
   const { user, logout, authRequest, updateCurrentUser } = useAuth();
+
+  const toggleTheme = useCallback(() => {
+    const nextMode = isDarkMode ? "light" : "dark";
+    localStorage.setItem(THEME_STORAGE_KEY, nextMode);
+    localStorage.setItem(THEME_EXPLICIT_STORAGE_KEY, "true");
+    window.dispatchEvent(
+      new CustomEvent("assetmach-theme-change", { detail: { mode: nextMode } })
+    );
+  }, [isDarkMode]);
   const { profile } = useTeam();
   const {
     notifications,
@@ -1178,15 +1389,19 @@ export default function TopHeader({ onMenuToggle }) {
           sx={{
             display: "flex",
             alignItems: "center",
-            gap: { xs: 0.5, sm: 1, md: 1.5 },
+            gap: { xs: 0.75, sm: 1, md: 1.25 },
             ml: "auto",
           }}
         >
+          {/* Light / Dark Mode Toggle */}
+          <ThemeToggle isDarkMode={isDarkMode} onToggle={toggleTheme} />
+
           {/* Notification bell */}
-          <PulsingBadge count={unreadCount}>
+          <PulsingBadge count={unreadCount} isDarkMode={isDarkMode}>
             <BellIcon
               active={Boolean(notificationAnchor) || bellActive}
               onClick={handleNotificationOpen}
+              isDarkMode={isDarkMode}
             />
           </PulsingBadge>
 
@@ -1261,9 +1476,16 @@ export default function TopHeader({ onMenuToggle }) {
               borderRadius: "14px",
               transition: "all 0.2s ease",
               WebkitTapHighlightColor: "transparent",
+              "&:hover": {
+                bgcolor: isDarkMode
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : alpha("#1a5c6b", 0.04),
+              },
               "&:active": {
                 transform: isMobile ? "scale(0.98)" : "none",
-                bgcolor: alpha("#1a5c6b", 0.05),
+                bgcolor: isDarkMode
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : alpha("#1a5c6b", 0.05),
               },
             }}
           >
@@ -1294,7 +1516,7 @@ export default function TopHeader({ onMenuToggle }) {
                   height: { xs: 8, sm: 9 },
                   borderRadius: "50%",
                   bgcolor: "#10b981",
-                  border: "2px solid #fff",
+                  border: isDarkMode ? "2px solid #07111f" : "2px solid #fff",
                 }}
               />
             </Box>
@@ -1307,7 +1529,7 @@ export default function TopHeader({ onMenuToggle }) {
                     sx={{
                       fontSize: { sm: 12, md: 13 },
                       fontWeight: 600,
-                      color: "#0f172a",
+                      color: isDarkMode ? "#f8fafc" : "#0f172a",
                       fontFamily: "'DM Sans', sans-serif",
                       lineHeight: 1.3,
                     }}
@@ -1394,7 +1616,7 @@ export default function TopHeader({ onMenuToggle }) {
             <CloseIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ p: { xs: 2, sm: 2.5 }, bgcolor: "#fff" }}>
+        <DialogContent sx={{ p: { xs: 2, sm: 2.5 }, bgcolor: isDarkMode ? "#0d1a29" : "#fff" }}>
           <Stack spacing={1.75} sx={{ mt: 0.5 }}>
             <TextField label="Current Plan" value={currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} fullWidth size="small" disabled />
             <FormControl fullWidth size="small">
@@ -1411,7 +1633,7 @@ export default function TopHeader({ onMenuToggle }) {
             <TextField label="Message" value={upgradeForm.message} onChange={handleUpgradeFormChange("message")} fullWidth multiline minRows={3} />
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: { xs: 2, sm: 2.5 }, py: 2, bgcolor: "#fff" }}>
+        <DialogActions sx={{ px: { xs: 2, sm: 2.5 }, py: 2, bgcolor: isDarkMode ? "#0d1a29" : "#fff" }}>
           <Button onClick={closeUpgradeDialog} sx={{ textTransform: "none", color: "#64748b" }}>
             Cancel
           </Button>
@@ -1537,6 +1759,79 @@ export default function TopHeader({ onMenuToggle }) {
           </Box>
         </Box>
 
+        {/* Theme mode toggle */}
+        <MenuItem
+          onClick={() => {
+            toggleTheme();
+          }}
+          sx={{
+            py: 1.25,
+            px: 2.5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            "&:hover": {
+              bgcolor: isDarkMode
+                ? "rgba(255, 255, 255, 0.05)"
+                : alpha("#1a5c6b", 0.04),
+            },
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 30,
+                height: 30,
+                borderRadius: "9px",
+                bgcolor: isDarkMode
+                  ? "rgba(250, 204, 21, 0.14)"
+                  : alpha("#1a5c6b", 0.08),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {isDarkMode ? (
+                <LightModeOutlinedIcon sx={{ fontSize: 16, color: "#facc15" }} />
+              ) : (
+                <DarkModeOutlinedIcon sx={{ fontSize: 16, color: "#1a5c6b" }} />
+              )}
+            </Box>
+            <ListItemText
+              primary="Theme Mode"
+              primaryTypographyProps={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: isDarkMode ? "#e7eef2" : "#0f172a",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            />
+          </Box>
+          <Chip
+            size="small"
+            label={isDarkMode ? "Dark" : "Light"}
+            sx={{
+              height: 22,
+              fontSize: 11,
+              fontWeight: 700,
+              bgcolor: isDarkMode
+                ? "rgba(250, 204, 21, 0.16)"
+                : alpha("#1a5c6b", 0.08),
+              color: isDarkMode ? "#fde68a" : "#1a5c6b",
+              borderRadius: "6px",
+            }}
+          />
+        </MenuItem>
+
+        <Divider
+          sx={{
+            my: 0.5,
+            borderColor: isDarkMode
+              ? "rgba(148, 163, 184, 0.14)"
+              : "#f1f5f9",
+          }}
+        />
+
         {/* Logout */}
         <MenuItem
           onClick={handleLogout}
@@ -1647,6 +1942,8 @@ export default function TopHeader({ onMenuToggle }) {
         avatarUrl={avatarUrl}
         getUserRole={getUserRole}
         roleConfig={roleConfig}
+        isDarkMode={isDarkMode}
+        onToggleTheme={toggleTheme}
       />
     </>
   );

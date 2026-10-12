@@ -1553,126 +1553,347 @@ const ClientModal = ({ open, client, onClose, onSave, loading, currentUser }) =>
 };
 
 // Status Dialog Component
-const StatusDialog = ({ open, client, onClose, onConfirm, loading, copy = getAccountCopy("admin") }) => (
-  <Dialog
-    open={open}
-    onClose={onClose}
-    maxWidth="xs"
-    fullWidth
-    PaperProps={{ sx: { borderRadius: "16px", overflow: "hidden" } }}
-  >
-    <DialogTitle sx={{ p: 0 }}>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2.5,
-          py: 1.75,
-          borderBottom: `1px solid ${C.border}`,
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-          <Box
+const StatusDialog = ({
+  open,
+  client,
+  onClose,
+  onConfirm,
+  loading,
+  copy = getAccountCopy("admin"),
+}) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const isActive = client?.status === "active";
+  const actionColor = isActive ? "#ef4444" : "#10b981";
+  const actionHoverColor = isActive ? "#dc2626" : "#059669";
+  const customerName = client?.customerName || client?.name || "Customer";
+  const email = client?.email || client?.contactEmail;
+  const plan = client?.plan || client?.membership || "free";
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: "20px",
+          overflow: "hidden",
+          bgcolor: isDark ? "#0c1726" : "#ffffff",
+          color: isDark ? "#f8fafc" : "#0f172a",
+          border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.16)" : "#e2e8f0"}`,
+          boxShadow: isDark
+            ? "0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(148, 163, 184, 0.08)"
+            : "0 25px 50px -12px rgba(15, 23, 42, 0.15)",
+        },
+      }}
+    >
+      {/* Header */}
+      <DialogTitle sx={{ p: 0 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: { xs: 2.5, sm: 3 },
+            py: 2.25,
+            borderBottom: `1px solid ${isDark ? "rgba(148, 163, 184, 0.12)" : "#f1f5f9"}`,
+            bgcolor: isDark
+              ? isActive
+                ? "rgba(239, 68, 68, 0.06)"
+                : "rgba(16, 185, 129, 0.06)"
+              : isActive
+                ? "rgba(254, 242, 242, 0.7)"
+                : "rgba(236, 253, 245, 0.7)",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 42,
+                height: 42,
+                borderRadius: "12px",
+                bgcolor: isActive
+                  ? isDark ? "rgba(239, 68, 68, 0.16)" : "#fee2e2"
+                  : isDark ? "rgba(16, 185, 129, 0.16)" : "#d1fae5",
+                border: `1px solid ${
+                  isActive
+                    ? isDark ? "rgba(239, 68, 68, 0.3)" : "#fca5a5"
+                    : isDark ? "rgba(16, 185, 129, 0.3)" : "#6ee7b7"
+                }`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: isActive
+                  ? "0 4px 12px rgba(239, 68, 68, 0.15)"
+                  : "0 4px 12px rgba(16, 185, 129, 0.15)",
+              }}
+            >
+              {isActive ? (
+                <WarningIcon sx={{ fontSize: "1.35rem", color: "#ef4444" }} />
+              ) : (
+                <ActiveIcon sx={{ fontSize: "1.35rem", color: "#10b981" }} />
+              )}
+            </Box>
+            <Box>
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  fontSize: "1rem",
+                  color: isDark ? "#f8fafc" : "#0f172a",
+                  lineHeight: 1.25,
+                }}
+              >
+                {isActive ? "Deactivate" : "Activate"} {copy.singularLower}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: isDark ? "#94a3b8" : "#64748b",
+                  display: "block",
+                  mt: 0.25,
+                  fontSize: "0.75rem",
+                }}
+              >
+                {isActive
+                  ? "Suspend access and pause account activity"
+                  : "Restore login access and platform permissions"}
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton
+            size="small"
+            onClick={onClose}
+            disabled={loading}
             sx={{
+              border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
+              borderRadius: "10px",
               width: 32,
               height: 32,
-              borderRadius: "8px",
-              bgcolor: "#fef2f2",
+              color: isDark ? "#94a3b8" : "#64748b",
+              "&:hover": {
+                bgcolor: isDark ? "rgba(255, 255, 255, 0.06)" : "#f1f5f9",
+                color: isDark ? "#ffffff" : "#0f172a",
+              },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: "1rem" }} />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+
+      {/* Content */}
+      <DialogContent sx={{ px: { xs: 2.5, sm: 3 }, py: 2.5 }}>
+        {/* Customer Identity Card */}
+        <Box
+          sx={{
+            p: 2,
+            borderRadius: "14px",
+            bgcolor: isDark ? "rgba(15, 28, 46, 0.85)" : "#f8fafc",
+            border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.16)" : "#e2e8f0"}`,
+            mb: 2,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.75,
+          }}
+        >
+          <Box
+            sx={{
+              width: 44,
+              height: 44,
+              borderRadius: "12px",
+              background: isDark
+                ? "linear-gradient(135deg, #075971 0%, #0d3b4a 100%)"
+                : "linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)",
+              color: isDark ? "#38bdf8" : "#0369a1",
+              fontWeight: 800,
+              fontSize: "1.1rem",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              flexShrink: 0,
+              border: `1px solid ${isDark ? "rgba(56, 189, 248, 0.2)" : "#7dd3fc"}`,
             }}
           >
-            <WarningIcon sx={{ fontSize: "1rem", color: C.error }} />
+            {customerName.charAt(0).toUpperCase()}
           </Box>
-          <Typography
-            sx={{
-              fontWeight: 600,
-              fontSize: "0.875rem",
-              color: C.text.primary,
-            }}
-          >
-            {client?.status === "active" ? "Deactivate" : "Activate"} {copy.singularLower}
-          </Typography>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.25 }}>
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  fontSize: "0.95rem",
+                  color: isDark ? "#f8fafc" : "#0f172a",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {customerName}
+              </Typography>
+              <Chip
+                label={isActive ? "Active" : "Inactive"}
+                size="small"
+                sx={{
+                  height: 20,
+                  fontSize: "0.68rem",
+                  fontWeight: 600,
+                  bgcolor: isActive
+                    ? isDark ? "rgba(16, 185, 129, 0.15)" : "#ecfdf5"
+                    : isDark ? "rgba(239, 68, 68, 0.15)" : "#fef2f2",
+                  color: isActive ? "#10b981" : "#ef4444",
+                  border: `1px solid ${
+                    isActive
+                      ? isDark ? "rgba(16, 185, 129, 0.3)" : "#a7f3d0"
+                      : isDark ? "rgba(239, 68, 68, 0.3)" : "#fecaca"
+                  }`,
+                }}
+              />
+            </Box>
+            {email && (
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: "0.8rem",
+                  color: isDark ? "#94a3b8" : "#64748b",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {email}
+              </Typography>
+            )}
+          </Box>
         </Box>
-        <IconButton
-          size="small"
-          onClick={onClose}
+
+        {/* Impact Warning Notice */}
+        <Box
           sx={{
-            border: `1px solid ${C.border}`,
-            borderRadius: "8px",
-            width: 28,
-            height: 28,
+            p: 1.75,
+            borderRadius: "12px",
+            bgcolor: isActive
+              ? isDark ? "rgba(127, 29, 29, 0.2)" : "#fef2f2"
+              : isDark ? "rgba(6, 78, 59, 0.2)" : "#ecfdf5",
+            border: `1px solid ${
+              isActive
+                ? isDark ? "rgba(239, 68, 68, 0.24)" : "#fee2e2"
+                : isDark ? "rgba(16, 185, 129, 0.24)" : "#d1fae5"
+            }`,
           }}
         >
-          <CloseIcon sx={{ fontSize: "0.9rem" }} />
-        </IconButton>
-      </Box>
-    </DialogTitle>
-    <DialogContent sx={{ px: 2.5, py: 2 }}>
-      <Typography
-        sx={{ fontSize: "0.8rem", color: C.text.secondary, lineHeight: 1.6 }}
-      >
-        Are you sure you want to{" "}
-        <strong>
-          {client?.status === "active" ? "deactivate" : "activate"}
-        </strong>{" "}
-        <strong style={{ color: C.text.primary }}>
-          {client?.customerName}
-        </strong>
-        ?{" "}
-        {client?.status === "active"
-          ? "They will lose access immediately."
-          : "They will regain access to the platform."}
-      </Typography>
-    </DialogContent>
-    <DialogActions
-      sx={{ px: 2.5, py: 1.5, borderTop: `1px solid ${C.border}`, gap: 1 }}
-    >
-      <Button
-        onClick={onClose}
-        size="small"
+          <Typography
+            sx={{
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              color: isActive
+                ? isDark ? "#fca5a5" : "#991b1b"
+                : isDark ? "#6ee7b7" : "#065f46",
+              mb: 0.75,
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+            }}
+          >
+            {isActive ? "Consequences of deactivation:" : "What happens upon reactivation:"}
+          </Typography>
+          <Box
+            component="ul"
+            sx={{
+              m: 0,
+              pl: 2.25,
+              fontSize: "0.78rem",
+              color: isActive
+                ? isDark ? "#e2e8f0" : "#7f1d1d"
+                : isDark ? "#e2e8f0" : "#047857",
+              lineHeight: 1.6,
+              "& li": { mb: 0.25 },
+            }}
+          >
+            {isActive ? (
+              <>
+                <li>User sessions will be terminated and login access blocked immediately.</li>
+                <li>All team members under this {copy.singularLower} will be paused.</li>
+                <li>Inspection data, assets, and historical records remain fully preserved.</li>
+              </>
+            ) : (
+              <>
+                <li>Login and platform privileges will be restored immediately.</li>
+                <li>All associated team members will regain workspace access.</li>
+              </>
+            )}
+          </Box>
+        </Box>
+      </DialogContent>
+
+      {/* Actions */}
+      <DialogActions
         sx={{
-          textTransform: "none",
-          fontSize: "0.78rem",
-          borderRadius: "8px",
-          border: `1px solid ${C.border}`,
-          color: C.text.secondary,
-          px: 2,
+          px: { xs: 2.5, sm: 3 },
+          py: 2,
+          borderTop: `1px solid ${isDark ? "rgba(148, 163, 184, 0.12)" : "#e2e8f0"}`,
+          bgcolor: isDark ? "#08111f" : "#f8fafc",
+          justifyContent: "flex-end",
+          gap: 1.25,
         }}
       >
-        Cancel
-      </Button>
-      <Button
-        onClick={onConfirm}
-        variant="contained"
-        size="small"
-        disabled={loading}
-        sx={{
-          textTransform: "none",
-          fontSize: "0.78rem",
-          fontWeight: 600,
-          borderRadius: "8px",
-          bgcolor: client?.status === "active" ? C.error : C.success,
-          px: 2,
-          "&:hover": {
-            bgcolor: client?.status === "active" ? "#dc2626" : "#059669",
-          },
-          "&.Mui-disabled": { bgcolor: C.border },
-        }}
-      >
-        {loading ? (
-          <CircularProgress size={16} color="inherit" />
-        ) : client?.status === "active" ? (
-          "Deactivate"
-        ) : (
-          "Activate"
-        )}
-      </Button>
-    </DialogActions>
-  </Dialog>
-);
+        <Button
+          onClick={onClose}
+          disabled={loading}
+          variant="outlined"
+          sx={{
+            textTransform: "none",
+            fontSize: "0.85rem",
+            fontWeight: 500,
+            borderRadius: "10px",
+            borderColor: isDark ? "rgba(148, 163, 184, 0.25)" : "#cbd5e1",
+            color: isDark ? "#cbd5e1" : "#475569",
+            px: 2.5,
+            py: 0.85,
+            "&:hover": {
+              borderColor: isDark ? "#94a3b8" : "#94a3b8",
+              bgcolor: isDark ? "rgba(255, 255, 255, 0.04)" : "#f1f5f9",
+            },
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={onConfirm}
+          variant="contained"
+          disabled={loading}
+          sx={{
+            textTransform: "none",
+            fontSize: "0.85rem",
+            fontWeight: 700,
+            borderRadius: "10px",
+            bgcolor: actionColor,
+            color: "#ffffff",
+            px: 3,
+            py: 0.85,
+            boxShadow: `0 4px 14px 0 ${alpha(actionColor, 0.39)}`,
+            "&:hover": {
+              bgcolor: actionHoverColor,
+              boxShadow: `0 6px 18px 0 ${alpha(actionColor, 0.49)}`,
+            },
+            "&:active": {
+              transform: "scale(0.98)",
+            },
+          }}
+        >
+          {loading ? (
+            <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+          ) : isActive ? (
+            "Deactivate"
+          ) : (
+            "Activate"
+          )}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
 
 // Main Component
 export default function ClientManagement() {

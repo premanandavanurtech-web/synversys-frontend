@@ -18,15 +18,18 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
+  Tooltip,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import LoginIcon from "@mui/icons-material/Login";
+import SpaceDashboardOutlinedIcon from "@mui/icons-material/SpaceDashboardOutlined";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { PROJECT_LOGO_URL } from "../../utils/brand";
+import { useAuth } from "../../context/AuthContexts";
 
 const Navbar = ({
   activeSection,
@@ -38,6 +41,8 @@ const Navbar = ({
   const [scrolled, setScrolled] = useState(false);
   const theme = useTheme();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+  const dashboardPath = user?.role === "team" ? "/team" : "/dashboard";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -343,31 +348,94 @@ const Navbar = ({
             >
               <Stack
                 direction="row"
-                spacing={{ xs: 0.5, sm: 1, md: 1.5 }}
+                spacing={{ xs: 0.75, sm: 1, md: 1.25 }}
                 alignItems="center"
               >
+                {toggleTheme && (
+                  <Tooltip
+                    title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                    arrow
+                  >
+                    <IconButton
+                      onClick={toggleTheme}
+                      size="small"
+                      aria-label="Toggle theme"
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: "10px",
+                        bgcolor: isDarkMode
+                          ? "rgba(255, 255, 255, 0.06)"
+                          : alpha(getPrimaryColor(), 0.06),
+                        color: isDarkMode ? "#facc15" : getPrimaryColor(),
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          bgcolor: isDarkMode
+                            ? "rgba(255, 255, 255, 0.12)"
+                            : alpha(getPrimaryColor(), 0.12),
+                          transform: "scale(1.08)",
+                        },
+                      }}
+                    >
+                      {isDarkMode ? (
+                        <LightModeIcon sx={{ fontSize: 20, color: "#facc15" }} />
+                      ) : (
+                        <DarkModeIcon sx={{ fontSize: 20 }} />
+                      )}
+                    </IconButton>
+                  </Tooltip>
+                )}
 
-                <Button
-                  onClick={() => navigate("/login")}
-                  variant="text"
-                  startIcon={
-                    <LoginIcon sx={{ fontSize: { xs: 16, sm: 17, md: 18 } }} />
-                  }
-                  sx={{
-                    display: { xs: "none", md: "flex" },
-                    color: getPrimaryColor(),
-                    fontSize: { md: "0.75rem", lg: "0.8rem", xl: "0.85rem" },
-                    fontWeight: 600,
-                    borderRadius: 100,
-                    px: { md: 1.5, lg: 2, xl: 2.5 },
-                    py: 0.75,
-                    "&:hover": {
-                      backgroundColor: alpha(getPrimaryColor(), 0.06),
-                    },
-                  }}
-                >
-                  Sign In
-                </Button>
+                {isAuthenticated && user ? (
+                  <Button
+                    onClick={() => navigate(dashboardPath)}
+                    variant="contained"
+                    startIcon={
+                      <SpaceDashboardOutlinedIcon sx={{ fontSize: { xs: 16, sm: 17, md: 18 } }} />
+                    }
+                    sx={{
+                      display: { xs: "none", md: "flex" },
+                      background: getPrimaryGradient(),
+                      color: "#ffffff",
+                      fontSize: { md: "0.75rem", lg: "0.8rem", xl: "0.85rem" },
+                      fontWeight: 700,
+                      borderRadius: 100,
+                      px: { md: 2, lg: 2.2, xl: 2.5 },
+                      py: 0.75,
+                      textTransform: "none",
+                      boxShadow: `0 4px 14px ${alpha(getPrimaryColor(), 0.28)}`,
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        transform: "translateY(-1px)",
+                        boxShadow: `0 6px 20px ${alpha(getPrimaryColor(), 0.38)}`,
+                      },
+                    }}
+                  >
+                    Dashboard
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => navigate("/login")}
+                    variant="text"
+                    startIcon={
+                      <LoginIcon sx={{ fontSize: { xs: 16, sm: 17, md: 18 } }} />
+                    }
+                    sx={{
+                      display: { xs: "none", md: "flex" },
+                      color: getPrimaryColor(),
+                      fontSize: { md: "0.75rem", lg: "0.8rem", xl: "0.85rem" },
+                      fontWeight: 600,
+                      borderRadius: 100,
+                      px: { md: 1.5, lg: 2, xl: 2.5 },
+                      py: 0.75,
+                      "&:hover": {
+                        backgroundColor: alpha(getPrimaryColor(), 0.06),
+                      },
+                    }}
+                  >
+                    Sign In
+                  </Button>
+                )}
               </Stack>
             </motion.div>
 
@@ -545,57 +613,90 @@ const Navbar = ({
                 {/* Mobile CTA Section */}
                 <Stack spacing={1.5}>
                   {/* Theme Toggle for Mobile */}
-                  {/* <Button
-                    onClick={() => {
-                      toggleTheme();
-                    }}
-                    variant="outlined"
-                    fullWidth
-                    startIcon={
-                      isDarkMode ? <LightModeIcon /> : <DarkModeIcon />
-                    }
-                    sx={{
-                      borderColor: alpha(getPrimaryColor(), 0.3),
-                      color: getPrimaryColor(),
-                      fontWeight: 600,
-                      fontSize: { xs: "0.75rem", sm: "0.8rem" },
-                      textTransform: "none",
-                      py: { xs: 0.9, sm: 1 },
-                      borderRadius: 1.5,
-                      justifyContent: "center",
-                      "&:hover": {
-                        borderColor: getPrimaryColor(),
-                        backgroundColor: alpha(getPrimaryColor(), 0.04),
-                      },
-                    }}
-                  >
-                    {isDarkMode ? "Light Mode" : "Dark Mode"}
-                  </Button> */}
+                  {toggleTheme && (
+                    <Button
+                      onClick={() => {
+                        toggleTheme();
+                      }}
+                      variant="outlined"
+                      fullWidth
+                      startIcon={
+                        isDarkMode ? (
+                          <LightModeIcon sx={{ color: "#facc15" }} />
+                        ) : (
+                          <DarkModeIcon />
+                        )
+                      }
+                      sx={{
+                        borderColor: alpha(getPrimaryColor(), 0.3),
+                        color: getTextColor(),
+                        fontWeight: 600,
+                        fontSize: { xs: "0.75rem", sm: "0.8rem" },
+                        textTransform: "none",
+                        py: { xs: 0.9, sm: 1 },
+                        borderRadius: 1.5,
+                        justifyContent: "center",
+                        "&:hover": {
+                          borderColor: getPrimaryColor(),
+                          backgroundColor: alpha(getPrimaryColor(), 0.04),
+                        },
+                      }}
+                    >
+                      {isDarkMode ? "Light Mode" : "Dark Mode"}
+                    </Button>
+                  )}
 
-                  <Button
-                    onClick={() => {
-                      navigate("/login");
-                      setDrawerOpen(false);
-                    }}
-                    variant="contained"
-                    fullWidth
-                    startIcon={<LoginIcon sx={{ fontSize: 18 }} />}
-                    sx={{
-                      background: getPrimaryGradient(),
-                      color: "white",
-                      fontWeight: 600,
-                      fontSize: { xs: "0.75rem", sm: "0.8rem" },
-                      textTransform: "none",
-                      py: { xs: 0.9, sm: 1 },
-                      borderRadius: 1.5,
-                      "&:hover": {
-                        transform: "translateY(-1px)",
-                        boxShadow: `0 4px 12px ${alpha(getPrimaryColor(), 0.3)}`,
-                      },
-                    }}
-                  >
-                    Sign In
-                  </Button>
+                  {isAuthenticated && user ? (
+                    <Button
+                      onClick={() => {
+                        navigate(dashboardPath);
+                        setDrawerOpen(false);
+                      }}
+                      variant="contained"
+                      fullWidth
+                      startIcon={<SpaceDashboardOutlinedIcon sx={{ fontSize: 18 }} />}
+                      sx={{
+                        background: getPrimaryGradient(),
+                        color: "white",
+                        fontWeight: 700,
+                        fontSize: { xs: "0.75rem", sm: "0.8rem" },
+                        textTransform: "none",
+                        py: { xs: 0.9, sm: 1 },
+                        borderRadius: 1.5,
+                        "&:hover": {
+                          transform: "translateY(-1px)",
+                          boxShadow: `0 4px 12px ${alpha(getPrimaryColor(), 0.3)}`,
+                        },
+                      }}
+                    >
+                      Go to Dashboard
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => {
+                        navigate("/login");
+                        setDrawerOpen(false);
+                      }}
+                      variant="contained"
+                      fullWidth
+                      startIcon={<LoginIcon sx={{ fontSize: 18 }} />}
+                      sx={{
+                        background: getPrimaryGradient(),
+                        color: "white",
+                        fontWeight: 600,
+                        fontSize: { xs: "0.75rem", sm: "0.8rem" },
+                        textTransform: "none",
+                        py: { xs: 0.9, sm: 1 },
+                        borderRadius: 1.5,
+                        "&:hover": {
+                          transform: "translateY(-1px)",
+                          boxShadow: `0 4px 12px ${alpha(getPrimaryColor(), 0.3)}`,
+                        },
+                      }}
+                    >
+                      Sign In
+                    </Button>
+                  )}
                 </Stack>
               </Box>
             </motion.div>

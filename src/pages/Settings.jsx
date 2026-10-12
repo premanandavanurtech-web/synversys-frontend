@@ -316,8 +316,8 @@ export default function Settings() {
     } catch (error) {
       const message = getReadableMessage(
         error?.response?.data?.errors ||
-          error?.response?.data?.message ||
-          error?.response?.data?.error,
+        error?.response?.data?.message ||
+        error?.response?.data?.error,
         "Unable to change password. Please try again.",
       );
       showNotice("error", message);

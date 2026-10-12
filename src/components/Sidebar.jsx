@@ -151,22 +151,22 @@ const DesktopSidebar = styled(Box)(({ theme, iscollapsed }) => ({
   },
   ...(iscollapsed === "true"
     ? {
-        "& .MuiListItem-root": {
-          justifyContent: "center",
-          position: "relative",
-        },
-        "& .MuiListItemIcon-root": {
-          minWidth: "0 !important",
-          marginRight: "0 !important",
-          justifyContent: "center",
-        },
-        "& .MuiListItemText-root, & .MuiListItemText-primary": {
-          display: "none !important",
-        },
-        "& .MuiSvgIcon-root + .MuiListItemText-root": {
-          display: "none !important",
-        },
-      }
+      "& .MuiListItem-root": {
+        justifyContent: "center",
+        position: "relative",
+      },
+      "& .MuiListItemIcon-root": {
+        minWidth: "0 !important",
+        marginRight: "0 !important",
+        justifyContent: "center",
+      },
+      "& .MuiListItemText-root, & .MuiListItemText-primary": {
+        display: "none !important",
+      },
+      "& .MuiSvgIcon-root + .MuiListItemText-root": {
+        display: "none !important",
+      },
+    }
     : {}),
 }));
 
@@ -792,10 +792,10 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
                           isGroupActive
                             ? ACTIVE_NAV_COLOR
                             : isActive
-                            ? ACTIVE_NAV_COLOR
-                            : isRecycleBin && !isActive
-                            ? alpha(theme.palette.warning.main, 0.05)
-                            : alpha(theme.palette.primary.main, 0.05),
+                              ? ACTIVE_NAV_COLOR
+                              : isRecycleBin && !isActive
+                                ? alpha(theme.palette.warning.main, 0.05)
+                                : alpha(theme.palette.primary.main, 0.05),
                         color:
                           isGroupActive || isActive
                             ? "#ffffff"
@@ -874,9 +874,8 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
                         pl: 2.25,
                         pt: isGroupOpen ? 1 : 0,
                         pb: isGroupOpen ? 1.2 : 0,
-                        borderLeft: `3px solid ${
-                          isGroupOpen ? theme.palette.primary.main : "transparent"
-                        }`,
+                        borderLeft: `3px solid ${isGroupOpen ? theme.palette.primary.main : "transparent"
+                          }`,
                         borderRadius: "0 0 10px 10px",
                         backgroundColor: isGroupOpen
                           ? alpha(theme.palette.primary.main, 0.04)
@@ -951,8 +950,8 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
                                   borderRadius: "50%",
                                   mr: 1.6,
                                   bgcolor: childActive
-                                  ? theme.palette.primary.main
-                                  : alpha(theme.palette.primary.main, 0.75),
+                                    ? theme.palette.primary.main
+                                    : alpha(theme.palette.primary.main, 0.75),
                                   flexShrink: 0,
                                 }}
                               />
@@ -1006,15 +1005,15 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
                   ? ACTIVE_NAV_COLOR
                   : isActive
                     ? ACTIVE_NAV_COLOR
-                  : isRecycleBin && !isActive
-                    ? alpha(theme.palette.warning.main, 0.03)
-                    : undefined,
+                    : isRecycleBin && !isActive
+                      ? alpha(theme.palette.warning.main, 0.03)
+                      : undefined,
               color:
                 isGroupActive
                   ? "#ffffff"
                   : isActive
-                  ? "#ffffff"
-                  : undefined,
+                    ? "#ffffff"
+                    : undefined,
             }}
           >
             <ListItemIcon>
@@ -1043,9 +1042,8 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
                 ml: 2,
                 pl: 2,
                 mb: isGroupOpen ? 1 : 0,
-                borderLeft: `3px solid ${
-                  isGroupOpen ? theme.palette.primary.main : "transparent"
-                }`,
+                borderLeft: `3px solid ${isGroupOpen ? theme.palette.primary.main : "transparent"
+                  }`,
                 maxHeight: isGroupOpen ? 180 : 0,
                 opacity: isGroupOpen ? 1 : 0,
                 overflow: "hidden",
@@ -1344,38 +1342,38 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
           borderTop: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
         }}
       >
-          <Button
-            onClick={handleLogout}
-            startIcon={!isCollapsed ? <LogoutOutlinedIcon /> : null}
-            onMouseEnter={(e) => showCollapsedTooltip("Logout", e)}
-            onMouseLeave={hideCollapsedTooltip}
-            onFocus={(e) => showCollapsedTooltip("Logout", e)}
-            onBlur={hideCollapsedTooltip}
-            fullWidth
-            variant="text"
-            sx={{
-              justifyContent: isCollapsed ? "center" : "flex-start",
-              color: theme.palette.text.secondary,
-              fontWeight: 500,
-              textTransform: "none",
-              py: { md: 0.75, lg: 1 },
-              px: { md: 1, lg: 1.5 },
-              borderRadius: 2,
-              minWidth: 0,
-              "&:hover": {
-                color: isCollapsed ? ACTIVE_NAV_COLOR : theme.palette.error.main,
-                backgroundColor: isCollapsed
-                  ? alpha(ACTIVE_NAV_COLOR, 0.1)
-                  : alpha(theme.palette.error.main, 0.08),
-              },
-            }}
-          >
-            {!isCollapsed ? (
-              "Logout"
-            ) : (
-              <LogoutOutlinedIcon sx={{ fontSize: { md: 18, lg: 20 } }} />
-            )}
-          </Button>
+        <Button
+          onClick={handleLogout}
+          startIcon={!isCollapsed ? <LogoutOutlinedIcon /> : null}
+          onMouseEnter={(e) => showCollapsedTooltip("Logout", e)}
+          onMouseLeave={hideCollapsedTooltip}
+          onFocus={(e) => showCollapsedTooltip("Logout", e)}
+          onBlur={hideCollapsedTooltip}
+          fullWidth
+          variant="text"
+          sx={{
+            justifyContent: isCollapsed ? "center" : "flex-start",
+            color: theme.palette.text.secondary,
+            fontWeight: 500,
+            textTransform: "none",
+            py: { md: 0.75, lg: 1 },
+            px: { md: 1, lg: 1.5 },
+            borderRadius: 2,
+            minWidth: 0,
+            "&:hover": {
+              color: isCollapsed ? ACTIVE_NAV_COLOR : theme.palette.error.main,
+              backgroundColor: isCollapsed
+                ? alpha(ACTIVE_NAV_COLOR, 0.1)
+                : alpha(theme.palette.error.main, 0.08),
+            },
+          }}
+        >
+          {!isCollapsed ? (
+            "Logout"
+          ) : (
+            <LogoutOutlinedIcon sx={{ fontSize: { md: 18, lg: 20 } }} />
+          )}
+        </Button>
       </Box>
     </Box>
   );
@@ -1667,50 +1665,50 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }) {
 
   const collapsedTooltipNode = isCollapsed && collapsedTooltip && (
     <Portal>
+      <Box
+        sx={{
+          position: "fixed",
+          left: collapsedTooltip.left,
+          top: collapsedTooltip.top,
+          transform: "translateY(-50%)",
+          zIndex: 2147483647,
+          pointerEvents: "none",
+          display: "flex",
+          alignItems: "center",
+          animation: "sidebarTooltipIn 160ms cubic-bezier(0.22, 1, 0.36, 1) both",
+          "@keyframes sidebarTooltipIn": {
+            from: { opacity: 0, transform: "translate(-6px, -50%)" },
+            to: { opacity: 1, transform: "translate(0, -50%)" },
+          },
+        }}
+      >
         <Box
           sx={{
-            position: "fixed",
-            left: collapsedTooltip.left,
-            top: collapsedTooltip.top,
-            transform: "translateY(-50%)",
-            zIndex: 2147483647,
-            pointerEvents: "none",
-            display: "flex",
-            alignItems: "center",
-            animation: "sidebarTooltipIn 160ms cubic-bezier(0.22, 1, 0.36, 1) both",
-            "@keyframes sidebarTooltipIn": {
-              from: { opacity: 0, transform: "translate(-6px, -50%)" },
-              to: { opacity: 1, transform: "translate(0, -50%)" },
-            },
+            width: 12,
+            height: 12,
+            bgcolor: ACTIVE_NAV_COLOR,
+            transform: "rotate(45deg)",
+            mr: "-6px",
+            boxShadow: "0 8px 18px rgba(15, 23, 42, 0.16)",
+          }}
+        />
+        <Box
+          sx={{
+            bgcolor: ACTIVE_NAV_COLOR,
+            color: "#ffffff",
+            fontSize: 14,
+            fontWeight: 700,
+            lineHeight: 1,
+            whiteSpace: "nowrap",
+            px: 1.75,
+            py: 1.1,
+            borderRadius: 1.5,
+            boxShadow: "0 12px 28px rgba(15, 23, 42, 0.24)",
           }}
         >
-          <Box
-            sx={{
-              width: 12,
-              height: 12,
-              bgcolor: ACTIVE_NAV_COLOR,
-              transform: "rotate(45deg)",
-              mr: "-6px",
-              boxShadow: "0 8px 18px rgba(15, 23, 42, 0.16)",
-            }}
-          />
-          <Box
-            sx={{
-              bgcolor: ACTIVE_NAV_COLOR,
-              color: "#ffffff",
-              fontSize: 14,
-              fontWeight: 700,
-              lineHeight: 1,
-              whiteSpace: "nowrap",
-              px: 1.75,
-              py: 1.1,
-              borderRadius: 1.5,
-              boxShadow: "0 12px 28px rgba(15, 23, 42, 0.24)",
-            }}
-          >
-            {collapsedTooltip.label}
-          </Box>
+          {collapsedTooltip.label}
         </Box>
+      </Box>
     </Portal>
   );
 

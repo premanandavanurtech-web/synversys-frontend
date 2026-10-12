@@ -23,6 +23,7 @@ import StarIcon from "@mui/icons-material/Star";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import PlayCircleIcon from "@mui/icons-material/PlayCircle";
 import { Navigate, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContexts";
 
 const Hero = ({ scrollToSection }) => {
   const theme = useTheme();
@@ -30,7 +31,8 @@ const Hero = ({ scrollToSection }) => {
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
   const isDarkMode = theme.palette.mode === "dark";
-   const navigate = useNavigate()
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
 
   const features = [
     { icon: <VerifiedIcon />, label: "Real-time Tracking", color: "#3b82f6" },
@@ -261,7 +263,13 @@ const Hero = ({ scrollToSection }) => {
               sx={{ width: { xs: "100%", sm: "auto" }, mb: { xs: 2.5, sm: 4, md: 5, lg: 6 } }}
             >
               <Button
-             onClick={() => navigate("/login", { replace: true })}
+                onClick={() => {
+                  if (isAuthenticated && user) {
+                    navigate(user?.role === "team" ? "/team" : "/dashboard");
+                  } else {
+                    navigate("/login", { replace: true });
+                  }
+                }}
                 variant="contained"
                 size={isMobile ? "small" : "medium"}
                 endIcon={
@@ -291,7 +299,7 @@ const Hero = ({ scrollToSection }) => {
                   maxWidth: { xs: 280, sm: "none" },
                 }}
               >
-                Get Started
+                {isAuthenticated && user ? "Go to Dashboard" : "Get Started"}
               </Button>
               <Button
                 variant="outlined"

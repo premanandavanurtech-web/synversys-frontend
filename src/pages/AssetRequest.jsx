@@ -1270,12 +1270,18 @@ export default function AssetRequests() {
     total: tabStats.total,
   };
 
-  const parentCount = visibleRequests.filter(
-    (r) => r.assetType === "parent" || (!r.assetType && !r.isChildRequest),
-  ).length;
-  const childCount = visibleRequests.filter(
-    (r) => r.assetType === "child" || r.isChildRequest,
-  ).length;
+  const parentCount =
+    typeof stats?.parent === "number"
+      ? stats.parent
+      : visibleRequests.filter(
+          (r) => r.assetType === "parent" || (!r.assetType && !r.isChildRequest),
+        ).length;
+  const childCount =
+    typeof stats?.child === "number"
+      ? stats.child
+      : visibleRequests.filter(
+          (r) => r.assetType === "child" || r.isChildRequest,
+        ).length;
   const requestVerb = user?.role === "team" ? "Sent" : "Received";
 
   const statDefs = [
@@ -1597,10 +1603,10 @@ export default function AssetRequests() {
                 }}
               >
                 <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
-                  {`${t.label.xs}${t.count ? ` (${t.count})` : ""}`}
+                  {`${t.label.xs} (${t.count ?? 0})`}
                 </Box>
                 <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-                  {`${t.label.sm}${t.count ? ` (${t.count})` : ""}`}
+                  {`${t.label.sm} (${t.count ?? 0})`}
                 </Box>
               </Box>
             }

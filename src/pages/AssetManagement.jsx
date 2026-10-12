@@ -770,6 +770,50 @@ export default function AssetManagement() {
     message: "",
     severity: "success",
   });
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+
+  const fetchPendingRequestsCount = useCallback(async () => {
+    try {
+      const res = await api.get("/asset-requests/stats/summary");
+      const data = res?.data || {};
+      const count =
+        typeof data.pending === "number"
+          ? data.pending
+          : typeof data.data?.pending === "number"
+          ? data.data.pending
+          : null;
+      if (typeof count === "number") {
+        setPendingRequestsCount(count);
+        return;
+      }
+    } catch {
+      // fallback
+    }
+
+    try {
+      const res = await api.get("/asset-requests", {
+        params: { status: "pending", limit: 1 },
+      });
+      const data = res?.data || {};
+      const count =
+        typeof data.stats?.pending === "number"
+          ? data.stats.pending
+          : typeof data.data?.stats?.pending === "number"
+          ? data.data.stats.pending
+          : typeof data.pagination?.total === "number"
+          ? data.pagination.total
+          : typeof data.data?.pagination?.total === "number"
+          ? data.data.pagination.total
+          : 0;
+      setPendingRequestsCount(count);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPendingRequestsCount();
+  }, [fetchPendingRequestsCount]);
 
   const toast = (msg, sev = "success") =>
     setSnackbar({ open: true, message: msg, severity: sev });
@@ -1359,9 +1403,51 @@ export default function AssetManagement() {
               variant="outlined"
               onClick={() => navigate("/admin/asset-requests")}
               startIcon={<Visibility sx={{ fontSize: 15 }} />}
-              sx={{ ...ghostBtn, px: 2, py: 0.9 }}
+              sx={{
+                ...ghostBtn,
+                px: 2,
+                py: 0.9,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.75,
+              }}
             >
-              {!isMobile && "My Asset Requests"}
+              {!isMobile && (isAdmin ? "Received Asset Request" : "My Asset Requests")}
+              <Box
+                component="span"
+                sx={{
+                  ml: 0.5,
+                  px: 0.85,
+                  py: 0.15,
+                  minWidth: 20,
+                  height: 20,
+                  borderRadius: "999px",
+                  bgcolor:
+                    pendingRequestsCount > 0
+                      ? "#f59e0b"
+                      : theme.palette.mode === "dark"
+                      ? "rgba(148, 163, 184, 0.2)"
+                      : "#e2e8f0",
+                  color:
+                    pendingRequestsCount > 0
+                      ? "#ffffff"
+                      : theme.palette.mode === "dark"
+                      ? "#94a3b8"
+                      : "#64748b",
+                  fontSize: "0.72rem",
+                  fontWeight: 700,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow:
+                    pendingRequestsCount > 0
+                      ? "0 1px 3px rgba(245, 158, 11, 0.35)"
+                      : "none",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {pendingRequestsCount}
+              </Box>
             </Button>
             {isAdmin && (
               <Button

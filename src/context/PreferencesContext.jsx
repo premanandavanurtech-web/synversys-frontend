@@ -13,24 +13,34 @@ export const LANGUAGE_OPTIONS = [
   // { value: "hi", label: "Hindi", locale: "hi-IN" },
 ];
 
+export const getSystemTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata";
+  } catch {
+    return "Asia/Kolkata";
+  }
+};
+
 export const TIMEZONE_OPTIONS = [
-  // { value: "Asia/Kolkata", label: "India Standard Time (IST)" },
-  { value: "America/New_York", label: "Eastern Time (EST)" },
-  // { value: "UTC", label: "UTC" },
-  // { value: "Europe/London", label: "London (GMT/BST)" },
-  // { value: "America/Los_Angeles", label: "Pacific Time (PST)" },
+  { value: "Asia/Kolkata", label: "India Standard Time (IST)" },
+  { value: "UTC", label: "UTC" },
+  { value: "America/New_York", label: "Eastern Time (EST/EDT)" },
+  { value: "America/Los_Angeles", label: "Pacific Time (PST/PDT)" },
+  { value: "Europe/London", label: "London (GMT/BST)" },
+  { value: "Asia/Dubai", label: "Gulf Standard Time (GST)" },
+  { value: "Asia/Singapore", label: "Singapore Time (SGT)" },
 ];
 
 export const DATE_FORMAT_OPTIONS = [
-  { value: "DD/MM/YYYY", label: "DD/MM/YYYY" }, 
-  // { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
-  // { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
-  // { value: "MMM DD, YYYY", label: "MMM DD, YYYY" },
+  { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
+  { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
+  { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
+  { value: "MMM DD, YYYY", label: "MMM DD, YYYY" },
 ];
 
 export const DEFAULT_PREFERENCES = {
   language: "en",
-  timezone: "America/New_York",
+  timezone: getSystemTimezone(),
   dateFormat: "DD/MM/YYYY",
 };
 
@@ -462,7 +472,14 @@ const installTranslationBridge = () => {
 const getStoredPreferences = () => {
   try {
     const raw = localStorage.getItem(PREFERENCES_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (parsed && parsed.timezone === "America/New_York") {
+      parsed.timezone = getSystemTimezone();
+      try {
+        localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(parsed));
+      } catch { }
+    }
+    return parsed;
   } catch {
     return {};
   }
@@ -473,6 +490,10 @@ const normalizePreferences = (value = {}) => {
     ...DEFAULT_PREFERENCES,
     ...value,
   };
+
+  if (!normalized.timezone || normalized.timezone === "America/New_York") {
+    normalized.timezone = getSystemTimezone();
+  }
 
   if (normalized.language === "en-IN") normalized.language = "en";
   return normalized;

@@ -53,41 +53,6 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { useChecklistBuilder } from "../context/ChecklistBuilderContext";
 import { useNavigate } from "react-router-dom";
 
-const theme = createTheme({
-  palette: {
-    mode: "light",
-    primary: { main: "#1a4a5c" },
-    background: { default: "#f4f5f7", paper: "#ffffff" },
-    text: { primary: "#1a1d23", secondary: "#6b7280" },
-  },
-  typography: { fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" },
-  shape: { borderRadius: 10 },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: "none",
-          fontWeight: 500,
-          fontSize: 13,
-          borderRadius: 8,
-          boxShadow: "none",
-          "&:hover": { boxShadow: "none" },
-        },
-      },
-    },
-    MuiOutlinedInput: {
-      styleOverrides: {
-        root: {
-          fontSize: 14,
-          "& fieldset": { borderColor: "#e5e7eb" },
-          "&:hover fieldset": { borderColor: "#cbd5e1" },
-          "&.Mui-focused fieldset": { borderColor: "#1a4a5c" },
-        },
-      },
-    },
-  },
-});
-
 // Field type definitions
 const FIELD_TYPES = [
   {
@@ -152,6 +117,8 @@ function buildFieldDefaults(type) {
 
 // Option Editor Dialog
 function OptionEditorDialog({ open, onClose, options, onSave }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const [tempOptions, setTempOptions] = useState(
     options?.length ? options : ["Option 1", "Option 2"],
   );
@@ -167,9 +134,17 @@ function OptionEditorDialog({ open, onClose, options, onSave }) {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { borderRadius: "16px" } }}
+      PaperProps={{
+        sx: {
+          borderRadius: "16px",
+          bgcolor: isDark ? "#0c1726" : "#ffffff",
+          backgroundImage: "none",
+        },
+      }}
     >
-      <DialogTitle sx={{ pb: 1 }}>Edit Options</DialogTitle>
+      <DialogTitle sx={{ pb: 1, color: isDark ? "#f8fafc" : "#111827" }}>
+        Edit Options
+      </DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {tempOptions.map((option, i) => (
@@ -206,14 +181,28 @@ function OptionEditorDialog({ open, onClose, options, onSave }) {
                 `Option ${tempOptions.length + 1}`,
               ])
             }
+            sx={{
+              borderColor: isDark ? "rgba(148, 163, 184, 0.3)" : undefined,
+              color: isDark ? "#38bdf8" : undefined,
+            }}
           >
             Add Option
           </Button>
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSave} variant="contained">
+        <Button onClick={onClose} sx={{ color: isDark ? "#94a3b8" : undefined }}>
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          sx={{
+            bgcolor: isDark ? "#0284c7" : "#1a4a5c",
+            color: "#ffffff",
+            "&:hover": { bgcolor: isDark ? "#0369a1" : "#143846" },
+          }}
+        >
           Save Options
         </Button>
       </DialogActions>
@@ -231,6 +220,8 @@ function PreviewDialog({
   tags,
   fields,
 }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const [values, setValues] = useState({});
   const [ratings, setRatings] = useState({});
   const [checked, setChecked] = useState({});
@@ -304,12 +295,21 @@ function PreviewDialog({
                       }))
                     }
                     sx={{
-                      color: "#1a4a5c",
-                      "&.Mui-checked": { color: "#1a4a5c" },
+                      color: isDark ? "rgba(148, 163, 184, 0.4)" : "#1a4a5c",
+                      "&.Mui-checked": { color: isDark ? "#38bdf8" : "#1a4a5c" },
                     }}
                   />
                 }
-                label={opt}
+                label={
+                  <Typography
+                    sx={{
+                      fontSize: { xs: 12.5, sm: 13.5 },
+                      color: isDark ? "#e2e8f0" : "#374151",
+                    }}
+                  >
+                    {opt}
+                  </Typography>
+                }
               />
             ))}
           </Stack>
@@ -321,9 +321,14 @@ function PreviewDialog({
               value={ratings[field.id] || 0}
               max={field.validation?.max || 5}
               onChange={(_, v) => setRatings((p) => ({ ...p, [field.id]: v }))}
-              sx={{ "& .MuiRating-iconFilled": { color: "#1a4a5c" } }}
+              sx={{
+                "& .MuiRating-iconFilled": { color: isDark ? "#38bdf8" : "#1a4a5c" },
+                "& .MuiRating-iconEmpty": {
+                  color: isDark ? "rgba(148, 163, 184, 0.3)" : "#cbd5e1",
+                },
+              }}
             />
-            <Typography sx={{ fontSize: { xs: 11, sm: 12 }, color: "#9ca3af" }}>
+            <Typography sx={{ fontSize: { xs: 11, sm: 12 }, color: isDark ? "#94a3b8" : "#9ca3af" }}>
               {ratings[field.id]
                 ? `${ratings[field.id]}/${field.validation?.max || 5}`
                 : `Rate 1–${field.validation?.max || 5}`}
@@ -335,19 +340,24 @@ function PreviewDialog({
         return (
           <Box
             sx={{
-              border: "2px dashed #d1d5db",
+              border: `2px dashed ${isDark ? "rgba(148, 163, 184, 0.3)" : "#d1d5db"}`,
               borderRadius: "8px",
-              bgcolor: "#fafafa",
+              bgcolor: isDark ? "rgba(255, 255, 255, 0.03)" : "#fafafa",
               py: { xs: 2, sm: 2.5 },
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               gap: 0.8,
               cursor: "pointer",
+              transition: "all 0.2s ease",
+              "&:hover": {
+                bgcolor: isDark ? "rgba(255, 255, 255, 0.06)" : "#f3f4f6",
+                borderColor: isDark ? "#38bdf8" : "#1a4a5c",
+              },
             }}
           >
-            <ImageOutlinedIcon sx={{ fontSize: 28, color: "#d1d5db" }} />
-            <Typography sx={{ fontSize: { xs: 11, sm: 13 }, color: "#9ca3af" }}>
+            <ImageOutlinedIcon sx={{ fontSize: 28, color: isDark ? "rgba(148, 163, 184, 0.6)" : "#d1d5db" }} />
+            <Typography sx={{ fontSize: { xs: 11, sm: 13 }, color: isDark ? "#94a3b8" : "#9ca3af" }}>
               {field.type === "file_upload"
                 ? "Click to upload file"
                 : "Drag & drop or click to browse"}
@@ -358,16 +368,16 @@ function PreviewDialog({
         return (
           <Box
             sx={{
-              border: "1.5px solid #e5e7eb",
+              border: `1.5px solid ${isDark ? "rgba(148, 163, 184, 0.24)" : "#e5e7eb"}`,
               borderRadius: "8px",
               height: { xs: 100, sm: 120 },
-              bgcolor: "#fafafa",
+              bgcolor: isDark ? "rgba(255, 255, 255, 0.03)" : "#fafafa",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Typography sx={{ fontSize: { xs: 11, sm: 12 }, color: "#9ca3af" }}>
+            <Typography sx={{ fontSize: { xs: 11, sm: 12 }, color: isDark ? "#94a3b8" : "#9ca3af" }}>
               Signature pad
             </Typography>
           </Box>
@@ -395,9 +405,22 @@ function PreviewDialog({
       onClose={onClose}
       maxWidth="md"
       fullWidth
-      PaperProps={{ sx: { borderRadius: "16px", maxHeight: "90vh" } }}
+      PaperProps={{
+        sx: {
+          borderRadius: "16px",
+          maxHeight: "90vh",
+          bgcolor: isDark ? "#0c1726" : "#ffffff",
+          backgroundImage: "none",
+        },
+      }}
     >
-      <DialogTitle sx={{ p: { xs: 2, sm: 3 }, pb: { xs: 1, sm: 2 } }}>
+      <DialogTitle
+        sx={{
+          p: { xs: 2, sm: 3 },
+          pb: { xs: 1, sm: 2 },
+          borderBottom: `1px solid ${isDark ? "rgba(148, 163, 184, 0.16)" : "#f1f3f5"}`,
+        }}
+      >
         <Box
           display="flex"
           alignItems="center"
@@ -406,12 +429,22 @@ function PreviewDialog({
           gap={1}
         >
           <Box>
-            <Typography sx={{ fontSize: { xs: 18, sm: 20 }, fontWeight: 700 }}>
+            <Typography
+              sx={{
+                fontSize: { xs: 18, sm: 20 },
+                fontWeight: 700,
+                color: isDark ? "#f8fafc" : "#111827",
+              }}
+            >
               Preview: {checklistName}
             </Typography>
             {description && (
               <Typography
-                sx={{ fontSize: { xs: 12, sm: 13 }, color: "#6b7280", mt: 0.5 }}
+                sx={{
+                  fontSize: { xs: 12, sm: 13 },
+                  color: isDark ? "#94a3b8" : "#6b7280",
+                  mt: 0.5,
+                }}
               >
                 {description}
               </Typography>
@@ -421,30 +454,53 @@ function PreviewDialog({
                 <Chip
                   label={category}
                   size="small"
-                  sx={{ bgcolor: "#e8f4f8", color: "#1a4a5c" }}
+                  sx={{
+                    bgcolor: isDark ? "rgba(56, 189, 248, 0.15)" : "#e8f4f8",
+                    color: isDark ? "#38bdf8" : "#1a4a5c",
+                    fontWeight: 600,
+                  }}
                 />
               )}
               {tags?.slice(0, 3).map((tag, i) => (
-                <Chip key={i} label={tag} size="small" variant="outlined" />
+                <Chip
+                  key={i}
+                  label={tag}
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    borderColor: isDark ? "rgba(148, 163, 184, 0.3)" : undefined,
+                    color: isDark ? "#cbd5e1" : undefined,
+                  }}
+                />
               ))}
             </Box>
           </Box>
-          <IconButton onClick={onClose} size="small">
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{ color: isDark ? "#94a3b8" : "inherit" }}
+          >
             <CloseIcon sx={{ fontSize: 20 }} />
           </IconButton>
         </Box>
       </DialogTitle>
-      <DialogContent dividers sx={{ p: { xs: 2, sm: 3 } }}>
+      <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
         {submitted ? (
           <Box display="flex" flexDirection="column" alignItems="center" py={8}>
             <CheckCircleIcon sx={{ fontSize: 64, color: "#4caf50", mb: 2 }} />
-            <Typography sx={{ fontSize: 18, fontWeight: 600 }}>
+            <Typography
+              sx={{
+                fontSize: 18,
+                fontWeight: 600,
+                color: isDark ? "#f8fafc" : "#111827",
+              }}
+            >
               Form Submitted Successfully!
             </Typography>
           </Box>
         ) : fields.length === 0 ? (
           <Box textAlign="center" py={8}>
-            <Typography sx={{ fontSize: 14, color: "#9ca3af" }}>
+            <Typography sx={{ fontSize: 14, color: isDark ? "#94a3b8" : "#9ca3af" }}>
               No fields to preview.
             </Typography>
           </Box>
@@ -456,7 +512,7 @@ function PreviewDialog({
                   sx={{
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#374151",
+                    color: isDark ? "#f8fafc" : "#374151",
                     mb: 1,
                   }}
                 >
@@ -475,9 +531,17 @@ function PreviewDialog({
           pt: { xs: 1, sm: 2 },
           flexWrap: "wrap",
           gap: 1,
+          borderTop: `1px solid ${isDark ? "rgba(148, 163, 184, 0.16)" : "#f1f3f5"}`,
         }}
       >
-        <Button onClick={onClose} variant="outlined">
+        <Button
+          onClick={onClose}
+          variant="outlined"
+          sx={{
+            borderColor: isDark ? "rgba(148, 163, 184, 0.3)" : undefined,
+            color: isDark ? "#cbd5e1" : undefined,
+          }}
+        >
           Close
         </Button>
         {!submitted && fields.length > 0 && (
@@ -490,7 +554,11 @@ function PreviewDialog({
               }, 2000);
             }}
             variant="contained"
-            sx={{ bgcolor: "#1a4a5c" }}
+            sx={{
+              bgcolor: isDark ? "#0284c7" : "#1a4a5c",
+              color: "#ffffff",
+              "&:hover": { bgcolor: isDark ? "#0369a1" : "#143846" },
+            }}
           >
             Submit Form
           </Button>
@@ -502,6 +570,8 @@ function PreviewDialog({
 
 // Draggable field type pill
 function DraggableFieldType({ fieldType, onDragStart, onAdd, isMobile }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   return (
     <Box
       draggable={!isMobile}
@@ -517,18 +587,28 @@ function DraggableFieldType({ fieldType, onDragStart, onAdd, isMobile }) {
         cursor: isMobile ? "pointer" : "grab",
         borderRadius: "8px",
         transition: "all 0.12s",
-        "&:hover": { bgcolor: "#f1f5f9" },
+        "&:hover": {
+          bgcolor: isDark ? "rgba(255, 255, 255, 0.06)" : "#f1f5f9",
+        },
         "&:active": isMobile
           ? { transform: "scale(0.98)" }
           : { cursor: "grabbing" },
         userSelect: "none",
       }}
     >
-      {fieldType.icon}
+      <Box
+        sx={{
+          color: isDark ? "#38bdf8" : "#1a4a5c",
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        {fieldType.icon}
+      </Box>
       <Typography
         sx={{
           fontSize: { xs: 12.5, sm: 13.5 },
-          color: "#374151",
+          color: isDark ? "#f1f5f9" : "#374151",
           fontWeight: 500,
         }}
       >
@@ -550,6 +630,8 @@ function FieldCard({
   onOptionsChange,
   isMobile,
 }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const [editingLabel, setEditingLabel] = useState(false);
   const [labelValue, setLabelValue] = useState(field.label);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -581,7 +663,11 @@ function FieldCard({
             <Button
               size="small"
               onClick={() => setOptionsOpen(true)}
-              sx={{ mt: 0.5, fontSize: { xs: 10, sm: 11 } }}
+              sx={{
+                mt: 0.5,
+                fontSize: { xs: 10, sm: 11 },
+                color: isDark ? "#38bdf8" : "#1a4a5c",
+              }}
             >
               Edit Options ({field.options?.length || 0})
             </Button>
@@ -594,9 +680,22 @@ function FieldCard({
               {(field.options || []).map((opt, i) => (
                 <FormControlLabel
                   key={i}
-                  control={<Checkbox disabled size="small" />}
+                  control={
+                    <Checkbox
+                      disabled
+                      size="small"
+                      sx={{
+                        color: isDark ? "rgba(148, 163, 184, 0.4)" : undefined,
+                      }}
+                    />
+                  }
                   label={
-                    <Typography sx={{ fontSize: { xs: 11, sm: 12 } }}>
+                    <Typography
+                      sx={{
+                        fontSize: { xs: 11, sm: 12 },
+                        color: isDark ? "#cbd5e1" : "#4b5563",
+                      }}
+                    >
                       {opt}
                     </Typography>
                   }
@@ -606,7 +705,11 @@ function FieldCard({
             <Button
               size="small"
               onClick={() => setOptionsOpen(true)}
-              sx={{ mt: 0.5, fontSize: { xs: 10, sm: 11 } }}
+              sx={{
+                mt: 0.5,
+                fontSize: { xs: 10, sm: 11 },
+                color: isDark ? "#38bdf8" : "#1a4a5c",
+              }}
             >
               Edit Options ({field.options?.length || 0})
             </Button>
@@ -637,8 +740,22 @@ function FieldCard({
       case "rating":
         return (
           <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-            <Rating value={0} disabled max={field.validation?.max || 5} />
-            <Typography sx={{ fontSize: { xs: 10, sm: 11 }, color: "#9ca3af" }}>
+            <Rating
+              value={0}
+              disabled
+              max={field.validation?.max || 5}
+              sx={{
+                "& .MuiRating-iconEmpty": {
+                  color: isDark ? "rgba(148, 163, 184, 0.3)" : "#cbd5e1",
+                },
+              }}
+            />
+            <Typography
+              sx={{
+                fontSize: { xs: 10, sm: 11 },
+                color: isDark ? "#94a3b8" : "#9ca3af",
+              }}
+            >
               1 – {field.validation?.max || 5}
             </Typography>
           </Box>
@@ -648,17 +765,27 @@ function FieldCard({
         return (
           <Box
             sx={{
-              border: "2px dashed #d1d5db",
+              border: `2px dashed ${isDark ? "rgba(148, 163, 184, 0.28)" : "#d1d5db"}`,
               borderRadius: "8px",
-              bgcolor: "#fafafa",
+              bgcolor: isDark ? "rgba(255, 255, 255, 0.03)" : "#fafafa",
               py: 2,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
             }}
           >
-            <ImageOutlinedIcon sx={{ fontSize: 28, color: "#d1d5db" }} />
-            <Typography sx={{ fontSize: { xs: 11, sm: 12 }, color: "#9ca3af" }}>
+            <ImageOutlinedIcon
+              sx={{
+                fontSize: 28,
+                color: isDark ? "rgba(148, 163, 184, 0.6)" : "#d1d5db",
+              }}
+            />
+            <Typography
+              sx={{
+                fontSize: { xs: 11, sm: 12 },
+                color: isDark ? "#94a3b8" : "#9ca3af",
+              }}
+            >
               {field.type === "file_upload" ? "File Upload" : "Image Upload"}
             </Typography>
           </Box>
@@ -667,16 +794,21 @@ function FieldCard({
         return (
           <Box
             sx={{
-              border: "1.5px solid #e5e7eb",
+              border: `1.5px solid ${isDark ? "rgba(148, 163, 184, 0.24)" : "#e5e7eb"}`,
               borderRadius: "8px",
               height: 60,
-              bgcolor: "#fafafa",
+              bgcolor: isDark ? "rgba(255, 255, 255, 0.03)" : "#fafafa",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Typography sx={{ fontSize: { xs: 10, sm: 11 }, color: "#9ca3af" }}>
+            <Typography
+              sx={{
+                fontSize: { xs: 10, sm: 11 },
+                color: isDark ? "#94a3b8" : "#9ca3af",
+              }}
+            >
               Signature field
             </Typography>
           </Box>
@@ -696,12 +828,14 @@ function FieldCard({
         onDragOver={onDragOver}
         onDrop={(e) => onDrop(e, index)}
         sx={{
-          border: "1.5px solid #e5e7eb",
+          border: `1.5px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e5e7eb"}`,
           borderRadius: "10px",
           p: { xs: "12px 14px", sm: "14px 16px" },
           mb: 1.5,
-          bgcolor: "#fff",
-          "&:hover": { borderColor: "#cbd5e1" },
+          bgcolor: isDark ? "#0f1c2e" : "#fff",
+          "&:hover": {
+            borderColor: isDark ? "rgba(56, 189, 248, 0.4)" : "#cbd5e1",
+          },
           cursor: isMobile ? "default" : "grab",
           "&:active": isMobile ? {} : { cursor: "grabbing" },
         }}
@@ -716,7 +850,12 @@ function FieldCard({
         >
           <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
             {!isMobile && (
-              <DragIndicatorIcon sx={{ fontSize: 16, color: "#d1d5db" }} />
+              <DragIndicatorIcon
+                sx={{
+                  fontSize: 16,
+                  color: isDark ? "rgba(148, 163, 184, 0.5)" : "#d1d5db",
+                }}
+              />
             )}
             {editingLabel ? (
               <TextField
@@ -742,9 +881,13 @@ function FieldCard({
                 sx={{
                   fontSize: { xs: 12, sm: 13 },
                   fontWeight: 600,
-                  color: "#374151",
+                  color: isDark ? "#f8fafc" : "#374151",
                   cursor: "text",
-                  "&:hover": { bgcolor: "#f5f5f5" },
+                  borderRadius: "4px",
+                  px: 0.5,
+                  "&:hover": {
+                    bgcolor: isDark ? "rgba(255, 255, 255, 0.08)" : "#f5f5f5",
+                  },
                 }}
               >
                 {field.label}
@@ -756,8 +899,11 @@ function FieldCard({
               sx={{
                 fontSize: 10,
                 height: 18,
-                bgcolor: "#f1f5f9",
-                color: "#6b7280",
+                bgcolor: isDark
+                  ? "rgba(56, 189, 248, 0.12)"
+                  : "#f1f5f9",
+                color: isDark ? "#38bdf8" : "#6b7280",
+                fontWeight: 600,
               }}
             />
             {field.required && (
@@ -767,8 +913,10 @@ function FieldCard({
                 sx={{
                   fontSize: 10,
                   height: 18,
-                  bgcolor: "#fef2f2",
-                  color: "#ef4444",
+                  bgcolor: isDark
+                    ? "rgba(239, 68, 68, 0.15)"
+                    : "#fef2f2",
+                  color: isDark ? "#f87171" : "#ef4444",
                 }}
               />
             )}
@@ -776,7 +924,10 @@ function FieldCard({
           <IconButton
             size="small"
             onClick={() => onDelete(field.id)}
-            sx={{ color: "#9ca3af", "&:hover": { color: "#e74c3c" } }}
+            sx={{
+              color: isDark ? "rgba(148, 163, 184, 0.6)" : "#9ca3af",
+              "&:hover": { color: "#ef4444" },
+            }}
           >
             <DeleteOutlineIcon sx={{ fontSize: 16 }} />
           </IconButton>
@@ -806,6 +957,8 @@ export default function GlobalChecklistBuilder() {
   const headerBorder = isDark ? "rgba(148, 163, 184, 0.24)" : "#e5e7eb";
   const headerText = isDark ? "#f8fafc" : "#111827";
   const headerSubText = isDark ? "#cbd5e1" : "#6b7280";
+  const paperBg = isDark ? "#0c1726" : "#ffffff";
+  const paperBorder = isDark ? "rgba(148, 163, 184, 0.2)" : "#e5e7eb";
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const {
@@ -962,21 +1115,27 @@ export default function GlobalChecklistBuilder() {
     <Paper
       elevation={0}
       sx={{
-        border: "1px solid #e5e7eb",
+        border: `1px solid ${paperBorder}`,
         borderRadius: "14px",
         p: { xs: 2, sm: 2.5 },
         height: "100%",
+        bgcolor: paperBg,
       }}
     >
       <Typography
-        sx={{ fontSize: { xs: 13, sm: 14 }, fontWeight: 700, mb: 0.5 }}
+        sx={{
+          fontSize: { xs: 13, sm: 14 },
+          fontWeight: 700,
+          mb: 0.5,
+          color: isDark ? "#f8fafc" : "#111827",
+        }}
       >
         Field Types
       </Typography>
       <Typography
         sx={{
           fontSize: { xs: 10, sm: 11 },
-          color: "#9ca3af",
+          color: isDark ? "#94a3b8" : "#9ca3af",
           mb: 2,
           fontStyle: "italic",
         }}
@@ -993,7 +1152,7 @@ export default function GlobalChecklistBuilder() {
               isMobile={isMobile}
             />
             {i < FIELD_TYPES.length - 1 && (
-              <Divider sx={{ borderColor: "#f1f3f5" }} />
+              <Divider sx={{ borderColor: isDark ? "rgba(148, 163, 184, 0.15)" : "#f1f3f5" }} />
             )}
           </React.Fragment>
         ))}
@@ -1002,8 +1161,7 @@ export default function GlobalChecklistBuilder() {
   );
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ThemeProvider theme={appTheme}>
       <Box sx={{ minHeight: "100vh", p: { xs: 1.5, sm: 2, md: 3 } }}>
         {/* Top Bar */}
         <Box
@@ -1052,6 +1210,10 @@ export default function GlobalChecklistBuilder() {
               startIcon={<VisibilityOutlinedIcon />}
               onClick={() => setPreviewOpen(true)}
               size={isMobile ? "small" : "medium"}
+              sx={{
+                color: isDark ? "#cbd5e1" : undefined,
+                borderColor: isDark ? "rgba(148, 163, 184, 0.3)" : undefined,
+              }}
             >
               Preview
             </Button>
@@ -1060,7 +1222,11 @@ export default function GlobalChecklistBuilder() {
               onClick={handleSave}
               disabled={loading}
               variant="contained"
-              sx={{ bgcolor: "#1a4a5c" }}
+              sx={{
+                bgcolor: isDark ? "#0284c7" : "#1a4a5c",
+                color: "#ffffff",
+                "&:hover": { bgcolor: isDark ? "#0369a1" : "#143846" },
+              }}
               size={isMobile ? "small" : "medium"}
             >
               {loading ? (
@@ -1092,10 +1258,11 @@ export default function GlobalChecklistBuilder() {
             <Paper
               elevation={0}
               sx={{
-                border: "1px solid #e5e7eb",
+                border: `1px solid ${paperBorder}`,
                 borderRadius: "14px",
                 p: { xs: 2, sm: 2.5, md: 3 },
                 mb: 2,
+                bgcolor: paperBg,
               }}
             >
               <Typography
@@ -1103,6 +1270,7 @@ export default function GlobalChecklistBuilder() {
                   fontSize: { xs: 11, sm: 12.5 },
                   fontWeight: 600,
                   mb: 0.7,
+                  color: isDark ? "#f8fafc" : "#374151",
                 }}
               >
                 Checklist Name *
@@ -1114,12 +1282,13 @@ export default function GlobalChecklistBuilder() {
                 onChange={(e) => setChecklistName(e.target.value)}
                 sx={{ mb: 2 }}
               />
-              <Divider sx={{ mb: 2 }} />
+              <Divider sx={{ mb: 2, borderColor: isDark ? "rgba(148, 163, 184, 0.15)" : undefined }} />
               <Typography
                 sx={{
                   fontSize: { xs: 11, sm: 12.5 },
                   fontWeight: 600,
                   mb: 0.7,
+                  color: isDark ? "#f8fafc" : "#374151",
                 }}
               >
                 Description
@@ -1132,12 +1301,13 @@ export default function GlobalChecklistBuilder() {
                 onChange={(e) => setDescription(e.target.value)}
                 sx={{ mb: 2 }}
               />
-              <Divider sx={{ mb: 2 }} />
+              <Divider sx={{ mb: 2, borderColor: isDark ? "rgba(148, 163, 184, 0.15)" : undefined }} />
               <Typography
                 sx={{
                   fontSize: { xs: 11, sm: 12.5 },
                   fontWeight: 600,
                   mb: 0.7,
+                  color: isDark ? "#f8fafc" : "#374151",
                 }}
               >
                 Category *
@@ -1155,6 +1325,7 @@ export default function GlobalChecklistBuilder() {
                   fontSize: { xs: 11, sm: 12.5 },
                   fontWeight: 600,
                   mb: 0.7,
+                  color: isDark ? "#f8fafc" : "#374151",
                 }}
               >
                 Tags
@@ -1166,7 +1337,13 @@ export default function GlobalChecklistBuilder() {
                     label={tag}
                     size="small"
                     onDelete={() => setTags(tags.filter((t) => t !== tag))}
-                    sx={{ bgcolor: "#e8f4f8", color: "#1a4a5c" }}
+                    sx={{
+                      bgcolor: isDark ? "rgba(56, 189, 248, 0.15)" : "#e8f4f8",
+                      color: isDark ? "#38bdf8" : "#1a4a5c",
+                      "& .MuiChip-deleteIcon": {
+                        color: isDark ? "#38bdf8" : "#1a4a5c",
+                      },
+                    }}
                   />
                 ))}
               </Box>
@@ -1189,15 +1366,16 @@ export default function GlobalChecklistBuilder() {
             <Paper
               elevation={0}
               sx={{
-                border: "1px solid #e5e7eb",
+                border: `1px solid ${paperBorder}`,
                 borderRadius: "14px",
                 p: { xs: 2, sm: 2.5, md: 3 },
                 minHeight: 280,
+                bgcolor: paperBg,
                 ...(draggedFieldType
                   ? {
-                      borderColor: "#1a4a5c",
+                      borderColor: isDark ? "#38bdf8" : "#1a4a5c",
                       borderStyle: "dashed",
-                      bgcolor: "#f8fafc",
+                      bgcolor: isDark ? "rgba(56, 189, 248, 0.05)" : "#f8fafc",
                     }
                   : {}),
               }}
@@ -1211,7 +1389,11 @@ export default function GlobalChecklistBuilder() {
                 mb={2.5}
               >
                 <Typography
-                  sx={{ fontSize: { xs: 12, sm: 13.5 }, fontWeight: 700 }}
+                  sx={{
+                    fontSize: { xs: 12, sm: 13.5 },
+                    fontWeight: 700,
+                    color: isDark ? "#f8fafc" : "#111827",
+                  }}
                 >
                   Checklist Fields ({fields.length})
                 </Typography>
@@ -1243,14 +1425,17 @@ export default function GlobalChecklistBuilder() {
                   }}
                 >
                   <Typography
-                    sx={{ fontSize: { xs: 13, sm: 14 }, color: "#9ca3af" }}
+                    sx={{
+                      fontSize: { xs: 13, sm: 14 },
+                      color: isDark ? "#94a3b8" : "#9ca3af",
+                    }}
                   >
                     No fields added yet
                   </Typography>
                   <Typography
                     sx={{
                       fontSize: { xs: 11, sm: 13 },
-                      color: "#c4c9d4",
+                      color: isDark ? "#64748b" : "#c4c9d4",
                       textAlign: "center",
                     }}
                   >
@@ -1294,10 +1479,16 @@ export default function GlobalChecklistBuilder() {
         anchor="right"
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        PaperProps={{
+          sx: {
+            bgcolor: paperBg,
+            backgroundImage: "none",
+          },
+        }}
       >
         <Box sx={{ width: 280, p: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-            <IconButton onClick={() => setSidebarOpen(false)}>
+            <IconButton onClick={() => setSidebarOpen(false)} sx={{ color: isDark ? "#94a3b8" : "inherit" }}>
               <CloseIcon />
             </IconButton>
           </Box>

@@ -165,55 +165,85 @@ const StepDot = ({ num, active, done }) => (
   </Box>
 );
 
-const UrgencyCard = ({ cfg, selected, onClick, isMobile }) => (
-  <Box
-    onClick={onClick}
-    sx={{
-      p: { xs: "6px 4px", sm: "8px 6px" },
-      borderRadius: "8px",
-      border: "0.5px solid",
-      borderColor: selected ? cfg.color : DARK_BORDER,
-      bgcolor: selected ? alpha(cfg.color, 0.16) : DARK_FIELD_BG,
-      cursor: "pointer",
-      width: "100%",
-      textAlign: "center",
-      transition: "all 0.15s ease",
-      boxShadow: selected ? `0 0 0 1px ${alpha(cfg.color, 0.35)}` : "none",
-      "&:hover": {
-        borderColor: cfg.color,
-        bgcolor: selected ? alpha(cfg.color, 0.2) : DARK_FIELD_BG_SOFT,
-      },
-      "&:active": isMobile ? { transform: "scale(0.98)" } : {},
-    }}
-  >
-    <Typography
-      variant="caption"
-      display="block"
-      fontWeight={600}
+const UrgencyCard = ({ cfg, selected, onClick, isMobile }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
+  return (
+    <Box
+      onClick={onClick}
       sx={{
-        color: selected ? cfg.color : "#e8eef6",
-        fontSize: { xs: 11, sm: 12 },
-        mb: 0.25,
+        p: { xs: "8px 6px", sm: "10px 8px" },
+        borderRadius: "8px",
+        border: "1px solid",
+        borderColor: selected
+          ? cfg.color
+          : isDark
+            ? "rgba(148, 163, 184, 0.2)"
+            : "#e2e8f0",
+        bgcolor: selected
+          ? isDark
+            ? alpha(cfg.color, 0.2)
+            : alpha(cfg.color, 0.1)
+          : isDark
+            ? DARK_FIELD_BG
+            : "#f8fafc",
+        cursor: "pointer",
+        width: "100%",
+        textAlign: "center",
+        transition: "all 0.15s ease",
+        boxShadow: selected ? `0 0 0 1px ${alpha(cfg.color, 0.35)}` : "none",
+        "&:hover": {
+          borderColor: cfg.color,
+          bgcolor: selected
+            ? isDark
+              ? alpha(cfg.color, 0.25)
+              : alpha(cfg.color, 0.15)
+            : isDark
+              ? DARK_FIELD_BG_SOFT
+              : "#f1f5f9",
+        },
+        "&:active": isMobile ? { transform: "scale(0.98)" } : {},
       }}
     >
-      {cfg.label}
-    </Typography>
-    <Typography
-      variant="caption"
-      display="block"
-      sx={{
-        color: selected ? alpha(cfg.color, 0.9) : DARK_TEXT_MUTED,
-        fontSize: { xs: 9, sm: 10.5 },
-        lineHeight: 1.3,
-      }}
-    >
-      {cfg.desc}
-    </Typography>
-  </Box>
-);
+      <Typography
+        variant="caption"
+        display="block"
+        fontWeight={600}
+        sx={{
+          color: selected
+            ? cfg.color
+            : isDark
+              ? "#e8eef6"
+              : "#1e293b",
+          fontSize: { xs: 11, sm: 12 },
+          mb: 0.25,
+        }}
+      >
+        {cfg.label}
+      </Typography>
+      <Typography
+        variant="caption"
+        display="block"
+        sx={{
+          color: selected
+            ? alpha(cfg.color, 0.9)
+            : isDark
+              ? DARK_TEXT_MUTED
+              : "#64748b",
+          fontSize: { xs: 9, sm: 10.5 },
+          lineHeight: 1.3,
+        }}
+      >
+        {cfg.desc}
+      </Typography>
+    </Box>
+  );
+};
 
 export default function RequestChecklistModal({ open, onClose, onSuccess }) {
   const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { submitRequest } = useRequestChecklist();
 
@@ -375,8 +405,8 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
         sx: {
           borderRadius: { xs: "24px 24px 0 0", sm: "14px" },
           overflow: "hidden",
-              height: { xs: "100dvh", sm: "auto" },
-              maxHeight: { xs: "100dvh", sm: "90vh" },
+          height: { xs: "100dvh", sm: "auto" },
+          maxHeight: { xs: "100dvh", sm: "90vh" },
           m: { xs: 0, sm: 1.5, md: 3 },
           width: {
             xs: "100%",
@@ -386,6 +416,9 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
           maxWidth: { xs: "100%", sm: 600 },
           display: "flex",
           flexDirection: "column",
+          bgcolor: isDark ? "#0c1726" : "#ffffff",
+          backgroundImage: "none",
+          border: isDark ? "1px solid rgba(148, 163, 184, 0.2)" : "none",
         },
       }}
     >
@@ -502,8 +535,12 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
           overflowY: "auto",
           flex: { xs: 1, sm: "initial" },
           maxHeight: { xs: "none", sm: "none" },
+          bgcolor: isDark ? "#0c1726" : "#ffffff",
           "&::-webkit-scrollbar": { width: 4 },
-          "&::-webkit-scrollbar-thumb": { bgcolor: "#dde6ea", borderRadius: 2 },
+          "&::-webkit-scrollbar-thumb": {
+            bgcolor: isDark ? "rgba(148, 163, 184, 0.2)" : "#dde6ea",
+            borderRadius: 2,
+          },
         }}
       >
         {apiError && (
@@ -546,92 +583,95 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
               }}
             />
 
-            <Grid container spacing={{ xs: 1.5, sm: 1.5 }}>
-              <Grid item xs={12} sm={6}>
-                <FormControl
-                  fullWidth
-                  error={!!errors.category}
-                  size={isMobile ? "small" : "medium"}
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                gap: 1.5,
+              }}
+            >
+              <FormControl
+                fullWidth
+                error={!!errors.category}
+                size={isMobile ? "small" : "medium"}
+              >
+                <InputLabel sx={{ fontSize: { xs: 12, sm: 14 } }}>
+                  Category *
+                </InputLabel>
+                <Select
+                  value={form.category}
+                  onChange={setField("category")}
+                  label="Category *"
+                  disabled={submitting}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <TagIcon
+                        sx={{
+                          fontSize: { xs: 14, sm: 16 },
+                          color: alpha(PRIMARY, 0.5),
+                        }}
+                      />
+                    </InputAdornment>
+                  }
+                  sx={{ fontSize: { xs: 13, sm: 14 } }}
                 >
-                  <InputLabel sx={{ fontSize: { xs: 12, sm: 14 } }}>
-                    Category *
-                  </InputLabel>
-                  <Select
-                    value={form.category}
-                    onChange={setField("category")}
-                    label="Category *"
-                    disabled={submitting}
-                    startAdornment={
-                      <InputAdornment position="start">
-                        <TagIcon
-                          sx={{
-                            fontSize: { xs: 14, sm: 16 },
-                            color: alpha(PRIMARY, 0.5),
-                          }}
-                        />
-                      </InputAdornment>
-                    }
-                    sx={{ fontSize: { xs: 13, sm: 14 } }}
-                  >
-                    {CATEGORIES.map((c) => (
-                      <MenuItem
-                        key={c}
-                        value={c}
-                        sx={{ fontSize: { xs: 13, sm: 14 } }}
-                      >
-                        {c}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.category && (
-                    <Typography
-                      variant="caption"
-                      color="error"
-                      sx={{ mt: 0.5, ml: 1.75, fontSize: { xs: 10, sm: 11 } }}
+                  {CATEGORIES.map((c) => (
+                    <MenuItem
+                      key={c}
+                      value={c}
+                      sx={{ fontSize: { xs: 13, sm: 14 } }}
                     >
-                      {errors.category}
-                    </Typography>
-                  )}
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-                  <InputLabel sx={{ fontSize: { xs: 12, sm: 14 } }}>
-                    Usage frequency
-                  </InputLabel>
-                  <Select
-                    value={form.expectedUsageFrequency}
-                    onChange={setField("expectedUsageFrequency")}
-                    label="Usage frequency"
-                    disabled={submitting}
-                    startAdornment={
-                      <InputAdornment position="start">
-                        <RepeatIcon
-                          sx={{
-                            fontSize: { xs: 14, sm: 16 },
-                            color: alpha(PRIMARY, 0.5),
-                          }}
-                        />
-                      </InputAdornment>
-                    }
-                    sx={{ fontSize: { xs: 13, sm: 14 } }}
-                  >
-                    <MenuItem value="" sx={{ fontSize: { xs: 13, sm: 14 } }}>
-                      <em>Not specified</em>
+                      {c}
                     </MenuItem>
-                    {USAGE_FREQUENCIES.map(({ value, label }) => (
-                      <MenuItem
-                        key={value}
-                        value={value}
-                        sx={{ fontSize: { xs: 13, sm: 14 } }}
-                      >
-                        {label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
+                  ))}
+                </Select>
+                {errors.category && (
+                  <Typography
+                    variant="caption"
+                    color="error"
+                    sx={{ mt: 0.5, ml: 1.75, fontSize: { xs: 10, sm: 11 } }}
+                  >
+                    {errors.category}
+                  </Typography>
+                )}
+              </FormControl>
+
+              <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                <InputLabel sx={{ fontSize: { xs: 12, sm: 14 } }}>
+                  Usage frequency
+                </InputLabel>
+                <Select
+                  value={form.expectedUsageFrequency}
+                  onChange={setField("expectedUsageFrequency")}
+                  label="Usage frequency"
+                  disabled={submitting}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <RepeatIcon
+                        sx={{
+                          fontSize: { xs: 14, sm: 16 },
+                          color: alpha(PRIMARY, 0.5),
+                        }}
+                      />
+                    </InputAdornment>
+                  }
+                  sx={{ fontSize: { xs: 13, sm: 14 } }}
+                >
+                  <MenuItem value="" sx={{ fontSize: { xs: 13, sm: 14 } }}>
+                    <em>Not specified</em>
+                  </MenuItem>
+                  {USAGE_FREQUENCIES.map(({ value, label }) => (
+                    <MenuItem
+                      key={value}
+                      value={value}
+                      sx={{ fontSize: { xs: 13, sm: 14 } }}
+                    >
+                      {label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
 
             <Box>
               <Typography
@@ -642,22 +682,27 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
               >
                 Urgency level *
               </Typography>
-              <Grid container spacing={{ xs: 1, sm: 1 }}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(4, 1fr)" },
+                  gap: 1,
+                }}
+              >
                 {URGENCY_LEVELS.map((u) => (
-                  <Grid item xs={6} sm={3} key={u.value}>
-                    <UrgencyCard
-                      cfg={u}
-                      selected={form.urgencyLevel === u.value}
-                      onClick={() => {
-                        setForm((p) => ({ ...p, urgencyLevel: u.value }));
-                        if (errors.urgencyLevel)
-                          setErrors((p) => ({ ...p, urgencyLevel: "" }));
-                      }}
-                      isMobile={isMobile}
-                    />
-                  </Grid>
+                  <UrgencyCard
+                    key={u.value}
+                    cfg={u}
+                    selected={form.urgencyLevel === u.value}
+                    onClick={() => {
+                      setForm((p) => ({ ...p, urgencyLevel: u.value }));
+                      if (errors.urgencyLevel)
+                        setErrors((p) => ({ ...p, urgencyLevel: "" }));
+                    }}
+                    isMobile={isMobile}
+                  />
                 ))}
-              </Grid>
+              </Box>
               {errors.urgencyLevel && (
                 <Typography
                   variant="caption"
@@ -803,15 +848,24 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                     ? PRIMARY
                     : fileError
                       ? "error.main"
-                      : DARK_BORDER,
+                      : isDark
+                        ? "rgba(148, 163, 184, 0.28)"
+                        : "#cbd5e1",
                   borderRadius: 2,
                   p: { xs: 2, sm: 2.5 },
                   textAlign: "center",
                   cursor: submitting ? "not-allowed" : "pointer",
-                  bgcolor: dragActive ? alpha("#1fb6cf", 0.12) : DARK_FIELD_BG,
+                  bgcolor: dragActive
+                    ? alpha(PRIMARY, 0.12)
+                    : isDark
+                      ? DARK_FIELD_BG
+                      : "#f8fafc",
                   transition: "all 0.15s ease",
                   "&:hover": !submitting
-                    ? { borderColor: "#1fb6cf", bgcolor: DARK_FIELD_BG_SOFT }
+                    ? {
+                        borderColor: PRIMARY,
+                        bgcolor: isDark ? DARK_FIELD_BG_SOFT : "#f1f5f9",
+                      }
                     : {},
                   "&:active":
                     isMobile && !submitting ? { transform: "scale(0.98)" } : {},
@@ -834,7 +888,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                     width: { xs: 32, sm: 36 },
                     height: { xs: 32, sm: 36 },
                     borderRadius: "50%",
-                    bgcolor: alpha("#1fb6cf", 0.14),
+                    bgcolor: alpha(PRIMARY, 0.12),
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -843,19 +897,19 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                   }}
                 >
                   <CloudUploadIcon
-                    sx={{ color: "#67e8f9", fontSize: { xs: 16, sm: 18 } }}
+                    sx={{ color: isDark ? "#67e8f9" : PRIMARY, fontSize: { xs: 16, sm: 18 } }}
                   />
                 </Box>
                 <Typography
                   variant="body2"
                   fontWeight={500}
-                  sx={{ fontSize: { xs: 12, sm: 13 }, color: "#dbeafe" }}
+                  sx={{ fontSize: { xs: 12, sm: 13 }, color: isDark ? "#dbeafe" : "#1e293b" }}
                 >
                   {dragActive ? "Drop files here" : "Click to upload"}
                 </Typography>
                 <Typography
                   variant="caption"
-                  sx={{ fontSize: { xs: 10, sm: 11 }, color: DARK_TEXT_MUTED }}
+                  sx={{ fontSize: { xs: 10, sm: 11 }, color: isDark ? DARK_TEXT_MUTED : "#64748b" }}
                 >
                   PDF, DOC, XLS, images · max {MAX_FILE_SIZE_MB} MB
                 </Typography>
@@ -886,15 +940,15 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                         gap: 1,
                         p: { xs: "4px 8px", sm: "5px 10px" },
                         borderRadius: 1.5,
-                        border: "0.5px solid",
-                        borderColor: DARK_BORDER,
-                        bgcolor: DARK_FIELD_BG,
+                        border: "1px solid",
+                        borderColor: isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0",
+                        bgcolor: isDark ? DARK_FIELD_BG : "#f8fafc",
                       }}
                     >
                       <AttachFileIcon
                         sx={{
                           fontSize: { xs: 12, sm: 13 },
-                          color: "#8bddec",
+                          color: isDark ? "#8bddec" : PRIMARY,
                           flexShrink: 0,
                         }}
                       />
@@ -907,7 +961,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
                           fontSize: { xs: 10, sm: 11 },
-                          color: "#e8eef6",
+                          color: isDark ? "#e8eef6" : "#1e293b",
                         }}
                       >
                         {name}
@@ -917,7 +971,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
                         sx={{
                           flexShrink: 0,
                           fontSize: { xs: 9, sm: 11 },
-                          color: DARK_TEXT_MUTED,
+                          color: isDark ? DARK_TEXT_MUTED : "#64748b",
                         }}
                       >
                         {fmtSize(size)}
@@ -968,9 +1022,9 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
           px: { xs: 2, sm: 2.75 },
           py: { xs: 1.5, sm: 1.75 },
           pb: { xs: "calc(12px + env(safe-area-inset-bottom))", sm: 1.75 },
-          borderTop: "0.5px solid",
-          borderColor: DARK_BORDER,
-          bgcolor: "#0d1a28",
+          borderTop: "1px solid",
+          borderColor: isDark ? "rgba(148, 163, 184, 0.16)" : "#e2e8f0",
+          bgcolor: isDark ? "#0c1726" : "#f8fafc",
           justifyContent: "space-between",
           gap: 1,
           flexShrink: 0,
@@ -989,7 +1043,12 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
           sx={{
             minWidth: { xs: 70, sm: 90 },
             fontSize: { xs: 11, sm: 13 },
-            borderColor: "divider",
+            borderColor: isDark ? "rgba(148, 163, 184, 0.3)" : "#cbd5e1",
+            color: isDark ? "#cbd5e1" : "#475569",
+            "&:hover": {
+              borderColor: isDark ? "#94a3b8" : "#94a3b8",
+              bgcolor: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
+            },
             "&:active": isMobile ? { transform: "scale(0.97)" } : {},
           }}
         >
