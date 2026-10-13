@@ -2,7 +2,7 @@
 // + View Details dialog so users can inspect a clone's fields/description/status
 //   before (or instead of) cloning it again.
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Box,
   Container,
@@ -65,26 +65,66 @@ import ListAltIcon from "@mui/icons-material/ListAlt";
 import MenuIcon from "@mui/icons-material/Menu";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 
-const appTheme = createTheme({
-  palette: {
-    primary: { main: "#0d4a5c", dark: "#092f3a", light: "#e4f1f5" },
-    success: { main: "#0A5C4B", light: "#e6f4f0" },
-    error: { main: "#C73A2B", light: "#fdf0ee" },
-    warning: { main: "#B96F0F", light: "#fdf4e7" },
-    info: { main: "#2E7D8A", light: "#e8f4f6" },
-    text: { primary: "#111d22", secondary: "#4e6872", disabled: "#98b3bc" },
-    background: { default: "#f2f7f9", paper: "#ffffff" },
-    divider: "#dde8ec",
-  },
-  typography: { fontFamily: "'Sora', 'DM Sans', system-ui, sans-serif", button: { textTransform: "none", fontWeight: 600 } },
-  shape: { borderRadius: 14 },
-  components: { 
-    MuiButton: { styleOverrides: { root: { boxShadow: "none", "&:hover": { boxShadow: "none" } } } }, 
-    MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } }, 
-    MuiOutlinedInput: { styleOverrides: { root: { borderRadius: 12 } } }, 
-    MuiDialog: { styleOverrides: { paper: { borderRadius: 20 } } } 
-  },
-});
+const createCloneTheme = (mode = "light") => {
+  const isDark = mode === "dark";
+  return createTheme({
+    palette: {
+      mode,
+      primary: {
+        main: isDark ? "#1aa6c4" : "#0d4a5c",
+        dark: isDark ? "#0f6c84" : "#092f3a",
+        light: isDark ? "#61d7ed" : "#e4f1f5",
+      },
+      success: { main: isDark ? "#34d399" : "#0A5C4B", light: isDark ? "rgba(52, 211, 153, 0.15)" : "#e6f4f0" },
+      error: { main: isDark ? "#f87171" : "#C73A2B", light: isDark ? "rgba(248, 113, 113, 0.15)" : "#fdf0ee" },
+      warning: { main: isDark ? "#fbbf24" : "#B96F0F", light: isDark ? "rgba(251, 191, 36, 0.15)" : "#fdf4e7" },
+      info: { main: isDark ? "#38bdf8" : "#2E7D8A", light: isDark ? "rgba(56, 189, 248, 0.15)" : "#e8f4f6" },
+      text: {
+        primary: isDark ? "#f8fafc" : "#111d22",
+        secondary: isDark ? "#aeb8c8" : "#4e6872",
+        disabled: isDark ? "#64748b" : "#98b3bc",
+      },
+      background: {
+        default: isDark ? "#07111f" : "#f2f7f9",
+        paper: isDark ? "#0c1726" : "#ffffff",
+      },
+      divider: isDark ? "rgba(148, 163, 184, 0.18)" : "#dde8ec",
+    },
+    typography: {
+      fontFamily: "'Sora', 'DM Sans', system-ui, sans-serif",
+      button: { textTransform: "none", fontWeight: 600 },
+    },
+    shape: { borderRadius: 14 },
+    components: {
+      MuiButton: {
+        styleOverrides: {
+          root: { boxShadow: "none", "&:hover": { boxShadow: "none" } },
+        },
+      },
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundImage: "none",
+            backgroundColor: isDark ? "#0c1726" : "#ffffff",
+          },
+        },
+      },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          root: { borderRadius: 12 },
+        },
+      },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            borderRadius: 20,
+            backgroundColor: isDark ? "#0c1726" : "#ffffff",
+          },
+        },
+      },
+    },
+  });
+};
 
 const TH = styled(TableCell)(({ theme }) => ({ 
   padding: "11px 16px", 
@@ -92,8 +132,8 @@ const TH = styled(TableCell)(({ theme }) => ({
   fontWeight: 700, 
   letterSpacing: "0.07em", 
   textTransform: "uppercase", 
-  color: theme.palette.text.disabled, 
-  backgroundColor: alpha(theme.palette.background.default, 0.9), 
+  color: theme.palette.mode === "dark" ? "#94a3b8" : theme.palette.text.disabled, 
+  backgroundColor: theme.palette.mode === "dark" ? "rgba(12, 23, 38, 0.98)" : alpha(theme.palette.background.default, 0.9), 
   borderBottom: `1.5px solid ${theme.palette.divider}`, 
   whiteSpace: "nowrap" 
 }));
@@ -101,13 +141,14 @@ const TH = styled(TableCell)(({ theme }) => ({
 const TD = styled(TableCell)(({ theme }) => ({ 
   padding: "13px 16px", 
   fontSize: 13, 
-  borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`, 
+  borderBottom: `1px solid ${theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.16)" : alpha(theme.palette.divider, 0.6)}`, 
+  color: theme.palette.mode === "dark" ? "#f8fafc" : theme.palette.text.primary,
   verticalAlign: "middle" 
 }));
 
 const HoverRow = styled(TableRow)(({ theme }) => ({ 
   transition: "background 0.15s", 
-  "&:hover": { backgroundColor: alpha(theme.palette.primary.main, 0.028) }, 
+  "&:hover": { backgroundColor: theme.palette.mode === "dark" ? "rgba(26, 166, 196, 0.08)" : alpha(theme.palette.primary.main, 0.028) }, 
   "&:last-child td": { borderBottom: "none" } 
 }));
 
@@ -654,8 +695,11 @@ const MobileCard = ({ row, onClone, onView }) => {
 
 export default function CloneChecklist() { 
   const navigate = useNavigate(); 
-  const theme = useTheme(); 
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm")); 
+  const parentTheme = useTheme(); 
+  const currentMode = parentTheme.palette.mode || "light";
+  const isDark = currentMode === "dark";
+  const appTheme = useMemo(() => createCloneTheme(currentMode), [currentMode]);
+  const isMobile = useMediaQuery(parentTheme.breakpoints.down("sm")); 
   const { getCloneableChecklists, cloneChecklist } = useChecklistBuilder(); 
   const [rows, setRows] = useState([]); 
   const [allRows, setAllRows] = useState([]); 
@@ -760,25 +804,105 @@ export default function CloneChecklist() {
   
   return (
     <ThemeProvider theme={appTheme}>
-      <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-        <Box sx={{ bgcolor: "background.paper", borderBottom: "1px solid", borderColor: "divider", px: { xs: 2, sm: 3, md: 4 }, py: { xs: 1.5, sm: 2 }, position: "sticky", top: 0, zIndex: 50 }}>
-          <Box sx={{ maxWidth: 1200, mx: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+      <Box sx={{ minHeight: "100vh", bgcolor: isDark ? "transparent" : "background.default" }}>
+        <Box
+          sx={{
+            bgcolor: isDark ? "rgba(12, 23, 38, 0.95)" : "background.paper",
+            backdropFilter: "blur(12px)",
+            borderBottom: "1px solid",
+            borderColor: isDark ? "rgba(148, 163, 184, 0.18)" : "divider",
+            px: { xs: 2, sm: 3, md: 4 },
+            py: { xs: 1.5, sm: 2 },
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            boxShadow: isDark ? "0 4px 20px rgba(0, 0, 0, 0.35)" : "0 2px 10px rgba(0, 0, 0, 0.04)",
+          }}
+        >
+          <Box
+            sx={{
+              maxWidth: 1200,
+              mx: "auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 2,
+            }}
+          >
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <IconButton onClick={() => navigate("/admin/checklists")} sx={{ bgcolor: alpha(appTheme.palette.primary.main, 0.07), borderRadius: "12px", "&:hover": { bgcolor: alpha(appTheme.palette.primary.main, 0.13) } }}>
-                <ArrowBackIcon sx={{ color: "primary.main", fontSize: { xs: 18, sm: 20 } }} />
+              <IconButton
+                onClick={() => navigate("/admin/checklists")}
+                sx={{
+                  bgcolor: isDark
+                    ? "rgba(26, 166, 196, 0.12)"
+                    : alpha(appTheme.palette.primary.main, 0.07),
+                  borderRadius: "12px",
+                  color: isDark ? "#61d7ed" : appTheme.palette.primary.main,
+                  border: isDark ? "1px solid rgba(97, 215, 237, 0.2)" : "none",
+                  "&:hover": {
+                    bgcolor: isDark
+                      ? "rgba(26, 166, 196, 0.22)"
+                      : alpha(appTheme.palette.primary.main, 0.13),
+                    transform: "translateX(-2px)",
+                  },
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
               </IconButton>
               <Box>
-                <Typography fontWeight={800} fontSize={{ xs: 14, sm: 18 }} color="text.primary" sx={{ letterSpacing: "-0.01em", lineHeight: 1.2 }}>
+                <Typography
+                  fontWeight={800}
+                  fontSize={{ xs: 15, sm: 18 }}
+                  sx={{
+                    color: isDark ? "#f8fafc !important" : "#111d22 !important",
+                    letterSpacing: "-0.01em",
+                    lineHeight: 1.2,
+                  }}
+                >
                   Clone Checklist
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: { xs: "none", sm: "block" }, fontSize: { xs: 11, sm: 12 } }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: { xs: "none", sm: "block" },
+                    fontSize: { xs: 11, sm: 12 },
+                    color: isDark ? "#aeb8c8 !important" : "#4e6872 !important",
+                    mt: 0.25,
+                  }}
+                >
                   Duplicate an existing checklist to use as a new starting point
                 </Typography>
               </Box>
             </Box>
             <Tooltip title="Refresh list">
-              <IconButton onClick={handleRetry} disabled={listLoading} sx={{ bgcolor: alpha(appTheme.palette.primary.main, 0.07), borderRadius: "12px", "&:hover": { bgcolor: alpha(appTheme.palette.primary.main, 0.13) } }}>
-                <RefreshIcon sx={{ color: "primary.main", fontSize: { xs: 18, sm: 20 }, animation: listLoading ? "spin 0.9s linear infinite" : "none", "@keyframes spin": { "0%": { transform: "rotate(0deg)" }, "100%": { transform: "rotate(360deg)" } } }} />
+              <IconButton
+                onClick={handleRetry}
+                disabled={listLoading}
+                sx={{
+                  bgcolor: isDark
+                    ? "rgba(26, 166, 196, 0.12)"
+                    : alpha(appTheme.palette.primary.main, 0.07),
+                  borderRadius: "12px",
+                  color: isDark ? "#61d7ed" : appTheme.palette.primary.main,
+                  border: isDark ? "1px solid rgba(97, 215, 237, 0.2)" : "none",
+                  "&:hover": {
+                    bgcolor: isDark
+                      ? "rgba(26, 166, 196, 0.22)"
+                      : alpha(appTheme.palette.primary.main, 0.13),
+                  },
+                }}
+              >
+                <RefreshIcon
+                  sx={{
+                    fontSize: { xs: 18, sm: 20 },
+                    animation: listLoading ? "spin 0.9s linear infinite" : "none",
+                    "@keyframes spin": {
+                      "0%": { transform: "rotate(0deg)" },
+                      "100%": { transform: "rotate(360deg)" },
+                    },
+                  }}
+                />
               </IconButton>
             </Tooltip>
           </Box>

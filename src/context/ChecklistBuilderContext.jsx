@@ -314,13 +314,13 @@ export const ChecklistBuilderProvider = ({ children }) => {
       try {
         const normalized = updateData.fields
           ? {
-              ...updateData,
-              fields: updateData.fields.map((f, idx) => ({
-                ...f,
-                type: resolveFieldType(f.type),
-                order: f.order ?? idx,
-              })),
-            }
+            ...updateData,
+            fields: updateData.fields.map((f, idx) => ({
+              ...f,
+              type: resolveFieldType(f.type),
+              order: f.order ?? idx,
+            })),
+          }
           : updateData;
 
         const response = await request("PUT", `/checklists/${id}`, normalized);

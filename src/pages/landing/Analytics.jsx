@@ -18,6 +18,7 @@ import {
   Button,
 } from "@mui/material";
 import { motion } from "framer-motion";
+import CountUp from "../../components/CountUp";
 import {
   TrendingUp,
   TrendingDown,
@@ -430,7 +431,7 @@ const Analytics = () => {
                           mb: 0.5,
                         }}
                       >
-                        {metric.value}
+                        <CountUp value={metric.value} duration={2000} delay={index * 100} />
                       </Typography>
                       <Typography
                         variant="caption"

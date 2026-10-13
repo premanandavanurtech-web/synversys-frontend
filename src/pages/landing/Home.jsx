@@ -24,6 +24,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import PlayCircleIcon from "@mui/icons-material/PlayCircle";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContexts";
+import CountUp from "../../components/CountUp";
 
 const Hero = ({ scrollToSection }) => {
   const theme = useTheme();
@@ -379,7 +380,7 @@ const Hero = ({ scrollToSection }) => {
                         mb: 0.25,
                       }}
                     >
-                      {stat.value}
+                      <CountUp value={stat.value} duration={2000} delay={index * 150} />
                     </Typography>
                     <Typography
                       variant="caption"
@@ -441,7 +442,7 @@ const Hero = ({ scrollToSection }) => {
                     mt: { xs: 0.5, sm: 0 },
                   }}
                 >
-                  Trusted by 500+ enterprise clients
+                  Trusted by <CountUp value="500+" duration={2000} delay={300} /> enterprise clients
                 </Typography>
               </Stack>
             </motion.div>

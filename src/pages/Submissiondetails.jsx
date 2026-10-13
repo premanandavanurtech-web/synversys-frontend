@@ -385,7 +385,7 @@ export default function SubmissionDetails() {
                     display: "flex",
                     alignItems: "center",
                     gap: 0.8,
-                    width:"180px",
+                    width: "180px",
                     mb: 0.5,
                   }}
                 >
@@ -406,7 +406,7 @@ export default function SubmissionDetails() {
                     display: "flex",
                     alignItems: "center",
                     gap: 0.8,
-                    width:"180px",
+                    width: "180px",
                     mb: 0.5,
                   }}
                 >
@@ -431,7 +431,7 @@ export default function SubmissionDetails() {
                     display: "flex",
                     alignItems: "center",
                     gap: 0.8,
-                    width:"180px",
+                    width: "180px",
                     mb: 0.5,
                   }}
                 >
@@ -454,7 +454,7 @@ export default function SubmissionDetails() {
                     display: "flex",
                     alignItems: "center",
                     gap: 0.8,
-                    width:"180px",
+                    width: "180px",
                     mb: 0.5,
                   }}
                 >
@@ -471,7 +471,7 @@ export default function SubmissionDetails() {
                     alignItems: "center",
                     gap: 1.5,
                     mt: 0.5,
-                    width:"180px",
+                    width: "180px",
                   }}
                 >
                   <LinearProgress
@@ -504,7 +504,7 @@ export default function SubmissionDetails() {
                     display: "flex",
                     alignItems: "center",
                     gap: 0.8,
-                    width:"180px",
+                    width: "180px",
                     mb: 0.5,
                   }}
                 >
@@ -530,7 +530,7 @@ export default function SubmissionDetails() {
                     display: "flex",
                     alignItems: "center",
                     gap: 0.8,
-                    width:"180px",
+                    width: "180px",
                     mb: 0.5,
                   }}
                 >
@@ -557,7 +557,7 @@ export default function SubmissionDetails() {
                     display: "flex",
                     alignItems: "center",
                     gap: 0.8,
-                    width:"200px",
+                    width: "200px",
                     mb: 0.5,
                   }}
                 >
@@ -675,7 +675,7 @@ export default function SubmissionDetails() {
         {(documentAttachments.length > 0 || imageAttachments.length > 0) && (
           <Card
             elevation={0}
-            sx={{ border: "1px solid #e8e8e8", borderRadius: 2, mb: 2.5  }}
+            sx={{ border: "1px solid #e8e8e8", borderRadius: 2, mb: 2.5 }}
           >
             <CardContent>
               <Typography
@@ -880,7 +880,7 @@ export default function SubmissionDetails() {
           open={snackbar.open}
           autoHideDuration={4000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert severity={snackbar.severity} sx={{ borderRadius: 2 }}>
             {snackbar.message}
           </Alert>

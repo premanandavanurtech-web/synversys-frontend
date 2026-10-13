@@ -61,6 +61,10 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import EmailIcon from "@mui/icons-material/Email";
 import ArrowCircleUpIcon from "@mui/icons-material/ArrowCircleUp";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContexts";
 import { useTeam } from "../context/TeamContext";
 import { useNotifications } from "../context/NotificationContext";
@@ -311,6 +315,10 @@ const TYPE_ICONS = {
   subscription_expiring: { Icon: HourglassEmptyIcon, bg: "#faf5ff", color: "#9333ea" },
   inactivity_reminder: { Icon: AccessTimeIcon, bg: "#fff7ed", color: "#ea580c" },
   contact_inquiry: { Icon: EmailIcon, bg: "#f0f9ff", color: "#0284c7" },
+  checklist_request_created: { Icon: AssignmentIcon, bg: "#eff6ff", color: "#2563eb" },
+  checklist_request_approved: { Icon: AssignmentTurnedInIcon, bg: "#f0fdf4", color: "#16a34a" },
+  checklist_request_rejected: { Icon: CancelOutlinedIcon, bg: "#fef2f2", color: "#dc2626" },
+  system_alert: { Icon: WarningAmberIcon, bg: "#fffbeb", color: "#d97706" },
   default: { Icon: NotificationsNoneIcon, bg: "#f8fafc", color: "#475569" },
 };
 
@@ -323,6 +331,12 @@ const formatPlanName = (value) =>
 function NotificationDetails({ metadata }) {
   const rows = [
     metadata?.adminName && ["Admin", metadata.adminName],
+    metadata?.requesterName && ["Requester", metadata.requesterName],
+    metadata?.checklistName && ["Checklist", metadata.checklistName],
+    metadata?.category && ["Category", metadata.category],
+    metadata?.urgencyLevel && ["Urgency", formatPlanName(metadata.urgencyLevel)],
+    metadata?.status && ["Status", formatPlanName(metadata.status)],
+    metadata?.rejectionReason && ["Reason", metadata.rejectionReason],
     metadata?.email && ["Email", metadata.email],
     metadata?.phone && ["Phone", metadata.phone],
     metadata?.currentPlan && ["Current", formatPlanName(metadata.currentPlan)],
@@ -359,7 +373,8 @@ function NotificationDetails({ metadata }) {
   );
 }
 
-function NotificationItem({ item, onRead, onDelete, formatTime }) {
+function NotificationItem({ item, onRead, onDelete, formatTime, onClose }) {
+  const navigate = useNavigate();
   const priority = PRIORITY_CONFIG[item.priority] || PRIORITY_CONFIG.low;
   const typeConfig = {
     upgrade_plan_requested: { Icon: ArrowCircleUpIcon, bg: "#ecfeff", color: "#0891b2" },
@@ -376,19 +391,29 @@ function NotificationItem({ item, onRead, onDelete, formatTime }) {
     }
   };
 
+  const handleClick = () => {
+    if (!item.isRead) {
+      onRead(item._id);
+    }
+    if (item.actionLink) {
+      navigate(item.actionLink);
+      if (onClose) onClose();
+    }
+  };
+
   return (
     <Box
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onTouchStart={handleTouchStart}
-      onClick={() => !item.isRead && onRead(item._id)}
+      onClick={handleClick}
       sx={{
         display: "flex",
         gap: { xs: 1, sm: 1.5 },
         px: { xs: 1.5, sm: 2 },
         py: { xs: 1.25, sm: 1.5 },
         position: "relative",
-        cursor: item.isRead ? "default" : "pointer",
+        cursor: (!item.isRead || item.actionLink) ? "pointer" : "default",
         bgcolor: item.isRead ? "transparent" : alpha("#1a5c6b", 0.03),
         borderLeft: `3px solid ${item.isRead ? "transparent" : priority.color}`,
         transition: "all 0.18s ease",
@@ -752,6 +777,7 @@ function NotificationPanel({
                   onRead={onRead}
                   onDelete={onDelete}
                   formatTime={formatTime}
+                  onClose={onClose}
                 />
                 {idx < notifications.length - 1 && (
                   <Box sx={{ mx: 2, borderBottom: `1px solid ${panelBorder}` }} />

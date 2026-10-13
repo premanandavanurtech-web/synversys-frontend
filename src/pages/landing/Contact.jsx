@@ -1277,9 +1277,8 @@ const Contact = () => {
               p: 2,
               bgcolor: isDarkMode ? alpha("#10b981", 0.12) : "#f0fdf4",
               borderRadius: "1rem",
-              border: `1px solid ${
-                isDarkMode ? alpha("#34d399", 0.38) : "#86efac"
-              }`,
+              border: `1px solid ${isDarkMode ? alpha("#34d399", 0.38) : "#86efac"
+                }`,
             }}
           >
             <Typography
@@ -1336,7 +1335,7 @@ const Contact = () => {
         sx={{
           bottom: { xs: 16, sm: 20, md: 24 },
         }}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           onClose={handleCloseSnackbar}
           severity={snackbar.severity}

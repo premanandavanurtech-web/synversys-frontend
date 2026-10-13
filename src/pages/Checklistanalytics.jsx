@@ -302,7 +302,7 @@ function StatCard({
       <Box
         sx={{
           display: "flex",
-          width:"232px",
+          width: "232px",
           justifyContent: "space-between",
           alignItems: "flex-start",
         }}
@@ -412,7 +412,7 @@ function DetailSubCard({ icon: Icon, title, rows, hasProgress, isLoading }) {
         border: "none",
         boxShadow: "none",
         borderRadius: 1,
-        width:"362px",
+        width: "362px",
         height: "100%",
       }}
     >
@@ -838,7 +838,7 @@ export default function ChecklistAnalytics() {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  width:"525px",
+                  width: "525px",
                   mb: 2,
                   flexWrap: "wrap",
                   gap: 1,
@@ -925,7 +925,7 @@ export default function ChecklistAnalytics() {
                   justifyContent: "space-between",
                   alignItems: "center",
                   mb: 2,
-                  width:"520px",
+                  width: "520px",
                   flexWrap: "wrap",
                   gap: 1,
                 }}
@@ -945,7 +945,7 @@ export default function ChecklistAnalytics() {
                 />
               </Box>
               {statusDistribution.length > 0 &&
-              statusDistribution.some((s) => s.value > 0) ? (
+                statusDistribution.some((s) => s.value > 0) ? (
                 <ResponsiveContainer width="100%" height={230}>
                   <PieChart>
                     <Pie
@@ -1151,7 +1151,7 @@ export default function ChecklistAnalytics() {
           open={snackbar.open}
           autoHideDuration={4000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert severity={snackbar.severity} sx={{ borderRadius: 2 }}>
             {snackbar.message}
           </Alert>

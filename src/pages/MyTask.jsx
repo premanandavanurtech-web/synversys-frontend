@@ -1211,7 +1211,7 @@ const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
         />
       </Stack>
 
-      {selectedDay && selectedTasks.length > 0 && (
+      {selectedDay && (
         <Box
           sx={{
             mt: 2,
@@ -1224,7 +1224,7 @@ const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
               sx={{
                 px: 1.5,
                 py: 1,
-                borderBottom: `1px solid ${surfaceBorder}`,
+                borderBottom: selectedTasks.length > 0 ? `1px solid ${surfaceBorder}` : "none",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
@@ -1241,14 +1241,16 @@ const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
                   })}
                 </Typography>
                 <Typography sx={{ fontSize: "0.68rem", color: mutedText }}>
-                  {selectedTasks.length} task
-                  {selectedTasks.length !== 1 ? "s" : ""}
+                  {selectedTasks.length > 0
+                    ? `${selectedTasks.length} task${selectedTasks.length !== 1 ? "s" : ""}`
+                    : "No tasks for this date"}
                 </Typography>
               </Box>
-              <IconButton size="small" onClick={() => onSelectDate?.(null)}>
+              <IconButton size="small" onClick={() => onSelectDate?.(null)} title="Clear date selection">
                 <CloseIcon sx={{ fontSize: 14 }} />
               </IconButton>
             </Box>
+            {selectedTasks.length > 0 && (
             <Box
               sx={{
                 p: 1.5,
@@ -1299,6 +1301,7 @@ const CalendarSidebar = ({ tasks, selectedDate, onSelectDate, onView }) => {
                   );
                 })}
             </Box>
+          )}
         </Box>
       )}
 
@@ -1818,7 +1821,9 @@ export default function MyTask() {
     setFilters((prev) => ({ ...prev, page: 1 }));
   };
   const handleCalendarDateSelect = (date) => {
-    setCalendarDateFilter(date);
+    setCalendarDateFilter((prev) =>
+      prev && date && isSameCalendarDate(prev, date) ? null : date
+    );
     setClientPage(1);
   };
   const clearFilters = () => {
@@ -1898,7 +1903,7 @@ export default function MyTask() {
     }
   };
 
-  const derivedStats = displayedTasks.reduce(
+  const derivedStats = tasks.reduce(
     (acc, task) => {
       const status = getTaskStatus(task);
       if (status === "pending") acc.pending += 1;
@@ -1924,7 +1929,7 @@ export default function MyTask() {
   );
 
   const statValues = {
-    total: displayedTasks.length,
+    total: tasks.length,
     pending: derivedStats.pending,
     in_progress: derivedStats.in_progress,
     pending_approval: derivedStats.pending_approval,
@@ -2400,55 +2405,6 @@ export default function MyTask() {
               onView={handleViewTask}
               onPoa={handlePoaTask}
             />
-          ) : displayedTasks.length === 0 ? (
-            <Paper
-              elevation={0}
-              sx={{
-                p: { xs: 4, sm: 8 },
-                textAlign: "center",
-                borderRadius: 2,
-                border: `1px dashed ${isDark ? "rgba(148, 163, 184, 0.26)" : "#cbd5e1"}`,
-                bgcolor: surfaceBg,
-              }}
-            >
-              <Avatar
-                sx={{
-                  width: 64,
-                  height: 64,
-                  mx: "auto",
-                  mb: 2.5,
-                  bgcolor: "#f1f5f9",
-                }}
-              >
-                <AssignmentIcon sx={{ fontSize: 32, color: "#94a3b8" }} />
-              </Avatar>
-              <Typography
-                fontWeight={700}
-                sx={{ color: "#475569", fontSize: "1rem", mb: 0.75 }}
-              >
-                {hasFilters ? "No matching tasks" : "No tasks assigned"}
-              </Typography>
-              <Typography sx={{ color: "#94a3b8", fontSize: "0.82rem" }}>
-                {hasFilters
-                  ? "Try adjusting your filters to see more results."
-                  : "You're all caught up! Check back later."}
-              </Typography>
-              {hasFilters && (
-                <Button
-                  variant="outlined"
-                  onClick={clearFilters}
-                  sx={{
-                    mt: 3,
-                    borderRadius: 2,
-                    fontSize: "0.82rem",
-                    borderColor: "#e2e8f0",
-                    color: "#64748b",
-                  }}
-                >
-                  Clear all filters
-                </Button>
-              )}
-            </Paper>
           ) : (
             <Box
               sx={{
@@ -2459,96 +2415,157 @@ export default function MyTask() {
               }}
             >
               <Box sx={{ flex: 1, minWidth: 0, width: "100%" }}>
-              {/* 3-column grid on desktop, 2 on tablet, 1 on mobile — showing
-              CARDS_PER_PAGE (9) tasks at a time */}
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: {
-                    xs: "1fr",
-                    md: "repeat(2, minmax(0, 1fr))",
-                  },
-                  gridAutoRows: { xs: "284px", sm: "278px", md: "272px" },
-                  gap: { xs: 1.5, sm: 2 },
-                  alignItems: "stretch",
-                }}
-              >
-                {paginatedTasks.map((task) => (
-                  <TaskCard
-                    key={task._id}
-                    task={task}
-                    onView={handleViewTask}
-                    onPoa={handlePoaTask}
-                  />
-                ))}
-              </Box>
-
-              {totalClientPages > 1 && (
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    gap: 1.5,
-                    mt: 4,
-                  }}
-                >
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={goToPrevPage}
-                    disabled={clientPage === 1}
-                    startIcon={<NavigateBeforeIcon sx={{ fontSize: 16 }} />}
+                {displayedTasks.length === 0 ? (
+                  <Paper
+                    elevation={0}
                     sx={{
+                      p: { xs: 4, sm: 6 },
+                      textAlign: "center",
                       borderRadius: 2,
-                      fontSize: "0.8rem",
-                      borderColor: "#e2e8f0",
-                      color: "#334155",
-                      px: 2,
-                      "&:hover": { borderColor: "#cbd5e1", bgcolor: "#f8fafc" },
-                      "&.Mui-disabled": {
-                        color: "#cbd5e1",
-                        borderColor: "#f1f5f9",
-                      },
+                      border: `1px dashed ${isDark ? "rgba(148, 163, 184, 0.26)" : "#cbd5e1"}`,
+                      bgcolor: surfaceBg,
                     }}
                   >
-                    Previous
-                  </Button>
+                    <Avatar
+                      sx={{
+                        width: 64,
+                        height: 64,
+                        mx: "auto",
+                        mb: 2.5,
+                        bgcolor: isDark ? "rgba(148, 163, 184, 0.12)" : "#f1f5f9",
+                      }}
+                    >
+                      <AssignmentIcon sx={{ fontSize: 32, color: "#94a3b8" }} />
+                    </Avatar>
+                    <Typography
+                      fontWeight={700}
+                      sx={{ color: primaryText, fontSize: "1rem", mb: 0.75 }}
+                    >
+                      {calendarDateFilter
+                        ? `No tasks scheduled for ${calendarDateFilter.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                        : hasFilters
+                        ? "No matching tasks"
+                        : "No tasks assigned"}
+                    </Typography>
+                    <Typography sx={{ color: secondaryText, fontSize: "0.82rem" }}>
+                      {calendarDateFilter
+                        ? "There are no inspection tasks scheduled on this date. Select another date from the calendar or clear the date filter."
+                        : hasFilters
+                        ? "Try adjusting your filters to see more results."
+                        : "You're all caught up! Check back later."}
+                    </Typography>
+                    {hasFilters && (
+                      <Button
+                        variant="outlined"
+                        onClick={clearFilters}
+                        sx={{
+                          mt: 3,
+                          borderRadius: 2,
+                          fontSize: "0.82rem",
+                          borderColor: surfaceBorder,
+                          color: secondaryText,
+                          textTransform: "none",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {calendarDateFilter ? "View all tasks" : "Clear all filters"}
+                      </Button>
+                    )}
+                  </Paper>
+                ) : (
+                  <>
+                    {/* 3-column grid on desktop, 2 on tablet, 1 on mobile — showing
+                    CARDS_PER_PAGE (9) tasks at a time */}
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: {
+                          xs: "1fr",
+                          md: "repeat(2, minmax(0, 1fr))",
+                        },
+                        gridAutoRows: { xs: "284px", sm: "278px", md: "272px" },
+                        gap: { xs: 1.5, sm: 2 },
+                        alignItems: "stretch",
+                      }}
+                    >
+                      {paginatedTasks.map((task) => (
+                        <TaskCard
+                          key={task._id}
+                          task={task}
+                          onView={handleViewTask}
+                          onPoa={handlePoaTask}
+                        />
+                      ))}
+                    </Box>
 
-                  <Typography
-                    sx={{
-                      fontSize: "0.82rem",
-                      color: "#64748b",
-                      fontWeight: 600,
-                      mx: 1,
-                    }}
-                  >
-                    Page {clientPage} of {totalClientPages}
-                  </Typography>
+                    {totalClientPages > 1 && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          gap: 1.5,
+                          mt: 4,
+                        }}
+                      >
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={goToPrevPage}
+                          disabled={clientPage === 1}
+                          startIcon={<NavigateBeforeIcon sx={{ fontSize: 16 }} />}
+                          sx={{
+                            borderRadius: 2,
+                            fontSize: "0.8rem",
+                            borderColor: "#e2e8f0",
+                            color: "#334155",
+                            px: 2,
+                            "&:hover": { borderColor: "#cbd5e1", bgcolor: "#f8fafc" },
+                            "&.Mui-disabled": {
+                              color: "#cbd5e1",
+                              borderColor: "#f1f5f9",
+                            },
+                          }}
+                        >
+                          Previous
+                        </Button>
 
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={goToNextPage}
-                    disabled={clientPage === totalClientPages}
-                    endIcon={<NavigateNextIcon sx={{ fontSize: 16 }} />}
-                    sx={{
-                      borderRadius: 2,
-                      fontSize: "0.8rem",
-                      borderColor: "#e2e8f0",
-                      color: "#334155",
-                      px: 2,
-                      "&:hover": { borderColor: "#cbd5e1", bgcolor: "#f8fafc" },
-                      "&.Mui-disabled": {
-                        color: "#cbd5e1",
-                        borderColor: "#f1f5f9",
-                      },
-                    }}
-                  >
-                    Next
-                  </Button>
-                </Box>
-              )}
+                        <Typography
+                          sx={{
+                            fontSize: "0.82rem",
+                            color: "#64748b",
+                            fontWeight: 600,
+                            mx: 1,
+                          }}
+                        >
+                          Page {clientPage} of {totalClientPages}
+                        </Typography>
+
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={goToNextPage}
+                          disabled={clientPage === totalClientPages}
+                          endIcon={<NavigateNextIcon sx={{ fontSize: 16 }} />}
+                          sx={{
+                            borderRadius: 2,
+                            fontSize: "0.8rem",
+                            borderColor: "#e2e8f0",
+                            color: "#334155",
+                            px: 2,
+                            "&:hover": { borderColor: "#cbd5e1", bgcolor: "#f8fafc" },
+                            "&.Mui-disabled": {
+                              color: "#cbd5e1",
+                              borderColor: "#f1f5f9",
+                            },
+                          }}
+                        >
+                          Next
+                        </Button>
+                      </Box>
+                    )}
+                  </>
+                )}
               </Box>
               <CalendarSidebar
                 tasks={tasks}

@@ -577,8 +577,8 @@ const AssignmentModal = ({
       console.error("[AssignmentModal] loadChecklists:", err);
       setChecklistsError(
         err.response?.data?.message ||
-          err.message ||
-          "Failed to load checklists",
+        err.message ||
+        "Failed to load checklists",
       );
       setChecklists([]);
     } finally {
@@ -659,8 +659,8 @@ const AssignmentModal = ({
       console.error("[AssignmentModal] loadTeamMembers:", err);
       setRecipientsError(
         err.response?.data?.message ||
-          err.message ||
-          "Failed to load team members",
+        err.message ||
+        "Failed to load team members",
       );
       setRecipients([]);
     } finally {
@@ -909,8 +909,8 @@ const AssignmentModal = ({
           isSuperAdmin
             ? [m.email, m.membershipPlan, m.status].filter(Boolean).join(" · ")
             : [m.role, m.department, m.location, m.email]
-                .filter(Boolean)
-                .join(" · ")
+              .filter(Boolean)
+              .join(" · ")
         }
         renderAvatar={(m) => (
           <Avatar

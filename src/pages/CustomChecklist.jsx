@@ -1,7 +1,7 @@
 // CustomChecklist.jsx - Fully Responsive with All Issues Fixed
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import {
   areDraftValuesEqual,
   clearFormDraft,
@@ -1036,8 +1036,16 @@ function buildChecklistPayload(checklist) {
 }
 
 // ── Main Page (Fully Responsive) ─────────────────────────────────────────────
-export default function CustomChecklist({ checklistId }) {
+export default function CustomChecklist({
+  checklistId,
+  embeddedMode = false,
+  onEmbeddedClose = null,
+  onEmbeddedSuccess = null,
+}) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const returnUrl = location.state?.returnUrl || searchParams.get("returnUrl");
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
@@ -1250,7 +1258,15 @@ export default function CustomChecklist({ checklistId }) {
     setConfirmCloseOpen(false);
     if (saveDraft) saveFormDraft(draftKey, { formValues });
     if (clearDraft) clearFormDraft(draftKey);
-    navigate("/admin/checklists");
+    if (onEmbeddedClose) {
+      onEmbeddedClose();
+      return;
+    }
+    if (returnUrl) {
+      navigate(`${returnUrl}?openAssign=true&openChecklistModal=true`, { state: { openAssign: true, openChecklistModal: true } });
+    } else {
+      navigate("/admin/checklists");
+    }
   };
 
   const handleCloseForm = () => {
@@ -1277,7 +1293,50 @@ export default function CustomChecklist({ checklistId }) {
           message: "Checklist submitted successfully!",
           severity: "success",
         });
-        setTimeout(() => navigate("/admin/checklists"), 1500);
+        const newId =
+          result?.data?._id ||
+          result?.data?.data?._id ||
+          result?.data?.id ||
+          result?.data?.checklist?._id ||
+          result?.data?.checklist?.id ||
+          result?.checklist?._id ||
+          result?.checklist?.id ||
+          result?._id ||
+          result?.id;
+        if (newId) {
+          try {
+            sessionStorage.setItem("lastCreatedChecklistId", newId);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        if (onEmbeddedSuccess) {
+          setTimeout(() => {
+            onEmbeddedSuccess(newId);
+          }, 600);
+          return;
+        }
+        if (returnUrl) {
+          try {
+            sessionStorage.setItem("returnToSelectChecklists", "true");
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        setTimeout(() => {
+          if (returnUrl) {
+            const redirectPath = `${returnUrl}?openAssign=true&openChecklistModal=true${newId ? `&newChecklistId=${newId}` : ""}`;
+            navigate(redirectPath, {
+              state: {
+                openAssign: true,
+                openChecklistModal: true,
+                newChecklistId: newId,
+              },
+            });
+          } else {
+            navigate("/admin/checklists");
+          }
+        }, 1500);
       } else {
         throw new Error(result.error || "Failed to save checklist");
       }
@@ -2027,7 +2086,7 @@ export default function CustomChecklist({ checklistId }) {
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
-        onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
+        onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
         sx={{ bottom: { xs: 16, sm: 24 } }}
   anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert

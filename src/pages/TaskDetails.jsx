@@ -52,6 +52,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
   Save as SaveIcon,
+  InsertDriveFile as InsertDriveFileIcon,
 } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTeamAssignment } from "../context/TeamAssignmentcontext";
@@ -421,6 +422,199 @@ function ImageUploadField({ fieldId, value, onChange, fieldLabel }) {
   );
 }
 
+// ─── File Upload Field ────────────────────────────────────────────────────────
+function FileUploadField({ fieldId, value, onChange, fieldLabel }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const [fileList, setFileList] = useState([]);
+
+  useEffect(() => {
+    if (Array.isArray(value)) {
+      setFileList(value);
+    } else if (value && typeof value === "object") {
+      setFileList([value]);
+    } else {
+      setFileList([]);
+    }
+  }, [value]);
+
+  const handleFiles = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const current = Array.isArray(value) ? value : [];
+    const next = [...current, ...files];
+    setFileList(next);
+    onChange(fieldId, next);
+    e.target.value = "";
+  };
+
+  const removeFile = (idx) => {
+    const current = Array.isArray(value) ? value : [];
+    const next = current.filter((_, i) => i !== idx);
+    setFileList(next);
+    onChange(fieldId, next);
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes && bytes !== 0) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  return (
+    <Box sx={{ mt: 1.5 }}>
+      <Box
+        component="label"
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          p: { xs: 2.5, sm: 3 },
+          border: isDark
+            ? "1.5px dashed rgba(148, 163, 184, 0.28)"
+            : "1.5px dashed #CBD5E1",
+          borderRadius: 1.5,
+          cursor: "pointer",
+          bgcolor: isDark ? "rgba(15, 23, 42, 0.45)" : "#F8FAFC",
+          transition: "all 0.2s ease",
+          "&:hover": {
+            borderColor: isDark ? "#61d7ed" : "#1a5c6b",
+            bgcolor: isDark
+              ? "rgba(26, 92, 107, 0.14)"
+              : "rgba(26, 92, 107, 0.04)",
+          },
+        }}
+      >
+        <CloudUploadIcon
+          sx={{
+            fontSize: 28,
+            color: isDark ? "#61d7ed" : "#1a5c6b",
+            mb: 0.75,
+          }}
+        />
+        <Typography
+          sx={{
+            fontSize: "0.82rem",
+            fontWeight: 600,
+            color: isDark ? "#E2E8F0" : "#334155",
+            mb: 0.25,
+            textAlign: "center",
+          }}
+        >
+          {fieldLabel ? (
+            <>
+              Upload file for{" "}
+              <Box component="span" sx={{ color: isDark ? "#61d7ed" : "#1a5c6b" }}>
+                {fieldLabel}
+              </Box>
+            </>
+          ) : (
+            <>
+              Click or drag to{" "}
+              <Box component="span" sx={{ color: isDark ? "#61d7ed" : "#1a5c6b" }}>
+                browse files
+              </Box>
+            </>
+          )}
+        </Typography>
+        <Typography sx={{ fontSize: "0.7rem", color: "#94A3B8" }}>
+          PDF, DOC, DOCX, XLS, XLSX, TXT, images, ZIP — up to 25 MB
+        </Typography>
+        <input type="file" multiple hidden onChange={handleFiles} />
+      </Box>
+
+      {fileList.length > 0 && (
+        <Stack spacing={1} sx={{ mt: 1.5 }}>
+          {fileList.map((fileItem, idx) => {
+            const fileName =
+              fileItem.name ||
+              (typeof fileItem === "string" ? fileItem : `File ${idx + 1}`);
+            const fileSize =
+              fileItem.size ? formatFileSize(fileItem.size) : "";
+            return (
+              <Box
+                key={idx}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  p: 1.25,
+                  borderRadius: 1.25,
+                  bgcolor: isDark
+                    ? "rgba(30, 41, 59, 0.7)"
+                    : "#F1F5F9",
+                  border: isDark
+                    ? "1px solid rgba(148, 163, 184, 0.16)"
+                    : "1px solid #E2E8F0",
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.25,
+                    minWidth: 0,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 1,
+                      bgcolor: isDark
+                        ? "rgba(97, 215, 237, 0.14)"
+                        : "rgba(26, 92, 107, 0.1)",
+                      color: isDark ? "#61d7ed" : "#1a5c6b",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <InsertDriveFileIcon sx={{ fontSize: 18 }} />
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography
+                      noWrap
+                      sx={{
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        color: isDark ? "#F1F5F9" : "#0F172A",
+                      }}
+                    >
+                      {fileName}
+                    </Typography>
+                    {fileSize && (
+                      <Typography sx={{ fontSize: "0.68rem", color: "#94A3B8" }}>
+                        {fileSize}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+                <IconButton
+                  size="small"
+                  onClick={() => removeFile(idx)}
+                  sx={{
+                    color: "#94A3B8",
+                    "&:hover": {
+                      color: "#EF4444",
+                      bgcolor: "rgba(239, 68, 68, 0.1)",
+                    },
+                  }}
+                >
+                  <CloseIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Box>
+            );
+          })}
+        </Stack>
+      )}
+    </Box>
+  );
+}
+
 // ─── Field Renderer ─────────────────────────────────────────────────────────
 function FieldRenderer({ field, value, onChange }) {
   const fieldId = field._id;
@@ -578,10 +772,33 @@ function FieldRenderer({ field, value, onChange }) {
         />
       );
 
+    case "file_upload":
+    case "file":
+    case "document_upload":
+    case "attachment":
+      return (
+        <FileUploadField
+          fieldId={fieldId}
+          value={value}
+          onChange={onChange}
+          fieldLabel={field.label}
+        />
+      );
+
     case "signature":
       return <SignatureCanvas value={value} onChange={(v) => onChange(fieldId, v)} />;
 
     default:
+      if (String(field.label || "").trim().toLowerCase() === "file upload") {
+        return (
+          <FileUploadField
+            fieldId={fieldId}
+            value={value}
+            onChange={onChange}
+            fieldLabel={field.label}
+          />
+        );
+      }
       return (
         <TextField
           fullWidth
@@ -602,6 +819,21 @@ function serializeFieldValue(field, value) {
   if (field.type === "image_upload") {
     return Array.isArray(value) ? `${value.length} image(s) uploaded` : null;
   }
+  if (
+    field.type === "file_upload" ||
+    field.type === "file" ||
+    field.type === "document_upload" ||
+    field.type === "attachment" ||
+    String(field.label || "").trim().toLowerCase() === "file upload"
+  ) {
+    if (Array.isArray(value)) {
+      const names = value
+        .map((f) => (f instanceof File ? f.name : typeof f === "string" ? f : f?.name || "file"))
+        .filter(Boolean);
+      return names.length ? names.join(", ") : `${value.length} file(s) uploaded`;
+    }
+    return typeof value === "string" ? value : null;
+  }
   if (field.type === "checkbox" && Array.isArray(value)) {
     return value.join(", ");
   }
@@ -611,7 +843,16 @@ function serializeFieldValue(field, value) {
   return value;
 }
 
-function getFieldTypeName(fieldType) {
+function getFieldTypeName(fieldType, label) {
+  if (
+    fieldType === "file_upload" ||
+    fieldType === "file" ||
+    fieldType === "document_upload" ||
+    fieldType === "attachment" ||
+    String(label || "").trim().toLowerCase() === "file upload"
+  ) {
+    return "file";
+  }
   const map = {
     text_input: "text",
     text_area: "text",
@@ -621,6 +862,8 @@ function getFieldTypeName(fieldType) {
     number: "number",
     rating: "number",
     image_upload: "image",
+    file_upload: "file",
+    file: "file",
     signature: "text",
   };
   return map[fieldType] || "text";
@@ -886,11 +1129,21 @@ export default function TaskDetails() {
           case "image_upload":
             valid = Array.isArray(v) && v.length > 0;
             break;
+          case "file_upload":
+          case "file":
+          case "document_upload":
+          case "attachment":
+            valid = (Array.isArray(v) && v.length > 0) || (typeof v === "string" && v.trim().length > 0);
+            break;
           case "signature":
             valid = typeof v === "string" && v.trim().length > 0;
             break;
           default:
-            valid = v !== undefined && v !== null && v !== "";
+            if (String(field.label || "").trim().toLowerCase() === "file upload") {
+              valid = (Array.isArray(v) && v.length > 0) || (typeof v === "string" && v.trim().length > 0);
+            } else {
+              valid = v !== undefined && v !== null && v !== "";
+            }
         }
 
         if (!valid) errors[field._id] = `${field.label} is required`;
@@ -926,7 +1179,7 @@ export default function TaskDetails() {
         responses: clFields.map((field) => ({
           fieldId: field._id,
           fieldLabel: field.label,
-          fieldType: getFieldTypeName(field.type),
+          fieldType: getFieldTypeName(field.type, field.label),
           value: serializeFieldValue(field, responses[field._id]),
         })),
       };
@@ -1055,6 +1308,21 @@ export default function TaskDetails() {
               }
             });
           }
+        } else if (
+          field.type === "file_upload" ||
+          field.type === "file" ||
+          field.type === "document_upload" ||
+          field.type === "attachment" ||
+          String(field.label || "").trim().toLowerCase() === "file upload"
+        ) {
+          const fileItems = responses[field._id];
+          if (Array.isArray(fileItems)) {
+            fileItems.forEach((file) => {
+              if (file instanceof File) {
+                formData.append("attachments", file);
+              }
+            });
+          }
         }
       });
 
@@ -1111,6 +1379,15 @@ export default function TaskDetails() {
     if (f.type === "checkbox") return Array.isArray(v) && v.length > 0;
     if (f.type === "rating") return v !== undefined && v !== null && Number(v) > 0;
     if (f.type === "image_upload") return Array.isArray(v) && v.length > 0;
+    if (
+      f.type === "file_upload" ||
+      f.type === "file" ||
+      f.type === "document_upload" ||
+      f.type === "attachment" ||
+      String(f.label || "").trim().toLowerCase() === "file upload"
+    ) {
+      return (Array.isArray(v) && v.length > 0) || (typeof v === "string" && v.trim().length > 0);
+    }
     if (f.type === "signature") return typeof v === "string" && v.trim().length > 0;
     return v !== undefined && v !== null && v !== "";
   });

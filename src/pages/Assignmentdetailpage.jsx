@@ -597,12 +597,12 @@ const SubmissionsTab = ({ assignmentId, onViewSubmission }) => {
                     <Typography variant="caption" fontSize="0.75rem">
                       {sub.submittedAt
                         ? new Date(sub.submittedAt).toLocaleString("en-IN", {
-                            year: "numeric",
-                            month: "2-digit",
-                            day: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                         : "—"}
                     </Typography>
                   </Box>
@@ -1147,7 +1147,7 @@ const AssetsTab = ({ assets }) => {
             <Box sx={{ p: { xs: 1.75, md: 2.5 } }}>
               <Grid container spacing={1.25}>
                 {visibleFields.map((f, fi) => (
-                  <Grid item xs={6} sm={4} md={3} key={fi} sx={{width:"250px"}}>
+                  <Grid item xs={6} sm={4} md={3} key={fi} sx={{ width: "250px" }}>
                     <Box sx={{ p: 1.25, bgcolor: fieldBg, borderRadius: 2 }}>
                       <Typography
                         variant="caption"
@@ -1173,7 +1173,7 @@ const AssetsTab = ({ assets }) => {
                             ? "Yes"
                             : "No"
                           : f.key === "purchaseCost" &&
-                              typeof f.value === "number"
+                            typeof f.value === "number"
                             ? `₹${f.value.toLocaleString()}`
                             : f.value?.toString() || "—"}
                       </Typography>
@@ -2358,40 +2358,40 @@ const AssignmentDetailPage = () => {
             width: "100%",
           }}
         >
-            <StatCard
-              icon={DescriptionIcon}
-              iconBg={BRAND_LIGHT}
-              value={assignment.totalSubmissions || 0}
-              label="Total Submissions"
-              sub={`${assignment.approvedSubmissions || 0} approved`}
-            />
-            <StatCard
-              icon={PeopleIcon}
-              iconBg="#eeedfe"
-              value={totalMembers}
-              label="Assignees"
-              sub={`${completedMem} completed`}
-            />
-            <StatCard
-              icon={CheckCircleIcon}
-              iconBg={BRAND_LIGHT}
-              value={`${completionRate}%`}
-              label="Completion Rate"
-              sub={`${completedMem} of ${totalMembers} done`}
-            />
-            <StatCard
-              icon={ScheduleIcon}
-              iconBg={isOverdue ? "#fcebeb" : "#faeeda"}
-              value={
-                isOverdue
-                  ? `${daysOverdue}d`
-                  : daysRemaining > 0
-                    ? `${daysRemaining}d`
-                    : "Today"
-              }
-              label={isOverdue ? "Days Overdue" : "Days Remaining"}
-              sub={dueDate ? dueDate.toLocaleDateString() : "No due date"}
-            />
+          <StatCard
+            icon={DescriptionIcon}
+            iconBg={BRAND_LIGHT}
+            value={assignment.totalSubmissions || 0}
+            label="Total Submissions"
+            sub={`${assignment.approvedSubmissions || 0} approved`}
+          />
+          <StatCard
+            icon={PeopleIcon}
+            iconBg="#eeedfe"
+            value={totalMembers}
+            label="Assignees"
+            sub={`${completedMem} completed`}
+          />
+          <StatCard
+            icon={CheckCircleIcon}
+            iconBg={BRAND_LIGHT}
+            value={`${completionRate}%`}
+            label="Completion Rate"
+            sub={`${completedMem} of ${totalMembers} done`}
+          />
+          <StatCard
+            icon={ScheduleIcon}
+            iconBg={isOverdue ? "#fcebeb" : "#faeeda"}
+            value={
+              isOverdue
+                ? `${daysOverdue}d`
+                : daysRemaining > 0
+                  ? `${daysRemaining}d`
+                  : "Today"
+            }
+            label={isOverdue ? "Days Overdue" : "Days Remaining"}
+            sub={dueDate ? dueDate.toLocaleDateString() : "No due date"}
+          />
         </Box>
 
         {/* Overall progress bar */}

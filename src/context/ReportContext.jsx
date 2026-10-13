@@ -36,14 +36,14 @@ const getApiClient = (token) => {
 // Normalise report data from various API response shapes
 const normaliseReport = (raw, fallbackType = "") => {
   if (!raw) return null;
-  
+
   // Handle both { success, data: { ... } } and direct { ... } responses
   const inner = raw.data ?? raw;
-  
+
   // Extract data arrays based on report type
   let dataArray = [];
   let summary = {};
-  
+
   // Check for different data structures
   if (inner.clients) {
     dataArray = inner.clients;

@@ -1,7 +1,7 @@
 // pages/ChecklistPage.jsx - Fully Updated with All Features
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
   Container,
@@ -79,6 +79,14 @@ import {
   Menu as MenuIcon,
   ContentCopy as ContentCopyIcon,
   MoreVert as MoreVertIcon,
+  CalendarToday as CalendarTodayIcon,
+  Speed as SpeedIcon,
+  Repeat as RepeatIcon,
+  FolderSpecial as FolderSpecialIcon,
+  TrendingUp as TrendingUpIcon,
+  Person as PersonIcon,
+  InsertDriveFile as FileIcon,
+  Download as DownloadIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContexts";
 import { useChecklistBuilder } from "../context/ChecklistBuilderContext";
@@ -1612,7 +1620,18 @@ export default function ChecklistPage() {
   const [requestStatFilter, setRequestStatFilter] = useState("");
   const [showDeleted, setShowDeleted] = useState(false);
 
-  const [tab, setTab] = useState(0);
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const requestedTab =
+    searchParams.get("tab") === "requests" || location.state?.tab === 1 ? 1 : 0;
+  const [tab, setTab] = useState(requestedTab);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("tab") === "requests" || location.state?.tab === 1) {
+      setTab(1);
+    }
+  }, [location.search, location.state]);
   const [createOpen, setCreateOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
   const [viewChecklist, setViewChecklist] = useState(null);
@@ -3051,7 +3070,7 @@ export default function ChecklistPage() {
           loading={cloneLoading}
         />
 
-        {/* View Request Dialog */}
+        {/* ── View Request Dialog (Redesigned) ── */}
         <Dialog
           open={!!viewRequest}
           onClose={() => setViewRequest(null)}
@@ -3060,68 +3079,140 @@ export default function ChecklistPage() {
           fullScreen={isMobile}
           PaperProps={{
             sx: {
-              borderRadius: { xs: 0, sm: 3 },
+              borderRadius: { xs: 0, sm: "20px" },
               m: { xs: 0, sm: 2 },
               width: { xs: "100%", sm: "calc(100% - 32px)" },
-              maxWidth: { xs: "none", sm: 900 },
+              maxWidth: { xs: "none", sm: 840 },
               height: { xs: "100dvh", sm: "auto" },
               maxHeight: { xs: "100dvh", sm: "calc(100% - 64px)" },
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
+              boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.35)",
+              border: (t) =>
+                t.palette.mode === "dark"
+                  ? "1px solid rgba(148, 163, 184, 0.15)"
+                  : "1px solid rgba(226, 232, 240, 0.8)",
+            },
+          }}
+          BackdropProps={{
+            sx: {
+              backgroundColor: "rgba(15, 23, 42, 0.65)",
+              backdropFilter: "blur(6px)",
             },
           }}
         >
-          <DialogTitle
-            sx={{ bgcolor: "primary.dark", color: "primary.contrastText", p: { xs: 2, sm: 3 } }}
+          {/* ── Dark Navy Executive Header ── */}
+          <Box
+            sx={{
+              background: "linear-gradient(135deg, #092c3e 0%, #104661 100%)",
+              color: "#ffffff",
+              p: { xs: 2.2, sm: 2.8 },
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 2,
+              position: "relative",
+            }}
           >
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Box>
-                <Typography
-                  fontWeight={700}
-                  sx={{ fontSize: { xs: 16, sm: 18 } }}
-                >
-                  {viewRequest?.checklistName}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ color: alpha(theme.palette.primary.contrastText, 0.7) }}
-                >
-                  Submitted{" "}
-                  {fmt(viewRequest?.requestDate || viewRequest?.createdAt)}
-                </Typography>
-              </Box>
-              <IconButton
-                onClick={() => setViewRequest(null)}
-                size="small"
+            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.8, minWidth: 0, flex: 1 }}>
+              <Avatar
                 sx={{
-                  color: "primary.contrastText",
-                  bgcolor: (theme) =>
-                    alpha(theme.palette.primary.contrastText, 0.12),
-                  "&:hover": {
-                    bgcolor: (theme) =>
-                      alpha(theme.palette.primary.contrastText, 0.2),
-                  },
+                  bgcolor: "rgba(255, 255, 255, 0.12)",
+                  color: "#ffffff",
+                  width: { xs: 42, sm: 48 },
+                  height: { xs: 42, sm: 48 },
+                  borderRadius: "14px",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                 }}
               >
-                <CloseIcon />
-              </IconButton>
+                <AssignmentIcon sx={{ fontSize: { xs: 22, sm: 26 } }} />
+              </Avatar>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.5 }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: { xs: "1.1rem", sm: "1.3rem" },
+                      letterSpacing: "-0.01em",
+                      color: "#ffffff",
+                      lineHeight: 1.25,
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {viewRequest?.checklistName || "Checklist Request"}
+                  </Typography>
+                  <StatusBadge status={viewRequest?.status} />
+                </Box>
+                <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" sx={{ gap: 0.75 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "rgba(255, 255, 255, 0.75)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      fontWeight: 500,
+                    }}
+                  >
+                    <CalendarTodayIcon sx={{ fontSize: 13, opacity: 0.8 }} />
+                    Submitted {fmt(viewRequest?.requestDate || viewRequest?.createdAt)}
+                  </Typography>
+                  {(viewRequest?.requestedByName || viewRequest?.requestedBy?.firstName || viewRequest?.requestedBy?.email) && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "rgba(255, 255, 255, 0.75)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                        fontWeight: 500,
+                      }}
+                    >
+                      • By{" "}
+                      <Box component="span" sx={{ color: "#ffffff", fontWeight: 700 }}>
+                        {viewRequest.requestedByName ||
+                          `${viewRequest.requestedBy?.firstName || ""} ${viewRequest.requestedBy?.lastName || ""}`.trim() ||
+                          viewRequest.requestedBy?.email}
+                      </Box>
+                    </Typography>
+                  )}
+                </Stack>
+              </Box>
             </Box>
-          </DialogTitle>
+            <IconButton
+              onClick={() => setViewRequest(null)}
+              size="small"
+              sx={{
+                color: "#ffffff",
+                bgcolor: "rgba(255, 255, 255, 0.12)",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                borderRadius: "10px",
+                width: 36,
+                height: 36,
+                "&:hover": {
+                  bgcolor: "rgba(255, 255, 255, 0.22)",
+                  transform: "scale(1.05)",
+                },
+                transition: "all 0.2s ease",
+              }}
+            >
+              <CloseIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Box>
+
+          {/* ── Dialog Content ── */}
           <DialogContent
             sx={{
               p: { xs: 2, sm: 3 },
               flex: 1,
               overflowY: "auto",
+              bgcolor: (t) => (t.palette.mode === "dark" ? "#0b1420" : "#f8fafc"),
             }}
           >
             <Stack spacing={2.5}>
+              {/* ── 4 Key Info Metric Cards ── */}
               <Box
                 sx={{
                   display: "grid",
@@ -3136,156 +3227,539 @@ export default function ChecklistPage() {
                 {[
                   {
                     label: "Status",
-                    content: <StatusBadge  status={viewRequest?.status} />,
+                    icon: <PendingIcon sx={{ fontSize: 16, color: "#d97706" }} />,
+                    iconBg: alpha("#f59e0b", 0.12),
+                    content: <StatusBadge status={viewRequest?.status} />,
                   },
                   {
                     label: "Urgency",
-                    content: (
-                      <PriorityBadge priority={viewRequest?.urgencyLevel} />
-                    ),
+                    icon: <SpeedIcon sx={{ fontSize: 16, color: "#0284c7" }} />,
+                    iconBg: alpha("#0284c7", 0.12),
+                    content: <PriorityBadge priority={viewRequest?.urgencyLevel} />,
                   },
                   {
                     label: "Category",
+                    icon: <FolderSpecialIcon sx={{ fontSize: 16, color: "#10b981" }} />,
+                    iconBg: alpha("#10b981", 0.12),
                     content: (
-                      <Typography variant="body2" fontWeight={600}>
+                      <Typography
+                        variant="body2"
+                        fontWeight={700}
+                        sx={{
+                          color: (t) => t.palette.text.primary,
+                          fontSize: "0.875rem",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {viewRequest?.category || "—"}
                       </Typography>
                     ),
                   },
                   {
                     label: "Usage Frequency",
+                    icon: <RepeatIcon sx={{ fontSize: 16, color: "#8b5cf6" }} />,
+                    iconBg: alpha("#8b5cf6", 0.12),
                     content: (
-                      <Typography variant="body2" fontWeight={600}>
-                        {viewRequest?.expectedUsageFrequency || "—"}
+                      <Typography
+                        variant="body2"
+                        fontWeight={700}
+                        sx={{
+                          color: (t) => t.palette.text.primary,
+                          fontSize: "0.875rem",
+                          textTransform: "capitalize",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {String(viewRequest?.expectedUsageFrequency || "—").replace(/_/g, " ")}
                       </Typography>
                     ),
                   },
-                ].map(({ label, content }) => (
-                  <InfoTile key={label} sx={{ minWidth: 0 }}>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      fontWeight={600}
-                      display="block"
-                      sx={{ mb: 0.5 }}
-                    >
-                      {label}
-                    </Typography>
-                    {content}
-                  </InfoTile>
+                ].map(({ label, icon, iconBg, content }) => (
+                  <Paper
+                    key={label}
+                    elevation={0}
+                    sx={{
+                      p: 1.8,
+                      borderRadius: "14px",
+                      bgcolor: (t) => (t.palette.mode === "dark" ? "#111c2e" : "#ffffff"),
+                      border: "1px solid",
+                      borderColor: (t) =>
+                        t.palette.mode === "dark"
+                          ? "rgba(148, 163, 184, 0.14)"
+                          : "rgba(226, 232, 240, 0.9)",
+                      boxShadow: (t) =>
+                        t.palette.mode === "dark"
+                          ? "0 2px 8px rgba(0,0,0,0.2)"
+                          : "0 2px 8px rgba(15, 23, 42, 0.04)",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      minHeight: 88,
+                      transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                      "&:hover": {
+                        transform: "translateY(-2px)",
+                        boxShadow: (t) =>
+                          t.palette.mode === "dark"
+                            ? "0 6px 16px rgba(0,0,0,0.3)"
+                            : "0 6px 16px rgba(15, 23, 42, 0.08)",
+                      },
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                      <Typography
+                        variant="caption"
+                        fontWeight={700}
+                        sx={{
+                          fontSize: "0.7rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          color: "text.secondary",
+                        }}
+                      >
+                        {label}
+                      </Typography>
+                      <Box
+                        sx={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: "8px",
+                          bgcolor: iconBg,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {icon}
+                      </Box>
+                    </Box>
+                    <Box sx={{ mt: "auto" }}>{content}</Box>
+                  </Paper>
                 ))}
               </Box>
 
-              <Box>
-                <Typography
-                  variant="caption"
-                  fontWeight={700}
-                  color="text.secondary"
+              {/* ── Requester Banner (if team members or role present) ── */}
+              {(viewRequest?.numberOfTeamMembers > 1 || viewRequest?.requestedByRole) && (
+                <Paper
+                  elevation={0}
                   sx={{
-                    textTransform: "uppercase",
-                    letterSpacing: "0.07em",
-                    display: "block",
-                    mb: 1,
+                    px: 2,
+                    py: 1.4,
+                    borderRadius: "12px",
+                    bgcolor: (t) => (t.palette.mode === "dark" ? alpha("#0284c7", 0.08) : "#f0f9ff"),
+                    border: "1px solid",
+                    borderColor: (t) => (t.palette.mode === "dark" ? alpha("#0284c7", 0.2) : "#bae6fd"),
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: 1.5,
                   }}
                 >
-                  Detailed Description
-                </Typography>
-                <Box
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <PersonIcon sx={{ fontSize: 18, color: "#0284c7" }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: "#0369a1" }}>
+                      Target Scope:{" "}
+                      <Box component="span" sx={{ fontWeight: 700, color: (t) => t.palette.text.primary }}>
+                        {viewRequest.numberOfTeamMembers || 1} Team Member{(viewRequest.numberOfTeamMembers || 1) > 1 ? "s" : ""}
+                      </Box>
+                    </Typography>
+                  </Box>
+                  {viewRequest?.requestedByRole && (
+                    <Chip
+                      size="small"
+                      label={`Role: ${viewRequest.requestedByRole}`}
+                      sx={{
+                        height: 22,
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        textTransform: "capitalize",
+                        bgcolor: alpha("#0284c7", 0.12),
+                        color: "#0284c7",
+                      }}
+                    />
+                  )}
+                </Paper>
+              )}
+
+              {/* ── Detailed Description Section ── */}
+              <Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: "6px",
+                      bgcolor: alpha("#084d68", 0.1),
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#084d68",
+                    }}
+                  >
+                    <DescriptionIcon sx={{ fontSize: 14 }} />
+                  </Box>
+                  <Typography
+                    variant="caption"
+                    fontWeight={800}
+                    sx={{
+                      fontSize: "0.75rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.07em",
+                      color: "text.primary",
+                    }}
+                  >
+                    Detailed Description
+                  </Typography>
+                </Box>
+                <Paper
+                  elevation={0}
                   sx={{
-                    p: 2,
-                    width: "100%",
-                    bgcolor: "background.default",
-                    borderRadius: "10px",
+                    p: 2.2,
+                    borderRadius: "14px",
+                    bgcolor: (t) => (t.palette.mode === "dark" ? "#111c2e" : "#ffffff"),
                     border: "1px solid",
-                    borderColor: "divider",
+                    borderColor: (t) =>
+                      t.palette.mode === "dark"
+                        ? "rgba(148, 163, 184, 0.14)"
+                        : "rgba(226, 232, 240, 0.9)",
+                    borderLeft: "4px solid #084d68",
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
                   }}
                 >
                   <Typography
                     variant="body2"
-                    color="text.secondary"
-                    sx={{ lineHeight: 1.75, whiteSpace: "pre-wrap" }}
+                    sx={{
+                      lineHeight: 1.8,
+                      whiteSpace: "pre-wrap",
+                      color: (t) => (t.palette.mode === "dark" ? "#cbd5e1" : "#334155"),
+                      fontSize: "0.875rem",
+                    }}
                   >
-                    {viewRequest?.detailedDescription || "—"}
+                    {viewRequest?.detailedDescription || "No detailed description provided."}
                   </Typography>
-                </Box>
+                </Paper>
               </Box>
 
+              {/* ── Business Justification Section ── */}
               <Box>
-                <Typography
-                  variant="caption"
-                  fontWeight={700}
-                  color="text.secondary"
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: "6px",
+                      bgcolor: alpha("#10b981", 0.1),
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#10b981",
+                    }}
+                  >
+                    <TrendingUpIcon sx={{ fontSize: 14 }} />
+                  </Box>
+                  <Typography
+                    variant="caption"
+                    fontWeight={800}
+                    sx={{
+                      fontSize: "0.75rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.07em",
+                      color: "text.primary",
+                    }}
+                  >
+                    Business Justification
+                  </Typography>
+                </Box>
+                <Paper
+                  elevation={0}
                   sx={{
-                    textTransform: "uppercase",
-                    letterSpacing: "0.07em",
-                    display: "block",
-                    mb: 1,
-                  }}
-                >
-                  Business Justification
-                </Typography>
-                <Box
-                  sx={{
-                    p: 2,
-                    width: "100%",
-                    bgcolor: "background.default",
-                    borderRadius: "10px",
+                    p: 2.2,
+                    borderRadius: "14px",
+                    bgcolor: (t) => (t.palette.mode === "dark" ? "#111c2e" : "#ffffff"),
                     border: "1px solid",
-                    borderColor: "divider",
+                    borderColor: (t) =>
+                      t.palette.mode === "dark"
+                        ? "rgba(148, 163, 184, 0.14)"
+                        : "rgba(226, 232, 240, 0.9)",
+                    borderLeft: "4px solid #10b981",
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
                   }}
                 >
                   <Typography
                     variant="body2"
-                    color="text.secondary"
-                    sx={{ lineHeight: 1.75, whiteSpace: "pre-wrap" }}
+                    sx={{
+                      lineHeight: 1.8,
+                      whiteSpace: "pre-wrap",
+                      color: (t) => (t.palette.mode === "dark" ? "#cbd5e1" : "#334155"),
+                      fontSize: "0.875rem",
+                    }}
                   >
-                    {viewRequest?.businessJustification || "—"}
+                    {viewRequest?.businessJustification || "No business justification provided."}
                   </Typography>
-                </Box>
+                </Paper>
               </Box>
 
-              {viewRequest?.status === "rejected" &&
-                viewRequest?.rejectionReason && (
-                  <Alert severity="error" sx={{ borderRadius: 2 }}>
+              {/* ── Additional Notes (if present) ── */}
+              {viewRequest?.additionalNotes && (
+                <Box>
+                  <Typography
+                    variant="caption"
+                    fontWeight={800}
+                    sx={{
+                      fontSize: "0.75rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.07em",
+                      color: "text.primary",
+                      mb: 1,
+                      display: "block",
+                    }}
+                  >
+                    Additional Notes
+                  </Typography>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2,
+                      borderRadius: "14px",
+                      bgcolor: (t) => (t.palette.mode === "dark" ? "#111c2e" : "#ffffff"),
+                      border: "1px solid",
+                      borderColor: (t) =>
+                        t.palette.mode === "dark"
+                          ? "rgba(148, 163, 184, 0.14)"
+                          : "rgba(226, 232, 240, 0.9)",
+                    }}
+                  >
                     <Typography
-                      variant="caption"
-                      fontWeight={700}
-                      display="block"
+                      variant="body2"
+                      sx={{ lineHeight: 1.7, color: "text.secondary", fontSize: "0.875rem" }}
                     >
-                      Rejection Reason
+                      {viewRequest.additionalNotes}
                     </Typography>
-                    <Typography variant="body2">
-                      {viewRequest.rejectionReason}
+                  </Paper>
+                </Box>
+              )}
+
+              {/* ── Reference Files (if present) ── */}
+              {Array.isArray(viewRequest?.referenceFiles) && viewRequest.referenceFiles.length > 0 && (
+                <Box>
+                  <Typography
+                    variant="caption"
+                    fontWeight={800}
+                    sx={{
+                      fontSize: "0.75rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.07em",
+                      color: "text.primary",
+                      mb: 1,
+                      display: "block",
+                    }}
+                  >
+                    Attached Files ({viewRequest.referenceFiles.length})
+                  </Typography>
+                  <Stack spacing={1}>
+                    {viewRequest.referenceFiles.map((file, idx) => (
+                      <Paper
+                        key={idx}
+                        elevation={0}
+                        sx={{
+                          p: 1.4,
+                          px: 2,
+                          borderRadius: "10px",
+                          bgcolor: (t) => (t.palette.mode === "dark" ? "#111c2e" : "#ffffff"),
+                          border: "1px solid",
+                          borderColor: (t) =>
+                            t.palette.mode === "dark"
+                              ? "rgba(148, 163, 184, 0.14)"
+                              : "rgba(226, 232, 240, 0.9)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+                          <FileIcon sx={{ fontSize: 20, color: "#084d68" }} />
+                          <Box>
+                            <Typography variant="body2" fontWeight={600} sx={{ fontSize: "0.825rem" }}>
+                              {file.originalName || `Attachment ${idx + 1}`}
+                            </Typography>
+                            {file.sizeBytes && (
+                              <Typography variant="caption" color="text.secondary">
+                                {(file.sizeBytes / 1024).toFixed(1)} KB
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                        {file.filePath && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            component="a"
+                            href={file.filePath}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            startIcon={<DownloadIcon sx={{ fontSize: 14 }} />}
+                            sx={{
+                              borderRadius: "8px",
+                              textTransform: "none",
+                              fontSize: "0.75rem",
+                              py: 0.4,
+                            }}
+                          >
+                            View / Download
+                          </Button>
+                        )}
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+
+              {/* ── Status Alerts (Rejected / Approved) ── */}
+              {viewRequest?.status === "rejected" && viewRequest?.rejectionReason && (
+                <Alert
+                  severity="error"
+                  variant="outlined"
+                  sx={{
+                    borderRadius: "14px",
+                    bgcolor: (t) => (t.palette.mode === "dark" ? alpha("#ef4444", 0.08) : "#fef2f2"),
+                    borderColor: alpha("#ef4444", 0.3),
+                    p: 2,
+                  }}
+                >
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#b91c1c", mb: 0.5 }}>
+                    Request Rejected
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#7f1d1d", lineHeight: 1.6 }}>
+                    {viewRequest.rejectionReason}
+                  </Typography>
+                  {viewRequest.reviewedByName && (
+                    <Typography variant="caption" sx={{ color: "#991b1b", mt: 1, display: "block", fontWeight: 600 }}>
+                      Reviewed by: {viewRequest.reviewedByName}{" "}
+                      {viewRequest.reviewedAt ? `on ${fmt(viewRequest.reviewedAt)}` : ""}
                     </Typography>
-                  </Alert>
-                )}
+                  )}
+                </Alert>
+              )}
+
+              {viewRequest?.status === "approved" && (
+                <Alert
+                  severity="success"
+                  variant="outlined"
+                  sx={{
+                    borderRadius: "14px",
+                    bgcolor: (t) => (t.palette.mode === "dark" ? alpha("#10b981", 0.08) : "#f0fdf4"),
+                    borderColor: alpha("#10b981", 0.3),
+                    p: 2,
+                  }}
+                >
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#15803d", mb: 0.5 }}>
+                    Request Approved
+                  </Typography>
+                  {viewRequest.reviewComments && (
+                    <Typography variant="body2" sx={{ color: "#166534", lineHeight: 1.6 }}>
+                      {viewRequest.reviewComments}
+                    </Typography>
+                  )}
+                  {viewRequest.resultingChecklistName && (
+                    <Typography variant="caption" sx={{ color: "#14532d", mt: 0.5, display: "block", fontWeight: 600 }}>
+                      Resulting Checklist: {viewRequest.resultingChecklistName}
+                    </Typography>
+                  )}
+                </Alert>
+              )}
             </Stack>
           </DialogContent>
+
+          {/* ── Footer Actions ── */}
           <DialogActions
             sx={{
-              px: { xs: 2, sm: 3 },
-              pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2.5 },
-              pt: { xs: 1.5, sm: 1 },
-              gap: 1,
+              px: { xs: 2.2, sm: 3 },
+              py: { xs: 1.8, sm: 2 },
+              borderTop: "1px solid",
+              borderColor: (t) =>
+                t.palette.mode === "dark"
+                  ? "rgba(148, 163, 184, 0.14)"
+                  : "rgba(226, 232, 240, 0.9)",
+              bgcolor: (t) => (t.palette.mode === "dark" ? "#0f172a" : "#ffffff"),
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
               flexWrap: "wrap",
-              borderTop: { xs: "1px solid", sm: "none" },
-              borderColor: "divider",
+              gap: 1.5,
             }}
           >
-            {isSuperAdmin &&
-              !["approved", "rejected"].includes(viewRequest?.status) &&
-              !viewRequest?.isDeleted && (
-                <Button
-                  variant="contained"
-                  startIcon={<CheckCircleIcon />}
-                  onClick={() => setReviewDialogOpen(true)}
-                >
-                  Review Request
-                </Button>
-              )}
-            <Button onClick={() => setViewRequest(null)} variant="outlined">
-              Close
-            </Button>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                Request ID:
+              </Typography>
+              <Chip
+                label={viewRequest?._id ? `#${String(viewRequest._id).slice(-6)}` : "—"}
+                size="small"
+                sx={{
+                  height: 22,
+                  fontFamily: "monospace",
+                  fontWeight: 700,
+                  fontSize: "0.72rem",
+                  bgcolor: (t) => (t.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "#f1f5f9"),
+                }}
+              />
+            </Box>
+
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Button
+                onClick={() => setViewRequest(null)}
+                variant="outlined"
+                sx={{
+                  borderRadius: "10px",
+                  textTransform: "none",
+                  fontWeight: 600,
+                  px: 2.5,
+                  py: 0.8,
+                  borderColor: (t) =>
+                    t.palette.mode === "dark" ? "rgba(148, 163, 184, 0.3)" : "#cbd5e1",
+                  color: (t) => (t.palette.mode === "dark" ? "#cbd5e1" : "#475569"),
+                  "&:hover": {
+                    borderColor: (t) =>
+                      t.palette.mode === "dark" ? "#cbd5e1" : "#94a3b8",
+                    bgcolor: (t) =>
+                      t.palette.mode === "dark" ? "rgba(255,255,255,0.05)" : "#f8fafc",
+                  },
+                }}
+              >
+                Close
+              </Button>
+
+              {isSuperAdmin &&
+                !["approved", "rejected"].includes(viewRequest?.status) &&
+                !viewRequest?.isDeleted && (
+                  <Button
+                    variant="contained"
+                    startIcon={<CheckCircleIcon sx={{ fontSize: 18 }} />}
+                    onClick={() => setReviewDialogOpen(true)}
+                    sx={{
+                      borderRadius: "10px",
+                      textTransform: "none",
+                      fontWeight: 700,
+                      px: 3,
+                      py: 0.8,
+                      background: "linear-gradient(135deg, #084d68 0%, #0d6386 100%)",
+                      boxShadow: "0 4px 14px rgba(8, 77, 104, 0.35)",
+                      "&:hover": {
+                        background: "linear-gradient(135deg, #063c52 0%, #084d68 100%)",
+                        boxShadow: "0 6px 18px rgba(8, 77, 104, 0.45)",
+                        transform: "translateY(-1px)",
+                      },
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    Review Request
+                  </Button>
+                )}
+            </Stack>
           </DialogActions>
         </Dialog>
 

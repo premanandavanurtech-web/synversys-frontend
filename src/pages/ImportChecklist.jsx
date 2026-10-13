@@ -58,7 +58,7 @@ import {
   Assignment as AssignmentIcon, // ← Replaced ChecklistIcon with AssignmentIcon
 } from "@mui/icons-material";
 import { useChecklistBuilder } from "../context/ChecklistBuilderContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 
 const C = {
   primary: "#0d474e",
@@ -111,9 +111,16 @@ const DropZone = ({ isDragging, hasFile, children, onClick }) => (
   </Box>
 );
 
-export default function ImportChecklistFields() {
+export default function ImportChecklistFields({
+  embeddedMode = false,
+  onEmbeddedClose = null,
+  onEmbeddedSuccess = null,
+}) {
   const theme = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const returnUrl = location.state?.returnUrl || searchParams.get("returnUrl");
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { importFromExcel, loading, error, success, clearMessages } =
     useChecklistBuilder();
@@ -274,6 +281,28 @@ export default function ImportChecklistFields() {
     setImporting(false);
     if (result.success) {
       setImportResponse(result.data);
+      const newId =
+        result?.data?._id ||
+        result?.data?.data?._id ||
+        result?.data?.id ||
+        result?.data?.checklist?._id ||
+        result?.data?.checklist?.id ||
+        result?._id ||
+        result?.id;
+      if (newId) {
+        try {
+          sessionStorage.setItem("lastCreatedChecklistId", newId);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      if (returnUrl) {
+        try {
+          sessionStorage.setItem("returnToSelectChecklists", "true");
+        } catch (e) {
+          console.error(e);
+        }
+      }
       setImportSuccess(true);
       setActiveStep(2);
       showSnackbar("Checklist imported successfully!", "success");
@@ -301,7 +330,25 @@ export default function ImportChecklistFields() {
     }
   };
 
-  const handleViewChecklist = () => navigate("/admin/checklists");
+  const handleViewChecklist = () => {
+    const newId =
+      importResponse?._id ||
+      importResponse?.data?._id ||
+      importResponse?.checklist?._id ||
+      importResponse?.id ||
+      sessionStorage.getItem("lastCreatedChecklistId");
+    if (onEmbeddedSuccess) {
+      onEmbeddedSuccess(newId);
+      return;
+    }
+    if (returnUrl) {
+      navigate(`${returnUrl}?openAssign=true&openChecklistModal=true${newId ? `&newChecklistId=${newId}` : ""}`, {
+        state: { openAssign: true, openChecklistModal: true, newChecklistId: newId },
+      });
+    } else {
+      navigate("/admin/checklists");
+    }
+  };
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
     clearMessages();
@@ -461,7 +508,25 @@ export default function ImportChecklistFields() {
         >
           <Box display="flex" alignItems="center" gap={2}>
             <IconButton
-              onClick={() => navigate("/admin/checklists")}
+              onClick={() => {
+                if (onEmbeddedClose) {
+                  onEmbeddedClose();
+                  return;
+                }
+                const newId =
+                  importResponse?._id ||
+                  importResponse?.data?._id ||
+                  importResponse?.checklist?._id ||
+                  importResponse?.id ||
+                  sessionStorage.getItem("lastCreatedChecklistId");
+                if (returnUrl) {
+                  navigate(`${returnUrl}?openAssign=true&openChecklistModal=true${newId ? `&newChecklistId=${newId}` : ""}`, {
+                    state: { openAssign: true, openChecklistModal: true, newChecklistId: newId },
+                  });
+                } else {
+                  navigate("/admin/checklists");
+                }
+              }}
               sx={{
                 bgcolor: alpha(C.primary, 0.08),
                 borderRadius: "14px",

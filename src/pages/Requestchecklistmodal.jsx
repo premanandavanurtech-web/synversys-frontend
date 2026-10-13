@@ -41,6 +41,7 @@ import {
   Tag as TagIcon,
 } from "@mui/icons-material";
 import { useRequestChecklist } from "../context/RequestChecklistContext";
+import { useNotifications } from "../context/NotificationContext";
 
 const PRIMARY = "#0d4a5c";
 const PRIMARY_DARK = "#092f3a";
@@ -246,6 +247,7 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
   const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { submitRequest } = useRequestChecklist();
+  const { fetchUnreadCount, fetchNotifications } = useNotifications();
 
   const [step, setStep] = useState(0);
   const [form, setForm] = useState(INIT_FORM);
@@ -367,6 +369,10 @@ export default function RequestChecklistModal({ open, onClose, onSuccess }) {
 
       const result = await submitRequest(fd);
       if (result?.success) {
+        try {
+          fetchUnreadCount?.();
+          fetchNotifications?.(1, 20);
+        } catch (_) {}
         onSuccess?.(result.data);
         handleClose();
       } else {

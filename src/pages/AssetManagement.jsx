@@ -453,7 +453,7 @@ const AssetCard = ({
           { label: isChildAsset ? "Child ID:" : "Asset ID:", value: asset.assetId },
           { label: "Tag Number:", value: asset.tagNumber },
           canViewFinancials && { label: "Purchase Cost:", value: asset.purchaseCost },
-          { label: "status::", value: asset.status },
+          { label: "Status:", value: asset.status },
           { label: "Last Inspection:", value: formatDate(asset.createdAt) },
         ].filter(Boolean).map(({ label, value, highlight }) => (
           <Stack
@@ -478,33 +478,33 @@ const AssetCard = ({
       </Box>
 
       {/* Action row */}
-      {(isAdmin || canClone) && (
-        <Stack
-          direction="row"
-          spacing={0.5}
-          sx={{
-            px: 2,
-            pb: 1.5,
-            borderTop: `1px solid ${T.border}`,
-            pt: 1,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {canClone && (
-            <Tooltip title="Clone asset">
-              <IconButton
-                size="small"
-                onClick={() => onClone(asset)}
-                sx={{
-                  borderRadius: "8px",
-                  bgcolor: T.brandLight,
-                  "&:hover": { bgcolor: T.brandHover },
-                }}
-              >
-                <ContentCopy sx={{ fontSize: 13, color: T.brand }} />
-              </IconButton>
-            </Tooltip>
-          )}
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{
+          px: 2,
+          pb: 1.5,
+          borderTop: `1px solid ${T.border}`,
+          pt: 1,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {canClone && onClone && (
+          <Tooltip title="Clone asset">
+            <IconButton
+              size="small"
+              onClick={() => onClone(asset)}
+              sx={{
+                borderRadius: "8px",
+                bgcolor: T.brandLight,
+                "&:hover": { bgcolor: T.brandHover },
+              }}
+            >
+              <ContentCopy sx={{ fontSize: 13, color: T.brand }} />
+            </IconButton>
+          </Tooltip>
+        )}
+        {onEdit && (
           <Tooltip title="Edit">
             <IconButton
               size="small"
@@ -518,6 +518,8 @@ const AssetCard = ({
               <Edit sx={{ fontSize: 13, color: T.brand }} />
             </IconButton>
           </Tooltip>
+        )}
+        {onView && (
           <Tooltip title="View details">
             <IconButton
               size="small"
@@ -531,7 +533,9 @@ const AssetCard = ({
               <Visibility sx={{ fontSize: 13, color: T.text.secondary }} />
             </IconButton>
           </Tooltip>
-          {canViewPortfolio && (portfolioName ? (
+        )}
+        {canViewPortfolio &&
+          (portfolioName ? (
             <Tooltip title={`Portfolio: ${portfolioName}`}>
               <IconButton
                 size="small"
@@ -544,7 +548,7 @@ const AssetCard = ({
                 <Workspaces sx={{ fontSize: 13, color: T.success }} />
               </IconButton>
             </Tooltip>
-          ) : (
+          ) : onPortfolio ? (
             <Tooltip title="Add portfolio name">
               <IconButton
                 size="small"
@@ -558,25 +562,24 @@ const AssetCard = ({
                 <AddBusiness sx={{ fontSize: 13, color: T.warning }} />
               </IconButton>
             </Tooltip>
-          ))}
-          {isAdmin && (
-            <Tooltip title="Delete">
-              <IconButton
-                size="small"
-                onClick={() => onDelete(asset)}
-                sx={{
-                  ml: "auto !important",
-                  borderRadius: "8px",
-                  bgcolor: T.errorBg,
-                  "&:hover": { bgcolor: T.errorHoverBg },
-                }}
-              >
-                <Delete sx={{ fontSize: 13, color: T.error }} />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Stack>
-      )}
+          ) : null)}
+        {isAdmin && onDelete && (
+          <Tooltip title="Delete">
+            <IconButton
+              size="small"
+              onClick={() => onDelete(asset)}
+              sx={{
+                ml: "auto !important",
+                borderRadius: "8px",
+                bgcolor: T.errorBg,
+                "&:hover": { bgcolor: T.errorHoverBg },
+              }}
+            >
+              <Delete sx={{ fontSize: 13, color: T.error }} />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Stack>
     </Box>
   );
 };
@@ -712,8 +715,9 @@ export default function AssetManagement() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
-  const isTeam = user?.role === "team";
+  const userRole = (user?.role || "").toLowerCase();
+  const isAdmin = userRole === "admin" || userRole === "super_admin" || userRole === "superadmin";
+  const isTeam = userRole === "team";
   const canViewFinancials = user?.role !== "team";
   const canViewPortfolio = !isTeam;
 

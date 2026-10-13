@@ -1,435 +1,290 @@
 // components/CreateChecklistModal.jsx
-import React, { useState } from "react";
+import React from "react";
 import {
   Box,
   Typography,
   Button,
   Paper,
   IconButton,
-  Avatar,
   Stack,
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogActions,
   alpha,
   useTheme,
   useMediaQuery,
 } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
-import AssignmentIcon from "@mui/icons-material/Assignment";
+import DescriptionIcon from "@mui/icons-material/Description";
 import PublicIcon from "@mui/icons-material/Public";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
-const StyledDialog = styled(Dialog)(({ theme }) => ({
-  "& .MuiDialog-paper": {
-    width: "100%",
-    maxWidth: "600px",
-    borderRadius: "20px",
-    backgroundColor: "#ffffff",
-    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-    margin: theme.spacing(2),
-    overflow: "hidden",
-    [theme.breakpoints.down("sm")]: {
-      margin: theme.spacing(1),
-      borderRadius: "16px",
-    },
-  },
-}));
-
-const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
-  padding: theme.spacing(2.5, 3, 2, 3),
-  borderBottom: "1px solid",
-  borderColor: alpha("#000", 0.05),
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  background: "linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)",
-  "& .MuiTypography-root": {
-    fontSize: "1.25rem",
-    fontWeight: 700,
-    color: "#0f172a",
-    letterSpacing: "-0.02em",
-    display: "flex",
-    alignItems: "center",
-    gap: theme.spacing(1),
-    [theme.breakpoints.down("sm")]: {
-      fontSize: "1.1rem",
-    },
-  },
-}));
-
-const StyledDialogContent = styled(DialogContent)(({ theme }) => ({
-  padding: theme.spacing(2.5),
-  [theme.breakpoints.down("sm")]: {
-    padding: theme.spacing(2),
-  },
-}));
-
-const StyledDialogActions = styled(DialogActions)(({ theme }) => ({
-  padding: theme.spacing(2, 3, 2.5, 3),
-  borderTop: "1px solid",
-  borderColor: alpha("#000", 0.05),
-  justifyContent: "space-between",
-  [theme.breakpoints.down("sm")]: {
-    padding: theme.spacing(1.5, 2, 2, 2),
-    flexDirection: "column-reverse",
-    gap: theme.spacing(1),
-    "& .MuiButton-root": {
-      width: "100%",
-    },
-  },
-}));
-
-const CloseButton = styled(IconButton)({
-  padding: "6px",
-  backgroundColor: alpha("#64748b", 0.1),
-  "&:hover": {
-    backgroundColor: alpha("#64748b", 0.2),
-  },
-  "& .MuiSvgIcon-root": {
-    fontSize: "1.1rem",
-    color: "#475569",
-  },
-});
-
-const TypeCard = styled(Paper)(({ theme, selected }) => ({
-  padding: theme.spacing(2),
-  backgroundColor: selected ? alpha("#085d63", 0.04) : "#ffffff",
-  borderRadius: "14px",
-  border: `2px solid ${selected ? "#085d63" : alpha("#e2e8f0", 0.8)}`,
-  cursor: "pointer",
-  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-  display: "flex",
-  alignItems: "flex-start",
-  gap: theme.spacing(2),
-  position: "relative",
-  overflow: "hidden",
-  "&::before": {
-    content: '""',
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "4px",
-    background: selected ? "linear-gradient(90deg, #085d63, #085d63)" : "none",
-  },
-  "&:hover": {
-    borderColor: selected ? "#085d63" : "#94a3b8",
-    backgroundColor: selected ? alpha("#085d63", 0.06) : alpha("#f8fafc", 0.8),
-    transform: "translateY(-1px)",
-    boxShadow: "0 8px 20px -5px rgba(0, 0, 0, 0.1)",
-  },
-  [theme.breakpoints.down("sm")]: {
-    padding: theme.spacing(1.5),
-    gap: theme.spacing(1.5),
-  },
-}));
-
-const TypeIcon = styled(Avatar)(({ theme, selected }) => ({
-  width: 48,
-  height: 48,
-  borderRadius: "14px",
-  background: selected 
-    ? "linear-gradient(135deg, #085d63, #085d63)" 
-    : "linear-gradient(135deg, #e2e8f0, #cbd5e1)",
-  color: selected ? "#ffffff" : "#475569",
-  transition: "all 0.3s ease",
-  boxShadow: selected ? "0 6px 12px -4px rgba(2, 132, 199, 0.3)" : "none",
-  "& .MuiSvgIcon-root": {
-    fontSize: "1.4rem",
-  },
-  [theme.breakpoints.down("sm")]: {
-    width: 42,
-    height: 42,
-    borderRadius: "12px",
-    "& .MuiSvgIcon-root": {
-      fontSize: "1.2rem",
-    },
-  },
-}));
-
-const TypeContent = styled(Box)({
-  flex: 1,
-  paddingRight: "20px",
-});
-
-const TypeTitle = styled(Typography)(({ theme, selected }) => ({
-  fontSize: "0.95rem",
-  fontWeight: 700,
-  color: "#0f172a",
-  marginBottom: theme.spacing(0.5),
-  display: "flex",
-  alignItems: "center",
-  gap: theme.spacing(0.75),
-  [theme.breakpoints.down("sm")]: {
-    fontSize: "0.85rem",
-  },
-}));
-
-const TypeDescription = styled(Typography)(({ theme }) => ({
-  fontSize: "0.75rem",
-  color: "#64748b",
-  lineHeight: 1.5,
-  [theme.breakpoints.down("sm")]: {
-    fontSize: "0.7rem",
-  },
-}));
-
-const SelectedBadge = styled(Box)({
-  position: "absolute",
-  top: 14,
-  right: 14,
-  color: "#085d63",
-  display: "flex",
-  alignItems: "center",
-  "& .MuiSvgIcon-root": {
-    fontSize: "1.1rem",
-  },
-});
-
-const CancelButton = styled(Button)(({ theme }) => ({
-  textTransform: "none",
-  fontSize: "0.8rem",
-  fontWeight: 600,
-  padding: "8px 24px",
-  borderRadius: "10px",
-  color: "#64748b",
-  backgroundColor: "#ffffff",
-  border: "1px solid",
-  borderColor: alpha("#e2e8f0", 0.8),
-  "&:hover": {
-    backgroundColor: alpha("#f1f5f9", 0.7),
-    borderColor: "#94a3b8",
-  },
-  [theme.breakpoints.down("sm")]: {
-    padding: "10px",
-    fontSize: "0.75rem",
-  },
-}));
-
-const ContinueButton = styled(Button)(({ theme }) => ({
-  textTransform: "none",
-  fontSize: "0.8rem",
-  fontWeight: 700,
-  padding: "8px 28px",
-  borderRadius: "10px",
-  backgroundColor: "#085d63",
-  color: "#ffffff",
-  "&:hover": {
-    backgroundColor: "#074a4f",
-  },
-  [theme.breakpoints.down("sm")]: {
-    padding: "10px",
-    fontSize: "0.75rem",
-  },
-}));
-
-const Subtitle = styled(Typography)(({ theme }) => ({
-  fontSize: "0.8rem",
-  color: "#64748b",
-  marginBottom: theme.spacing(2.5),
-  paddingLeft: theme.spacing(0.5),
-  fontWeight: 500,
-  [theme.breakpoints.down("sm")]: {
-    fontSize: "0.7rem",
-    marginBottom: theme.spacing(2),
-  },
-}));
-
-const TitleBadge = styled(Box)(({ theme }) => ({
-  width: 6,
-  height: 28,
-  background: "linear-gradient(135deg, #085d63, #085d63)",
-  borderRadius: "3px",
-  marginRight: theme.spacing(1.2),
-  [theme.breakpoints.down("sm")]: {
-    height: 24,
-  },
-}));
-
-const SelectedSummary = styled(Box)(({ theme }) => ({
-  marginTop: theme.spacing(2.5),
-  padding: theme.spacing(1.5),
-  backgroundColor: alpha("#085d63", 0.04),
-  borderRadius: "10px",
-  border: `1px dashed ${alpha("#085d63", 0.3)}`,
-  [theme.breakpoints.down("sm")]: {
-    marginTop: theme.spacing(2),
-    padding: theme.spacing(1.2),
-  },
-}));
-
-const CreateChecklistModal = ({ open, onClose }) => {
+const CreateChecklistModal = ({
+  open,
+  onClose,
+  openInNewTab = false,
+  returnUrl = null,
+  onSelectType = null,
+}) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [selectedType, setSelectedType] = useState(null);
 
   const types = [
     {
       id: "custom",
       title: "Custom Checklist",
-      description: "Create a custom form for your team. Only visible to your organization.",
-      icon: <AssignmentIcon />,
-      path: "/admin/checklists/custom-builder",
+      description: "Build a fully custom checklist with drag-and-drop fields",
+      icon: <DescriptionIcon />,
+      iconBg: "#e0f2fe",
+      iconColor: "#0284c7",
+      path: "/admin/create-checklist/custom",
     },
     {
       id: "global",
-      title: "Global Checklist",
-      description: "Create a global form to submit to Super Admin. Requires approval before use.",
+      title: "Custom Checklist (Global)",
+      description: "Submit a custom checklist for super admin approval",
       icon: <PublicIcon />,
-      path: "/admin/checklists/global-builder",
+      iconBg: "#dcfce7",
+      iconColor: "#10b981",
+      path: "/admin/create-checklist/global",
     },
     {
       id: "import",
-      title: "Import Checklist Fields",
-      description: "Upload an Excel sheet to auto-generate input fields.",
+      title: "Import from Excel",
+      description: "Auto-generate checklist fields from an Excel spreadsheet",
       icon: <UploadFileIcon />,
-      path: "/admin/checklists/import-fields",
+      iconBg: "#e0f2fe",
+      iconColor: "#0284c7",
+      path: "/admin/import-checklist/excel",
     },
   ];
 
-  const handleTypeSelect = (typeId) => {
-    setSelectedType(typeId);
-  };
-
-  const handleCancel = () => {
-    setSelectedType(null);
-    onClose();
-  };
-
-  const handleContinue = () => {
-    if (selectedType) {
-      const selectedTypeData = types.find(t => t.id === selectedType);
-      if (selectedTypeData) {
-        onClose();
-        navigate(selectedTypeData.path);
+  const handleSelect = (type) => {
+    onClose?.();
+    if (onSelectType) {
+      onSelectType(type.id);
+      return;
+    }
+    if (openInNewTab) {
+      window.open(type.path, "_blank");
+    } else {
+      if (returnUrl) {
+        try {
+          sessionStorage.setItem("returnToSelectChecklists", "true");
+        } catch (e) {
+          console.error(e);
+        }
       }
+      const targetUrl = returnUrl
+        ? `${type.path}?returnUrl=${encodeURIComponent(returnUrl)}&openAssign=true&openChecklistModal=true`
+        : type.path;
+      navigate(targetUrl, { state: { returnUrl, openAssign: !!returnUrl, openChecklistModal: !!returnUrl } });
     }
   };
 
-  const handleCardClick = (typeId) => {
-    handleTypeSelect(typeId);
-  };
-
-  const getSelectedTypeData = () => {
-    return types.find(t => t.id === selectedType);
-  };
-
   return (
-    <StyledDialog
+    <Dialog
       open={open}
-      onClose={handleCancel}
+      onClose={onClose}
       maxWidth="sm"
       fullWidth
+      sx={{ zIndex: 1400 }}
+      PaperProps={{
+        sx: {
+          borderRadius: { xs: "16px", sm: "22px" },
+          overflow: "hidden",
+          boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.35)",
+          m: { xs: 1.5, sm: 2 },
+          maxWidth: 560,
+        },
+      }}
       BackdropProps={{
         sx: {
-          backgroundColor: "rgba(0, 0, 0, 0.6)",
-          backdropFilter: "blur(8px)",
+          backgroundColor: "rgba(15, 23, 42, 0.65)",
+          backdropFilter: "blur(6px)",
         },
       }}
     >
-      <StyledDialogTitle>
-        <Box sx={{ display: "flex", alignItems: "center" }}>
-          <TitleBadge />
-          <Typography>
+      {/* ── Dark Navy Header matching Image 1 ── */}
+      <Box
+        sx={{
+          background: "linear-gradient(135deg, #0b2e3f 0%, #0e3b50 100%)",
+          p: { xs: 2.5, sm: 3 },
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <Box>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 800,
+              color: "#ffffff",
+              fontSize: { xs: "1.15rem", sm: "1.35rem" },
+              letterSpacing: "-0.01em",
+              lineHeight: 1.25,
+            }}
+          >
             Create New Checklist
           </Typography>
-          {!isMobile && (
-            <AutoAwesomeIcon 
-              sx={{ 
-                ml: 1.2, 
-                fontSize: "0.9rem", 
-                color: "#f59e0b",
-                opacity: 0.8 
-              }} 
-            />
-          )}
+          <Typography
+            sx={{
+              color: "rgba(255, 255, 255, 0.72)",
+              fontSize: { xs: "0.82rem", sm: "0.88rem" },
+              mt: 0.6,
+              fontWeight: 400,
+            }}
+          >
+            Choose how to build your checklist
+          </Typography>
         </Box>
-        <CloseButton size="small" onClick={handleCancel}>
-          <CloseIcon />
-        </CloseButton>
-      </StyledDialogTitle>
+        <IconButton
+          onClick={onClose}
+          size="small"
+          sx={{
+            color: "#ffffff",
+            bgcolor: "rgba(0, 0, 0, 0.25)",
+            "&:hover": { bgcolor: "rgba(0, 0, 0, 0.42)" },
+            width: 32,
+            height: 32,
+            transition: "all 0.15s ease",
+          }}
+        >
+          <CloseIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+      </Box>
 
-      <StyledDialogContent dividers={false}>
-        <Subtitle>
-          Choose the type of Checklist you want to create
-        </Subtitle>
-
+      {/* ── Cards Body ── */}
+      <DialogContent sx={{ p: { xs: 2, sm: 3 }, pb: 1, bgcolor: "#ffffff" }}>
         <Stack spacing={2}>
           {types.map((type) => (
-            <TypeCard
+            <Paper
               key={type.id}
-              elevation={selectedType === type.id ? 2 : 0}
-              selected={selectedType === type.id}
-              onClick={() => handleCardClick(type.id)}
-            >
-              <TypeIcon selected={selectedType === type.id}>
-                {type.icon}
-              </TypeIcon>
-              <TypeContent>
-                <TypeTitle selected={selectedType === type.id}>
-                  {type.title}
-                  {selectedType === type.id && (
-                    <CheckCircleIcon 
-                      sx={{ 
-                        fontSize: "0.8rem", 
-                        color: "#085d63",
-                        ml: 0.5 
-                      }} 
-                    />
-                  )}
-                </TypeTitle>
-                <TypeDescription>{type.description}</TypeDescription>
-              </TypeContent>
-              {selectedType === type.id && (
-                <SelectedBadge>
-                  <CheckCircleIcon />
-                </SelectedBadge>
-              )}
-            </TypeCard>
-          ))}
-        </Stack>
-
-        {selectedType && (
-          <SelectedSummary>
-            <Typography
+              elevation={0}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleSelect(type)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleSelect(type);
+                }
+              }}
               sx={{
-                fontSize: "0.7rem",
-                color: "#085d63",
+                p: { xs: 1.75, sm: 2.25 },
+                borderRadius: "18px",
+                border: "1.5px solid #e2e8f0",
                 display: "flex",
                 alignItems: "center",
-                gap: 0.8,
+                justifyContent: "space-between",
+                cursor: "pointer",
+                transition: "all 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
+                bgcolor: "#ffffff",
+                "&:hover": {
+                  borderColor: "#0284c7",
+                  boxShadow: "0 10px 25px -5px rgba(2, 132, 199, 0.12)",
+                  transform: "translateY(-2px)",
+                  bgcolor: alpha(type.iconBg, 0.25),
+                  "& .chevron-icon": {
+                    color: "#0284c7",
+                    transform: "translateX(3px)",
+                  },
+                },
               }}
             >
-              <InsertDriveFileIcon sx={{ fontSize: "0.8rem", color: "#085d63" }} />
-              Selected: <strong>{getSelectedTypeData()?.title}</strong>
-            </Typography>
-          </SelectedSummary>
-        )}
-      </StyledDialogContent>
+              <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1.75, sm: 2.25 }, minWidth: 0 }}>
+                <Box
+                  sx={{
+                    width: { xs: 46, sm: 52 },
+                    height: { xs: 46, sm: 52 },
+                    borderRadius: "50%",
+                    bgcolor: type.iconBg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  {React.cloneElement(type.icon, {
+                    sx: { fontSize: { xs: 22, sm: 26 }, color: type.iconColor },
+                  })}
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: { xs: "0.95rem", sm: "1.05rem" },
+                      color: "#0f172a",
+                      mb: 0.35,
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    {type.title}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: { xs: "0.78rem", sm: "0.84rem" },
+                      color: "#64748b",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {type.description}
+                  </Typography>
+                </Box>
+              </Box>
+              <ChevronRightIcon
+                className="chevron-icon"
+                sx={{
+                  fontSize: 24,
+                  color: "#94a3b8",
+                  transition: "all 0.2s ease-in-out",
+                  ml: 1.5,
+                  flexShrink: 0,
+                }}
+              />
+            </Paper>
+          ))}
+        </Stack>
+      </DialogContent>
 
-      <StyledDialogActions>
-        <CancelButton onClick={handleCancel}>
+      {/* ── Footer matching Image 1 with right-aligned Cancel button ── */}
+      <DialogActions
+        sx={{
+          p: { xs: 2, sm: 3 },
+          pt: 1.5,
+          pb: { xs: 2.5, sm: 3 },
+          justifyContent: "flex-end",
+          borderTop: "none",
+          bgcolor: "#ffffff",
+        }}
+      >
+        <Button
+          variant="outlined"
+          onClick={onClose}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: "0.88rem",
+            color: "#1e293b",
+            borderColor: "#cbd5e1",
+            borderRadius: "10px",
+            px: 3.2,
+            py: 0.75,
+            transition: "all 0.15s ease",
+            "&:hover": {
+              borderColor: "#94a3b8",
+              bgcolor: "#f8fafc",
+            },
+          }}
+        >
           Cancel
-        </CancelButton>
-        {selectedType && (
-          <ContinueButton
-            variant="contained"
-            onClick={handleContinue}
-            disableElevation
-          >
-            Continue
-          </ContinueButton>
-        )}
-      </StyledDialogActions>
-    </StyledDialog>
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

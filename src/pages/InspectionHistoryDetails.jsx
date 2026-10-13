@@ -431,10 +431,10 @@ export default function InspectionHistoryDetails() {
     const raw =
       typeof signature === "object"
         ? signature.url ||
-          signature.secure_url ||
-          signature.filePath ||
-          signature.path ||
-          signature.value
+        signature.secure_url ||
+        signature.filePath ||
+        signature.path ||
+        signature.value
         : signature;
     if (typeof raw !== "string" || !raw.trim()) return "";
 
@@ -841,7 +841,7 @@ export default function InspectionHistoryDetails() {
                   value={
                     inspection.overallCondition
                       ? inspection.overallCondition.charAt(0).toUpperCase() +
-                        inspection.overallCondition.slice(1)
+                      inspection.overallCondition.slice(1)
                       : "—"
                   }
                 />
@@ -1170,7 +1170,7 @@ export default function InspectionHistoryDetails() {
           open={snack.open}
           autoHideDuration={4000}
           onClose={() => setSnack({ ...snack, open: false })}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}>
           <Alert
             severity={snack.severity}
             onClose={() => setSnack({ ...snack, open: false })}

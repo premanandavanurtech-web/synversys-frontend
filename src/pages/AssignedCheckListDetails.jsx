@@ -160,7 +160,7 @@ export default function AssignmentDetails() {
     message: "",
     severity: "success",
   });
-  
+
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [submissionToDelete, setSubmissionToDelete] = useState(null);
@@ -231,11 +231,11 @@ export default function AssignmentDetails() {
 
   const handleDeleteConfirm = async () => {
     if (!submissionToDelete) return;
-    
+
     setDeleting(true);
     try {
       const response = await authRequest("DELETE", `/assignments/${submissionToDelete._id}/submission`);
-      
+
       if (response && response.success) {
         setSnackbar({
           open: true,
@@ -340,23 +340,23 @@ export default function AssignmentDetails() {
   const completionRate =
     submissions.length > 0 && assignees.length > 0
       ? (submissions.filter(
-          (s) =>
-            s.status === "submitted" ||
-            s.status === "approved" ||
-            s.submissionStatus === "approved",
-        ).length /
-          assignees.length) *
-        100
+        (s) =>
+          s.status === "submitted" ||
+          s.status === "approved" ||
+          s.submissionStatus === "approved",
+      ).length /
+        assignees.length) *
+      100
       : 0;
 
   const daysRemaining = assignmentData?.dueDate
     ? Math.max(
-        0,
-        Math.ceil(
-          (new Date(assignmentData.dueDate) - new Date()) /
-            (1000 * 60 * 60 * 24),
-        ),
-      )
+      0,
+      Math.ceil(
+        (new Date(assignmentData.dueDate) - new Date()) /
+        (1000 * 60 * 60 * 24),
+      ),
+    )
     : 0;
 
   const statCards = [
@@ -655,8 +655,8 @@ export default function AssignmentDetails() {
                               >
                                 {submission.submittedAt
                                   ? new Date(
-                                      submission.submittedAt,
-                                    ).toLocaleString()
+                                    submission.submittedAt,
+                                  ).toLocaleString()
                                   : "Not submitted"}
                               </Typography>
                             </Box>

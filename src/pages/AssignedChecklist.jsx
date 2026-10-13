@@ -94,11 +94,20 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   CalendarMonth as CalendarMonthIcon,
+  Add as AddIcon,
+  AddCircleOutline as AddCircleOutlineIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContexts";
 import { useAssignment } from "../context/AssignmentContext";
-import { useNavigate } from "react-router-dom";
+import { useTeam } from "../context/TeamContext";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import AssetSearchField from "../components/AssetSearchField";
+import AddMemberModal from "./AddMemberModal";
+import CreateChecklistModal from "./CreateChecklistModal";
+import AddNewAsset from "./AddNewAsset";
+import CustomChecklist from "./CustomChecklist";
+import GlobalChecklist from "./GlobalChecklist";
+import ImportChecklist from "./ImportChecklist";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const createAssignedChecklistTheme = (mode = "light") =>
@@ -456,9 +465,23 @@ const MobileAssignmentCard = ({ asgn, canManage, onView, onReassign, onDelete })
 );
 
 // ─── Selection Modal ──────────────────────────────────────────────────────────
-const SelectionModal = ({ open, onClose, title, items, loading, selectedIds, onToggle, onDone, multiSelect = true }) => {
+const SelectionModal = ({
+  open,
+  onClose,
+  title,
+  items,
+  loading,
+  selectedIds,
+  onToggle,
+  onDone,
+  multiSelect = true,
+  onAddNew = null,
+  addNewLabel = "",
+  onRefresh = null,
+}) => {
   const [search, setSearch] = useState("");
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
@@ -482,7 +505,12 @@ const SelectionModal = ({ open, onClose, title, items, loading, selectedIds, onT
     });
   }, [items, search]);
 
-  const isSelected = (id) => (Array.isArray(selectedIds) ? selectedIds.includes(id) : selectedIds === id);
+  const isSelected = (id) => {
+    if (Array.isArray(selectedIds)) {
+      return selectedIds.some((sId) => String(sId) === String(id));
+    }
+    return selectedIds != null && String(selectedIds) === String(id);
+  };
 
   useEffect(() => { if (!open) setSearch(""); }, [open]);
 
@@ -517,12 +545,61 @@ const SelectionModal = ({ open, onClose, title, items, loading, selectedIds, onT
         },
       }}
     >
-      <Box sx={{ background: "linear-gradient(135deg, #0b394a 0%, #114d64 100%)", p: 3 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-          <Typography fontWeight={700} color="white" variant="h6">{title}</Typography>
-          <IconButton onClick={onClose} size="small" sx={{ color: "white", bgcolor: alpha("#fff", 0.1) }}>
-            <CloseIcon sx={{ fontSize: 18 }} />
-          </IconButton>
+      <Box sx={{ background: "linear-gradient(135deg, #0b394a 0%, #114d64 100%)", p: { xs: 2, sm: 3 } }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, gap: 1 }}>
+          <Typography fontWeight={700} color="white" variant="h6" sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}>
+            {title}
+          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            {onRefresh && (
+              <Tooltip title="Refresh list">
+                <IconButton
+                  onClick={onRefresh}
+                  size="small"
+                  disabled={loading}
+                  sx={{
+                    color: "white",
+                    bgcolor: alpha("#fff", 0.12),
+                    "&:hover": { bgcolor: alpha("#fff", 0.22) },
+                  }}
+                >
+                  <RefreshIcon
+                    sx={{
+                      fontSize: 18,
+                      animation: loading ? "spin 1s linear infinite" : "none",
+                      "@keyframes spin": { "0%": { transform: "rotate(0deg)" }, "100%": { transform: "rotate(360deg)" } },
+                    }}
+                  />
+                </IconButton>
+              </Tooltip>
+            )}
+            {onAddNew && (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<AddCircleOutlineIcon sx={{ fontSize: 16 }} />}
+                onClick={onAddNew}
+                sx={{
+                  bgcolor: "#ffffff",
+                  color: "#084d68",
+                  fontWeight: 700,
+                  fontSize: { xs: "0.72rem", sm: "0.78rem" },
+                  textTransform: "none",
+                  borderRadius: 2,
+                  px: { xs: 1.2, sm: 1.6 },
+                  py: 0.5,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+                  whiteSpace: "nowrap",
+                  "&:hover": { bgcolor: "#f1f5f9", color: "#063c52" },
+                }}
+              >
+                {addNewLabel || "Add New"}
+              </Button>
+            )}
+            <IconButton onClick={onClose} size="small" sx={{ color: "white", bgcolor: alpha("#fff", 0.1) }}>
+              <CloseIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Box>
         </Box>
         <AssetSearchField
           placeholder="Search..."
@@ -537,7 +614,29 @@ const SelectionModal = ({ open, onClose, title, items, loading, selectedIds, onT
         {loading ? (
           <Box sx={{ py: 6, textAlign: "center" }}><CircularProgress size={28} sx={{ color: "#084d68" }} /></Box>
         ) : filtered.length === 0 ? (
-          <Box sx={{ py: 6, textAlign: "center" }}><Typography color="text.secondary">No items found</Typography></Box>
+          <Box sx={{ py: 6, textAlign: "center", px: 2 }}>
+            <Typography color="text.secondary" fontWeight={500} sx={{ mb: onAddNew ? 1.5 : 0 }}>
+              {search ? `No items found matching "${search}"` : "No items found"}
+            </Typography>
+            {onAddNew && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddCircleOutlineIcon sx={{ fontSize: 16 }} />}
+                onClick={onAddNew}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  borderColor: "#084d68",
+                  color: "#084d68",
+                  "&:hover": { bgcolor: alpha("#084d68", 0.05), borderColor: "#084d68" },
+                }}
+              >
+                {addNewLabel || "Add New"}
+              </Button>
+            )}
+          </Box>
         ) : (
           <List dense disablePadding>
             {filtered.map((item) => {
@@ -590,10 +689,30 @@ const SelectionModal = ({ open, onClose, title, items, loading, selectedIds, onT
         )}
       </Box>
 
-      <Box sx={{ p: 2.5, borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-        <Typography variant="caption" color="text.secondary">
-          {Array.isArray(selectedIds) ? `${selectedIds.length} selected` : selectedIds ? "1 selected" : "None selected"}
-        </Typography>
+      <Box sx={{ p: 2.5, borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0, gap: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+          <Typography variant="caption" color="text.secondary" fontWeight={600}>
+            {Array.isArray(selectedIds) ? `${selectedIds.length} selected` : selectedIds ? "1 selected" : "None selected"}
+          </Typography>
+          {onAddNew && (
+            <Button
+              size="small"
+              startIcon={<AddCircleOutlineIcon sx={{ fontSize: 14 }} />}
+              onClick={onAddNew}
+              sx={{
+                textTransform: "none",
+                fontWeight: 700,
+                fontSize: "0.75rem",
+                color: "#084d68",
+                p: 0,
+                minWidth: "auto",
+                "&:hover": { bgcolor: "transparent", textDecoration: "underline" },
+              }}
+            >
+              {addNewLabel || "Add New"}
+            </Button>
+          )}
+        </Box>
         <Stack direction="row" spacing={1.5}>
           <Button variant="outlined" onClick={onClose} sx={{ borderRadius: 2 }}>Cancel</Button>
           <Button variant="contained" onClick={onDone} sx={{ borderRadius: 2, background: "#084d68" }}>Done</Button>
@@ -639,6 +758,8 @@ const defaultFilters = () => ({
 export default function AssignedChecklist() {
   const { authRequest, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { assignToAdmin, assignToTeam, reassignToAdmin, reassignToTeam, getAssignments, getAssignmentStats, softDeleteAssignment, assignLoading } = useAssignment();
   const appTheme = useTheme();
   theme = createAssignedChecklistTheme(appTheme.palette.mode);
@@ -705,6 +826,13 @@ export default function AssignedChecklist() {
     (member) => String(member?.status || "").toLowerCase() === "active",
   );
 
+  const { addTeamMember } = useTeam() || {};
+  const [createChecklistOpen, setCreateChecklistOpen] = useState(false);
+  const [activeCreateChecklistType, setActiveCreateChecklistType] = useState(null);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [addMemberLoading, setAddMemberLoading] = useState(false);
+  const [addAssetOpen, setAddAssetOpen] = useState(false);
+
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
   const formatToastMessage = useCallback((msg) => {
     const text = String(msg || "").trim();
@@ -751,9 +879,20 @@ export default function AssignedChecklist() {
 
   const fetchChecklists = useCallback(async () => {
     setChecklistsLoading(true);
-    try { const res = await authRequest("GET", "/checklists?limit=100&status=published"); setChecklists(res?.checklists ?? []); }
-    catch (err) { console.error(err); }
-    finally { setChecklistsLoading(false); }
+    try {
+      const res = await authRequest("GET", "/checklists?limit=100&status=published");
+      const list =
+        res?.checklists ??
+        res?.data?.checklists ??
+        (Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
+      setChecklists(list);
+      return list;
+    } catch (err) {
+      console.error(err);
+      return [];
+    } finally {
+      setChecklistsLoading(false);
+    }
   }, [authRequest]);
 
   const fetchAdmins = useCallback(async () => {
@@ -786,6 +925,208 @@ export default function AssignedChecklist() {
     if (isAdmin) { fetchTeamMembers(); fetchAssets(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchChecklists();
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [fetchChecklists]);
+
+  const handleOpenCreateChecklist = useCallback(() => {
+    try {
+      sessionStorage.setItem("pendingAssignForm", JSON.stringify(assignForm));
+      sessionStorage.setItem("returnToSelectChecklists", "true");
+    } catch (e) {
+      console.error(e);
+    }
+    setCreateChecklistOpen(true);
+  }, [assignForm]);
+
+  useEffect(() => {
+    const shouldOpenAssign =
+      searchParams.get("openAssign") === "true" ||
+      location.state?.openAssign === true;
+    const shouldOpenChecklistModal =
+      searchParams.get("openChecklistModal") === "true" ||
+      location.state?.openChecklistModal === true ||
+      sessionStorage.getItem("returnToSelectChecklists") === "true";
+    const paramChecklistId =
+      searchParams.get("newChecklistId") ||
+      location.state?.newChecklistId;
+    const storedChecklistId = sessionStorage.getItem("lastCreatedChecklistId");
+    const newChecklistId = paramChecklistId || storedChecklistId;
+
+    if (storedChecklistId) {
+      try {
+        sessionStorage.removeItem("lastCreatedChecklistId");
+      } catch (e) {}
+    }
+    if (sessionStorage.getItem("returnToSelectChecklists")) {
+      try {
+        sessionStorage.removeItem("returnToSelectChecklists");
+      } catch (e) {}
+    }
+
+    if (shouldOpenAssign || shouldOpenChecklistModal) {
+      let restoredForm = defaultAssignForm();
+      const saved = sessionStorage.getItem("pendingAssignForm");
+      if (saved) {
+        try {
+          restoredForm = { ...restoredForm, ...JSON.parse(saved) };
+          sessionStorage.removeItem("pendingAssignForm");
+        } catch (e) {
+          console.error("Error parsing saved assign form:", e);
+        }
+      }
+
+      if (newChecklistId) {
+        const currentList = Array.isArray(restoredForm.checklistIds)
+          ? restoredForm.checklistIds
+          : [];
+        if (!currentList.some((id) => String(id) === String(newChecklistId))) {
+          restoredForm.checklistIds = [...currentList, newChecklistId];
+        }
+      }
+
+      setAssignForm(restoredForm);
+      setAssignTouched(false);
+      setAssignError("");
+      setAssignOpen(true);
+
+      if (shouldOpenChecklistModal) {
+        openModal("checklist");
+      }
+
+      fetchChecklists().then((fetchedList) => {
+        let activeId = newChecklistId;
+        if (!activeId && shouldOpenChecklistModal && Array.isArray(fetchedList) && fetchedList.length > 0) {
+          activeId = fetchedList[0]?._id || fetchedList[0]?.id;
+        }
+
+        if (activeId) {
+          setAssignForm((prev) => {
+            const currentList = Array.isArray(prev.checklistIds) ? prev.checklistIds : [];
+            const exists = currentList.some((id) => String(id) === String(activeId));
+            if (!exists) {
+              return { ...prev, checklistIds: [...currentList, activeId] };
+            }
+            return prev;
+          });
+          toast("Checklist created successfully and selected for assignment!");
+        }
+      });
+
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [searchParams, location.state, fetchChecklists, toast, navigate, location.pathname]);
+
+  const handleOpenAddMember = useCallback(() => {
+    setAddMemberOpen(true);
+  }, []);
+
+  const handleOpenAddAsset = useCallback(() => {
+    setAddAssetOpen(true);
+  }, []);
+
+  const handleAddMemberSubmit = useCallback(async (formData) => {
+    setAddMemberLoading(true);
+    try {
+      if (addTeamMember) {
+        const result = await addTeamMember(formData);
+        if (result?.success) {
+          toast(result.message || "Team member added successfully!");
+          setAddMemberOpen(false);
+          await fetchTeamMembers();
+          const newId = result.member?._id || result.member?.id || result.data?._id || result.data?.id;
+          if (newId) {
+            if (modalStates.reassignTeam) {
+              setReassignForm((p) => ({
+                ...p,
+                teamMemberIds: p.teamMemberIds.includes(newId) ? p.teamMemberIds : [...p.teamMemberIds, newId],
+              }));
+            } else {
+              setAssignForm((p) => ({
+                ...p,
+                teamMemberIds: p.teamMemberIds.includes(newId) ? p.teamMemberIds : [...p.teamMemberIds, newId],
+              }));
+            }
+          }
+          return result;
+        } else {
+          toast(result?.error || "Failed to add team member", "error");
+          return result;
+        }
+      } else {
+        const res = await authRequest("POST", "/team", formData);
+        toast("Team member added successfully!");
+        setAddMemberOpen(false);
+        await fetchTeamMembers();
+        const newId = res?.member?._id || res?.member?.id || res?.data?._id;
+        if (newId) {
+          if (modalStates.reassignTeam) {
+            setReassignForm((p) => ({
+              ...p,
+              teamMemberIds: p.teamMemberIds.includes(newId) ? p.teamMemberIds : [...p.teamMemberIds, newId],
+            }));
+          } else {
+            setAssignForm((p) => ({
+              ...p,
+              teamMemberIds: p.teamMemberIds.includes(newId) ? p.teamMemberIds : [...p.teamMemberIds, newId],
+            }));
+          }
+        }
+        return { success: true };
+      }
+    } catch (err) {
+      toast(err?.message || "Failed to add team member", "error");
+      return { success: false, error: err?.message };
+    } finally {
+      setAddMemberLoading(false);
+    }
+  }, [addTeamMember, authRequest, fetchTeamMembers, modalStates.reassignTeam, toast]);
+
+  const handleAssetCreated = useCallback(async (newAsset) => {
+    setAddAssetOpen(false);
+    await fetchAssets();
+    const newId = newAsset?._id || newAsset?.id || (typeof newAsset === "string" ? newAsset : null);
+    if (newId) {
+      if (modalStates.reassignAsset) {
+        setReassignForm((p) => ({
+          ...p,
+          assetIds: p.assetIds.includes(newId) ? p.assetIds : [...p.assetIds, newId],
+        }));
+      } else {
+        setAssignForm((p) => ({
+          ...p,
+          assetIds: p.assetIds.includes(newId) ? p.assetIds : [...p.assetIds, newId],
+        }));
+      }
+    }
+    toast("Asset created successfully and added to selection!");
+  }, [fetchAssets, modalStates.reassignAsset, toast]);
+
+  const handleChecklistCreated = useCallback(async (newChecklistId) => {
+    setActiveCreateChecklistType(null);
+    const fetchedList = await fetchChecklists();
+    let activeId = newChecklistId;
+    if (!activeId && Array.isArray(fetchedList) && fetchedList.length > 0) {
+      activeId = fetchedList[0]?._id || fetchedList[0]?.id;
+    }
+    if (activeId) {
+      setAssignForm((prev) => {
+        const currentList = Array.isArray(prev.checklistIds) ? prev.checklistIds : [];
+        const exists = currentList.some((id) => String(id) === String(activeId));
+        if (!exists) {
+          return { ...prev, checklistIds: [...currentList, activeId] };
+        }
+        return prev;
+      });
+      toast("Checklist created successfully and selected for assignment!");
+    }
+    openModal("checklist");
+  }, [fetchChecklists, toast]);
 
   // ── Filter Handler ─────────────────────────────────────────────────────────
   const handleFilterChange = (key, value) => {
@@ -1498,12 +1839,34 @@ export default function AssignedChecklist() {
               </Alert>
             )}
             <Box>
-              <Button
-                variant="outlined" fullWidth onClick={() => { setAssignError(""); openModal("checklist"); }} startIcon={<DescriptionIcon />}
-                sx={{ borderColor: assignTouched && assignForm.checklistIds.length === 0 ? "#ef4444" : undefined, color: assignTouched && assignForm.checklistIds.length === 0 ? "#ef4444" : undefined }}
-              >
-                {assignForm.checklistIds.length === 0 ? "Select Checklists (Required)" : ` ${assignForm.checklistIds.length} selected`}
-              </Button>
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Button
+                  variant="outlined" fullWidth onClick={() => { setAssignError(""); openModal("checklist"); }} startIcon={<DescriptionIcon />}
+                  sx={{ justifyContent: "flex-start", textTransform: "none", fontWeight: 600, borderColor: assignTouched && assignForm.checklistIds.length === 0 ? "#ef4444" : undefined, color: assignTouched && assignForm.checklistIds.length === 0 ? "#ef4444" : undefined }}
+                >
+                  {assignForm.checklistIds.length === 0 ? "Select Checklists (Required)" : ` ${assignForm.checklistIds.length} selected`}
+                </Button>
+                <Tooltip title="Create new checklist">
+                  <Button
+                    variant="outlined"
+                    onClick={handleOpenCreateChecklist}
+                    startIcon={<AddCircleOutlineIcon sx={{ fontSize: 16 }} />}
+                    sx={{
+                      minWidth: "auto",
+                      px: 1.5,
+                      textTransform: "none",
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                      borderRadius: 1.5,
+                      borderColor: "#cbd5e1",
+                      color: "#084d68",
+                      "&:hover": { borderColor: "#084d68", bgcolor: alpha("#084d68", 0.04) },
+                    }}
+                  >
+                    New
+                  </Button>
+                </Tooltip>
+              </Box>
               {assignTouched && assignForm.checklistIds.length === 0 && <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>Please select at least one checklist</Typography>}
             </Box>
             {isSuperAdmin && (
@@ -1519,19 +1882,63 @@ export default function AssignedChecklist() {
             )}
             {!isSuperAdmin && (
               <Box>
-                <Button
-                  variant="outlined" fullWidth onClick={() => { setAssignError(""); openModal("team"); }} startIcon={<PeopleIcon />}
-                  sx={{ borderColor: assignTouched && assignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined, color: assignTouched && assignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined }}
-                >
-                  {assignForm.teamMemberIds.length === 0 ? "Select Team Members (Required)" : ` ${assignForm.teamMemberIds.length} selected`}
-                </Button>
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <Button
+                    variant="outlined" fullWidth onClick={() => { setAssignError(""); openModal("team"); }} startIcon={<PeopleIcon />}
+                    sx={{ justifyContent: "flex-start", textTransform: "none", fontWeight: 600, borderColor: assignTouched && assignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined, color: assignTouched && assignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined }}
+                  >
+                    {assignForm.teamMemberIds.length === 0 ? "Select Team Members (Required)" : ` ${assignForm.teamMemberIds.length} selected`}
+                  </Button>
+                  <Tooltip title="Add new team member">
+                    <Button
+                      variant="outlined"
+                      onClick={handleOpenAddMember}
+                      startIcon={<AddCircleOutlineIcon sx={{ fontSize: 16 }} />}
+                      sx={{
+                        minWidth: "auto",
+                        px: 1.5,
+                        textTransform: "none",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                        borderRadius: 1.5,
+                        borderColor: "#cbd5e1",
+                        color: "#084d68",
+                        "&:hover": { borderColor: "#084d68", bgcolor: alpha("#084d68", 0.04) },
+                      }}
+                    >
+                      New
+                    </Button>
+                  </Tooltip>
+                </Box>
                 {assignTouched && assignForm.teamMemberIds.length === 0 && <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>Please select at least one team member</Typography>}
               </Box>
             )}
             {!isSuperAdmin && (
-              <Button variant="outlined" fullWidth onClick={() => { setAssignError(""); openModal("asset"); }} startIcon={<InventoryIcon />}>
-                {assignForm.assetIds.length === 0 ? "Select Assets (Optional)" : `${assignForm.assetIds.length} selected`}
-              </Button>
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Button variant="outlined" fullWidth onClick={() => { setAssignError(""); openModal("asset"); }} startIcon={<InventoryIcon />} sx={{ justifyContent: "flex-start", textTransform: "none", fontWeight: 600 }}>
+                  {assignForm.assetIds.length === 0 ? "Select Assets (Optional)" : `${assignForm.assetIds.length} selected`}
+                </Button>
+                <Tooltip title="Add new asset">
+                  <Button
+                    variant="outlined"
+                    onClick={handleOpenAddAsset}
+                    startIcon={<AddCircleOutlineIcon sx={{ fontSize: 16 }} />}
+                    sx={{
+                      minWidth: "auto",
+                      px: 1.5,
+                      textTransform: "none",
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                      borderRadius: 1.5,
+                      borderColor: "#cbd5e1",
+                      color: "#084d68",
+                      "&:hover": { borderColor: "#084d68", bgcolor: alpha("#084d68", 0.04) },
+                    }}
+                  >
+                    New
+                  </Button>
+                </Tooltip>
+              </Box>
             )}
             <TextField fullWidth type="date" label="Due Date" value={assignForm.dueDate} onChange={(e) => { setAssignError(""); setAssignForm((p) => ({ ...p, dueDate: e.target.value })); }} InputLabelProps={{ shrink: true }} required />
             <TextField fullWidth multiline rows={3} label="Notes" value={assignForm.notes} onChange={(e) => { setAssignError(""); setAssignForm((p) => ({ ...p, notes: e.target.value })); }} placeholder="Add instructions or context..." />
@@ -1604,19 +2011,63 @@ export default function AssignedChecklist() {
             )}
             {!isSuperAdmin && (
               <Box>
-                <Button
-                  variant="outlined" fullWidth onClick={() => openModal("reassignTeam")} startIcon={<PeopleIcon />}
-                  sx={{ borderColor: reassignTouched && reassignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined, color: reassignTouched && reassignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined }}
-                >
-                  {reassignForm.teamMemberIds.length === 0 ? "Select Team Members (Required)" : ` ${reassignForm.teamMemberIds.length} selected`}
-                </Button>
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <Button
+                    variant="outlined" fullWidth onClick={() => openModal("reassignTeam")} startIcon={<PeopleIcon />}
+                    sx={{ justifyContent: "flex-start", textTransform: "none", fontWeight: 600, borderColor: reassignTouched && reassignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined, color: reassignTouched && reassignForm.teamMemberIds.length === 0 ? "#ef4444" : undefined }}
+                  >
+                    {reassignForm.teamMemberIds.length === 0 ? "Select Team Members (Required)" : ` ${reassignForm.teamMemberIds.length} selected`}
+                  </Button>
+                  <Tooltip title="Add new team member">
+                    <Button
+                      variant="outlined"
+                      onClick={handleOpenAddMember}
+                      startIcon={<AddCircleOutlineIcon sx={{ fontSize: 16 }} />}
+                      sx={{
+                        minWidth: "auto",
+                        px: 1.5,
+                        textTransform: "none",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                        borderRadius: 1.5,
+                        borderColor: "#cbd5e1",
+                        color: "#084d68",
+                        "&:hover": { borderColor: "#084d68", bgcolor: alpha("#084d68", 0.04) },
+                      }}
+                    >
+                      New
+                    </Button>
+                  </Tooltip>
+                </Box>
                 {reassignTouched && reassignForm.teamMemberIds.length === 0 && <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>Please select at least one team member</Typography>}
               </Box>
             )}
             {!isSuperAdmin && (
-              <Button variant="outlined" fullWidth onClick={() => openModal("reassignAsset")} startIcon={<InventoryIcon />}>
-                {reassignForm.assetIds.length === 0 ? "Select Assets (Optional)" : ` ${reassignForm.assetIds.length} selected`}
-              </Button>
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Button variant="outlined" fullWidth onClick={() => openModal("reassignAsset")} startIcon={<InventoryIcon />} sx={{ justifyContent: "flex-start", textTransform: "none", fontWeight: 600 }}>
+                  {reassignForm.assetIds.length === 0 ? "Select Assets (Optional)" : ` ${reassignForm.assetIds.length} selected`}
+                </Button>
+                <Tooltip title="Add new asset">
+                  <Button
+                    variant="outlined"
+                    onClick={handleOpenAddAsset}
+                    startIcon={<AddCircleOutlineIcon sx={{ fontSize: 16 }} />}
+                    sx={{
+                      minWidth: "auto",
+                      px: 1.5,
+                      textTransform: "none",
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                      borderRadius: 1.5,
+                      borderColor: "#cbd5e1",
+                      color: "#084d68",
+                      "&:hover": { borderColor: "#084d68", bgcolor: alpha("#084d68", 0.04) },
+                    }}
+                  >
+                    New
+                  </Button>
+                </Tooltip>
+              </Box>
             )}
             <TextField fullWidth type="date" label="New Due Date" value={reassignForm.dueDate} onChange={(e) => setReassignForm((p) => ({ ...p, dueDate: e.target.value }))} InputLabelProps={{ shrink: true }} />
             <TextField fullWidth multiline rows={2} label="Additional Notes" value={reassignForm.notes} onChange={(e) => setReassignForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Extra instructions..." />
@@ -1640,13 +2091,240 @@ export default function AssignedChecklist() {
       </Dialog>
 
       {/* ── Selection Modals ── */}
-      <SelectionModal open={modalStates.checklist}      onClose={() => closeModal("checklist")}      title="Select Checklists"    items={checklists}   loading={checklistsLoading} selectedIds={assignForm.checklistIds}     onToggle={(id) => { setAssignError(""); setAssignForm((p) => ({ ...p, checklistIds: p.checklistIds.includes(id) ? p.checklistIds.filter((i) => i !== id) : [...p.checklistIds, id] })); }} onDone={() => closeModal("checklist")} />
-      <SelectionModal open={modalStates.admin}          onClose={() => closeModal("admin")}          title="Select Admin"         items={admins}       loading={adminsLoading}     selectedIds={assignForm.adminId}         onToggle={(id) => { setAssignError(""); setAssignForm((p) => ({ ...p, adminId: id })); }}                                                                                                         onDone={() => closeModal("admin")}      multiSelect={false} />
-      <SelectionModal open={modalStates.reassignAdmin}  onClose={() => closeModal("reassignAdmin")}  title="Select New Admin"     items={admins}       loading={adminsLoading}     selectedIds={reassignForm.newAdminId}    onToggle={(id) => setReassignForm((p) => ({ ...p, newAdminId: id }))}                                                                                                    onDone={() => closeModal("reassignAdmin")} multiSelect={false} />
-      <SelectionModal open={modalStates.team}           onClose={() => closeModal("team")}           title="Select Team Members"  items={activeTeamMembers}  loading={teamLoading}       selectedIds={assignForm.teamMemberIds}   onToggle={(id) => { setAssignError(""); setAssignForm((p) => ({ ...p, teamMemberIds: p.teamMemberIds.includes(id) ? p.teamMemberIds.filter((i) => i !== id) : [...p.teamMemberIds, id] })); }}  onDone={() => closeModal("team")} />
-      <SelectionModal open={modalStates.asset}          onClose={() => closeModal("asset")}          title="Select Assets"        items={assets}       loading={assetsLoading}     selectedIds={assignForm.assetIds}        onToggle={(id) => { setAssignError(""); setAssignForm((p) => ({ ...p, assetIds: p.assetIds.includes(id) ? p.assetIds.filter((i) => i !== id) : [...p.assetIds, id] })); }}                        onDone={() => closeModal("asset")} />
-      <SelectionModal open={modalStates.reassignTeam}   onClose={() => closeModal("reassignTeam")}   title="Select Team Members"  items={activeTeamMembers}  loading={teamLoading}       selectedIds={reassignForm.teamMemberIds} onToggle={(id) => setReassignForm((p) => ({ ...p, teamMemberIds: p.teamMemberIds.includes(id) ? p.teamMemberIds.filter((i) => i !== id) : [...p.teamMemberIds, id] }))} onDone={() => closeModal("reassignTeam")} />
-      <SelectionModal open={modalStates.reassignAsset}  onClose={() => closeModal("reassignAsset")}  title="Select Assets"        items={assets}       loading={assetsLoading}     selectedIds={reassignForm.assetIds}      onToggle={(id) => setReassignForm((p) => ({ ...p, assetIds: p.assetIds.includes(id) ? p.assetIds.filter((i) => i !== id) : [...p.assetIds, id] }))}                     onDone={() => closeModal("reassignAsset")} />
+      <SelectionModal
+        open={modalStates.checklist}
+        onClose={() => closeModal("checklist")}
+        title="Select Checklists"
+        items={checklists}
+        loading={checklistsLoading}
+        selectedIds={assignForm.checklistIds}
+        onToggle={(id) => {
+          setAssignError("");
+          setAssignForm((p) => {
+            const currentList = Array.isArray(p.checklistIds) ? p.checklistIds : [];
+            const exists = currentList.some((i) => String(i) === String(id));
+            return {
+              ...p,
+              checklistIds: exists
+                ? currentList.filter((i) => String(i) !== String(id))
+                : [...currentList, id],
+            };
+          });
+        }}
+        onDone={() => closeModal("checklist")}
+        onAddNew={handleOpenCreateChecklist}
+        addNewLabel="Add New Checklist"
+        onRefresh={fetchChecklists}
+      />
+      <SelectionModal
+        open={modalStates.admin}
+        onClose={() => closeModal("admin")}
+        title="Select Admin"
+        items={admins}
+        loading={adminsLoading}
+        selectedIds={assignForm.adminId}
+        onToggle={(id) => {
+          setAssignError("");
+          setAssignForm((p) => ({ ...p, adminId: id }));
+        }}
+        onDone={() => closeModal("admin")}
+        multiSelect={false}
+        onRefresh={fetchAdmins}
+      />
+      <SelectionModal
+        open={modalStates.reassignAdmin}
+        onClose={() => closeModal("reassignAdmin")}
+        title="Select New Admin"
+        items={admins}
+        loading={adminsLoading}
+        selectedIds={reassignForm.newAdminId}
+        onToggle={(id) => setReassignForm((p) => ({ ...p, newAdminId: id }))}
+        onDone={() => closeModal("reassignAdmin")}
+        multiSelect={false}
+        onRefresh={fetchAdmins}
+      />
+      <SelectionModal
+        open={modalStates.team}
+        onClose={() => closeModal("team")}
+        title="Select Team Members"
+        items={activeTeamMembers}
+        loading={teamLoading}
+        selectedIds={assignForm.teamMemberIds}
+        onToggle={(id) => {
+          setAssignError("");
+          setAssignForm((p) => ({
+            ...p,
+            teamMemberIds: p.teamMemberIds.includes(id)
+              ? p.teamMemberIds.filter((i) => i !== id)
+              : [...p.teamMemberIds, id],
+          }));
+        }}
+        onDone={() => closeModal("team")}
+        onAddNew={handleOpenAddMember}
+        addNewLabel="Add Team Member"
+        onRefresh={fetchTeamMembers}
+      />
+      <SelectionModal
+        open={modalStates.asset}
+        onClose={() => closeModal("asset")}
+        title="Select Assets"
+        items={assets}
+        loading={assetsLoading}
+        selectedIds={assignForm.assetIds}
+        onToggle={(id) => {
+          setAssignError("");
+          setAssignForm((p) => ({
+            ...p,
+            assetIds: p.assetIds.includes(id)
+              ? p.assetIds.filter((i) => i !== id)
+              : [...p.assetIds, id],
+          }));
+        }}
+        onDone={() => closeModal("asset")}
+        onAddNew={handleOpenAddAsset}
+        addNewLabel="Add New Asset"
+        onRefresh={fetchAssets}
+      />
+      <SelectionModal
+        open={modalStates.reassignTeam}
+        onClose={() => closeModal("reassignTeam")}
+        title="Select Team Members"
+        items={activeTeamMembers}
+        loading={teamLoading}
+        selectedIds={reassignForm.teamMemberIds}
+        onToggle={(id) =>
+          setReassignForm((p) => ({
+            ...p,
+            teamMemberIds: p.teamMemberIds.includes(id)
+              ? p.teamMemberIds.filter((i) => i !== id)
+              : [...p.teamMemberIds, id],
+          }))
+        }
+        onDone={() => closeModal("reassignTeam")}
+        onAddNew={handleOpenAddMember}
+        addNewLabel="Add Team Member"
+        onRefresh={fetchTeamMembers}
+      />
+      <SelectionModal
+        open={modalStates.reassignAsset}
+        onClose={() => closeModal("reassignAsset")}
+        title="Select Assets"
+        items={assets}
+        loading={assetsLoading}
+        selectedIds={reassignForm.assetIds}
+        onToggle={(id) =>
+          setReassignForm((p) => ({
+            ...p,
+            assetIds: p.assetIds.includes(id)
+              ? p.assetIds.filter((i) => i !== id)
+              : [...p.assetIds, id],
+          }))
+        }
+        onDone={() => closeModal("reassignAsset")}
+        onAddNew={handleOpenAddAsset}
+        addNewLabel="Add New Asset"
+        onRefresh={fetchAssets}
+      />
+
+      {/* ── Sub-Modals for Adding New Checklist, Member, Asset ── */}
+      <CreateChecklistModal
+        open={createChecklistOpen}
+        onClose={() => setCreateChecklistOpen(false)}
+        returnUrl="/admin/assigned-checklists"
+        onSelectType={(type) => {
+          setCreateChecklistOpen(false);
+          setActiveCreateChecklistType(type);
+        }}
+      />
+
+      {/* ── Embedded Checklist Creation Dialog (No Page Redirection) ── */}
+      <Dialog
+        fullScreen
+        open={Boolean(activeCreateChecklistType)}
+        onClose={() => {
+          setActiveCreateChecklistType(null);
+          openModal("checklist");
+        }}
+        PaperProps={{
+          sx: {
+            bgcolor: "#f0f4f7",
+            m: { xs: 0, sm: "12px" },
+            borderRadius: { xs: 0, sm: "16px" },
+            height: { xs: "100%", sm: "calc(100% - 24px)" },
+            maxHeight: { xs: "100%", sm: "calc(100% - 24px)" },
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.22)",
+          },
+        }}
+        sx={{ zIndex: 1450 }}
+      >
+        <Box sx={{ flex: 1, minHeight: 0, height: "100%", overflowY: "auto", overflowX: "hidden" }}>
+          {activeCreateChecklistType === "custom" && (
+            <CustomChecklist
+              embeddedMode={true}
+              onEmbeddedClose={() => {
+                setActiveCreateChecklistType(null);
+                openModal("checklist");
+              }}
+              onEmbeddedSuccess={handleChecklistCreated}
+            />
+          )}
+          {activeCreateChecklistType === "global" && (
+            <GlobalChecklist
+              embeddedMode={true}
+              onEmbeddedClose={() => {
+                setActiveCreateChecklistType(null);
+                openModal("checklist");
+              }}
+              onEmbeddedSuccess={handleChecklistCreated}
+            />
+          )}
+          {activeCreateChecklistType === "import" && (
+            <ImportChecklist
+              embeddedMode={true}
+              onEmbeddedClose={() => {
+                setActiveCreateChecklistType(null);
+                openModal("checklist");
+              }}
+              onEmbeddedSuccess={handleChecklistCreated}
+            />
+          )}
+        </Box>
+      </Dialog>
+      <AddMemberModal
+        open={addMemberOpen}
+        onClose={() => setAddMemberOpen(false)}
+        onSubmit={handleAddMemberSubmit}
+        loading={addMemberLoading}
+      />
+      <Dialog
+        fullScreen
+        open={addAssetOpen}
+        onClose={() => setAddAssetOpen(false)}
+        PaperProps={{
+          sx: {
+            bgcolor: "#f0f4f7",
+            m: { xs: 0, sm: "12px" },
+            borderRadius: { xs: 0, sm: "16px" },
+            height: { xs: "100%", sm: "calc(100% - 24px)" },
+            maxHeight: { xs: "100%", sm: "calc(100% - 24px)" },
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.22)",
+          },
+        }}
+      >
+        <Box sx={{ flex: 1, minHeight: 0, height: "100%", overflowY: "auto", overflowX: "hidden" }}>
+          <AddNewAsset
+            embeddedMode={true}
+            onEmbeddedClose={() => setAddAssetOpen(false)}
+            onEmbeddedSuccess={handleAssetCreated}
+          />
+        </Box>
+      </Dialog>
 
       {/* ── Snackbar ── */}
       <Portal>

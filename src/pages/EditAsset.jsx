@@ -106,8 +106,8 @@ const TopBar = styled(Box)(({ theme }) => ({
   padding: "20px 36px",
   borderBottom: `1px solid ${theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.24)" : C.border}`,
   background: theme.palette.mode === "dark" ? "#0f1c2e" : C.white,
-  width:"1160px",
-  marginLeft:"32px",
+  width: "1160px",
+  marginLeft: "32px",
   flexWrap: "wrap",
   gap: 14,
   animation: `${fadeUp} 0.35s ease both`,
@@ -806,7 +806,7 @@ export default function EditAsset() {
           : [];
         setPortfolioOptions(portfolios);
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => {
       active = false;
@@ -1925,7 +1925,7 @@ export default function EditAsset() {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity={snackbar.severity}
           onClose={() => setSnackbar((p) => ({ ...p, open: false }))}

@@ -1270,15 +1270,26 @@ export default function AssetRequests() {
     total: tabStats.total,
   };
 
+  const adminParentRequestsCount = requests.filter(
+    (r) =>
+      isAdminCreatedAssetRequest(r) &&
+      (r.assetType === "parent" || (!r.assetType && !r.isChildRequest)),
+  ).length;
+  const adminChildRequestsCount = requests.filter(
+    (r) =>
+      isAdminCreatedAssetRequest(r) &&
+      (r.assetType === "child" || r.isChildRequest),
+  ).length;
+
   const parentCount =
     typeof stats?.parent === "number"
-      ? stats.parent
+      ? Math.max(0, stats.parent - adminParentRequestsCount)
       : visibleRequests.filter(
           (r) => r.assetType === "parent" || (!r.assetType && !r.isChildRequest),
         ).length;
   const childCount =
     typeof stats?.child === "number"
-      ? stats.child
+      ? Math.max(0, stats.child - adminChildRequestsCount)
       : visibleRequests.filter(
           (r) => r.assetType === "child" || r.isChildRequest,
         ).length;

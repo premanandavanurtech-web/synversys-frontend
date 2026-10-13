@@ -586,67 +586,67 @@ export default function Tickets() {
           const isActive = filters.status === filterStatus;
 
           return (
-          <Paper
-            key={card.key}
-            role="button"
-            tabIndex={0}
-            onClick={() =>
-              setFilters((prev) => ({
-                ...prev,
-                status: filterStatus,
-              }))
-            }
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" && event.key !== " ") return;
-              event.preventDefault();
-              setFilters((prev) => ({
-                ...prev,
-                status: filterStatus,
-              }));
-            }}
-            sx={{
-              p: 2,
-              border: "1px solid",
-              position: "relative",
-              overflow: "hidden",
-              borderColor: isActive ? `${card.color} !important` : C.border,
-              bgcolor: isActive ? `${alpha(card.color, 0.14)} !important` : "background.paper",
-              outline: isActive ? `3px solid ${card.color}` : "none",
-              outlineOffset: "-3px",
-              boxShadow: isActive
-                ? `inset 0 0 0 1px ${card.color}, 0 18px 40px ${alpha(card.color, 0.22)} !important`
-                : "none",
-              "&::before": isActive
-                ? {
+            <Paper
+              key={card.key}
+              role="button"
+              tabIndex={0}
+              onClick={() =>
+                setFilters((prev) => ({
+                  ...prev,
+                  status: filterStatus,
+                }))
+              }
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                setFilters((prev) => ({
+                  ...prev,
+                  status: filterStatus,
+                }));
+              }}
+              sx={{
+                p: 2,
+                border: "1px solid",
+                position: "relative",
+                overflow: "hidden",
+                borderColor: isActive ? `${card.color} !important` : C.border,
+                bgcolor: isActive ? `${alpha(card.color, 0.14)} !important` : "background.paper",
+                outline: isActive ? `3px solid ${card.color}` : "none",
+                outlineOffset: "-3px",
+                boxShadow: isActive
+                  ? `inset 0 0 0 1px ${card.color}, 0 18px 40px ${alpha(card.color, 0.22)} !important`
+                  : "none",
+                "&::before": isActive
+                  ? {
                     content: '""',
                     position: "absolute",
                     inset: "0 auto 0 0",
                     width: 6,
                     bgcolor: card.color,
                   }
-                : undefined,
-              borderRadius: 2,
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              "&:hover": {
-                borderColor: card.color,
-                transform: "translateY(-2px)",
-                outline: `3px solid ${card.color}`,
-                boxShadow: isActive
-                  ? `inset 0 0 0 1px ${card.color}, 0 20px 44px ${alpha(card.color, 0.24)} !important`
-                  : `0 12px 28px ${alpha(card.color, 0.16)}`,
-              },
-              "&:focus-visible": {
-                borderColor: card.color,
-                boxShadow: `0 0 0 3px ${alpha(card.color, 0.33)}`,
-              },
-            }}
-          >
-            <Typography sx={{ color: C.muted, fontSize: 11, fontWeight: 800, textTransform: "uppercase" }}>
-              {card.label}
-            </Typography>
-            <Typography sx={{ color: card.color, fontSize: 28, fontWeight: 900 }}>{card.value}</Typography>
-          </Paper>
+                  : undefined,
+                borderRadius: 2,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  borderColor: card.color,
+                  transform: "translateY(-2px)",
+                  outline: `3px solid ${card.color}`,
+                  boxShadow: isActive
+                    ? `inset 0 0 0 1px ${card.color}, 0 20px 44px ${alpha(card.color, 0.24)} !important`
+                    : `0 12px 28px ${alpha(card.color, 0.16)}`,
+                },
+                "&:focus-visible": {
+                  borderColor: card.color,
+                  boxShadow: `0 0 0 3px ${alpha(card.color, 0.33)}`,
+                },
+              }}
+            >
+              <Typography sx={{ color: C.muted, fontSize: 11, fontWeight: 800, textTransform: "uppercase" }}>
+                {card.label}
+              </Typography>
+              <Typography sx={{ color: card.color, fontSize: 28, fontWeight: 900 }}>{card.value}</Typography>
+            </Paper>
           );
         })}
       </Box>
@@ -771,9 +771,8 @@ export default function Tickets() {
                             ? "rgba(21, 87, 106, 0.35)"
                             : alpha(C.teal, 0.1),
                           color: isDark ? "#4dd0e1" : C.teal,
-                          border: `1px solid ${
-                            isDark ? "rgba(77, 208, 225, 0.18)" : alpha(C.teal, 0.18)
-                          }`,
+                          border: `1px solid ${isDark ? "rgba(77, 208, 225, 0.18)" : alpha(C.teal, 0.18)
+                            }`,
                         }}
                       >
                         <AccessTime sx={{ fontSize: 18, flexShrink: 0 }} />

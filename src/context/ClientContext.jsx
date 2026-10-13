@@ -161,14 +161,14 @@ const getToken = () => {
 // Improved admin check that doesn't block API calls
 const hasValidToken = (token = getToken()) => {
   if (!token) return false;
-  
+
   try {
     // Check if token is expired
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const decoded = JSON.parse(atob(base64));
     const currentTime = Date.now() / 1000;
-    
+
     if (decoded.exp && decoded.exp < currentTime) {
       console.warn("Token expired");
       return false;
@@ -231,7 +231,7 @@ export const ClientProvider = ({ children }) => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     resetState();
-    
+
     // Redirect to login if not already there
     if (window.location.pathname !== "/login") {
       window.location.href = "/login";
@@ -395,8 +395,8 @@ export const ClientProvider = ({ children }) => {
           errorMessage = "Session expired. Please login again.";
           shouldRedirect = true;
         } else if (error.response?.status === 403) {
-          errorMessage = error.response?.data?.message || 
-                        "Access denied. You don't have permission to view clients.";
+          errorMessage = error.response?.data?.message ||
+            "Access denied. You don't have permission to view clients.";
           console.error("403 Error Details:", {
             url: error.config?.url,
             method: error.config?.method,
@@ -412,11 +412,11 @@ export const ClientProvider = ({ children }) => {
         }
 
         dispatch({ type: ACTION_TYPES.SET_ERROR, payload: errorMessage });
-        
+
         if (shouldRedirect) {
           handleUnauthorized();
         }
-        
+
         throw new Error(errorMessage);
       } finally {
         dispatch({ type: ACTION_TYPES.SET_LOADING, payload: false });
@@ -484,7 +484,7 @@ export const ClientProvider = ({ children }) => {
       return response.data;
     } catch (error) {
       let errorMessage = "Failed to fetch client";
-      
+
       if (error.response?.status === 401) {
         errorMessage = "Session expired. Please login again.";
         handleUnauthorized();
@@ -493,7 +493,7 @@ export const ClientProvider = ({ children }) => {
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       }
-      
+
       dispatch({ type: ACTION_TYPES.SET_ERROR, payload: errorMessage });
       throw new Error(errorMessage);
     } finally {
@@ -521,14 +521,14 @@ export const ClientProvider = ({ children }) => {
         return response.data;
       } catch (error) {
         let errorMessage = getApiErrorMessage(error, "Failed to create client");
-        
-      if (error.response?.status === 401) {
-        errorMessage = "Session expired. Please login again.";
-        handleUnauthorized();
-      } else if (error.response?.status === 403) {
-        errorMessage = getApiErrorMessage(error, "You don't have permission to create");
-      }
-        
+
+        if (error.response?.status === 401) {
+          errorMessage = "Session expired. Please login again.";
+          handleUnauthorized();
+        } else if (error.response?.status === 403) {
+          errorMessage = getApiErrorMessage(error, "You don't have permission to create");
+        }
+
         throw new Error(errorMessage);
       } finally {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
@@ -568,16 +568,16 @@ export const ClientProvider = ({ children }) => {
         return response.data;
       } catch (error) {
         let errorMessage = "Failed to update client";
-        
-      if (error.response?.status === 401) {
-        errorMessage = "Session expired. Please login again.";
-        handleUnauthorized();
-      } else if (error.response?.status === 403) {
-        errorMessage = getApiErrorMessage(error, "You don't have permission to edit");
-      } else if (error.response?.data?.message) {
+
+        if (error.response?.status === 401) {
+          errorMessage = "Session expired. Please login again.";
+          handleUnauthorized();
+        } else if (error.response?.status === 403) {
+          errorMessage = getApiErrorMessage(error, "You don't have permission to edit");
+        } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         }
-        
+
         throw new Error(errorMessage);
       } finally {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
@@ -611,16 +611,16 @@ export const ClientProvider = ({ children }) => {
         return response.data;
       } catch (error) {
         let errorMessage = "Failed to update status";
-        
-      if (error.response?.status === 401) {
-        errorMessage = "Session expired. Please login again.";
-        handleUnauthorized();
-      } else if (error.response?.status === 403) {
-        errorMessage = getApiErrorMessage(error, "You don't have permission to edit");
-      } else if (error.response?.data?.message) {
+
+        if (error.response?.status === 401) {
+          errorMessage = "Session expired. Please login again.";
+          handleUnauthorized();
+        } else if (error.response?.status === 403) {
+          errorMessage = getApiErrorMessage(error, "You don't have permission to edit");
+        } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         }
-        
+
         throw new Error(errorMessage);
       } finally {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
@@ -653,16 +653,16 @@ export const ClientProvider = ({ children }) => {
         return response.data;
       } catch (error) {
         let errorMessage = "Failed to delete client";
-        
-      if (error.response?.status === 401) {
-        errorMessage = "Session expired. Please login again.";
-        handleUnauthorized();
-      } else if (error.response?.status === 403) {
-        errorMessage = getApiErrorMessage(error, "You don't have permission to delete");
-      } else if (error.response?.data?.message) {
+
+        if (error.response?.status === 401) {
+          errorMessage = "Session expired. Please login again.";
+          handleUnauthorized();
+        } else if (error.response?.status === 403) {
+          errorMessage = getApiErrorMessage(error, "You don't have permission to delete");
+        } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         }
-        
+
         throw new Error(errorMessage);
       } finally {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });
@@ -696,7 +696,7 @@ export const ClientProvider = ({ children }) => {
         return response.data;
       } catch (error) {
         let errorMessage = "Failed to renew membership";
-        
+
         if (error.response?.status === 401) {
           errorMessage = "Session expired. Please login again.";
           handleUnauthorized();
@@ -705,7 +705,7 @@ export const ClientProvider = ({ children }) => {
         } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         }
-        
+
         throw new Error(errorMessage);
       } finally {
         dispatch({ type: ACTION_TYPES.SET_ACTION_LOADING, payload: false });

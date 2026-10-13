@@ -51,7 +51,7 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useChecklistBuilder } from "../context/ChecklistBuilderContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 
 // Field type definitions
 const FIELD_TYPES = [
@@ -947,8 +947,15 @@ function FieldCard({
 }
 
 // Main Component
-export default function GlobalChecklistBuilder() {
+export default function GlobalChecklistBuilder({
+  embeddedMode = false,
+  onEmbeddedClose = null,
+  onEmbeddedSuccess = null,
+}) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const returnUrl = location.state?.returnUrl || searchParams.get("returnUrl");
   const appTheme = useTheme();
   const isMobile = useMediaQuery(appTheme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(appTheme.breakpoints.between("sm", "md"));
@@ -1101,7 +1108,50 @@ export default function GlobalChecklistBuilder() {
     const result = await createChecklist(payload);
     if (result.success) {
       showSnack("Global checklist created successfully!");
-      setTimeout(() => navigate("/admin/checklists"), 2000);
+      const newId =
+        result?.data?._id ||
+        result?.data?.data?._id ||
+        result?.data?.id ||
+        result?.data?.checklist?._id ||
+        result?.data?.checklist?.id ||
+        result?.checklist?._id ||
+        result?.checklist?.id ||
+        result?._id ||
+        result?.id;
+      if (newId) {
+        try {
+          sessionStorage.setItem("lastCreatedChecklistId", newId);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      if (onEmbeddedSuccess) {
+        setTimeout(() => {
+          onEmbeddedSuccess(newId);
+        }, 600);
+        return;
+      }
+      if (returnUrl) {
+        try {
+          sessionStorage.setItem("returnToSelectChecklists", "true");
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setTimeout(() => {
+        if (returnUrl) {
+          const redirectPath = `${returnUrl}?openAssign=true&openChecklistModal=true${newId ? `&newChecklistId=${newId}` : ""}`;
+          navigate(redirectPath, {
+            state: {
+              openAssign: true,
+              openChecklistModal: true,
+              newChecklistId: newId,
+            },
+          });
+        } else {
+          navigate("/admin/checklists");
+        }
+      }, 1500);
     } else {
       showSnack(result.error || "Failed to create checklist", "error");
     }
@@ -1182,7 +1232,17 @@ export default function GlobalChecklistBuilder() {
           <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap">
             <IconButton
               size="small"
-              onClick={() => navigate("/admin/checklists")}
+              onClick={() => {
+                if (onEmbeddedClose) {
+                  onEmbeddedClose();
+                  return;
+                }
+                if (returnUrl) {
+                  navigate(`${returnUrl}?openAssign=true&openChecklistModal=true`, { state: { openAssign: true, openChecklistModal: true } });
+                } else {
+                  navigate("/admin/checklists");
+                }
+              }}
               sx={{
                 color: headerSubText,
                 border: `1px solid ${headerBorder}`,

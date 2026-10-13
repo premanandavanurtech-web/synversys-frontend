@@ -54,6 +54,7 @@ import {
   CheckCircleOutline,
   InfoOutlined,
   AddCircleOutline,
+  PublicOutlined,
 } from "@mui/icons-material";
 import { api, useAsset } from "../context/AssetContext";
 import { useAssetCategory } from "../context/AssetCategoryContexts";
@@ -133,6 +134,9 @@ const inputSx = {
       color: "var(--asset-text-muted, #94a3b8)",
       opacity: 1,
     },
+  },
+  "& .MuiInputBase-adornedStart .MuiInputBase-input": {
+    pl: "6px",
   },
   "& .MuiFormHelperText-root": {
     color: "var(--asset-text-muted, #94a3b8)",
@@ -1324,7 +1328,7 @@ export default function AddNewAsset({
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        minHeight: embeddedMode ? "100%" : "100vh",
         bgcolor: pageBg,
         "--asset-input-bg": inputBg,
         "--asset-input-disabled-bg": isDark ? "rgba(148, 163, 184, 0.08)" : "#f8fafc",
@@ -1337,6 +1341,8 @@ export default function AddNewAsset({
     >
       <Box
         sx={{
+          position: embeddedMode ? "sticky" : "static",
+          top: 0,
           borderBottom: `1px solid ${borderColor}`,
           bgcolor: surfaceBg,
           px: { xs: 2, sm: 3, md: 4 },
@@ -2010,88 +2016,243 @@ export default function AddNewAsset({
                 borderRadius: T.radius.lg,
                 p: { xs: 2, sm: 2.5 },
                 mb: 2.5,
+                boxShadow: isDark
+                  ? "0 4px 20px rgba(0,0,0,0.2)"
+                  : "0 1px 3px rgba(15,23,42,0.04)",
+                transition: "all 0.2s ease",
               }}
             >
-              <Stack direction="row" alignItems="center" spacing={1.5} mb={2.5}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                mb={2}
+              >
+                <Stack direction="row" alignItems="center" spacing={1.25}>
+                  <Box
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: T.radius.sm,
+                      bgcolor: alpha(T.success, 0.12),
+                      border: `1px solid ${alpha(T.success, 0.2)}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <HomeOutlined sx={{ fontSize: 17, color: T.success }} />
+                  </Box>
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: "0.875rem",
+                        color: textPrimary,
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      Physical Address
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: "0.7rem",
+                        color: textMuted,
+                        mt: 0.25,
+                      }}
+                    >
+                      Asset site & location details
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Chip
+                  size="small"
+                  icon={
+                    <LocationOnOutlined
+                      sx={{
+                        fontSize: "13px !important",
+                        color: `${T.success} !important`,
+                      }}
+                    />
+                  }
+                  label="Location"
+                  sx={{
+                    height: 22,
+                    fontSize: "0.68rem",
+                    fontWeight: 600,
+                    bgcolor: alpha(T.success, 0.08),
+                    color: T.success,
+                    border: `1px solid ${alpha(T.success, 0.18)}`,
+                    borderRadius: T.radius.sm,
+                    "& .MuiChip-label": { px: 0.75 },
+                  }}
+                />
+              </Stack>
+
+              <Stack spacing={1.75}>
+                {/* Street Address */}
+                <Box>
+                  <Label>Street Address</Label>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="e.g. 42 Industrial Park, Suite 100"
+                    value={formData.customPhysicalAddress.streetAddress}
+                    onChange={(e) => fa("streetAddress", e.target.value)}
+                    disabled={!canEdit}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <HomeOutlined
+                            sx={{
+                              fontSize: 16,
+                              color: "var(--asset-text-muted, #94a3b8)",
+                            }}
+                          />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={inputSx}
+                  />
+                </Box>
+
+                {/* City & State / Province */}
                 <Box
                   sx={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: T.radius.sm,
-                    bgcolor: alpha(T.success, 0.1),
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 1.5,
                   }}
                 >
-                  <HomeOutlined sx={{ fontSize: 16, color: T.success }} />
+                  <Box sx={{ minWidth: 0 }}>
+                    <Label>City</Label>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="e.g. Mumbai"
+                      value={formData.customPhysicalAddress.city}
+                      onChange={(e) => fa("city", e.target.value)}
+                      disabled={!canEdit}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <ApartmentOutlined
+                              sx={{
+                                fontSize: 16,
+                                color: "var(--asset-text-muted, #94a3b8)",
+                              }}
+                            />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={inputSx}
+                    />
+                  </Box>
+
+                  <Box sx={{ minWidth: 0 }}>
+                    <Label>State / Province</Label>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="e.g. Maharashtra"
+                      value={formData.customPhysicalAddress.stateProvince}
+                      onChange={(e) => fa("stateProvince", e.target.value)}
+                      disabled={!canEdit}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LocationOnOutlined
+                              sx={{
+                                fontSize: 16,
+                                color: "var(--asset-text-muted, #94a3b8)",
+                              }}
+                            />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={inputSx}
+                    />
+                  </Box>
                 </Box>
-                <Typography
+
+                {/* Postal Code & Country */}
+                <Box
                   sx={{
-                    fontWeight: 600,
-                    fontSize: "0.875rem",
-                    color: textPrimary,
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 1.5,
                   }}
                 >
-                  Physical Address
-                </Typography>
-              </Stack>
-              <Stack spacing={1.75}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Street Address"
-                  value={formData.customPhysicalAddress.streetAddress}
-                  onChange={(e) => fa("streetAddress", e.target.value)}
-                  disabled={!canEdit}
-                  sx={inputSx}
-                />
-                <Grid container spacing={1.5}>
-                  {[
-                    ["City", "city"],
-                    ["State / Province", "stateProvince"],
-                    ["Postal Code", "postalCode"],
-                    ["Country", "country"],
-                  ].map(([label, key]) => (
-                    <Grid item xs={12} sm={6} key={key}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        placeholder={label}
-                        value={formData.customPhysicalAddress[key]}
-                        onChange={(e) => fa(key, e.target.value)}
-                        type={key === "postalCode" ? "text" : undefined}
-                        inputProps={
-                          key === "postalCode"
-                            ? {
-                                inputMode: "numeric",
-                                pattern: "[0-9]{6}",
-                                maxLength: 6,
-                              }
-                            : undefined
-                        }
-                        error={
-                          key === "postalCode" &&
-                          formData.customPhysicalAddress.postalCode !== "" &&
-                          !isValidPostalCode(
-                            formData.customPhysicalAddress.postalCode,
-                          )
-                        }
-                        helperText={
-                          key === "postalCode" &&
-                          formData.customPhysicalAddress.postalCode !== "" &&
-                          !isValidPostalCode(
-                            formData.customPhysicalAddress.postalCode,
-                          )
-                            ? "Postal code must be 6 digits"
-                            : " "
-                        }
-                        disabled={!canEdit}
-                        sx={inputSx}
-                      />
-                    </Grid>
-                  ))}
-                </Grid>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Label>Postal Code</Label>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="6-digit PIN"
+                      value={formData.customPhysicalAddress.postalCode}
+                      onChange={(e) => fa("postalCode", e.target.value)}
+                      type="text"
+                      inputProps={{
+                        inputMode: "numeric",
+                        pattern: "[0-9]{6}",
+                        maxLength: 6,
+                      }}
+                      error={
+                        formData.customPhysicalAddress.postalCode !== "" &&
+                        !isValidPostalCode(
+                          formData.customPhysicalAddress.postalCode,
+                        )
+                      }
+                      helperText={
+                        formData.customPhysicalAddress.postalCode !== "" &&
+                        !isValidPostalCode(
+                          formData.customPhysicalAddress.postalCode,
+                        )
+                          ? "Must be 6 digits"
+                          : undefined
+                      }
+                      disabled={!canEdit}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LocalOfferOutlined
+                              sx={{
+                                fontSize: 15,
+                                color: "var(--asset-text-muted, #94a3b8)",
+                              }}
+                            />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={inputSx}
+                    />
+                  </Box>
+
+                  <Box sx={{ minWidth: 0 }}>
+                    <Label>Country</Label>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="e.g. India"
+                      value={formData.customPhysicalAddress.country}
+                      onChange={(e) => fa("country", e.target.value)}
+                      disabled={!canEdit}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <PublicOutlined
+                              sx={{
+                                fontSize: 16,
+                                color: "var(--asset-text-muted, #94a3b8)",
+                              }}
+                            />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={inputSx}
+                    />
+                  </Box>
+                </Box>
               </Stack>
             </Paper>
           </Grid>

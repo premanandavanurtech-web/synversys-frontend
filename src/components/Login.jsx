@@ -1348,266 +1348,266 @@ export default function LoginPage() {
                   <Stack spacing={2.5}>
                     {!otpStep ? (
                       <>
-                    <Box sx={{ animation: `${fadeUp} 0.45s 0.08s ease both` }}>
-                      <Typography
-                        sx={{
-                          fontSize: { xs: "0.65rem", sm: "0.67rem" },
-                          fontWeight: 700,
-                          letterSpacing: "0.08em",
-                          color: C.inkSec,
-                          textTransform: "uppercase",
-                          display: "block",
-                          mb: 0.75,
-                          fontFamily: C.font,
-                        }}
-                      >
-                        Email Address
-                      </Typography>
-                      <TextField
-                        fullWidth
-                        name="email"
-                        type="email"
-                        placeholder="you@company.com"
-                        value={formData.email}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        required
-                        autoComplete={formData.remember ? "email" : "off"}
-                        error={!!(fieldTouched.email && fieldErrors.email)}
-                        helperText={fieldTouched.email ? fieldErrors.email : ""}
-                        disabled={isDisabled}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <MailOutline
-                                sx={{
-                                  fontSize: { xs: 16, sm: 17 },
-                                  color:
-                                    fieldErrors.email && fieldTouched.email
-                                      ? C.red
-                                      : C.inkMut,
-                                }}
-                              />
-                            </InputAdornment>
-                          ),
-                        }}
-                        sx={{
-                          ...inputSx(fieldTouched.email && !!fieldErrors.email, C),
-                          ...getAnimationStyle("email"),
-                        }}
-                      />
-                    </Box>
-
-                    <Box sx={{ animation: `${fadeUp} 0.45s 0.13s ease both` }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          mb: 0.75,
-                          flexWrap: "wrap",
-                          gap: 0.5,
-                        }}
-                      >
-                        <Typography
-                          sx={{
-                            fontSize: { xs: "0.65rem", sm: "0.67rem" },
-                            fontWeight: 700,
-                            letterSpacing: "0.08em",
-                            color: C.inkSec,
-                            textTransform: "uppercase",
-                            fontFamily: C.font,
-                          }}
-                        >
-                          Password
-                        </Typography>
-                        <Link
-                          component="button"
-                          type="button"
-                          onClick={() => setForgotModalOpen(true)}
-                          underline="hover"
-                          sx={{
-                            fontSize: { xs: "0.7rem", sm: "0.75rem" },
-                            color: C.brand,
-                            fontWeight: 600,
-                            fontFamily: C.font,
-                            cursor: "pointer",
-                            background: "none",
-                            border: "none",
-                            p: 0,
-                            "&:hover": { color: C.brandMid },
-                          }}
-                        >
-                          Forgot password
-                        </Link>
-                      </Box>
-                      <TextField
-                        fullWidth
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Enter your password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        required
-                        autoComplete={
-                          formData.remember ? "current-password" : "new-password"
-                        }
-                        error={
-                          !!(fieldTouched.password && fieldErrors.password)
-                        }
-                        helperText={
-                          fieldTouched.password ? fieldErrors.password : ""
-                        }
-                        disabled={isDisabled}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Lock
-                                sx={{
-                                  fontSize: { xs: 15, sm: 16 },
-                                  color:
-                                    fieldErrors.password &&
-                                    fieldTouched.password
-                                      ? C.red
-                                      : C.inkMut,
-                                }}
-                              />
-                            </InputAdornment>
-                          ),
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton
-                                onClick={() => setShowPassword((v) => !v)}
-                                edge="end"
-                                size="small"
-                                tabIndex={-1}
-                                disabled={isDisabled}
-                                sx={{
-                                  borderRadius: "6px",
-                                  mr: -0.25,
-                                  p: { xs: 0.75, sm: 0.5 },
-                                }}
-                              >
-                                {showPassword ? (
-                                  <VisibilityOff
-                                    sx={{
-                                      fontSize: { xs: 16, sm: 17 },
-                                      color: C.inkMut,
-                                    }}
-                                  />
-                                ) : (
-                                  <Visibility
-                                    sx={{
-                                      fontSize: { xs: 16, sm: 17 },
-                                      color: C.inkMut,
-                                    }}
-                                  />
-                                )}
-                              </IconButton>
-                            </InputAdornment>
-                          ),
-                        }}
-                        sx={{
-                          ...inputSx(
-                            fieldTouched.password && !!fieldErrors.password,
-                            C,
-                          ),
-                          ...getAnimationStyle("password"),
-                        }}
-                      />
-                    </Box>
-
-                    <Box
-                      sx={{
-                        animation: `${fadeUp} 0.45s 0.18s ease both`,
-                      }}
-                    >
-                      <FormControlLabel
-                        sx={{ ml: 0, alignItems: "center" }}
-                        control={
-                          <Checkbox
-                            checked={formData.remember}
-                            onChange={(e) => {
-                              setFormData((p) => ({
-                                ...p,
-                                remember: e.target.checked,
-                              }));
-                            }}
-                            disabled={isDisabled}
-                            size="small"
-                            sx={{
-                              color: C.inkMut,
-                              "&.Mui-checked": { color: C.brand },
-                              "& .MuiSvgIcon-root": {
-                                fontSize: { xs: 17, sm: 18 },
-                              },
-                            }}
-                          />
-                        }
-                        label={
+                        <Box sx={{ animation: `${fadeUp} 0.45s 0.08s ease both` }}>
                           <Typography
                             sx={{
-                              fontSize: { xs: "0.78rem", sm: "0.82rem" },
+                              fontSize: { xs: "0.65rem", sm: "0.67rem" },
+                              fontWeight: 700,
+                              letterSpacing: "0.08em",
                               color: C.inkSec,
+                              textTransform: "uppercase",
+                              display: "block",
+                              mb: 0.75,
                               fontFamily: C.font,
                             }}
                           >
-                            Remember me
+                            Email Address
                           </Typography>
-                        }
-                      />
-                    </Box>
-
-                    <Box sx={{ animation: `${fadeUp} 0.45s 0.23s ease both` }}>
-                      <Button
-                        type="submit"
-                        fullWidth
-                        variant="contained"
-                        disabled={isDisabled}
-                        endIcon={
-                          !isDisabled && (
-                            <ArrowForward
-                              sx={{ fontSize: { xs: 15, sm: 16 } }}
-                            />
-                          )
-                        }
-                        sx={{
-                          py: { xs: "10px", sm: "11px" },
-                          bgcolor: C.brand,
-                          color: C.accentContrast,
-                          borderRadius: "10px",
-                          fontWeight: 700,
-                          fontFamily: C.font,
-                          fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                          textTransform: "none",
-                          letterSpacing: "-0.01em",
-                          boxShadow: `0 4px 14px ${alpha(C.brand, 0.3)}`,
-                          "&:hover": {
-                            bgcolor: C.brandMid,
-                            boxShadow: `0 6px 18px ${alpha(C.brand, 0.35)}`,
-                          },
-                          "&:active": {
-                            transform: "scale(0.98)",
-                          },
-                          "&.Mui-disabled": {
-                            bgcolor: alpha(C.brand, 0.35),
-                            color: alpha(C.accentContrast, 0.6),
-                          },
-                          transition: "all 0.22s ease",
-                        }}
-                      >
-                        {isDisabled ? (
-                          <CircularProgress
-                            size={20}
-                            thickness={2.5}
-                            sx={{ color: C.accentContrast }}
+                          <TextField
+                            fullWidth
+                            name="email"
+                            type="email"
+                            placeholder="you@company.com"
+                            value={formData.email}
+                            onChange={handleChange}
+                            onBlur={handleBlur}
+                            required
+                            autoComplete={formData.remember ? "email" : "off"}
+                            error={!!(fieldTouched.email && fieldErrors.email)}
+                            helperText={fieldTouched.email ? fieldErrors.email : ""}
+                            disabled={isDisabled}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <MailOutline
+                                    sx={{
+                                      fontSize: { xs: 16, sm: 17 },
+                                      color:
+                                        fieldErrors.email && fieldTouched.email
+                                          ? C.red
+                                          : C.inkMut,
+                                    }}
+                                  />
+                                </InputAdornment>
+                              ),
+                            }}
+                            sx={{
+                              ...inputSx(fieldTouched.email && !!fieldErrors.email, C),
+                              ...getAnimationStyle("email"),
+                            }}
                           />
-                        ) : (
-                          "Sign In"
-                        )}
-                      </Button>
-                    </Box>
+                        </Box>
+
+                        <Box sx={{ animation: `${fadeUp} 0.45s 0.13s ease both` }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              mb: 0.75,
+                              flexWrap: "wrap",
+                              gap: 0.5,
+                            }}
+                          >
+                            <Typography
+                              sx={{
+                                fontSize: { xs: "0.65rem", sm: "0.67rem" },
+                                fontWeight: 700,
+                                letterSpacing: "0.08em",
+                                color: C.inkSec,
+                                textTransform: "uppercase",
+                                fontFamily: C.font,
+                              }}
+                            >
+                              Password
+                            </Typography>
+                            <Link
+                              component="button"
+                              type="button"
+                              onClick={() => setForgotModalOpen(true)}
+                              underline="hover"
+                              sx={{
+                                fontSize: { xs: "0.7rem", sm: "0.75rem" },
+                                color: C.brand,
+                                fontWeight: 600,
+                                fontFamily: C.font,
+                                cursor: "pointer",
+                                background: "none",
+                                border: "none",
+                                p: 0,
+                                "&:hover": { color: C.brandMid },
+                              }}
+                            >
+                              Forgot password
+                            </Link>
+                          </Box>
+                          <TextField
+                            fullWidth
+                            name="password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Enter your password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            onBlur={handleBlur}
+                            required
+                            autoComplete={
+                              formData.remember ? "current-password" : "new-password"
+                            }
+                            error={
+                              !!(fieldTouched.password && fieldErrors.password)
+                            }
+                            helperText={
+                              fieldTouched.password ? fieldErrors.password : ""
+                            }
+                            disabled={isDisabled}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <Lock
+                                    sx={{
+                                      fontSize: { xs: 15, sm: 16 },
+                                      color:
+                                        fieldErrors.password &&
+                                          fieldTouched.password
+                                          ? C.red
+                                          : C.inkMut,
+                                    }}
+                                  />
+                                </InputAdornment>
+                              ),
+                              endAdornment: (
+                                <InputAdornment position="end">
+                                  <IconButton
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    edge="end"
+                                    size="small"
+                                    tabIndex={-1}
+                                    disabled={isDisabled}
+                                    sx={{
+                                      borderRadius: "6px",
+                                      mr: -0.25,
+                                      p: { xs: 0.75, sm: 0.5 },
+                                    }}
+                                  >
+                                    {showPassword ? (
+                                      <VisibilityOff
+                                        sx={{
+                                          fontSize: { xs: 16, sm: 17 },
+                                          color: C.inkMut,
+                                        }}
+                                      />
+                                    ) : (
+                                      <Visibility
+                                        sx={{
+                                          fontSize: { xs: 16, sm: 17 },
+                                          color: C.inkMut,
+                                        }}
+                                      />
+                                    )}
+                                  </IconButton>
+                                </InputAdornment>
+                              ),
+                            }}
+                            sx={{
+                              ...inputSx(
+                                fieldTouched.password && !!fieldErrors.password,
+                                C,
+                              ),
+                              ...getAnimationStyle("password"),
+                            }}
+                          />
+                        </Box>
+
+                        <Box
+                          sx={{
+                            animation: `${fadeUp} 0.45s 0.18s ease both`,
+                          }}
+                        >
+                          <FormControlLabel
+                            sx={{ ml: 0, alignItems: "center" }}
+                            control={
+                              <Checkbox
+                                checked={formData.remember}
+                                onChange={(e) => {
+                                  setFormData((p) => ({
+                                    ...p,
+                                    remember: e.target.checked,
+                                  }));
+                                }}
+                                disabled={isDisabled}
+                                size="small"
+                                sx={{
+                                  color: C.inkMut,
+                                  "&.Mui-checked": { color: C.brand },
+                                  "& .MuiSvgIcon-root": {
+                                    fontSize: { xs: 17, sm: 18 },
+                                  },
+                                }}
+                              />
+                            }
+                            label={
+                              <Typography
+                                sx={{
+                                  fontSize: { xs: "0.78rem", sm: "0.82rem" },
+                                  color: C.inkSec,
+                                  fontFamily: C.font,
+                                }}
+                              >
+                                Remember me
+                              </Typography>
+                            }
+                          />
+                        </Box>
+
+                        <Box sx={{ animation: `${fadeUp} 0.45s 0.23s ease both` }}>
+                          <Button
+                            type="submit"
+                            fullWidth
+                            variant="contained"
+                            disabled={isDisabled}
+                            endIcon={
+                              !isDisabled && (
+                                <ArrowForward
+                                  sx={{ fontSize: { xs: 15, sm: 16 } }}
+                                />
+                              )
+                            }
+                            sx={{
+                              py: { xs: "10px", sm: "11px" },
+                              bgcolor: C.brand,
+                              color: C.accentContrast,
+                              borderRadius: "10px",
+                              fontWeight: 700,
+                              fontFamily: C.font,
+                              fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                              textTransform: "none",
+                              letterSpacing: "-0.01em",
+                              boxShadow: `0 4px 14px ${alpha(C.brand, 0.3)}`,
+                              "&:hover": {
+                                bgcolor: C.brandMid,
+                                boxShadow: `0 6px 18px ${alpha(C.brand, 0.35)}`,
+                              },
+                              "&:active": {
+                                transform: "scale(0.98)",
+                              },
+                              "&.Mui-disabled": {
+                                bgcolor: alpha(C.brand, 0.35),
+                                color: alpha(C.accentContrast, 0.6),
+                              },
+                              transition: "all 0.22s ease",
+                            }}
+                          >
+                            {isDisabled ? (
+                              <CircularProgress
+                                size={20}
+                                thickness={2.5}
+                                sx={{ color: C.accentContrast }}
+                              />
+                            ) : (
+                              "Sign In"
+                            )}
+                          </Button>
+                        </Box>
                       </>
                     ) : (
                       <>
@@ -1795,7 +1795,7 @@ export default function LoginPage() {
         onClose={() => setErrOpen(false)}
 
         TransitionComponent={Slide}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity="error"
           onClose={() => setErrOpen(false)}
@@ -1815,7 +1815,7 @@ export default function LoginPage() {
         autoHideDuration={3000}
         onClose={() => setOkOpen(false)}
         TransitionComponent={Slide}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert
           severity="success"
           onClose={() => setOkOpen(false)}

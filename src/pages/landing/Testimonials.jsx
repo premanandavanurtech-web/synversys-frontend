@@ -22,6 +22,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import PauseIcon from "@mui/icons-material/Pause";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import CountUp from "../../components/CountUp";
 
 const testimonials = [
   {
@@ -683,7 +684,7 @@ const Testimonials = () => {
                     letterSpacing: "-0.01em",
                   }}
                 >
-                  {stat.value}
+                  <CountUp value={stat.value} duration={2000} delay={idx * 150} />
                 </Typography>
                 <Typography 
                   variant="caption" 
