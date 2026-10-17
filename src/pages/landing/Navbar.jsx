@@ -414,27 +414,52 @@ const Navbar = ({
                     Dashboard
                   </Button>
                 ) : (
-                  <Button
-                    onClick={() => navigate("/login")}
-                    variant="text"
-                    startIcon={
-                      <LoginIcon sx={{ fontSize: { xs: 16, sm: 17, md: 18 } }} />
-                    }
-                    sx={{
-                      display: { xs: "none", md: "flex" },
-                      color: getPrimaryColor(),
-                      fontSize: { md: "0.75rem", lg: "0.8rem", xl: "0.85rem" },
-                      fontWeight: 600,
-                      borderRadius: 100,
-                      px: { md: 1.5, lg: 2, xl: 2.5 },
-                      py: 0.75,
-                      "&:hover": {
-                        backgroundColor: alpha(getPrimaryColor(), 0.06),
-                      },
-                    }}
-                  >
-                    Sign In
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => navigate("/under-construction")}
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        display: { xs: "none", md: "flex" },
+                        borderColor: "rgba(245, 158, 11, 0.4)",
+                        color: isDarkMode ? "#fbbf24" : "#b45309",
+                        bgcolor: isDarkMode ? "rgba(245, 158, 11, 0.1)" : "rgba(245, 158, 11, 0.08)",
+                        fontSize: { md: "0.72rem", lg: "0.78rem" },
+                        fontWeight: 700,
+                        borderRadius: 100,
+                        px: { md: 1.5, lg: 2 },
+                        py: 0.6,
+                        textTransform: "none",
+                        "&:hover": {
+                          borderColor: "#f59e0b",
+                          bgcolor: isDarkMode ? "rgba(245, 158, 11, 0.2)" : "rgba(245, 158, 11, 0.15)",
+                        },
+                      }}
+                    >
+                      🚧 Under Construction
+                    </Button>
+                    <Button
+                      onClick={() => navigate("/login")}
+                      variant="text"
+                      startIcon={
+                        <LoginIcon sx={{ fontSize: { xs: 16, sm: 17, md: 18 } }} />
+                      }
+                      sx={{
+                        display: { xs: "none", md: "flex" },
+                        color: getPrimaryColor(),
+                        fontSize: { md: "0.75rem", lg: "0.8rem", xl: "0.85rem" },
+                        fontWeight: 600,
+                        borderRadius: 100,
+                        px: { md: 1.5, lg: 2, xl: 2.5 },
+                        py: 0.75,
+                        "&:hover": {
+                          backgroundColor: alpha(getPrimaryColor(), 0.06),
+                        },
+                      }}
+                    >
+                      Sign In
+                    </Button>
+                  </>
                 )}
               </Stack>
             </motion.div>

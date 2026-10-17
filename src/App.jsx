@@ -74,6 +74,7 @@ import AssignmentDetailPage from "./pages/Assignmentdetailpage";
 import AssignmentAnalyticsPage from "./pages/Assignmentanalyticspage";
 import Settings from "./pages/Settings";
 import Tickets from "./pages/Tickets";
+import UnderConstruction from "./pages/UnderConstruction";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Providers
@@ -185,10 +186,12 @@ export default function App() {
         <InactivityTimeout />
         <Routes>
           {/* ── Public ──────────────────────────────────────────────────────── */}
-          <Route path="/" element={<Main />} />
+          <Route path="/" element={<UnderConstruction />} />
+          <Route path="/landing" element={<Main />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/under-construction" element={<UnderConstruction />} />
 
           {/* ── Admin Dashboard ─────────────────────────────────────────────── */}
           <Route
@@ -279,6 +282,16 @@ export default function App() {
               <ProtectedRoute allowedRoles={["team"]}>
                 <DashboardLayout>
                   <Tickets />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/team/under-construction"
+            element={
+              <ProtectedRoute allowedRoles={["team"]}>
+                <DashboardLayout>
+                  <UnderConstruction inDashboard={true} />
                 </DashboardLayout>
               </ProtectedRoute>
             }
@@ -717,6 +730,16 @@ export default function App() {
               <ProtectedRoute allowedRoles={["admin", "team"]}>
                 <DashboardLayout>
                   <CreateAssetRequest />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/under-construction"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
+                <DashboardLayout>
+                  <UnderConstruction inDashboard={true} />
                 </DashboardLayout>
               </ProtectedRoute>
             }

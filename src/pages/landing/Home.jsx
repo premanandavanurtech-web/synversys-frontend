@@ -333,6 +333,7 @@ const Hero = ({ scrollToSection }) => {
                   width: { xs: "100%", sm: "auto" },
                   maxWidth: { xs: 280, sm: "none" },
                 }}
+                onClick={() => navigate("/under-construction")}
               >
                 Watch Demo
               </Button>
