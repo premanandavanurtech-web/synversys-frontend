@@ -157,7 +157,7 @@ export default function UnderConstruction() {
             duration: 3.8,
             ease: "easeInOut",
           }}
-          onClick={() => navigate("/landing")}
+          
           sx={{
             cursor: "pointer",
             mb: { xs: 3, sm: 3.5, md: 4 },
