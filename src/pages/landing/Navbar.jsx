@@ -415,7 +415,7 @@ const Navbar = ({
                   </Button>
                 ) : (
                   <>
-                    <Button
+                    {/* <Button
                       onClick={() => navigate("/under-construction")}
                       variant="outlined"
                       size="small"
@@ -437,7 +437,7 @@ const Navbar = ({
                       }}
                     >
                       🚧 Under Construction
-                    </Button>
+                    </Button> */}
                     <Button
                       onClick={() => navigate("/login")}
                       variant="text"
