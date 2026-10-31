@@ -279,15 +279,15 @@ const navItemsConfig = {
       order: 100,
       section: "user",
     },
-    {
-      id: "under-construction",
-      icon: ConstructionOutlinedIcon,
-      label: "Under Construction",
-      path: "/admin/under-construction",
-      roles: ["super_admin"],
-      order: 110,
-      section: "user",
-    },
+    // {
+    //   id: "under-construction",
+    //   icon: ConstructionOutlinedIcon,
+    //   label: "Under Construction",
+    //   path: "/admin/under-construction",
+    //   roles: ["super_admin"],
+    //   order: 110,
+    //   section: "user",
+    // },
   ],
   admin: [
     {
@@ -389,15 +389,15 @@ const navItemsConfig = {
       order: 70,
       section: "user",
     },
-    {
-      id: "under-construction",
-      icon: ConstructionOutlinedIcon,
-      label: "Under Construction",
-      path: "/admin/under-construction",
-      roles: ["admin"],
-      order: 80,
-      section: "user",
-    },
+    // {
+    //   id: "under-construction",
+    //   icon: ConstructionOutlinedIcon,
+    //   label: "Under Construction",
+    //   path: "/admin/under-construction",
+    //   roles: ["admin"],
+    //   order: 80,
+    //   section: "user",
+    // },
   ],
   team: [
     {
@@ -463,15 +463,15 @@ const navItemsConfig = {
       order: 60,
       section: "user",
     },
-    {
-      id: "under-construction",
-      icon: ConstructionOutlinedIcon,
-      label: "Under Construction",
-      path: "/team/under-construction",
-      roles: ["team"],
-      order: 70,
-      section: "user",
-    },
+    // {
+    //   id: "under-construction",
+    //   icon: ConstructionOutlinedIcon,
+    //   label: "Under Construction",
+    //   path: "/team/under-construction",
+    //   roles: ["team"],
+    //   order: 70,
+    //   section: "user",
+    // },
   ],
 };
 
