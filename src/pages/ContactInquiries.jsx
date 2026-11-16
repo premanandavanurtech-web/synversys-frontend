@@ -76,7 +76,6 @@ import AssetSearchField from "../components/AssetSearchField";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-
 /* ─────────────────────────────────────────────────────
  * Design tokens (dark theme — matches AuditLogs.jsx)
  * ───────────────────────────────────────────────────── */
@@ -1385,7 +1384,7 @@ export default function ContactInquiries() {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert severity={snackbar.severity} onClose={() => setSnackbar((s) => ({ ...s, open: false }))} sx={{ borderRadius: T.radius, fontSize: 12 }}>
           {snackbar.message}
         </Alert>
