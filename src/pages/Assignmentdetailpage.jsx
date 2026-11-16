@@ -125,7 +125,7 @@ const submissionGridColumns =
   "minmax(260px, 1.45fr) minmax(210px, 0.95fr) minmax(140px, 0.7fr) minmax(220px, 1fr) minmax(96px, 0.45fr)";
 
 const API_ORIGIN =
-  (import.meta.env?.VITE_API_URL || "https://synversys-backend.onrender.com/api/v1")
+  (import.meta.env?.VITE_API_URL || "https://backend.assetmach.com/api/v1")
     .replace(/\/api\/v1\/?$/, "")
     .replace(/\/$/, "");
 

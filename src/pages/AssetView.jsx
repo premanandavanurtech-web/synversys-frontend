@@ -2293,7 +2293,7 @@ export default function AssetView() {
 
   const getImageUrl = (name) =>
     name
-      ? `${import.meta.env?.VITE_API_URL?.replace("/api/v1", "") || "https://synversys-backend.onrender.com"}/uploads/assets/${name}`
+      ? `${import.meta.env?.VITE_API_URL?.replace("/api/v1", "") || "https://backend.assetmach.com"}/uploads/assets/${name}`
       : null;
 
   // ── SKELETON LOADING STATE ────────────────────────────────────────────────

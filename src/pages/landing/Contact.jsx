@@ -191,7 +191,7 @@ const Contact = () => {
     try {
       // First, send the API request to save the inquiry
       const response = await axios.post(
-        `https://synversys-backend.onrender.com/api/v1/contact`,
+        `https://backend.assetmach.com/api/v1/contact`,
         {
           fullName: formData.fullName.trim(),
           email: contactEmail,

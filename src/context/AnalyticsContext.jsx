@@ -42,7 +42,7 @@ export const AnalyticsProvider = ({ children }) => {
     try {
       const token = getAccessToken();
       const response = await axios.get(
-        'https://synversys-backend.onrender.com/api/v1/dashboard/Analytics',
+        'https://backend.assetmach.com/api/v1/dashboard/Analytics',
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -87,7 +87,7 @@ export const AnalyticsProvider = ({ children }) => {
     try {
       const token = getAccessToken();
       const response = await axios.get(
-        'https://synversys-backend.onrender.com/api/v1/dashboard/Analytics/export',
+        'https://backend.assetmach.com/api/v1/dashboard/Analytics/export',
         {
           headers: {
             Authorization: `Bearer ${token}`,

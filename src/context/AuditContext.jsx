@@ -25,7 +25,7 @@ export const useAudit = () => {
   return context;
 };
 
-const API_BASE_URL = "https://synversys-backend.onrender.com/api/v1";
+const API_BASE_URL = "https://backend.assetmach.com/api/v1";
 
 const appendAuditFilters = (params, appliedFilters = {}) => {
   if (appliedFilters.action) params.append("action", appliedFilters.action);

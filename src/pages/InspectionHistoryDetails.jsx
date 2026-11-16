@@ -421,7 +421,7 @@ export default function InspectionHistoryDetails() {
     const value = raw.trim().replace(/^https\/\//i, "https://");
     if (/^(data:|https?:\/\/|blob:)/i.test(value)) return value;
     const normalizedPath = value.replace(/\\/g, "/").replace(/^\/+/, "");
-    return `https://synversys-backend.onrender.com/${normalizedPath}`;
+    return `https://backend.assetmach.com/${normalizedPath}`;
   };
 
   const getImageUrl = (filePath) => getMediaUrl(filePath) || "/placeholder-image.png";

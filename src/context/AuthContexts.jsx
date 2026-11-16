@@ -23,7 +23,7 @@ export const useAuth = () => {
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  "https://synversys-backend.onrender.com/api/v1";
+  "https://backend.assetmach.com/api/v1";
 
 const AUTH_PERSISTENCE_KEY = "authPersistence";
 

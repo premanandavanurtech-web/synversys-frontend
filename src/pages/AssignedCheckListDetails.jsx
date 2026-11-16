@@ -120,7 +120,7 @@ function StatusChip({ status }) {
 }
 
 const API_ORIGIN =
-  (import.meta.env?.VITE_API_URL || "https://synversys-backend.onrender.com/api/v1")
+  (import.meta.env?.VITE_API_URL || "https://backend.assetmach.com/api/v1")
     .replace(/\/api\/v1\/?$/, "")
     .replace(/\/$/, "");
 
