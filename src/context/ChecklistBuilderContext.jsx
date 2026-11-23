@@ -17,7 +17,7 @@ export const useChecklistBuilder = () => {
 };
 
 const API_BASE =
-  import.meta.env.VITE_API_BASE_URL || "https://backend.assetmach.com/api/v1";
+  import.meta.env.VITE_API_BASE_URL || "https://synversys-backend.onrender.com/api/v1";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Field type maps

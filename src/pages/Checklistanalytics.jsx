@@ -492,7 +492,7 @@ export default function ChecklistAnalytics() {
     setError(null);
     try {
       const response = await fetch(
-        `https://backend.assetmach.com/api/v1/assignments/checklist/${id}/analytics`,
+        `https://synversys-backend.onrender.com/api/v1/assignments/checklist/${id}/analytics`,
         {
           method: "GET",
           headers: {

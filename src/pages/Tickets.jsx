@@ -94,7 +94,7 @@ const attachmentUrl = (file) => {
   if (!path) return "";
   path = String(path).trim().replace(/^https\/\//i, "https://");
   if (/^(https?:|blob:|data:)/i.test(path)) return path;
-  return `https://backend.assetmach.com/${path.replace(/^\/+/, "")}`;
+  return `https://synversys-backend.onrender.com/${path.replace(/^\/+/, "")}`;
 };
 
 const formatDateTime = (value) => {
