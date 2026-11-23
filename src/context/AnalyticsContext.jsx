@@ -11,6 +11,8 @@ const getAccessToken = () =>
   sessionStorage.getItem('accessToken') ||
   sessionStorage.getItem('token');
 
+
+  
 export const AnalyticsProvider = ({ children }) => {
   const { user } = useAuth();
   const [data, setData] = useState(null);
